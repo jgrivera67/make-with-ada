@@ -1,0 +1,9 @@
+pragma Warnings (Off, """Constraint_Error"" may call Last_Chance_Handler");
+pragma Warnings (Off, "pragma Restrictions (No_Exception_Propagation) in effect");
+pragma Profile (Ravenscar);
+pragma Assertion_Policy (Check);
+pragma Restrictions (No_Recursion);
+pragma Restrictions (No_Allocators);
+pragma Restrictions (No_Dispatch);
+--pragma Restrictions (No_Implicit_Dynamic_Code);
+
