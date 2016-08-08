@@ -53,11 +53,7 @@ package Serial_Console is
 
    function Initialized return Boolean
       with Inline;
-   --
-   -- Tell if the serial console has been initialized
-   --
-   -- @return True, if yes, False, otherwise
-   --
+   -- @private (Used only in contracts)
 
    procedure Initialize
      with Pre => not Initialized;
@@ -79,53 +75,66 @@ package Serial_Console is
      with Pre => Initialized;
 
    procedure Print_String(S : String)
-     with Pre => Initialized;
+     with Pre => Initialized and then
+                 Is_Locked;
 
    procedure Print_Pos_String(Line : Line_Type;
                               Column : Column_Type;
                               S : String;
                               Attributes : Attributes_Vector_Type := Attributes_Normal)
-     with Pre => Initialized;
+     with Pre => Initialized and then
+                 Is_Locked;
 
    procedure Turn_Off_Cursor
-     with Pre => Initialized;
+     with Pre => Initialized and then
+                 Is_Locked;
 
    procedure Turn_On_Cursor
-     with Pre => Initialized;
+     with Pre => Initialized and then
+                 Is_Locked;
 
    procedure Save_Cursor_and_Attributes
-     with Pre => Initialized;
+     with Pre => Initialized and then
+                 Is_Locked;
 
    procedure Restore_Cursor_and_Attributes
-     with Pre => Initialized;
+     with Pre => Initialized and then
+                 Is_Locked;
 
    procedure Set_Cursor_And_Attributes (Line : Line_Type;
                                         Column : Column_Type;
                                         Attributes : Attributes_Vector_Type;
                                         Save_Old : Boolean := False)
-     with Pre => Initialized;
+     with Pre => Initialized and then
+                 Is_Locked;
 
    procedure Erase_Current_Line
-     with Pre => Initialized;
+     with Pre => Initialized and then
+                 Is_Locked;
 
    procedure Erase_Lines (Top_Line : Line_Type;
                           Bottom_Line : Line_Type;
                           Preserve_Cursor : Boolean := False)
-     with Pre => Initialized and Top_line <= Bottom_Line;
+     with Pre => Initialized and then
+                 Is_Locked and then
+                 Top_line <= Bottom_Line;
    --
    --  Erase a range of lines
-   --  @param top_line: First line of the range
-   --  @param bottom_line: last line of the range
-   --  @param preserve_cursor: flag to indicate if cursor need to be
+   --  @param Top_Line: First line of the range
+   --  @param Bottom_Line: last line of the range
+   --  @param Preserve_Cursor: flag to indicate if cursor need to be
    --  saved/restored
    --
 
    procedure Clear_Screen
-     with Pre => Initialized;
+     with Pre => Initialized and then
+                 Is_Locked;
 
    procedure Set_Scroll_Region (Top_Line : Line_Type;
                                 Bottom_Line : Line_Type)
-     with Pre => Initialized and Top_line < Bottom_Line;
+     with Pre => Initialized and then
+                 Is_Locked and then
+                 Top_line < Bottom_Line;
    --
    --  Set scroll region for the console screen to the given range of lines
    --
@@ -135,7 +144,9 @@ package Serial_Console is
    --
 
    procedure Set_Scroll_Region_To_Screen_Bottom (Top_Line : Line_Type)
-   with Pre => Initialized and Top_Line < Line_Type'Last;
+     with Pre => Initialized and then
+                 Is_Locked and then
+                 Top_Line < Line_Type'Last;
    --
    --  Set scroll region for the console screen from the given line to the
    --  bottom of the screen. The scroll region grows dynamically if the screen
@@ -149,18 +160,22 @@ package Serial_Console is
                        Height : Line_Type;
                        Width : Column_Type;
                        Attributes : Attributes_Vector_Type)
-     with Pre => Initialized and
-                 Line + Height in Line_Type and
+     with Pre => Initialized and then
+                 Is_Locked and then
+                 Line + Height in Line_Type and then
                  Column + Width in Column_Type;
 
    procedure Draw_Horizontal_Line (Line : Line_Type;
                                    Column : Column_Type;
                                    Width : Column_Type;
                                    Attributes : Attributes_Vector_Type)
-     with Pre => Initialized and Column + Width in Column_Type;
+     with Pre => Initialized and then
+                 Is_Locked and then
+                 Column + Width in Column_Type;
 
    procedure Get_Char (C : out Character)
-     with Pre => Initialized;
+     with Pre => Initialized and then
+                 not Is_Locked;
 
    function Is_Input_Available return Boolean
      with Pre => Initialized;

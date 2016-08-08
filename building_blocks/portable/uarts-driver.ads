@@ -34,13 +34,8 @@ package Uarts.Driver is
    function Initialized
       (Uart_Device_Id : Uart_Device_Id_Type) return Boolean
       with Inline;
-   --
-   -- Tell if the given UART has been initialized
-   --
-   -- @param Uart_Device_Id UART Id
-   --
-   -- @return True, if yes, False, otherwise
-   --
+   -- @private (Used only in contracts)
+
 
    procedure Initialize (Uart_Device_Id : Uart_Device_Id_Type;
                          Baud_Rate : Baud_Rate_Type)

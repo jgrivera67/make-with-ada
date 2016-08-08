@@ -26,11 +26,9 @@
 --
 
 --
---  Generic ring buffer abstract data type
+--  @summary Ring buffer abstract data type
 --
-
 package Command_Parser is
-
    function Initialized return Boolean
      with Inline;
 

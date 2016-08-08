@@ -42,14 +42,10 @@ package Generic_Ring_Buffers is
 
    function Initialized (Ring_Buffer : Ring_Buffer_Type) return Boolean
      with Inline;
-   --
-   -- Tell if the serial console has been initialized
-   --
-   -- @return True, if yes, False, otherwise
-   --
+   -- @private (Used only in contracts)
 
    procedure Initialize (Ring_Buffer : out Ring_Buffer_Type;
-                         Name : access constant String);
+                         Name : not null access constant String);
 
    procedure Write_Non_Blocking (Ring_Buffer : in out Ring_Buffer_Type;
                                  Element : Element_Type;
@@ -96,7 +92,7 @@ private
    --
    -- Ring buffer type
    --
-   type Ring_Buffer_Type is record
+   type Ring_Buffer_Type is limited record
       Initialized : Boolean := False;
       Name : access constant String;
       Buffer : Buffer_Type;

@@ -36,10 +36,10 @@ package body Last_Chance_Handler is
       --  pragma Unreferenced (Msg, Line);
       Msg_Text : String (1 .. 80) with Address => Msg;
    begin
-      --  Ada.Text_IO.Put_Line ("*** Last_Chance_Handler called ***");
       Ada.Text_IO.Put_Line ("*** Exception raised at " & Msg_Text & ", Line " &
                             Line'Image);
 
+      Msg_Text := (1 .. Msg_Text'Length => ' ');
       --  No return procedure.
       loop
          null;

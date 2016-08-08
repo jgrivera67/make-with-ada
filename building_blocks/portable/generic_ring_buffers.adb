@@ -33,7 +33,7 @@ package body Generic_Ring_Buffers is
    -- ** --
 
    procedure Initialize (Ring_Buffer : out Ring_Buffer_Type;
-                         Name : access constant String) is
+                         Name : not null access constant String) is
    begin
       pragma Assert (not Ring_Buffer.Initialized);
       Set_False (Ring_Buffer.Not_Empty_Condvar);

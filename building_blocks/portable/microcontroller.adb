@@ -25,34 +25,22 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with System;
-with Serial_Console;
-with Command_Parser;
---with Car_Controller;
-with GNAT.Source_Info;
-with Last_Chance_Handler; pragma Unreferenced (Last_Chance_Handler);
+with System.Machine_Code; use System.Machine_Code;
 
-procedure Frdm_Kl25z_Autonomous_Car is
-   pragma Priority (System.Priority'First);
+package body Microcontroller is
 
-   procedure Print_Greeting is
+   procedure Disable_Interrupts is
    begin
-      Serial_Console.Lock;
-      Serial_Console.Clear_Screen;
-      Serial_Console.Print_String (
-        "Autonomous Car (built on " & GNAT.Source_Info.Compilation_Date &
-        " at " & GNAT.Source_Info.Compilation_Time & ")" & ASCII.LF);
+      Asm ("cpsid i", Volatile => True, Clobber => "memory");
+   end Disable_Interrupts;
 
-      Serial_Console.Unlock;
-   end Print_Greeting;
+   procedure Data_Synchronization_Barrier is
+   begin
+      Asm ("dsb 0xf", Volatile => True, Clobber => "memory");
+   end Data_Synchronization_Barrier;
 
-begin -- Frdm_Kl25z_Autonomous_Car
-   Serial_Console.Initialize;
-   Print_Greeting;
-   Command_Parser.Initialize;
-   --Car_Controller.Initialize;
+   procedure System_Reset is separate;
 
-   loop
-      Command_Parser.Parse_Command;
-   end loop;
-end Frdm_Kl25z_Autonomous_Car;
+   function Find_System_Reset_Cause return System_Reset_Causes_Type is separate;
+
+end Microcontroller;

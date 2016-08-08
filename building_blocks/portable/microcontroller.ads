@@ -24,41 +24,48 @@
 --  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 --  POSSIBILITY OF SUCH DAMAGE.
 --
-package body Pin_Config.Driver is
-   --
-   --  Matrix to keep track of what pins are currently in use. If a pin is not
-   --  in use (set_pin_function() has not been called for it), its entry is
-   --  null.
-   --
-   Pins_In_Use_Map : array (Pin_Port_Type, PORT.Pin_Index_Type) of
-     access constant Pin_Info_Type := (others => (others => null));
+
+with Interfaces; use Interfaces;
+with Interfaces.Bit_Types; use Interfaces.Bit_Types;
+
+--
+-- @summary Micrcontroller operations
+--
+package Microcontroller is
+   pragma Preelaborate;
+
+   type Bytes_Array is array (Positive range <>) of Byte;
+   type Words_Array is array (Positive range <>) of Word;
+
+   type Hertz_Type is range 1 .. 1_000_000_000;
+
+   subtype Two_Bits is UInt2;
+   subtype Three_Bits is UInt3;
+   subtype Four_Bits is UInt4;
+   subtype Five_Bits is UInt5;
+   subtype Six_Bits is UInt6;
+   subtype Nine_Bits is UInt9;
+   subtype Half_Word is Unsigned_16;
 
    --
-   --  Subprogram Set_Pin_function
+   --  System reset causes
    --
-   procedure Set_Pin_Function (Pin_Info_Ptr : access constant Pin_Info_Type;
-                               Drive_Strength_Enable : Boolean;
-                               Pullup_Resistor : Boolean) is
-      Pins_In_Use_Entry : access constant Pin_Info_Type renames
-        Pins_In_Use_Map (Pin_Info_Ptr.Pin_Port, Pin_Info_Ptr.Pin_Index);
+   type System_Reset_Causes_Type is (
+      INVALID_RESET_CAUSE,
+      POWER_ON_RESET,
+      EXTERNAL_PIN_RESET,
+      WATCHDOG_RESET,
+      SOFTWARE_RESET,
+      LOCKUP_EVENT_RESET,
+      EXTERNAL_DEBUGGER_RESET,
+      OTHER_HW_REASON_RESET,
+      STOP_ACK_ERROR_RESET
+    );
 
-      Port_Registers : access PORT.Registers_Type renames
-        Ports (Pin_Info_Ptr.Pin_Port);
-   begin
-      if Pins_In_Use_Entry /= null then
-         --  CAPTURE_ERROR("Pin already allocated", Pin_Info.Pin_port,
-         --                Pin_Info.Pin_index);
-         raise Program_Error;
-      end if;
+   procedure Data_Synchronization_Barrier;
 
-      Port_Registers.all.PCR (Pin_Info_Ptr.Pin_Index) :=
-        (MUX => Pin_Function_Type'Pos (Pin_Info_Ptr.Pin_Function),
-         DSE => Boolean'Pos (Drive_Strength_Enable),
-         PS | PE => Boolean'Pos (Pullup_Resistor),
-         IRQC => 0,
-         others => 0);
+   procedure System_Reset;
 
-      Pins_In_Use_Entry := Pin_Info_Ptr;
-   end Set_Pin_Function;
+   function Find_System_Reset_Cause return System_Reset_Causes_Type;
 
-end Pin_Config.Driver;
+end Microcontroller;

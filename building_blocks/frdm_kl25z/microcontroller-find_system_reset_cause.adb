@@ -25,34 +25,37 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with System;
-with Serial_Console;
-with Command_Parser;
---with Car_Controller;
-with GNAT.Source_Info;
-with Last_Chance_Handler; pragma Unreferenced (Last_Chance_Handler);
+with Kinetis_KL25Z.RCM; use Kinetis_KL25Z;
 
-procedure Frdm_Kl25z_Autonomous_Car is
-   pragma Priority (System.Priority'First);
+separate (Microcontroller)
+function Find_System_Reset_Cause return System_Reset_Causes_Type is
+   SRS0_Value : RCM.SRS0_Type;
+   SRS1_Value : RCM.SRS1_Type;
+   Reset_Cause : System_Reset_Causes_Type := INVALID_RESET_CAUSE;
+   SRS0_Byte_Value : Byte with Address => SRS0_Value'Address;
+begin
+   SRS0_Value := RCM.Registers.SRS0;
+   if SRS0_Value.POR = 1 then
+       Reset_Cause := POWER_ON_RESET;
+   elsif SRS0_Value.PIN = 1 then
+      Reset_Cause := EXTERNAL_PIN_RESET;
+   elsif SRS0_Value.WDOG = 1 then
+      Reset_Cause := WATCHDOG_RESET;
+   elsif SRS0_Byte_Value /= 0 then
+      Reset_Cause := OTHER_HW_REASON_RESET;
+   else
+      SRS1_Value := RCM.Registers.SRS1;
+      if SRS1_Value.SW = 1 then
+         Reset_Cause := SOFTWARE_RESET;
+      elsif SRS1_Value.MDM_AP = 1 then
+         Reset_Cause := EXTERNAL_DEBUGGER_RESET;
+      elsif SRS1_Value.LOCKUP = 1 then
+         Reset_Cause := LOCKUP_EVENT_RESET;
+      elsif SRS1_Value.SACKERR = 1 then
+         Reset_Cause := STOP_ACK_ERROR_RESET;
+      end if;
+   end if;
 
-   procedure Print_Greeting is
-   begin
-      Serial_Console.Lock;
-      Serial_Console.Clear_Screen;
-      Serial_Console.Print_String (
-        "Autonomous Car (built on " & GNAT.Source_Info.Compilation_Date &
-        " at " & GNAT.Source_Info.Compilation_Time & ")" & ASCII.LF);
+   return Reset_Cause;
+end Find_System_Reset_Cause;
 
-      Serial_Console.Unlock;
-   end Print_Greeting;
-
-begin -- Frdm_Kl25z_Autonomous_Car
-   Serial_Console.Initialize;
-   Print_Greeting;
-   Command_Parser.Initialize;
-   --Car_Controller.Initialize;
-
-   loop
-      Command_Parser.Parse_Command;
-   end loop;
-end Frdm_Kl25z_Autonomous_Car;

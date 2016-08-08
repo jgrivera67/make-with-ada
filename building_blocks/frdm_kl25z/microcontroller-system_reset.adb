@@ -25,29 +25,25 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
---
---  Generic command-line abstract data type implementation
---
-package body Generic_Command_Line is
-   subtype Buffer_Index_Type is Positive range 1 .. 80;
+with Microcontroller.Cortex_M0plus; use Microcontroller.Cortex_M0plus;
 
-   subtype Token_Array_Index_Type is Positive range 1 .. 8;
+separate (Microcontroller)
+procedure System_Reset is
+   AIRCR_Value : AIRCR_Type;
+begin
+   Disable_Interrupts;
 
-   type Token_Type is limited record
-      First_Char : Buffer_Index_Type;
-      Lasty_Char : Buffer_Index_Type;
-   end record;
+   Data_Synchronization_Barrier;
+   AIRCR_Value := (VECTKEY => 16#5FA#,
+                   SYSRESETREQ => 1,
+                   others => 0);
 
-   type Token_Array_Type is array (Token_Array_Index_Type) of Token_Type;
-   --
-   --  Command line state variables
-   --
-   type Command_Line_Type is limited record
-      Buffer : String (Buffer_Index_Type);
-      Buffer_Cursor : Buffer_Index_Type;
-      Prompt : access constant String;
-      Num_Tokens : Token_Array_Index_Type;
-      Tokens : Token_Array_Type;
-   end record;
+   SCB.AIRCR := AIRCR_Value;
+   Data_Synchronization_Barrier;
 
-   Command_Line : Command_Line_Type;
+   --  Wait until reset is completed.
+   loop
+      null;
+   end loop;
+
+end System_Reset;

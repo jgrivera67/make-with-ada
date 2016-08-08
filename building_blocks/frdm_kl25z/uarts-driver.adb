@@ -307,7 +307,6 @@ package body Uarts.Driver is
       --
       C2_Value : UART.C2_Type;
       C1_Value : UART.C1_Type;
-
    begin
       pragma Assert (not Uart_Device_Var.Initialized);
 
