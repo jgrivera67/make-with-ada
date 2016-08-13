@@ -27,7 +27,8 @@
 
 with Interfaces; use Interfaces;
 with Ada.Unchecked_Conversion;
-with Ada.Task_Identification; use Ada.Task_Identification;
+with Ada.Real_Time;
+with Ada.Task_Identification;
 with System.Storage_Elements; use System.Storage_Elements;
 with Reset_Counter;
 with Stack_Trace_Capture;
@@ -309,6 +310,27 @@ package body Runtime_Logs is
 
    -- ** --
 
+   procedure Log_Print_Uint64_Decimal (Runtime_Log : in out Runtime_Log_Type;
+                                       Value : Unsigned_64) is
+      Buffer : String (1 .. 20);
+      Start_Index : Positive range Buffer'Range := Buffer'First;
+      Value_Left: Unsigned_64 := Value;
+   begin
+      for I in reverse Buffer'Range loop
+         Buffer (I) := Character'Val ((Value_Left mod 10) +
+                                        Character'Pos ('0'));
+         Value_Left := Value_Left / 10;
+         if Value_Left = 0 then
+            Start_Index := I;
+            exit;
+         end if;
+      end loop;
+
+      Log_Print_String (Runtime_Log, Buffer (Start_Index .. Buffer'Last));
+   end Log_Print_Uint64_Decimal;
+
+   -- ** --
+
    procedure Log_Print_Uint32_Hexadecimal (Runtime_Log : in out Runtime_Log_Type;
                                            Value : Unsigned_32) is
       Buffer : String (1 .. 8);
@@ -361,17 +383,27 @@ package body Runtime_Logs is
    protected body Protected_Runtime_Log_Type is
 
       procedure Capture_Entry (Msg : String; Code_Address : Address) is
-         function Task_Id_To_Address is
-           new Ada.Unchecked_Conversion (Source => Task_Id,
-                                         Target => System.Address);
+         function Time_To_Unsigned_64 is
+           new Ada.Unchecked_Conversion (Source => Ada.Real_Time.Time,
+                                         Target => Unsigned_64);
+         function Task_Id_To_Unsigned_32 is
+           new Ada.Unchecked_Conversion (Source => Ada.Task_Identification.Task_Id,
+                                         Target => Unsigned_32);
 
-         Calling_Task_Ptr : constant Address := Task_Id_To_Address (Current_Task);
+         Time_Stamp : constant Ada.Real_Time.Time := Ada.Real_Time.Clock;
+         Calling_Task_Id : constant Ada.Task_Identification.Task_Id :=
+           Ada.Task_Identification.Current_Task;
+
       begin
          Log_Print_Uint32_Decimal (Runtime_Log_Ptr.all,
                                    Runtime_Log_Ptr.Seq_Num);
          Log_Put_Char (Runtime_Log_Ptr.all, ':');
-         Log_Print_Uint32_Hexadecimal (Runtime_Log_Ptr.all,
-                                       Unsigned_32 (To_Integer(Calling_Task_Ptr)));
+         Log_Print_Uint64_Decimal (
+            Runtime_Log_Ptr.all, Time_To_Unsigned_64 (Time_Stamp));
+         Log_Put_Char (Runtime_Log_Ptr.all, ':');
+         Log_Print_Uint32_Hexadecimal (
+            Runtime_Log_Ptr.all, Task_Id_To_Unsigned_32 (Calling_Task_Id));
+
          Log_Put_Char (Runtime_Log_Ptr.all, ':');
 
          if Code_Address /= Null_Address then
