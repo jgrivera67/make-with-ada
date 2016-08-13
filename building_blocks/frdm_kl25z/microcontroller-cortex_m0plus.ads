@@ -27,8 +27,6 @@
 
 pragma Restrictions (No_Elaboration_Code);
 
-with System; use System;
-
 package Microcontroller.Cortex_M0plus is
    pragma Preelaborate;
 

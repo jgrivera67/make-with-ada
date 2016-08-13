@@ -224,6 +224,8 @@ package body Runtime_Logs is
 
    end Dump_Log_Fragment;
 
+   -- ** --
+
    procedure Dump_Log(Log : Log_Type;
                       Max_Screen_Lines : Max_Screen_Lines_Type) is
       Runtime_Log : Runtime_Log_Type renames
@@ -243,7 +245,7 @@ package body Runtime_Logs is
         "Log wrap count:" & Wrap_Count'Image & ASCII.LF);
 
       Serial_Console.Print_String (
-        "(sequence number:task Id:[code addr]:message [stack trace])" &
+        "(sequence number:time stamp:task Id:[code addr]:message [stack trace])" &
         ASCII.LF);
 
       Dump_Log_Fragment(Runtime_Log, Dump_Start_Index, Dump_End_Index,
@@ -255,8 +257,64 @@ package body Runtime_Logs is
    procedure Dump_Log_Tail(Log : Log_Type;
                            Num_Tail_Lines : Positive;
                            Max_Screen_Lines : Max_Screen_Lines_Type) is
+      Runtime_Log : Runtime_Log_Type renames Runtime_Logs (Log).Runtime_Log_Ptr.all;
+      Wrap_Count : constant Unsigned_32 := Runtime_Log.Wrap_Count;
+      Dump_End_Index : constant Positive range Runtime_Log.Buffer'Range := Runtime_Log.Cursor;
+      Dump_Start_Index : Positive range Runtime_Log.Buffer'Range := Dump_End_Index;
+      Dump_Cursor : Positive range Runtime_Log.Buffer'Range;
+      Text_Lines_Count : Natural := 0;
    begin
-      Serial_Console.Print_String ("Not implemented yet" & ASCII.LF);
+      if Dump_End_Index =  Runtime_Log.Buffer'First then
+         if Wrap_Count = 0 then
+            return;
+         end if;
+
+         Dump_Cursor :=  Runtime_Log.Buffer'Last - 1;
+      else
+         Dump_Cursor := Dump_End_Index - 1;
+      end if;
+
+      --
+      --  Calculate Start offset, traversing the MC log buffer backwards,
+      --  counting text lines:
+      --
+      pragma Assert (Dump_Cursor /= Dump_End_Index);
+      loop
+         if Runtime_Log.Buffer (Dump_Cursor) = ASCII.LF then
+            Text_Lines_Count := Text_Lines_Count + 1;
+
+            --
+            --  We need to count one more line, to include the first line of
+            --  the wanted log taila
+            --
+            exit when Text_Lines_Count = Num_Tail_Lines + 1;
+         end if;
+
+         Dump_Start_Index := Dump_Cursor;
+         if Dump_Cursor = Runtime_Log.Buffer'First then
+            if Wrap_Count = 0 then
+                exit;
+            end if;
+
+            Dump_Cursor := Runtime_Log.Buffer'Last - 1;
+         else
+            Dump_Cursor := Dump_Cursor - 1;
+         end if;
+
+         exit when Dump_Cursor = Dump_End_Index;
+      end loop;
+
+      -- Dump_Start_Index indicates the beginning of the first line to print
+
+      Serial_Console.Print_String ("Last" & Max_Screen_Lines'Image & " lines" & ASCII.LF);
+      Serial_Console.Print_String ("Log wrap count:" & Wrap_Count'Image & ASCII.LF);
+
+      Serial_Console.Print_String (
+        "(sequence number:time stamp:task Id:[code addr]:message [stack trace])" &
+        ASCII.LF);
+
+      Dump_Log_Fragment(Runtime_Log, Dump_Start_Index, Dump_End_Index,
+                        Max_Screen_Lines);
    end Dump_Log_Tail;
 
    -- ** --

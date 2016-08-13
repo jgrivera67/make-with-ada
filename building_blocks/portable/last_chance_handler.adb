@@ -27,9 +27,6 @@
 with Ada.Text_IO;
 
 with System; use System;
-with Interfaces.Bit_Types; use Interfaces.Bit_Types;
-with System.Machine_Code; use System.Machine_Code;
-with System.Storage_Elements; use System.Storage_Elements;
 with Microcontroller;
 with Runtime_Logs;
 
@@ -42,7 +39,6 @@ package body Last_Chance_Handler is
    procedure Last_Chance_Handler (Msg : System.Address; Line : Integer) is
       --  pragma Unreferenced (Msg, Line);
       Msg_Text : String (1 .. 80) with Address => Msg;
-      Reg_Value : Word;
       Return_Address : constant Address := Microcontroller.Get_ARM_LR_Register;
       Caller : constant Address :=  Microcontroller.Get_Call_Address (Return_Address);
    begin
