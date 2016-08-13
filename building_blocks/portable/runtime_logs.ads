@@ -26,6 +26,7 @@
 --
 
 with System; use System;
+private with Interfaces;
 
 --
 --  @summary Runtime log services
@@ -59,13 +60,57 @@ package Runtime_Logs is
    procedure Info_Print (Msg : String)
      with Pre => Initialized;
 
-   procedure Dump_Log(Log : Log_Type;
-                      Max_Screen_Lines : Max_Screen_Lines_Type)
-     with Pre => Initialized;
+private
+   use Interfaces;
 
-   procedure Dump_Log_Tail(Log : Log_Type;
-                           Num_Tail_Lines : Positive;
-                           Max_Screen_Lines : Max_Screen_Lines_Type)
-     with Pre => Initialized;
+   --
+   --  Sizes (in bytes) of the runtime log buffers
+   --
+   Debug_Log_Buffer_Size : constant Positive := 512;
+   Error_Log_Buffer_Size : constant Positive := 256;
+   Info_Log_Buffer_Size : constant Positive := 256;
+
+   --
+   --  State variables of runtime log
+   --
+   type Runtime_Log_Type (Buffer_Size :  Positive) is limited record
+      Buffer : String (1 .. Buffer_Size);
+      Cursor : Positive;
+      Seq_Num : Unsigned_32;
+      Wrap_Count : Unsigned_32;
+   end record;
+
+   protected type Protected_Runtime_Log_Type
+     (Runtime_Log_Ptr : not null access Runtime_Log_Type) is
+      pragma Interrupt_Priority (System.Interrupt_Priority'Last);
+
+      procedure Capture_Entry (Msg : String; Code_Address : Address);
+
+   end Protected_Runtime_Log_Type;
+
+   --
+   --  Individual Runtime logs
+   --
+
+   Debug_Log_Var : aliased Runtime_Log_Type (Debug_Log_Buffer_Size)
+     with Linker_Section => ".runtime_logs";
+   Protected_Debug_Log_Var : aliased Protected_Runtime_Log_Type (Debug_Log_Var'Access);
+
+   Error_Log_Var : aliased Runtime_Log_Type (Error_Log_Buffer_Size)
+     with Linker_Section => ".runtime_logs";
+   Protected_Error_Log_Var : aliased Protected_Runtime_Log_Type (Error_Log_Var'Access);
+
+   Info_Log_Var : aliased Runtime_Log_Type (Info_Log_Buffer_Size)
+     with Linker_Section => ".runtime_logs";
+   Protected_Info_Log_Var : aliased Protected_Runtime_Log_Type (Info_Log_Var'Access);
+
+   --
+   --  All runtime logs
+   --
+   Runtime_Logs : constant array (Log_Type) of not null access
+     Protected_Runtime_Log_Type :=
+       (Debug_Log => Protected_Debug_Log_Var'Access,
+        Error_Log => Protected_Error_Log_Var'Access,
+        Info_Log => Protected_Info_Log_Var'Access);
 
 end Runtime_Logs;

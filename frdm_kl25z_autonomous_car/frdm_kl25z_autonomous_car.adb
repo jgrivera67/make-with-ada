@@ -26,15 +26,35 @@
 --
 
 with System;
+with Interfaces;
+with Runtime_Logs;
+with Reset_Counter;
+with Microcontroller;
 with Serial_Console;
 with Command_Parser;
-with Runtime_Logs;
 --with Car_Controller;
 with GNAT.Source_Info;
 with Last_Chance_Handler; pragma Unreferenced (Last_Chance_Handler);
 
 procedure Frdm_Kl25z_Autonomous_Car is
+   --
+   --  Main program
+   --
    pragma Priority (System.Priority'First);
+
+   procedure Log_Start_Info is
+      Reset_Count : constant Interfaces.Unsigned_32 := Reset_Counter.Get;
+      Reset_Cause : constant Microcontroller.System_Reset_Causes_Type :=
+        Microcontroller.Find_System_Reset_Cause;
+   begin
+      Runtime_Logs.Info_Print (
+         "Main task started (reset count:" & Reset_Count'Image &
+         ", last reset cause: " &
+         Microcontroller.Reset_Cause_Strings (Reset_Cause).all & ")");
+
+   end Log_Start_Info;
+
+   -- ** --
 
    procedure Print_Greeting is
    begin
@@ -49,11 +69,12 @@ procedure Frdm_Kl25z_Autonomous_Car is
 
 begin -- Frdm_Kl25z_Autonomous_Car
    Runtime_Logs.Initialize;
+   Log_Start_Info;
    Serial_Console.Initialize;
    Print_Greeting;
    Command_Parser.Initialize;
    --Car_Controller.Initialize;
-   Runtime_Logs.Debug_Print ("This is a debufg print"); --???
+
    loop
       Command_Parser.Parse_Command;
    end loop;

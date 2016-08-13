@@ -30,7 +30,7 @@ with Serial_Console;
 with Microcontroller;
 with Reset_Counter;
 with Memory_Utils;
-with Runtime_Logs;
+with Runtime_Logs.Dump;
 with Interfaces; use Interfaces;
 
 --
@@ -220,7 +220,7 @@ package body Command_Parser is
       end if;
 
 
-      Runtime_Logs.Dump_Log (Log, Dump_Log_Max_Screen_Lines);
+      Runtime_Logs.Dump.Dump_Log (Log, Dump_Log_Max_Screen_Lines);
       return;
 
    <<Error>>
@@ -242,11 +242,9 @@ package body Command_Parser is
          goto Error;
       end if;
 
-      Parsing_Ok :=
-        Parse_Positive_Decimal_Number (Token.String_Value (1 .. Token.Length),
-                                       Num_Tail_Lines);
+      Parsing_Ok := Parse_Log_Name (Token.String_Value (1 .. Token.Length), Log);
       if not Parsing_Ok then
-        goto Error;
+         goto Error;
       end if;
 
       Token_Found := Command_Line.Get_Next_Token (Token);
@@ -254,12 +252,14 @@ package body Command_Parser is
          goto Error;
       end if;
 
-      Parsing_Ok := Parse_Log_Name (Token.String_Value (1 .. Token.Length), Log);
+      Parsing_Ok :=
+        Parse_Positive_Decimal_Number (Token.String_Value (1 .. Token.Length),
+                                       Num_Tail_Lines);
       if not Parsing_Ok then
          goto Error;
       end if;
 
-      Runtime_Logs.Dump_Log_Tail (Log, Num_Tail_Lines, Dump_Log_Max_Screen_Lines);
+      Runtime_Logs.Dump.Dump_Log_Tail (Log, Num_Tail_Lines, Dump_Log_Max_Screen_Lines);
       return;
 
    <<Error>>

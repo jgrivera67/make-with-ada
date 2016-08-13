@@ -25,72 +25,19 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with Interfaces; use Interfaces;
 with Ada.Unchecked_Conversion;
 with Ada.Real_Time;
 with Ada.Task_Identification;
 with System.Storage_Elements; use System.Storage_Elements;
 with Reset_Counter;
 with Stack_Trace_Capture;
-with Serial_Console;
-with Microcontroller;
 
 package body Runtime_Logs is
    --
-   --  Sizes (in bytes) of the runtime log buffers
-   --
-   Debug_Log_Buffer_Size : constant Positive := 512;
-   Error_Log_Buffer_Size : constant Positive := 256;
-   Info_Log_Buffer_Size : constant Positive := 256;
-
-   --
-   --  max number of stack trace entries to be captured for
+   --  Max number of stack trace entries to be captured for
    --  a runtime log entry.
    --
    Max_Stack_Trace_Entries : constant positive := 8;
-
-   --
-   --  State variables of runtime log
-   --
-   type Runtime_Log_Type (Buffer_Size :  Positive) is limited record
-      Buffer : String (1 .. Buffer_Size);
-      Cursor : Positive;
-      Seq_Num : Unsigned_32;
-      Wrap_Count : Unsigned_32;
-   end record;
-
-   protected type Protected_Runtime_Log_Type
-     (Runtime_Log_Ptr : not null access Runtime_Log_Type) is
-      pragma Interrupt_Priority (System.Interrupt_Priority'Last);
-
-      procedure Capture_Entry (Msg : String; Code_Address : Address);
-
-   end Protected_Runtime_Log_Type;
-
-   --
-   --  Individual Runtime logs
-   --
-
-   Debug_Log_Var : aliased Runtime_Log_Type (Debug_Log_Buffer_Size)
-     with Linker_Section => ".runtime_logs";
-   Protected_Debug_Log_Var : aliased Protected_Runtime_Log_Type (Debug_Log_Var'Access);
-
-   Error_Log_Var : aliased Runtime_Log_Type (Error_Log_Buffer_Size)
-     with Linker_Section => ".runtime_logs";
-   Protected_Error_Log_Var : aliased Protected_Runtime_Log_Type (Error_Log_Var'Access);
-
-   Info_Log_Var : aliased Runtime_Log_Type (Info_Log_Buffer_Size)
-     with Linker_Section => ".runtime_logs";
-   Protected_Info_Log_Var : aliased Protected_Runtime_Log_Type (Info_Log_Var'Access);
-
-   --
-   --  All runtime logs
-   --
-   Runtime_Logs : constant array (Log_Type) of not null access
-     Protected_Runtime_Log_Type :=
-      (Debug_Log => Protected_Debug_Log_Var'Access,
-       Error_Log => Protected_Error_Log_Var'Access,
-       Info_Log => Protected_Info_Log_Var'Access);
 
    Runtime_Logs_Initialized : Boolean := False;
 
@@ -112,8 +59,6 @@ package body Runtime_Logs is
       -- ** --
 
       Reset_Count : constant Unsigned_32 := Reset_Counter.Get;
-      Reset_Cause : constant Microcontroller.System_Reset_Causes_Type :=
-        Microcontroller.Find_System_Reset_Cause;
 
    begin -- Initialize
       if Reset_Count = 0 then
@@ -121,14 +66,6 @@ package body Runtime_Logs is
             Initialize_Log (Log.Runtime_Log_Ptr.all);
          end loop;
       end if;
-
-      for Log of Runtime_Logs loop
-         Log.Capture_Entry (
-            "Microcontroller booted (reset count:" & Reset_Count'Image &
-            ", last reset cause: " &
-            Microcontroller.Reset_Cause_Strings (Reset_Cause).all & ")",
-            Null_Address);
-      end loop;
 
       Runtime_Logs_Initialized := True;
    end Initialize;
@@ -154,168 +91,6 @@ package body Runtime_Logs is
    begin
       Protected_Info_Log_Var.Capture_Entry (Msg, Null_Address);
    end Info_Print;
-
-   -- ** --
-
-   procedure Dump_Log_Fragment (Runtime_Log : in Runtime_Log_Type;
-                                Dump_Start_Index : Positive;
-                                Dump_End_Index : Positive;
-                                Max_Screen_Lines : Max_Screen_Lines_Type)
-     with Pre => Dump_End_Index <= Runtime_Log.Buffer'Last and
-                 Dump_Start_Index <= Dump_End_Index is
-
-      Buffer_Last_Index : constant Positive := Runtime_Log.Buffer'Last;
-      Screen_Lines_Count : Max_Screen_Lines_Type := Max_Screen_Lines;
-      Dump_Cursor : Positive range Runtime_Log.Buffer'Range;
-      Char_Value : Character;
-   begin
-      if Dump_Start_Index = Dump_End_Index then
-         if Runtime_Log.Wrap_Count = 0 then
-            return;
-         end if;
-
-         Serial_Console.Put_Char (Runtime_log.Buffer (Dump_Start_Index));
-         if Dump_Start_Index = Buffer_Last_Index then
-            Dump_Cursor := Runtime_Log.Buffer'First;
-         else
-            Dump_Cursor := Dump_Start_Index + 1;
-         end if;
-      else
-         Dump_Cursor := Dump_Start_Index;
-      end if;
-
-      loop
-         Char_Value := Runtime_Log.Buffer (Dump_Cursor);
-         Serial_Console.Put_Char (Char_Value);
-         if Dump_Cursor = Buffer_Last_Index then
-            Dump_Cursor := Runtime_Log.Buffer'First;
-         else
-            Dump_Cursor := Dump_Cursor + 1;
-         end if;
-
-         if  Char_Value = ASCII.LF then
-            if Screen_Lines_Count = 1 and then Dump_Cursor /= Dump_End_Index then
-               Serial_Console.Print_String (
-                  "<Enter> - next line, 'q' - quit, <any other key> - next page" &
-                  ASCII.CR);
-
-               -- Wait for next character from the serial console:
-               Serial_Console.Unlock;
-               Serial_Console.Get_Char (Char_Value);
-               Serial_Console.Lock;
-               Serial_Console.Print_String (
-                  "                                                            " &
-                  ASCII.CR);
-
-               if Char_Value = ASCII.CR then
-                  Screen_Lines_Count := 1;
-               elsif Char_Value in 'q' | 'Q' then
-                  exit;
-               else
-                  Screen_Lines_Count := Max_Screen_Lines;
-               end if;
-            else
-               Screen_Lines_Count := Screen_Lines_Count - 1;
-            end if;
-         end if;
-
-         exit when Dump_Cursor = Dump_End_Index;
-      end loop;
-
-   end Dump_Log_Fragment;
-
-   -- ** --
-
-   procedure Dump_Log(Log : Log_Type;
-                      Max_Screen_Lines : Max_Screen_Lines_Type) is
-      Runtime_Log : Runtime_Log_Type renames
-        Runtime_Logs (Log).Runtime_Log_Ptr.all;
-      Wrap_Count : constant Unsigned_32 := Runtime_Log.Wrap_Count;
-      Dump_End_Index : constant Positive range Runtime_Log.Buffer'Range :=
-        Runtime_Log.Cursor;
-      Dump_Start_Index : Positive range Runtime_Log.Buffer'Range;
-   begin
-      if Wrap_Count = 0 then
-         Dump_Start_Index := Runtime_Log.Buffer'First;
-      else
-         Dump_Start_Index := Dump_End_Index;
-      end if;
-
-      Serial_Console.Print_String (
-        "Log wrap count:" & Wrap_Count'Image & ASCII.LF);
-
-      Serial_Console.Print_String (
-        "(sequence number:time stamp:task Id:[code addr]:message [stack trace])" &
-        ASCII.LF);
-
-      Dump_Log_Fragment(Runtime_Log, Dump_Start_Index, Dump_End_Index,
-                        Max_Screen_Lines);
-   end Dump_Log;
-
-   -- ** --
-
-   procedure Dump_Log_Tail(Log : Log_Type;
-                           Num_Tail_Lines : Positive;
-                           Max_Screen_Lines : Max_Screen_Lines_Type) is
-      Runtime_Log : Runtime_Log_Type renames Runtime_Logs (Log).Runtime_Log_Ptr.all;
-      Wrap_Count : constant Unsigned_32 := Runtime_Log.Wrap_Count;
-      Dump_End_Index : constant Positive range Runtime_Log.Buffer'Range := Runtime_Log.Cursor;
-      Dump_Start_Index : Positive range Runtime_Log.Buffer'Range := Dump_End_Index;
-      Dump_Cursor : Positive range Runtime_Log.Buffer'Range;
-      Text_Lines_Count : Natural := 0;
-   begin
-      if Dump_End_Index =  Runtime_Log.Buffer'First then
-         if Wrap_Count = 0 then
-            return;
-         end if;
-
-         Dump_Cursor :=  Runtime_Log.Buffer'Last - 1;
-      else
-         Dump_Cursor := Dump_End_Index - 1;
-      end if;
-
-      --
-      --  Calculate Start offset, traversing the MC log buffer backwards,
-      --  counting text lines:
-      --
-      pragma Assert (Dump_Cursor /= Dump_End_Index);
-      loop
-         if Runtime_Log.Buffer (Dump_Cursor) = ASCII.LF then
-            Text_Lines_Count := Text_Lines_Count + 1;
-
-            --
-            --  We need to count one more line, to include the first line of
-            --  the wanted log taila
-            --
-            exit when Text_Lines_Count = Num_Tail_Lines + 1;
-         end if;
-
-         Dump_Start_Index := Dump_Cursor;
-         if Dump_Cursor = Runtime_Log.Buffer'First then
-            if Wrap_Count = 0 then
-                exit;
-            end if;
-
-            Dump_Cursor := Runtime_Log.Buffer'Last - 1;
-         else
-            Dump_Cursor := Dump_Cursor - 1;
-         end if;
-
-         exit when Dump_Cursor = Dump_End_Index;
-      end loop;
-
-      -- Dump_Start_Index indicates the beginning of the first line to print
-
-      Serial_Console.Print_String ("Last" & Max_Screen_Lines'Image & " lines" & ASCII.LF);
-      Serial_Console.Print_String ("Log wrap count:" & Wrap_Count'Image & ASCII.LF);
-
-      Serial_Console.Print_String (
-        "(sequence number:time stamp:task Id:[code addr]:message [stack trace])" &
-        ASCII.LF);
-
-      Dump_Log_Fragment(Runtime_Log, Dump_Start_Index, Dump_End_Index,
-                        Max_Screen_Lines);
-   end Dump_Log_Tail;
 
    -- ** --
 
@@ -444,6 +219,7 @@ package body Runtime_Logs is
          function Time_To_Unsigned_64 is
            new Ada.Unchecked_Conversion (Source => Ada.Real_Time.Time,
                                          Target => Unsigned_64);
+
          function Task_Id_To_Unsigned_32 is
            new Ada.Unchecked_Conversion (Source => Ada.Task_Identification.Task_Id,
                                          Target => Unsigned_32);

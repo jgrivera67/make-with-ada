@@ -42,7 +42,7 @@ package body Last_Chance_Handler is
       Return_Address : constant Address := Microcontroller.Get_ARM_LR_Register;
       Caller : constant Address :=  Microcontroller.Get_Call_Address (Return_Address);
    begin
-      Runtime_Logs.Error_Print (Msg_Text, Caller);
+      Runtime_Logs.Error_Print ("Exception: " & Msg_Text, Caller);
       Ada.Text_IO.Put_Line ("*** Exception raised at " & Msg_Text & ", Line " &
                             Line'Image);
 
