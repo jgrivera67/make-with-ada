@@ -73,7 +73,7 @@ package body Command_Line is
          Print_Prompt;
          Serial_Console.Lock;
          loop
-            -- Wait for next characterfrom the serial console:
+            -- Wait for next character from the serial console:
             Serial_Console.Unlock;
             Serial_Console.Get_Char (Char_Read);
             Serial_Console.Lock;

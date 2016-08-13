@@ -26,21 +26,69 @@
 --
 
 with System.Machine_Code; use System.Machine_Code;
+with System.Storage_Elements; use System.Storage_Elements;
 
 package body Microcontroller is
 
+
+
+   -- ** --
+
    procedure Disable_Interrupts is
    begin
-      Asm ("cpsid i", Volatile => True, Clobber => "memory");
+      Asm ("cpsid i", Volatile => True);
    end Disable_Interrupts;
+
+   -- ** --
 
    procedure Data_Synchronization_Barrier is
    begin
       Asm ("dsb 0xf", Volatile => True, Clobber => "memory");
    end Data_Synchronization_Barrier;
 
+   -- ** --
+
    procedure System_Reset is separate;
 
    function Find_System_Reset_Cause return System_Reset_Causes_Type is separate;
+
+   -- ** --
+
+   function Get_Call_Address (Return_Address : Address) return Address is
+      Value : Integer_Address;
+   begin
+      Value := To_Integer (Return_Address) and not Arm_Thumb_Code_Flag;
+      return To_Address (Value - Bl_Instruction_Size);
+   end Get_Call_Address;
+
+    -- ** --
+
+   function Get_ARM_LR_Register return Address is
+      Reg_Value : Word;
+   begin
+      Asm ("mov %0, lr", Outputs => Word'Asm_Output ("=r", Reg_Value),
+           Volatile => True);
+      return To_Address (Integer_Address(Reg_Value));
+   end Get_ARM_LR_Register;
+
+   -- ** --
+
+   function Get_ARM_Frame_Pointer_Register return Address is
+      Reg_Value : Word;
+   begin
+      Asm ("mov %0, r7", Outputs => Word'Asm_Output ("=r", Reg_Value),
+           Volatile => True);
+      return To_Address (Integer_Address(Reg_Value));
+   end Get_ARM_Frame_Pointer_Register;
+
+   -- ** --
+
+   function Get_ARM_SP_Register return Address is
+      Reg_Value : Word;
+   begin
+      Asm ("mov %0, sp", Outputs => Word'Asm_Output ("=r", Reg_Value),
+           Volatile => True);
+      return To_Address (Integer_Address(Reg_Value));
+   end Get_ARM_SP_Register;
 
 end Microcontroller;

@@ -29,8 +29,9 @@ with Command_Line;
 with Serial_Console;
 with Microcontroller;
 with Reset_Counter;
-with Interfaces; use Interfaces;
 with Memory_Utils;
+with Runtime_Logs;
+with Interfaces; use Interfaces;
 
 --
 --  Application-specific command parser implementation
@@ -63,41 +64,17 @@ package body Command_Parser is
      ASCII.HT & "reset - Reset microcontroller" & ASCII.LF &
      ASCII.HT & "help (or h) - Prints this message" & ASCII.LF;
 
-   INVALID_RESET_CAUSE_String : aliased constant String := "Invalid reset";
-   POWER_ON_RESET_String : aliased constant String := "Power-on reset";
-   EXTERNAL_PIN_RESET_String : aliased constant String := "External pin reset";
-   WATCHDOG_RESET_String : aliased constant String :=  "Watchdog reset";
-   SOFTWARE_RESET_String : aliased constant String := "Software reset";
-   LOCKUP_EVENT_RESET_String : aliased constant String := "Lockup reset";
-   EXTERNAL_DEBUGGER_RESET_String : aliased constant String :=
-     "External debugger reset";
-   OTHER_HW_REASON_RESET_String : aliased constant String :=
-     "Other hardware-reason reset";
-   STOP_ACK_ERROR_RESET_String : aliased constant String :=
-     "Stop ack error reset";
-
-   Reset_Cause_Strings :
-     constant array (Microcontroller.System_Reset_Causes_Type) of
-     not null access constant String :=
-     (
-       Microcontroller.INVALID_RESET_CAUSE => INVALID_RESET_CAUSE_String'Access,
-       Microcontroller.POWER_ON_RESET =>  POWER_ON_RESET_String'Access,
-       Microcontroller.EXTERNAL_PIN_RESET => EXTERNAL_PIN_RESET_String'Access,
-       Microcontroller.WATCHDOG_RESET => WATCHDOG_RESET_String'Access,
-       Microcontroller.SOFTWARE_RESET => SOFTWARE_RESET_String'Access,
-       Microcontroller.LOCKUP_EVENT_RESET => LOCKUP_EVENT_RESET_String'Access,
-       Microcontroller.EXTERNAL_DEBUGGER_RESET =>
-        EXTERNAL_DEBUGGER_RESET_String'Access,
-       Microcontroller.OTHER_HW_REASON_RESET =>
-        OTHER_HW_REASON_RESET_String'Access,
-       Microcontroller.STOP_ACK_ERROR_RESET =>
-        STOP_ACK_ERROR_RESET_String'Access
-     );
-
    --
    --  Command-line prompt string
    --
    Prompt : aliased constant String := "car>";
+
+   --
+   --  Maximum number of test lines that are printed on the screen at a time
+   --  while dumping a log
+   --
+   Dump_Log_Max_Screen_Lines : constant Positive := 30;
+
    --
    --  State variables of the command parser
    --
@@ -120,6 +97,27 @@ package body Command_Parser is
    end Initialize;
 
    -- ** --
+   function Parse_Positive_Decimal_Number (Token_String : String;
+                                           Result : out Positive) return Boolean is
+      Value : Natural := 0;
+   begin
+      for Char_Value of Token_String loop
+         if Char_Value not in '0' .. '9' then
+            return False;
+         end if;
+
+         Value := Value*10 + (Character'Pos (Char_Value) - Character'Pos ('0'));
+      end loop;
+
+      if Value = 0 then
+         return False;
+      end if;
+
+      Result := Value;
+      return True;
+   end Parse_Positive_Decimal_Number;
+
+   -- ** --
 
    procedure Cmd_Print_Help
      with Pre => Serial_Console.Is_Locked is
@@ -139,7 +137,8 @@ package body Command_Parser is
       Serial_Console.Print_String (
         "Reset count: " & Reset_Count'Image & ASCII.LF);
       Serial_Console.Print_String (
-        "Last reset cause: " & Reset_Cause_Strings (Reset_Cause).all & ASCII.LF);
+        "Last reset cause: " &
+        Microcontroller.Reset_Cause_Strings (Reset_Cause).all & ASCII.LF);
 
       Serial_Console.Print_String (
         "Flash used: " & Flash_Used'Image  & " bytes" & ASCII.LF);
@@ -185,22 +184,94 @@ package body Command_Parser is
 
    -- ** --
 
-   procedure Cmd_Dump_Log is
+   function Parse_Log_Name (Log_Name : String;
+                            Log : out Runtime_Logs.Log_Type) return Boolean is
    begin
-      Serial_Console.Print_String("Not implemented yet" & ASCII.LF);
+      if Log_Name = "debug" or else Log_Name = "d" then
+         Log := Runtime_Logs.DEBUG_LOG;
+      elsif Log_Name = "error" or else Log_Name = "e" then
+         Log := Runtime_Logs.ERROR_LOG;
+      elsif Log_Name = "info" or else Log_Name = "i" then
+         Log := Runtime_Logs.INFO_LOG;
+      else
+         return False;
+      end if;
+
+      return True;
+   end Parse_Log_Name;
+
+   -- ** --
+
+   procedure Cmd_Dump_Log is
+      Token : Command_Line.Token_Type;
+      Token_Found : Boolean;
+      Log : Runtime_Logs.Log_Type;
+      Parsing_Ok : Boolean;
+   begin
+      Token_Found := Command_Line.Get_Next_Token (Token);
+      if not Token_Found then
+         goto error;
+      end if;
+
+      Parsing_Ok := Parse_Log_Name (Token.String_Value (1 .. Token.Length), Log);
+
+      if not Parsing_Ok then
+         goto error;
+      end if;
+
+
+      Runtime_Logs.Dump_Log (Log, Dump_Log_Max_Screen_Lines);
+      return;
+
+   <<Error>>
+      Serial_Console.Print_String ("Error: Invalid syntax for command 'log-tail'" &
+                                     ASCII.LF);
    end Cmd_Dump_Log;
 
    -- ** --
 
    procedure Cmd_Dump_Log_Tail is
+      Token : Command_Line.Token_Type;
+      Token_Found : Boolean;
+      Log : Runtime_Logs.Log_Type;
+      Num_Tail_Lines : Positive;
+      Parsing_Ok : Boolean;
    begin
-      Serial_Console.Print_String("Not implemented yet" & ASCII.LF);
+      Token_Found := Command_Line.Get_Next_Token (Token);
+      if not Token_Found then
+         goto Error;
+      end if;
+
+      Parsing_Ok :=
+        Parse_Positive_Decimal_Number (Token.String_Value (1 .. Token.Length),
+                                       Num_Tail_Lines);
+      if not Parsing_Ok then
+        goto Error;
+      end if;
+
+      Token_Found := Command_Line.Get_Next_Token (Token);
+      if not Token_Found then
+         goto Error;
+      end if;
+
+      Parsing_Ok := Parse_Log_Name (Token.String_Value (1 .. Token.Length), Log);
+      if not Parsing_Ok then
+         goto Error;
+      end if;
+
+      Runtime_Logs.Dump_Log_Tail (Log, Num_Tail_Lines, Dump_Log_Max_Screen_Lines);
+      return;
+
+   <<Error>>
+      Serial_Console.Print_String ("Error: Invalid syntax for command 'log-tail'" &
+                                   ASCII.LF);
    end Cmd_Dump_Log_Tail;
 
    -- ** --
 
    procedure Cmd_Set is
    begin
+      pragma Assert (False);--???
       Serial_Console.Print_String("Not implemented yet" & ASCII.LF);
    end Cmd_Set;
 

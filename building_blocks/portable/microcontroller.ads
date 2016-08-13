@@ -25,6 +25,7 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
+with System; use System;
 with Interfaces; use Interfaces;
 with Interfaces.Bit_Types; use Interfaces.Bit_Types;
 
@@ -47,6 +48,14 @@ package Microcontroller is
    subtype Nine_Bits is UInt9;
    subtype Half_Word is Unsigned_16;
 
+   Bl_Instruction_Size : constant := 4;
+   -- Size of of the "bl" instruction in bytes for ARM thumb-2
+
+   Arm_Thumb_Code_Flag : constant := 16#1#;
+   --  In ARM Cortex-M code, the lowest bit of the target address of a branch
+   --  (including call and return  branches) is set to indicate that the
+   --  target code must be executed in THUMB mode.
+
    --
    --  System reset causes
    --
@@ -62,10 +71,53 @@ package Microcontroller is
       STOP_ACK_ERROR_RESET
     );
 
+   --
+   --  Constant strings for reset causes
+   --
+   INVALID_RESET_CAUSE_String : aliased constant String := "Invalid reset";
+   POWER_ON_RESET_String : aliased constant String := "Power-on reset";
+   EXTERNAL_PIN_RESET_String : aliased constant String := "External pin reset";
+   WATCHDOG_RESET_String : aliased constant String :=  "Watchdog reset";
+   SOFTWARE_RESET_String : aliased constant String := "Software reset";
+   LOCKUP_EVENT_RESET_String : aliased constant String := "Lockup reset";
+   EXTERNAL_DEBUGGER_RESET_String : aliased constant String :=
+     "External debugger reset";
+   OTHER_HW_REASON_RESET_String : aliased constant String :=
+     "Other hardware-reason reset";
+   STOP_ACK_ERROR_RESET_String : aliased constant String :=
+     "Stop ack error reset";
+
+   Reset_Cause_Strings :
+     constant array (Microcontroller.System_Reset_Causes_Type) of
+     not null access constant String :=
+       (INVALID_RESET_CAUSE => INVALID_RESET_CAUSE_String'Access,
+        POWER_ON_RESET =>  POWER_ON_RESET_String'Access,
+        EXTERNAL_PIN_RESET => EXTERNAL_PIN_RESET_String'Access,
+        WATCHDOG_RESET => WATCHDOG_RESET_String'Access,
+        SOFTWARE_RESET => SOFTWARE_RESET_String'Access,
+        LOCKUP_EVENT_RESET => LOCKUP_EVENT_RESET_String'Access,
+        EXTERNAL_DEBUGGER_RESET => EXTERNAL_DEBUGGER_RESET_String'Access,
+        OTHER_HW_REASON_RESET => OTHER_HW_REASON_RESET_String'Access,
+        STOP_ACK_ERROR_RESET => STOP_ACK_ERROR_RESET_String'Access);
+
+   -- ** --
+
    procedure Data_Synchronization_Barrier;
 
    procedure System_Reset;
 
    function Find_System_Reset_Cause return System_Reset_Causes_Type;
+
+   function Get_Call_Address (Return_Address : Address) return Address;
+   -- Calculates the call address given a return address for ARM Cortex-M
+
+   function Get_ARM_LR_Register return Address with Inline;
+   --  Capture current value of the ARM core LR (r14) register
+
+   function Get_ARM_Frame_Pointer_Register return Address with Inline;
+   --  Capture current value of the ARM core frame pointer (r7) register
+
+   function Get_ARM_SP_Register return Address with Inline;
+   --  Capture current value of the ARM core SP (r13) register
 
 end Microcontroller;

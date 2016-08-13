@@ -25,36 +25,47 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with System;
-with Serial_Console;
-with Command_Parser;
-with Runtime_Logs;
---with Car_Controller;
-with GNAT.Source_Info;
-with Last_Chance_Handler; pragma Unreferenced (Last_Chance_Handler);
+with System; use System;
 
-procedure Frdm_Kl25z_Autonomous_Car is
-   pragma Priority (System.Priority'First);
+--
+--  @summary Runtime log services
+--
+--  @description Provides services to capture log entries in one of several
+--  in-memory logs.
+--
+package Runtime_Logs is
 
-   procedure Print_Greeting is
-   begin
-      Serial_Console.Lock;
-      Serial_Console.Clear_Screen;
-      Serial_Console.Print_String (
-        "Autonomous Car (built on " & GNAT.Source_Info.Compilation_Date &
-        " at " & GNAT.Source_Info.Compilation_Time & ")" & ASCII.LF);
+   type Log_Type is (DEBUG_LOG,
+                     ERROR_LOG,
+                     INFO_LOG);
 
-      Serial_Console.Unlock;
-   end Print_Greeting;
+   subtype Max_Screen_Lines_Type is Positive range 1 .. 100;
 
-begin -- Frdm_Kl25z_Autonomous_Car
-   Runtime_Logs.Initialize;
-   Serial_Console.Initialize;
-   Print_Greeting;
-   Command_Parser.Initialize;
-   --Car_Controller.Initialize;
-   Runtime_Logs.Debug_Print ("This is a debufg print"); --???
-   loop
-      Command_Parser.Parse_Command;
-   end loop;
-end Frdm_Kl25z_Autonomous_Car;
+   function Initialized return Boolean
+     with Inline;
+   -- @private (Used only in contracts)
+
+   procedure Initialize
+     with Pre => not Initialized;
+
+   procedure Debug_Print (Msg : String;
+                          Code_Address : Address := Null_Address)
+     with Pre => Initialized;
+
+   procedure Error_Print (Msg : String;
+                          Code_Address : Address)
+     with Pre => Initialized;
+
+   procedure Info_Print (Msg : String)
+     with Pre => Initialized;
+
+   procedure Dump_Log(Log : Log_Type;
+                      Max_Screen_Lines : Max_Screen_Lines_Type)
+     with Pre => Initialized;
+
+   procedure Dump_Log_Tail(Log : Log_Type;
+                           Num_Tail_Lines : Positive;
+                           Max_Screen_Lines : Max_Screen_Lines_Type)
+     with Pre => Initialized;
+
+end Runtime_Logs;

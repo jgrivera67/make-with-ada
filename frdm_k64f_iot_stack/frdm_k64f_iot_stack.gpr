@@ -15,6 +15,7 @@ project frdm_k64f_iot_stack is
              -- "-fstack-check", --  Generate stack checking code (part of Ada)
              "-gnata",        --  Enable assertions            (part of Ada)
              "-gnato13",      --  Overflow checking            (part of Ada)
+             "-gnatn",        --  Inline subprograms marked for inlining
              "-gnatf",                      --  Full, verbose error messages
              "-gnatwa",                     --  All optional warnings
              "-gnatVa",                     --  All validity checks
