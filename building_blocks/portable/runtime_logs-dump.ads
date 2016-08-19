@@ -25,25 +25,18 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with Microcontroller.Cortex_M0plus; use Microcontroller.Cortex_M0plus;
+--
+--  @sumarry Services to dump Runtime logs to the serial console
+--
+package Runtime_Logs.Dump is
 
-separate (Microcontroller)
-procedure System_Reset is
-   AIRCR_Value : AIRCR_Type;
-begin
-   Disable_Interrupts;
+   procedure Dump_Log(Log : Log_Type;
+                      Max_Screen_Lines : Max_Screen_Lines_Type)
+     with Pre => Initialized;
 
-   Data_Synchronization_Barrier;
-   AIRCR_Value := (VECTKEY => 16#5FA#,
-                   SYSRESETREQ => 1,
-                   others => 0);
+   procedure Dump_Log_Tail(Log : Log_Type;
+                           Num_Tail_Lines : Positive;
+                           Max_Screen_Lines : Max_Screen_Lines_Type)
+     with Pre => Initialized;
 
-   SCB.AIRCR := AIRCR_Value;
-   Data_Synchronization_Barrier;
-
-   --  Wait until reset is completed.
-   loop
-      null;
-   end loop;
-
-end System_Reset;
+end Runtime_Logs.Dump;

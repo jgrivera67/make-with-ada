@@ -390,6 +390,7 @@ package body Serial_Console is
    begin
       Suspend_Until_True (Console_Var.Initialized_Condvar);
       Runtime_Logs.Info_Print ("Console output task started");
+
       loop
          Byte_Ring_Buffers.Read (Console_Var.Output_Buffer, Byte_Read);
          Char := Character'Val (Byte_Read);

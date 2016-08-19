@@ -48,14 +48,6 @@ package Microcontroller is
    subtype Nine_Bits is UInt9;
    subtype Half_Word is Unsigned_16;
 
-   Bl_Instruction_Size : constant := 4;
-   -- Size of of the "bl" instruction in bytes for ARM thumb-2
-
-   Arm_Thumb_Code_Flag : constant := 16#1#;
-   --  In ARM Cortex-M code, the lowest bit of the target address of a branch
-   --  (including call and return  branches) is set to indicate that the
-   --  target code must be executed in THUMB mode.
-
    --
    --  System reset causes
    --
@@ -102,22 +94,8 @@ package Microcontroller is
 
    -- ** --
 
-   procedure Data_Synchronization_Barrier;
+   procedure Disable_Interrupts with Inline;
 
-   procedure System_Reset;
-
-   function Find_System_Reset_Cause return System_Reset_Causes_Type;
-
-   function Get_Call_Address (Return_Address : Address) return Address;
-   -- Calculates the call address given a return address for ARM Cortex-M
-
-   function Get_ARM_LR_Register return Address with Inline;
-   --  Capture current value of the ARM core LR (r14) register
-
-   function Get_ARM_Frame_Pointer_Register return Address with Inline;
-   --  Capture current value of the ARM core frame pointer (r7) register
-
-   function Get_ARM_SP_Register return Address with Inline;
-   --  Capture current value of the ARM core SP (r13) register
+   procedure Data_Synchronization_Barrier with Inline;
 
 end Microcontroller;

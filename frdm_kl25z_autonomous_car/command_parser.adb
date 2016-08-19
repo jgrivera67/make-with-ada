@@ -27,7 +27,7 @@
 
 with Command_Line;
 with Serial_Console;
-with Microcontroller;
+with Microcontroller.MCU_Specific;
 with Reset_Counter;
 with Memory_Utils;
 with Runtime_Logs.Dump;
@@ -130,7 +130,7 @@ package body Command_Parser is
    procedure Cmd_Print_Stats is
       Reset_Count : constant Unsigned_32 := Reset_Counter.Get;
       Reset_Cause : constant Microcontroller.System_Reset_Causes_Type :=
-        Microcontroller.Find_System_Reset_Cause;
+        Microcontroller.MCU_Specific.Find_System_Reset_Cause;
       Flash_Used : constant Unsigned_32 := Memory_Utils.Get_Flash_Used;
       Sram_Used : constant Unsigned_32 := Memory_Utils.Get_Sram_Used;
    begin
@@ -219,7 +219,6 @@ package body Command_Parser is
          goto error;
       end if;
 
-
       Runtime_Logs.Dump.Dump_Log (Log, Dump_Log_Max_Screen_Lines);
       return;
 
@@ -293,7 +292,7 @@ package body Command_Parser is
 
    procedure Cmd_Reset is
    begin
-      Microcontroller.System_Reset;
+      Microcontroller.MCU_Specific.System_Reset;
    end Cmd_Reset;
 
    -- ** --

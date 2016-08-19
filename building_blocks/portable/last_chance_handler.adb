@@ -27,7 +27,7 @@
 with Ada.Text_IO;
 
 with System; use System;
-with Microcontroller;
+with Microcontroller.Arm_Cortex_M; use Microcontroller.Arm_Cortex_M;
 with Runtime_Logs;
 
 package body Last_Chance_Handler is
@@ -39,8 +39,8 @@ package body Last_Chance_Handler is
    procedure Last_Chance_Handler (Msg : System.Address; Line : Integer) is
       --  pragma Unreferenced (Msg, Line);
       Msg_Text : String (1 .. 80) with Address => Msg;
-      Return_Address : constant Address := Microcontroller.Get_ARM_LR_Register;
-      Caller : constant Address :=  Microcontroller.Get_Call_Address (Return_Address);
+      Caller : constant Address := Return_Address_To_Call_Address (Get_LR_Register);
+
    begin
       Runtime_Logs.Error_Print ("Exception: " & Msg_Text, Caller);
       Ada.Text_IO.Put_Line ("*** Exception raised at " & Msg_Text & ", Line " &

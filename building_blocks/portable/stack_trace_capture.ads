@@ -25,37 +25,25 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with Kinetis_KL25Z.RCM; use Kinetis_KL25Z;
+--
+--  @summary Stack trace capture service
+--
+with System; use System;
 
-separate (Microcontroller)
-function Find_System_Reset_Cause return System_Reset_Causes_Type is
-   SRS0_Value : RCM.SRS0_Type;
-   SRS1_Value : RCM.SRS1_Type;
-   Reset_Cause : System_Reset_Causes_Type := INVALID_RESET_CAUSE;
-   SRS0_Byte_Value : Byte with Address => SRS0_Value'Address;
-begin
-   SRS0_Value := RCM.Registers.SRS0;
-   if SRS0_Value.POR = 1 then
-       Reset_Cause := POWER_ON_RESET;
-   elsif SRS0_Value.PIN = 1 then
-      Reset_Cause := EXTERNAL_PIN_RESET;
-   elsif SRS0_Value.WDOG = 1 then
-      Reset_Cause := WATCHDOG_RESET;
-   elsif SRS0_Byte_Value /= 0 then
-      Reset_Cause := OTHER_HW_REASON_RESET;
-   else
-      SRS1_Value := RCM.Registers.SRS1;
-      if SRS1_Value.SW = 1 then
-         Reset_Cause := SOFTWARE_RESET;
-      elsif SRS1_Value.MDM_AP = 1 then
-         Reset_Cause := EXTERNAL_DEBUGGER_RESET;
-      elsif SRS1_Value.LOCKUP = 1 then
-         Reset_Cause := LOCKUP_EVENT_RESET;
-      elsif SRS1_Value.SACKERR = 1 then
-         Reset_Cause := STOP_ACK_ERROR_RESET;
-      end if;
-   end if;
+package Stack_Trace_Capture is
 
-   return Reset_Cause;
-end Find_System_Reset_Cause;
+   type Stack_Trace_Type is array (Positive range <>) of Address;
 
+   procedure Get_Stack_Trace (Stack_Trace : out Stack_Trace_Type;
+                              Num_Entries_Captured : out Natural)
+     with Post => Num_Entries_Captured <= Stack_Trace'Length;
+   --
+   --  Get the stack trace of te calling task
+   --
+   --  @param Num_Entries_To_Skip Number of stack trace entries to skip from
+   --                             the top.
+   --  @param Stack_Trace Buffer where captured stack trace is to be returned.
+   --  @param Num_Entries_Captured Number of stack trace entries actaully
+   --                              entries captured.
+
+end Stack_Trace_Capture;

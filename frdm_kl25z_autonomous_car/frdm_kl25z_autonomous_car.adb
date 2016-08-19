@@ -29,7 +29,7 @@ with System;
 with Interfaces;
 with Runtime_Logs;
 with Reset_Counter;
-with Microcontroller;
+with Microcontroller.MCU_Specific;
 with Serial_Console;
 with Command_Parser;
 --with Car_Controller;
@@ -45,7 +45,7 @@ procedure Frdm_Kl25z_Autonomous_Car is
    procedure Log_Start_Info is
       Reset_Count : constant Interfaces.Unsigned_32 := Reset_Counter.Get;
       Reset_Cause : constant Microcontroller.System_Reset_Causes_Type :=
-        Microcontroller.Find_System_Reset_Cause;
+        Microcontroller.MCU_Specific.Find_System_Reset_Cause;
    begin
       Runtime_Logs.Info_Print (
          "Main task started (reset count:" & Reset_Count'Image &

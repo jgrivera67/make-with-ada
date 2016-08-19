@@ -192,21 +192,20 @@ package body Runtime_Logs is
 
    -- ** --
 
-   procedure Log_Print_Stack_Trace (Runtime_Log : in out Runtime_Log_Type;
-                                    Num_Entries_To_Skip : Natural) is
+   procedure Log_Print_Stack_Trace (Runtime_Log : in out Runtime_Log_Type) is
 
       Stack_Trace :
          Stack_Trace_Capture.Stack_Trace_Type (1 .. Max_Stack_Trace_Entries);
 
       Num_Entries_Captured : Natural;
    begin
-      Stack_Trace_Capture.Get_Stack_Trace (Num_Entries_To_Skip,
-                                           Stack_Trace,
+      Stack_Trace_Capture.Get_Stack_Trace (Stack_Trace,
                                            Num_Entries_Captured);
 
       for Stack_Trace_Entry of Stack_Trace (1 .. Num_Entries_Captured) loop
          Log_Put_Char (Runtime_Log, ASCII.HT);
-         Log_Print_String (Runtime_Log, To_Integer (Stack_Trace_Entry)'Image);
+         Log_Print_Uint32_Hexadecimal (Runtime_Log,
+                                       Unsigned_32 (To_Integer (Stack_Trace_Entry)));
          Log_Put_Char (Runtime_Log, ASCII.LF);
       end loop;
    end Log_Print_Stack_Trace;
@@ -249,8 +248,7 @@ package body Runtime_Logs is
          Log_Print_String (Runtime_Log_Ptr.all, Msg);
          Log_Put_Char (Runtime_Log_Ptr.all, ASCII.LF);
          if Runtime_Log_Ptr = Error_Log_Var'Access then
-            Log_Print_Stack_Trace (Runtime_Log_Ptr.all,
-                                   Num_Entries_To_Skip => 3);
+            Log_Print_Stack_Trace (Runtime_Log_Ptr.all);
          end if;
 
          Runtime_Log_Ptr.Seq_Num := Runtime_Log_Ptr.Seq_Num + 1;
