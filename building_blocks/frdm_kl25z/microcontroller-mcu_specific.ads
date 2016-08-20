@@ -60,7 +60,7 @@ package Microcontroller.MCU_Specific is
 
    -- ** --
 
-   procedure System_Reset;
+   procedure System_Reset with No_Return;
 
    function Find_System_Reset_Cause return System_Reset_Causes_Type;
 

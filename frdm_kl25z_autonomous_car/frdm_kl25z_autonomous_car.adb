@@ -34,7 +34,7 @@ with Serial_Console;
 with Command_Parser;
 --with Car_Controller;
 with GNAT.Source_Info;
-with Last_Chance_Handler; pragma Unreferenced (Last_Chance_Handler);
+with Last_Chance_Handler;
 
 procedure Frdm_Kl25z_Autonomous_Car is
    --
@@ -61,13 +61,14 @@ procedure Frdm_Kl25z_Autonomous_Car is
       Serial_Console.Lock;
       Serial_Console.Clear_Screen;
       Serial_Console.Print_String (
-        "Autonomous Car (built on " & GNAT.Source_Info.Compilation_Date &
+        "Autonomous Car (Written in Ada 2012, built on " & GNAT.Source_Info.Compilation_Date &
         " at " & GNAT.Source_Info.Compilation_Time & ")" & ASCII.LF);
 
       Serial_Console.Unlock;
    end Print_Greeting;
 
 begin -- Frdm_Kl25z_Autonomous_Car
+   Last_Chance_Handler.Set_Last_Chance_Disposition (Last_Chance_Handler.System_Reset);
    Runtime_Logs.Initialize;
    Log_Start_Info;
    Serial_Console.Initialize;

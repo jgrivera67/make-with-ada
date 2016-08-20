@@ -104,7 +104,7 @@ package Microcontroller.Arm_Cortex_M is
                                             return Address with Inline;
    -- Calculates the call address for given a return address for ARM Cortex-M
 
-   function Get_LR_Register return Address with Inline;
+   function Get_LR_Register return Address with Inline_Always;
    --  Capture current value of the ARM core LR (r14) register
 
    function Get_Frame_Pointer_Register return Address with Inline;
@@ -152,5 +152,7 @@ package Microcontroller.Arm_Cortex_M is
    function Is_BLX (Instruction : Thumb_Instruction_Type)
                        return Boolean with Inline;
    --  "blx" instruction opcode mask (16-bit instruction)
+
+   procedure Break_Point with Inline;
 
 end Microcontroller.Arm_Cortex_M;

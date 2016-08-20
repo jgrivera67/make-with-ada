@@ -200,4 +200,13 @@ package body Microcontroller.Arm_Cortex_M is
      ((Instruction.Op_Code and 16#FF#) = 16#47# and then
       (Instruction.Operand and 16#80#) = 16#80#);
 
+   -----------------
+   -- Break_Point --
+   -----------------
+
+   procedure Break_Point is
+   begin
+      Asm ("bkpt #0", Volatile => True);
+   end Break_Point;
+
 end Microcontroller.Arm_Cortex_M;

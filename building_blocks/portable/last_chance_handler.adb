@@ -1,55 +1,72 @@
-------------------------------------------------------------------------------
---                                                                          --
---                             GNAT EXAMPLE                                 --
---                                                                          --
---             Copyright (C) 2014, Free Software Foundation, Inc.           --
---                                                                          --
--- GNAT is free software;  you can  redistribute it  and/or modify it under --
--- terms of the  GNU General Public License as published  by the Free Soft- --
--- ware  Foundation;  either version 3,  or (at your option) any later ver- --
--- sion.  GNAT is distributed in the hope that it will be useful, but WITH- --
--- OUT ANY WARRANTY;  without even the  implied warranty of MERCHANTABILITY --
--- or FITNESS FOR A PARTICULAR PURPOSE.                                     --
---                                                                          --
--- As a special exception under Section 7 of GPL version 3, you are granted --
--- additional permissions described in the GCC Runtime Library Exception,   --
--- version 3.1, as published by the Free Software Foundation.               --
---                                                                          --
--- You should have received a copy of the GNU General Public License and    --
--- a copy of the GCC Runtime Library Exception along with this program;     --
--- see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see    --
--- <http://www.gnu.org/licenses/>.                                          --
---                                                                          --
--- GNAT was originally developed  by the GNAT team at  New York University. --
--- Extensive contributions were provided by Ada Core Technologies Inc.      --
---                                                                          --
-------------------------------------------------------------------------------
-with Ada.Text_IO;
-
+--
+--  Copyright (c) 2016, German Rivera
+--  All rights reserved.
+--
+--  Redistribution and use in source and binary forms, with or without
+--  modification, are permitted provided that the following conditions are met:
+--
+--  * Redistributions of source code must retain the above copyright notice,
+--    this list of conditions and the following disclaimer.
+--
+--  * Redistributions in binary form must reproduce the above copyright notice,
+--    this list of conditions and the following disclaimer in the documentation
+--    and/or other materials provided with the distribution.
+--
+--  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+--  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+--  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+--  ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+--  LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+--  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+--  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+--  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+--  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+--  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+--  POSSIBILITY OF SUCH DAMAGE.
+--
 with System; use System;
 with Microcontroller.Arm_Cortex_M; use Microcontroller.Arm_Cortex_M;
+with Microcontroller.MCU_Specific;
 with Runtime_Logs;
 
 package body Last_Chance_Handler is
+
+   Current_Disposition : Disposition_Type := Dummy_Infinite_Loop;
+
+   ---------------------------------
+   -- Set_Last_Chance_Disposition --
+   ---------------------------------
+
+   procedure Set_Last_Chance_Disposition (Disposition : Disposition_Type) is
+   begin
+      Current_Disposition := Disposition;
+   end Set_Last_Chance_Disposition;
 
    -------------------------
    -- Last_Chance_Handler --
    -------------------------
 
    procedure Last_Chance_Handler (Msg : System.Address; Line : Integer) is
-      --  pragma Unreferenced (Msg, Line);
       Msg_Text : String (1 .. 80) with Address => Msg;
       Caller : constant Address := Return_Address_To_Call_Address (Get_LR_Register);
 
    begin
-      Runtime_Logs.Error_Print ("Exception: " & Msg_Text, Caller);
-      Ada.Text_IO.Put_Line ("*** Exception raised at " & Msg_Text & ", Line " &
-                            Line'Image);
+      Runtime_Logs.Error_Print ("Exception: " & Msg_Text & ":" & Line'Image,
+                                Caller);
+      case Current_Disposition is
+         when System_Reset =>
+            Microcontroller.MCU_Specific.System_Reset;
 
-      --  No return procedure.
-      loop
-         null;
-      end loop;
+         when Break_Point =>
+            Microcontroller.Arm_Cortex_M.Break_Point;
+            Microcontroller.MCU_Specific.System_Reset;
+
+         when Dummy_Infinite_Loop =>
+            loop
+               null;
+            end loop;
+      end case;
+
    end Last_Chance_Handler;
 
 end Last_Chance_Handler;
