@@ -26,7 +26,7 @@
 --
 
 --
---  @summary Ring buffer abstract data type
+--  @summary Application-specific command parser
 --
 package Command_Parser is
    function Initialized return Boolean

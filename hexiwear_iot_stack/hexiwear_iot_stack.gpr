@@ -1,0 +1,44 @@
+project hexiwear_iot_stack is
+
+   for Languages use ("ada");
+
+   for Main use ("hexiwear_iot_stack.adb");
+   for Source_Dirs use (".",
+                        "../building_blocks/portable",
+                        "../building_blocks/frdm_k64f");
+
+   for Object_Dir use "obj";
+
+   package Compiler is
+      for Default_Switches ("ada") use (
+             "-g", "-gnatwa", "-gnatQ", "-gnat12",
+             -- "-fstack-check", --  Generate stack checking code (part of Ada)
+             "-gnata",        --  Enable assertions            (part of Ada)
+             "-gnato13",      --  Overflow checking            (part of Ada)
+             "-gnatn",        --  Inline subprograms marked for inlining
+             "-gnatf",                      --  Full, verbose error messages
+             "-gnatwa",                     --  All optional warnings
+             "-gnatVa",                     --  All validity checks
+             -- "-gnaty3abcdefhiklmnoOprstux", --  Style checks
+             -- "-gnatwe",                     --  Treat warnings as errors
+             "-gnat2012",                   --  Use Ada 2012
+             "-Wall",                       --  All GCC warnings
+             "-O2");                        --  Optimise (level 2/3)
+
+      for Local_Configuration_Pragmas use "../gnat_pragmas.adc";
+   end Compiler;
+
+   package Builder is
+      for Default_Switches ("ada") use ("-g", "-O0");
+   end Builder;
+
+   for Runtime ("Ada") use "ravenscar-sfp-kinetis_k64f_hexiwear";
+   for Target use "arm-eabi";
+
+   package Ide is
+      for Program_Host use "localhost:4242";
+      for Communication_Protocol use "remote";
+   end Ide;
+
+end hexiwear_iot_stack;
+

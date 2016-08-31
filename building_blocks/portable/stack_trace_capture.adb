@@ -150,7 +150,7 @@ package body Stack_Trace_Capture is
         pragma Assert ((To_Integer (Program_Counter) and Arm_Thumb_Code_Flag) = 0);
       end if;
 
-      if not Valid_Ram_Pointer(Frame_Pointer, Stack_Entry_Alignment) then
+      if not Memory_Map.Valid_Ram_Pointer(Frame_Pointer, Stack_Entry_Alignment) then
          return False;
       end if;
 
@@ -313,7 +313,7 @@ package body Stack_Trace_Capture is
             Stack_Pointer + Saved_R7_Stack_Offset);
 
       Prev_Frame_Pointer := To_Address (Integer_Address (Stack_Entry_Pointer.all));
-      if not Valid_Ram_Pointer (Prev_Frame_Pointer, Stack_Entry_Alignment)
+      if not Memory_Map.Valid_Ram_Pointer (Prev_Frame_Pointer, Stack_Entry_Alignment)
          or else
          To_Integer (Prev_Frame_Pointer) <= To_Integer (Stack_Pointer)
          or else

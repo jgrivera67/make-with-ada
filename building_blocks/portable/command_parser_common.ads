@@ -26,22 +26,19 @@
 --
 
 --
---  @summary Stack trace capture service
+--  @summary Command parser common services
 --
-with System; use System;
+package Command_Parser_Common is
 
-package Stack_Trace_Capture is
+   function Parse_Positive_Decimal_Number (Token_String : String;
+                                           Result : out Positive) return Boolean;
 
-   type Stack_Trace_Type is array (Positive range <>) of Address;
+   procedure Cmd_Print_Stats;
 
-   procedure Get_Stack_Trace (Stack_Trace : out Stack_Trace_Type;
-                              Num_Entries_Captured : out Natural)
-     with Post => Num_Entries_Captured <= Stack_Trace'Length;
-   --
-   --  Get the stack trace of the calling task
-   --
-   --  @param Stack_Trace Buffer where captured stack trace is to be returned.
-   --  @param Num_Entries_Captured Number of stack trace entries actaully
-   --                              entries captured.
+   procedure Cmd_Dump_Log;
 
-end Stack_Trace_Capture;
+   procedure Cmd_Dump_Log_Tail;
+
+   procedure Cmd_Reset;
+
+end Command_Parser_Common;

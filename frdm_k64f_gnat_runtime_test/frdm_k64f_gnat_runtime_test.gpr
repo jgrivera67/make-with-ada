@@ -4,7 +4,8 @@ project frdm_k64f_gnat_runtime_test is
 
    for Main use ("frdm_k64f_gnat_runtime_test.adb");
    for Source_Dirs use (".",
-                        "../building_blocks/portable");
+                        "../building_blocks/portable",
+                        "../building_blocks/frdm_k64f");
    for Object_Dir use "obj";
 
    package Compiler is

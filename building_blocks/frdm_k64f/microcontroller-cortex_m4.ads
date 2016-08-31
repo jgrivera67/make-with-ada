@@ -27,8 +27,6 @@
 
 pragma Restrictions (No_Elaboration_Code);
 
-with System; use System;
-
 package Microcontroller.Cortex_M4 is
    pragma Preelaborate;
 

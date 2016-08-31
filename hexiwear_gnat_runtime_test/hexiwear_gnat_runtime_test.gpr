@@ -1,11 +1,11 @@
-project frdm_kl25z_gnat_runtime_test is
+project hexiwear_gnat_runtime_test is
 
    for Languages use ("ada");
 
-   for Main use ("frdm_kl25z_gnat_runtime_test.adb");
+   for Main use ("hexiwear_gnat_runtime_test.adb");
    for Source_Dirs use (".",
                         "../building_blocks/portable",
-                        "../building_blocks/frdm_kl25z");
+                        "../building_blocks/frdm_k64f");
    for Object_Dir use "obj";
 
    package Compiler is
@@ -17,7 +17,7 @@ project frdm_kl25z_gnat_runtime_test is
       for Default_Switches ("ada") use ("-g", "-O0");
    end Builder;
 
-   for Runtime ("Ada") use "ravenscar-sfp-kinetis_kl25z";
+   for Runtime ("Ada") use "ravenscar-sfp-kinetis_k64f_hexiwear";
    for Target use "arm-eabi";
 
    package Ide is
@@ -25,5 +25,5 @@ project frdm_kl25z_gnat_runtime_test is
       for Communication_Protocol use "remote";
    end Ide;
 
-end frdm_kl25z_gnat_runtime_test;
+end hexiwear_gnat_runtime_test;
 

@@ -25,7 +25,6 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 with System.Machine_Code; use System.Machine_Code;
-with System.Storage_Elements; use System.Storage_Elements;
 
 package body Microcontroller.Arm_Cortex_M is
 

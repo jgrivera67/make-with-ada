@@ -37,9 +37,6 @@ with GNAT.Source_Info;
 with Last_Chance_Handler;
 
 procedure Frdm_Kl25z_Autonomous_Car is
-   --
-   --  Main program
-   --
    pragma Priority (System.Priority'First);
 
    procedure Log_Start_Info is

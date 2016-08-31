@@ -25,26 +25,17 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with Microcontroller.Cortex_M4; use Microcontroller.Cortex_M4;
+--
+--  @summary Application-specific command parser
+--
+package Command_Parser is
+   function Initialized return Boolean
+     with Inline;
 
-separate (Microcontroller)
-procedure System_Reset is
-   AIRCR_Value : AIRCR_Type;
-begin
-   Disable_Interrupts;
-   Data_Synchronization_Barrier;
-   AIRCR_Value := SCB.AIRCR;
-   AIRCR_Value := (VECTKEY => 16#5FA#,
-                   SYSRESETREQ => 1,
-                   PRIGROUP => AIRCR_Value.PRIGROUP,
-                   others => 0);
+   procedure Initialize
+     with Pre => not Initialized;
 
-   SCB.AIRCR := AIRCR_Value;
-   Data_Synchronization_Barrier;
+   procedure Parse_Command
+     with Pre => Initialized;
 
-   --  Wait until reset is completed.
-   loop
-      null;
-   end loop;
-
-end System_Reset;
+end Command_Parser;

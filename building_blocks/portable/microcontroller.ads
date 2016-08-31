@@ -28,6 +28,7 @@
 with System; use System;
 with Interfaces; use Interfaces;
 with Interfaces.Bit_Types; use Interfaces.Bit_Types;
+with System.Storage_Elements; use System.Storage_Elements;
 
 --
 -- @summary Micrcontroller operations
@@ -94,8 +95,72 @@ package Microcontroller is
 
    -- ** --
 
+   Mcu_Private_Peripherals_Min_Addr : constant Integer_Address := 16#E0000000#;
+   Mcu_Private_Peripherals_Max_Addr : constant Integer_Address := 16#E00FFFFF#;
+
+   -- ** --
+
    procedure Disable_Interrupts with Inline;
 
    procedure Data_Synchronization_Barrier with Inline;
 
+   -- ** --
+
+   generic
+      Mcu_Peripheral_Bridge_Min_Addr : Integer_Address;
+      Mcu_Peripheral_Bridge_Max_Addr : Integer_Address;
+      Mcu_Flash_Base_Addr : Integer_Address;
+      Mcu_Flash_Size : Unsigned_32;
+      Mcu_Sram_Base_Addr : Integer_Address;
+      Mcu_Sram_Size : Unsigned_32;
+   package Generic_Memory_Map is
+
+      ------------------------
+      -- Valid_MMIO_Address --
+      ------------------------
+
+      function Valid_MMIO_Address
+        (Address_Value : Address)
+         return Boolean
+      is (To_Integer (Address_Value) in
+            Mcu_Peripheral_Bridge_Min_Addr .. Mcu_Peripheral_Bridge_Max_Addr
+          or else
+          To_Integer (Address_Value) in
+            Mcu_Private_Peripherals_Min_Addr .. Mcu_Private_Peripherals_Max_Addr);
+
+      -------------------------
+      -- Valid_Flash_Address --
+      -------------------------
+
+      function Valid_Flash_Address
+        (Address_Value : Address)
+         return Boolean
+      is (To_Integer (Address_Value) in Mcu_Flash_Base_Addr + Integer_Address (1) ..
+          Mcu_Flash_Base_Addr + Integer_Address (Mcu_Flash_Size - 1));
+
+      -----------------------
+      -- Valid_RAM_Address --
+      -----------------------
+
+      function Valid_RAM_Address
+        (Address_Value : Address)
+         return Boolean
+      is (To_Integer (Address_Value) in Mcu_SRAM_Base_Addr ..
+          Mcu_SRAM_Base_Addr + Integer_Address (Mcu_SRAM_Size - 1));
+
+      -----------------------
+      -- Valid_RAM_Pointer --
+      -----------------------
+
+      function Valid_RAM_Pointer
+        (Address_Value : Address;
+         Alignment : Positive)
+         return Boolean
+      is (Valid_RAM_Address (Address_Value) and then
+          To_Integer (Address_Value) mod Integer_Address (Alignment) = 0);
+      --
+      --  Check that an address is a valid RAM pointer and has the given
+      --  alignment to be used a valid pointer
+      --
+   end Generic_Memory_Map;
 end Microcontroller;
