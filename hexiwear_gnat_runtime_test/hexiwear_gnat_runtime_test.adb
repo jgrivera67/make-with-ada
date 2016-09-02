@@ -41,53 +41,53 @@ procedure Hexiwear_Gnat_Runtime_Test is
       PCR_Value : PORT.PCR_Type;
       Pin_Array_Value : GPIO.Pin_Array;
    begin
-      PCR_Value := PORT.PortB_Registers.PCR (22);
+      PCR_Value := PORT.PortC_Registers.PCR (8);
       PCR_Value.MUX := 1;
-      PORT.PortB_Registers.PCR (22) := PCR_Value;
+      PORT.PortC_Registers.PCR (8) := PCR_Value;
 
-      PCR_Value := PORT.PortE_Registers.PCR (26);
+      PCR_Value := PORT.PortD_Registers.PCR (0);
       PCR_Value.MUX := 1;
-      PORT.PortE_Registers.PCR (26) := PCR_Value;
+      PORT.PortD_Registers.PCR (0) := PCR_Value;
 
-      Pin_Array_Value := GPIO.PortB_Registers.PDDR;
-      Pin_Array_Value (22) := 1;
-      GPIO.PortB_Registers.PDDR := Pin_Array_Value;
+      Pin_Array_Value := GPIO.PortC_Registers.PDDR;
+      Pin_Array_Value (8) := 1;
+      GPIO.PortC_Registers.PDDR := Pin_Array_Value;
 
-      Pin_Array_Value := GPIO.PortE_Registers.PDDR;
-      Pin_Array_Value (26) := 1;
-      GPIO.PortE_Registers.PDDR := Pin_Array_Value;
+      Pin_Array_Value := GPIO.PortD_Registers.PDDR;
+      Pin_Array_Value (0) := 1;
+      GPIO.PortD_Registers.PDDR := Pin_Array_Value;
 
       Pin_Array_Value := (others => 1);
-      GPIO.PortB_Registers.PSOR := Pin_Array_Value;
-      GPIO.PortE_Registers.PSOR := Pin_Array_Value;
+      GPIO.PortC_Registers.PSOR := Pin_Array_Value;
+      GPIO.PortD_Registers.PSOR := Pin_Array_Value;
 
       --  turn on red:
-      Pin_Array_Value := (22 => 1, others => 0);
-      GPIO.PortB_Registers.PCOR := Pin_Array_Value;
+      Pin_Array_Value := (8 => 1, others => 0);
+      GPIO.PortC_Registers.PCOR := Pin_Array_Value;
       delay until Clock + Milliseconds(500);
 
       -- turn off red:
-      Pin_Array_Value := (22 => 1, others => 0);
-      GPIO.PortB_Registers.PSOR := Pin_Array_Value;
+      Pin_Array_Value := (8 => 1, others => 0);
+      GPIO.PortC_Registers.PSOR := Pin_Array_Value;
       delay until Clock + Milliseconds(500);
 
       -- turn on yellow:
-      Pin_Array_Value := (22 => 1, others => 0);
-      GPIO.PortB_Registers.PCOR := Pin_Array_Value;
-      Pin_Array_Value := (26 => 1, others => 0);
-      GPIO.PortE_Registers.PCOR := Pin_Array_Value;
+      Pin_Array_Value := (8 => 1, others => 0);
+      GPIO.PortC_Registers.PCOR := Pin_Array_Value;
+      Pin_Array_Value := (0 => 1, others => 0);
+      GPIO.PortD_Registers.PCOR := Pin_Array_Value;
       delay until Clock + Milliseconds(500);
 
       -- turn off yellow:
-      Pin_Array_Value := (22 => 1, others => 0);
-      GPIO.PortB_Registers.PSOR := Pin_Array_Value;
-      Pin_Array_Value := (26 => 1, others => 0);
-      GPIO.PortE_Registers.PSOR := Pin_Array_Value;
+      Pin_Array_Value := (8 => 1, others => 0);
+      GPIO.PortC_Registers.PSOR := Pin_Array_Value;
+      Pin_Array_Value := (0 => 1, others => 0);
+      GPIO.PortD_Registers.PSOR := Pin_Array_Value;
       delay until Clock + Milliseconds(500);
 
       --  turn on green:
-      Pin_Array_Value := (26 => 1, others => 0);
-      GPIO.PortE_Registers.PCOR := Pin_Array_Value;
+      Pin_Array_Value := (0 => 1, others => 0);
+      GPIO.PortD_Registers.PCOR := Pin_Array_Value;
 
    end Led_Test;
 
@@ -96,11 +96,11 @@ procedure Hexiwear_Gnat_Runtime_Test is
    procedure Toggle_LED_Green (Toggle_State : in out Boolean) is
       Pin_Array_Value : GPIO.Pin_Array;
    begin
-      Pin_Array_Value := (26 => 1, others => 0);
+      Pin_Array_Value := (0 => 1, others => 0);
       if Toggle_State then
-         GPIO.PortE_Registers.PCOR := Pin_Array_Value;
+         GPIO.PortD_Registers.PCOR := Pin_Array_Value;
       else
-         GPIO.PortE_Registers.PSOR := Pin_Array_Value;
+         GPIO.PortD_Registers.PSOR := Pin_Array_Value;
       end if;
 
       Toggle_State := Toggle_State xor True;
@@ -115,7 +115,7 @@ procedure Hexiwear_Gnat_Runtime_Test is
 begin --  Hexiwear_Gnat_Runtime_Test
 
    --  Test LED and "delay until"
-   --Led_Test;
+   Led_Test;
 
    --  Test UART output
    New_Line;
