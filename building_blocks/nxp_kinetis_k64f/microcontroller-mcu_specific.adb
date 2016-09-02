@@ -24,8 +24,9 @@
 --  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 --  POSSIBILITY OF SUCH DAMAGE.
 --
-with Microcontroller.Cortex_M0plus; use Microcontroller.Cortex_M0plus;
-with Kinetis_KL25Z.RCM; use Kinetis_KL25Z;
+
+with Microcontroller.CPU_Specific; use Microcontroller.CPU_Specific;
+with Kinetis_K64F.RCM; use Kinetis_K64F;
 
 package body Microcontroller.MCU_Specific is
 
@@ -37,10 +38,11 @@ package body Microcontroller.MCU_Specific is
       AIRCR_Value : AIRCR_Type;
    begin
       Disable_Interrupts;
-
       Data_Synchronization_Barrier;
+      AIRCR_Value := SCB.AIRCR;
       AIRCR_Value := (VECTKEY => 16#5FA#,
                       SYSRESETREQ => 1,
+                      PRIGROUP => AIRCR_Value.PRIGROUP,
                       others => 0);
 
       SCB.AIRCR := AIRCR_Value;
@@ -50,6 +52,7 @@ package body Microcontroller.MCU_Specific is
       loop
          null;
       end loop;
+
    end System_Reset;
 
    -----------------------------

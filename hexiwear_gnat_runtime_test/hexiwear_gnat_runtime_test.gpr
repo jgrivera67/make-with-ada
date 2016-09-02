@@ -5,7 +5,9 @@ project hexiwear_gnat_runtime_test is
    for Main use ("hexiwear_gnat_runtime_test.adb");
    for Source_Dirs use (".",
                         "../building_blocks/portable",
-                        "../building_blocks/frdm_k64f");
+                        "../building_blocks/arm_cortex_m4",
+                        "../building_blocks/nxp_kinetis_k64f",
+                        "../building_blocks/hexiwear");
    for Object_Dir use "obj";
 
    package Compiler is

@@ -39,7 +39,7 @@ package body Serial_Console is
    --
    -- Baud rate for the console UART
    --
-   Console_Uart_Baud_Rate : constant Uarts.Driver.Baud_Rate_Type := 115200;
+   Console_Uart_Baud_Rate : constant Uarts.Driver.Baud_Rate_Type := 115_200;
 
    --
    --  Size (in bytes) of the console output ring buffer

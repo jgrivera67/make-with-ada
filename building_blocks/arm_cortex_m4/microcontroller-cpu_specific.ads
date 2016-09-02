@@ -27,7 +27,8 @@
 
 pragma Restrictions (No_Elaboration_Code);
 
-package Microcontroller.Cortex_M0plus is
+--  @summary CPU-specfic declarations for the ARM Cortex-M4 core
+package Microcontroller.CPU_Specific is
    pragma Preelaborate;
 
     --  CPUID base register
@@ -79,6 +80,7 @@ package Microcontroller.Cortex_M0plus is
       VECTCLRACTIVE : Bit;
       SYSRESETREQ : Bit;
       ENDIANESS : Bit;
+      PRIGROUP : Three_Bits;
       VECTKEY : Half_Word;
    end record with Size => Word'Size, Bit_Order => Low_Order_First;
 
@@ -86,6 +88,7 @@ package Microcontroller.Cortex_M0plus is
       record
          VECTCLRACTIVE at 0 range 1 .. 1;
          SYSRESETREQ at 0 range 2 .. 2;
+         PRIGROUP at 0 range 8 .. 10;
          ENDIANESS at 0 range 15 .. 15;
          VECTKEY at 0 range 16 .. 31;
       end record;
@@ -100,12 +103,24 @@ package Microcontroller.Cortex_M0plus is
       AIRCR : AIRCR_Type;
       SCR : Word;
       CCR : Word;
-      Reserved1 : Word;
-      SHP : Words_Array (1 .. 2);
+      SHP : Bytes_Array (1 .. 12);
       SHCSR : Word;
-   end record with Volatile, Size => 16#28# * Byte'Size;
+      CFSR : Word;
+      HFSR : Word;
+      DFSR : Word;
+      MMFAR : Word;
+      BFAR : Word;
+      AFSR : Word;
+      PFR : Words_Array (1 .. 2);
+      DFR : Word;
+      ADR : Word;
+      MMFR : Words_Array (1 .. 4);
+      ISAR : Words_Array (1 .. 5);
+      Reserved : Words_Array (1 .. 5);
+      CPACR : Word;
+   end record with Volatile, Size => 16#8c# * Byte'Size;
 
    SCB : aliased SCB_Type with
      Import, Address => System'To_Address (16#E000ED00#);
 
-end Microcontroller.Cortex_M0plus;
+end Microcontroller.CPU_Specific;

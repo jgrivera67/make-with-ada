@@ -26,26 +26,47 @@
 --
 
 with System;
+with Interfaces;
+with Runtime_Logs;
+with Reset_Counter;
+with Microcontroller.MCU_Specific;
 with Serial_Console;
 with Command_Parser;
 with GNAT.Source_Info;
-with Last_Chance_Handler; pragma Unreferenced (Last_Chance_Handler);
+with Last_Chance_Handler;
 
 procedure Hexiwear_Iot_Stack is
    pragma Priority (System.Priority'First);
+
+   procedure Log_Start_Info is
+      Reset_Count : constant Interfaces.Unsigned_32 := Reset_Counter.Get;
+      Reset_Cause : constant Microcontroller.System_Reset_Causes_Type :=
+        Microcontroller.MCU_Specific.Find_System_Reset_Cause;
+   begin
+      Runtime_Logs.Info_Print (
+         "Main task started (reset count:" & Reset_Count'Image &
+         ", last reset cause: " &
+         Microcontroller.Reset_Cause_Strings (Reset_Cause).all & ")");
+
+   end Log_Start_Info;
+
+   -- ** --
 
    procedure Print_Greeting is
    begin
       Serial_Console.Lock;
       Serial_Console.Clear_Screen;
       Serial_Console.Print_String (
-        "IoT Stack (built on " & GNAT.Source_Info.Compilation_Date &
+        "IoT Stack (Written in Ada 2012, built on " & GNAT.Source_Info.Compilation_Date &
         " at " & GNAT.Source_Info.Compilation_Time & ")" & ASCII.LF);
 
       Serial_Console.Unlock;
    end Print_Greeting;
 
 begin -- Hexiwear_Iot_Stack
+   Last_Chance_Handler.Set_Last_Chance_Disposition (Last_Chance_Handler.System_Reset);
+   Runtime_Logs.Initialize;
+   Log_Start_Info;
    Serial_Console.Initialize;
    Print_Greeting;
    Command_Parser.Initialize;
