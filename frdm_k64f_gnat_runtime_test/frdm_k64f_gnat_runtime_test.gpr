@@ -17,7 +17,7 @@ project frdm_k64f_gnat_runtime_test is
       for Default_Switches ("ada") use ("-g", "-O0");
    end Builder;
 
-   for Runtime ("Ada") use "ravenscar-sfp-kinetis_k64f";
+   for Runtime ("Ada") use "ravenscar-sfp-kinetis_k64f_frdm";
    for Target use "arm-eabi";
 
    package Ide is
