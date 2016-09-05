@@ -36,17 +36,17 @@ package Microcontroller.MCU_Specific is
    --
    --  NOR Flash size in bytes
    --
-   Mcu_Flash_Size : constant Unsigned_32 := 128 * 1024;
+   Mcu_Flash_Size : constant Unsigned_32 := 1024 * 1024;
 
    --
    --   SRAM base address
    --
-   Mcu_Sram_Base_Addr : constant Integer_Address := 16#1FFFF000#;
+   Mcu_Sram_Base_Addr : constant Integer_Address := 16#1FFF0000#;
 
    --
    --  SRAM size in byte
    --
-   Mcu_Sram_Size : constant Unsigned_32 := 16 * 1024;
+   Mcu_Sram_Size : constant Unsigned_32 := 256 * 1024;
 
    --
    --  MMIO ranges

@@ -131,73 +131,18 @@ package body Microcontroller.Arm_Cortex_M is
       return Control.SPSEL = 0;
    end Is_Cpu_Using_MSP_Stack_Pointer;
 
-   ------------------------------------
-   -- Is_Cpu_Using_MSP_Stack_Pointer --
-   ------------------------------------
-
-   function Is_Cpu_Exception_Return (Return_Address : Address) return Boolean is
-     (To_Integer (Return_Address) >=
-      Integer_Address (Cpu_Exc_Return_To_Thread_Mode_Using_Psp_Fpu));
-
-   -----------------------------
-   -- Is_Add_R7_Sp_immeditate --
-   -----------------------------
-
-   function Is_Add_R7_SP_immeditate (Instruction : Thumb_Instruction_Type)
-                                     return Boolean is
-      (Instruction.Op_Code = 16#AF#);
-
    --------------------------
-   -- Is_Sub_SP_immeditate --
+   -- Is_32bit_Instruction --
    --------------------------
 
-   function Is_Sub_SP_immeditate (Instruction : Thumb_Instruction_Type)
+   function Is_32bit_Instruction (Instruction : Thumb_Instruction_Type)
                                   return Boolean is
-     (Instruction.Op_Code = 16#B0# and then
-      (Instruction.Operand and 16#80#) /= 0);
-
-   ----------------
-   -- Is_Push_R7 --
-   ----------------
-
-   function Is_Push_R7 (Instruction : Thumb_Instruction_Type)
-                        return Boolean is
-     ((Instruction.Op_Code and 16#FE#) = 16#B4# and then
-      (Instruction.Operand and 16#80#) /= 0);
-
-   ------------------------------
-   -- Push_Operand_Includes_LR --
-   ------------------------------
-
-   function Push_Operand_Includes_LR (Instruction : Thumb_Instruction_Type)
-                                      return Boolean is
-     ((Instruction.Op_Code and 16#01#) /= 0);
-
-   ------------------------
-   -- Is_BL32_First_Half --
-   -----------------------
-
-   function Is_BL32_First_Half (Instruction : Thumb_Instruction_Type)
-                                return Boolean is
-     ((Instruction.Op_Code and 16#F0#) = 16#F0# and then
-      (Instruction.Op_Code and 16#8#) = 0);
-
-   -------------------------
-   -- Is_BL32_Second_Half --
-   -------------------------
-
-   function Is_BL32_Second_Half (Instruction : Thumb_Instruction_Type)
-                                 return Boolean is
-     ((Instruction.Op_Code and 16#D0#) = 16#D0#);
-
-   ------------
-   -- Is_BLX --
-   ------------
-
-   function Is_BLX (Instruction : Thumb_Instruction_Type)
-                    return Boolean is
-     ((Instruction.Op_Code and 16#FF#) = 16#47# and then
-      (Instruction.Operand and 16#80#) = 16#80#);
+      Masked_Opcode : constant Byte := (Instruction.Op_Code and 2#11111000#);
+   begin
+      return Masked_Opcode = 2#11101000# or else
+             Masked_Opcode = 2#11110000# or else
+             Masked_Opcode = 2#11111000#;
+   end Is_32bit_Instruction;
 
    -----------------
    -- Break_Point --

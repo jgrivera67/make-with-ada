@@ -74,7 +74,8 @@ package Microcontroller.Arm_Cortex_M is
       Op_Code : Byte;
    end record with
      Size      => Unsigned_16'Size,
-     Bit_Order => Low_Order_First;
+     Bit_Order => Low_Order_First,
+     Alignment => 2;
 
    for Thumb_Instruction_Type use record
       Operand at 0 range 0 .. 7;
@@ -82,10 +83,34 @@ package Microcontroller.Arm_Cortex_M is
    end record;
 
    --
-   --  Register listi operand for ARM Cortex-M push instruction
+   --  ARM Thumb instruction format
+   --
+   type Thumb_32bit_Instruction_Type is record
+      Operand1 : Byte;
+      Op_Code : Byte;
+      Operand2 : Unsigned_16;
+   end record with
+     Size      => Unsigned_32'Size,
+     Bit_Order => Low_Order_First,
+     Alignment => 4;
+
+   for Thumb_32bit_Instruction_Type use record
+      Operand1 at 0 range 0 .. 7;
+      Op_Code at 0 range 8 .. 15;
+      Operand2 at 0 range 16 .. 31;
+   end record;
+
+   --
+   --  Register list operand for ARM Cortex-M push instruction
    --
    type Register_List_Operand_Type is array (0 .. 7) of Bit with
      Component_Size => 1, Size => Byte'Size;
+
+   --
+   --  Register list operand for ARM Cortex-M push instruction
+   --
+   type Register_Long_List_Operand_Type is array (0 .. 15) of Bit with
+     Component_Size => 1, Size => Unsigned_16'Size;
 
    --
    --  'sub sp, #imm7' instruction immediate operand mask
@@ -119,38 +144,71 @@ package Microcontroller.Arm_Cortex_M is
    function Get_PSP_Register return Word with Inline;
    --  Capture current value of the ARM core PSP register
 
-   function Is_Cpu_Using_MSP_Stack_Pointer return Boolean;
+   function Is_Cpu_Using_MSP_Stack_Pointer return Boolean with Inline;
    --  Tell if the CPU is current stack pointer is the MSP stack pointer
 
-   function Is_Cpu_Exception_Return (Return_Address : Address) return Boolean;
+   function Is_Cpu_Exception_Return (Return_Address : Address) return Boolean is
+     (To_Integer (Return_Address) >=
+          Integer_Address (Cpu_Exc_Return_To_Thread_Mode_Using_Psp_Fpu));
    --  Tell if a return address is one of the exception return special values
 
-   function Is_Add_R7_SP_Immeditate (Instruction : Thumb_Instruction_Type)
-                                     return Boolean with Inline;
+   function Is_Add_R7_SP_immeditate (Instruction : Thumb_Instruction_Type)
+                                     return Boolean is
+     (Instruction.Op_Code = 16#AF#);
    --  Tell if it is the 'add r7, sp, #imm8' instruction
-                                    --
-   function Is_Sub_SP_Immeditate (Instruction : Thumb_Instruction_Type)
-                                  return Boolean with Inline;
+
+   function Is_Sub_SP_immeditate (Instruction : Thumb_Instruction_Type)
+                                  return Boolean is
+     (Instruction.Op_Code = 16#B0# and then
+        (Instruction.Operand and 16#80#) /= 0);
    --  Tell if it is the 'sub sp, #imm7' instruction
 
    function Is_Push_R7 (Instruction : Thumb_Instruction_Type)
-                        return Boolean with inline;
+                        return Boolean is
+     ((Instruction.Op_Code and 16#FE#) = 16#B4# and then
+      (Instruction.Operand and 16#80#) /= 0);
    --  Tell if it is the 'push {...,r7, ...}' instruction
 
+   function Is_32bit_Instruction (Instruction : Thumb_Instruction_Type)
+                                  return Boolean with Inline;
+   -- Tell if a half-word is the lower half-word of a 32-bit instruction
+
+   function Is_STMDB_SP_R7 (Long_Instruction : Thumb_32bit_Instruction_Type)
+                        return Boolean is
+     (Long_Instruction.Op_Code = 16#E9# and then
+      Long_Instruction.Operand1 = 16#2D# and then
+      (Long_Instruction.Operand2 and 16#0080#) /= 0);
+   --  Tell if it is the 'stmdb sp!, {...,r7, ...}' instruction
+
    function Push_Operand_Includes_LR (Instruction : Thumb_Instruction_Type)
-                                      return Boolean with Inline;
+                                      return Boolean is
+     ((Instruction.Op_Code and 16#01#) /= 0);
    --  Tell if  'push' instruction modifier "append lr to reg list" is present
 
+   function Is_Push_R7_LR (Instruction : Thumb_Instruction_Type)
+                           return Boolean is
+     (Is_Push_R7 (Instruction) and then Push_Operand_Includes_LR (Instruction));
+   --  Tell if it is the 'push {...,r7, lr}' instruction
+
+   function Stmdb_Register_List_Includes_LR (Instruction : Thumb_32bit_Instruction_Type)
+                                      return Boolean is
+     ((Instruction.Operand2 and 16#4000#) /= 0);
+   --  Tell if  'stmdb' instruction modifier "append lr to reg list" is present
+
    function Is_BL32_First_Half (Instruction : Thumb_Instruction_Type)
-                                return Boolean with Inline;
+                                 return Boolean is
+     ((Instruction.Op_Code and 16#F0#) = 16#F0#);
    --  "bl" instruction (32-bit instruction) opcode first-half mask
 
-   function Is_BL32_Second_Half(Instruction : Thumb_Instruction_Type)
-                                return Boolean with Inline;
+   function Is_BL32_Second_Half (Instruction : Thumb_Instruction_Type)
+                                  return Boolean is
+     ((Instruction.Op_Code and 16#D0#) = 16#D0#);
    --  "bl" instruction (32-bit instruction) opcode second-half mask
 
    function Is_BLX (Instruction : Thumb_Instruction_Type)
-                       return Boolean with Inline;
+                    return Boolean is
+     ((Instruction.Op_Code and 16#FF#) = 16#47# and then
+          (Instruction.Operand and 16#80#) = 16#80#);
    --  "blx" instruction opcode mask (16-bit instruction)
 
    procedure Break_Point with Inline;

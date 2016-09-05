@@ -48,6 +48,9 @@ package body Stack_Trace_Capture is
    package Address_To_Instruction_Pointer is new
       System.Address_To_Access_Conversions (Thumb_Instruction_Type);
 
+   package Address_To_Long_Instruction_Pointer is new
+     System.Address_To_Access_Conversions (Thumb_32bit_Instruction_Type);
+
    Interrupt_Stack_Start_Entry : constant Stack_Entry_Type;
    pragma Import (Asm, Interrupt_Stack_Start_Entry, "__interrupt_stack_start");
    --  Start address of the stack for ISRs
@@ -64,7 +67,7 @@ package body Stack_Trace_Capture is
    --
 
    Instruction_Size : constant Storage_Offset := Thumb_Instruction_Type'Size / Byte'Size;
-   -- Size of an ARM THUMB instruction in bytes
+   -- Size of an ARM THUMB 16-bit instruction in bytes
 
    Stack_Entry_Size : constant Storage_Offset := Stack_Entry_Type'Size / Byte'Size;
 
@@ -92,6 +95,50 @@ package body Stack_Trace_Capture is
 
    -- ** --
 
+   function Get_Pushed_R7_Stack_Offset(Stmdb_Sp_Instruction : Thumb_32bit_Instruction_Type)
+      return Storage_Offset
+   is
+      Reg_List_Operand : Register_Long_List_Operand_Type with
+         Import, Address => Stmdb_Sp_Instruction.Operand2'Address;
+      Bits_Set_Count : Storage_Offset := 0;
+   begin
+      --
+      --  Check if registers r0 .. r6 are saved on the stack by the push
+      --  instruction
+      --
+      for I in 0 .. 6 loop
+         if Reg_List_Operand (I) = 1 then
+            Bits_Set_Count := Bits_Set_Count + 1;
+         end if;
+      end loop;
+
+     return Bits_Set_Count * Stack_Entry_Size;
+   end Get_Pushed_R7_Stack_Offset;
+
+   -- ** --
+
+   function Get_Pushed_LR_Stack_Offset(Stmdb_Sp_Instruction : Thumb_32bit_Instruction_Type)
+                                       return Storage_Offset
+   is
+      Reg_List_Operand : Register_Long_List_Operand_Type with
+        Import, Address => Stmdb_Sp_Instruction.Operand2'Address;
+      Bits_Set_Count : Storage_Offset := 0;
+   begin
+      --
+      --  Check if registers r0 .. r12 are saved on the stack by the push
+      --  instruction
+      --
+      for I in 0 .. 12 loop
+         if Reg_List_Operand (I) = 1 then
+            Bits_Set_Count := Bits_Set_Count + 1;
+         end if;
+      end loop;
+
+      return Bits_Set_Count * Stack_Entry_Size;
+   end Get_Pushed_LR_Stack_Offset;
+
+   -- ** --
+
    function Find_Previous_Stack_Frame (
       Start_Program_Counter : Address;
       Stack_End : Address;
@@ -100,14 +147,18 @@ package body Stack_Trace_Capture is
    --
    --  Finds the previous stack frame while unwinding the current execution stack.
    --
-   --  NOTE: This function assumes that function prologs have the following code
-   --  pattern ([] means optional):
+   --  NOTE: This function assumes that function prologs have one of the the
+   --  following code  patterns ([] means optional):
    --
-   --  push {[r4,] [r5,] [r6,] r7 , lr}   ([] means optional)
-   --  ...
-   --  push {[r4,] [r5,] [r6,] r7}
-   --  sub sp, #imm7
-   --  add r7, sp, #imm8
+   --  Pattern 1:
+   --     stmdb sp!, {..., r7, ..., lr}
+   --     [sub sp, #imm7]
+   --     add r7, sp, #imm8
+   --
+   --  Pattern 2:
+   --     push {..., r7, ..., lr}
+   --     [sub sp, #imm7]
+   --     add r7, sp, #imm8
    --
    --  @param Start_Program_Counter Start program counter
    --  @param Stack_End_End Address of bottom end of the stack
@@ -121,8 +172,11 @@ package body Stack_Trace_Capture is
    --
    is
       Instruction : Thumb_Instruction_Type;
+      Long_Instruction : Thumb_32bit_Instruction_Type;
       Instruction_Pointer : access constant Thumb_Instruction_Type;
+      Long_Instruction_Pointer : access constant Thumb_32bit_Instruction_Type;
       Saved_R7_Stack_Offset : Storage_Offset;
+      Saved_LR_Stack_Offset : Storage_Offset;
       Prev_Frame_Pointer : Address;
       Stack_Pointer : Address;
       Stack_Entry_Pointer : access constant Stack_Entry_Type;
@@ -130,6 +184,7 @@ package body Stack_Trace_Capture is
       Stack_Entry_Alignment : constant Positive := Stack_Entry_Type'Size / Byte'Size;
       Program_Counter : Address := Start_Program_Counter;
       Instruction_Pattern_Found : Boolean := False;
+      Long_Instruction_Pattern_Found : Boolean := False;
       Return_Address : Address;
       Decoded_Operand : Unsigned_32;
    begin
@@ -162,16 +217,25 @@ package body Stack_Trace_Capture is
          Instruction_Pointer := Address_To_Instruction_Pointer.To_Pointer (Program_Counter);
          Instruction := Instruction_Pointer.all;
          if Is_Add_R7_SP_Immeditate (Instruction) or else
-            Is_Sub_SP_Immeditate (Instruction)  or else
-            Is_Push_R7 (Instruction) then
+            Is_Sub_SP_Immeditate (Instruction) or else
+            Is_Push_R7_LR (Instruction) then
             Instruction_Pattern_Found := True;
             exit;
+         elsif Is_32bit_Instruction (Instruction) then
+            Long_Instruction_Pointer :=
+              Address_To_Long_Instruction_Pointer.To_Pointer (Program_Counter);
+            Long_Instruction := Long_Instruction_Pointer.all;
+            if Is_STMDB_SP_R7 (Long_Instruction) then
+               Long_Instruction_Pattern_Found := True;
+               exit;
+            end if;
          end if;
 
          Program_Counter := Program_Counter - Instruction_Size;
       end loop;
 
-      if not Instruction_Pattern_Found then
+      if not Instruction_Pattern_Found and then
+         not Long_Instruction_Pattern_Found then
          return False;
       end if;
 
@@ -193,22 +257,32 @@ package body Stack_Trace_Capture is
 
          --
          --  Scan instructions backwards looking for the preceding 'sub sp, ...'
-         --  or 'push {...r7}':
+         --  or 'stmdb sp!, {..., r7, ...}':
          --
          Instruction_Pattern_Found := False;
+         Long_Instruction_Pattern_Found := False;
          for I in 1 .. Max_Instructions_Scanned loop
             Instruction_Pointer := Address_To_Instruction_Pointer.To_Pointer (Program_Counter);
             Instruction := Instruction_Pointer.all;
             if Is_Sub_SP_Immeditate (Instruction) or else
-               Is_Push_R7 (Instruction) then
+               Is_Push_R7_LR (Instruction) then
                Instruction_Pattern_Found := True;
                exit;
+            elsif Is_32bit_Instruction (Instruction) then
+               Long_Instruction_Pointer :=
+                 Address_To_Long_Instruction_Pointer.To_Pointer (Program_Counter);
+               Long_Instruction := Long_Instruction_Pointer.all;
+               if Is_STMDB_SP_R7 (Long_Instruction) then
+                  Long_Instruction_Pattern_Found := True;
+                  exit;
+               end if;
             end if;
 
             Program_Counter := Program_Counter - Instruction_Size;
          end loop;
 
-         if not Instruction_Pattern_Found then
+         if not Instruction_Pattern_Found and then
+            not Long_Instruction_Pattern_Found then
             return False;
          end if;
       else
@@ -228,83 +302,67 @@ package body Stack_Trace_Capture is
          Decoded_Operand :=
            Shift_Left (Unsigned_32 (Instruction.Operand and Sub_SP_Immeditate_Operand_Mask),
                        2);
+
          Stack_Pointer := To_Address (To_Integer (Stack_Pointer) +
                                       Integer_Address (Decoded_Operand));
 
          Program_Counter := Program_Counter - Instruction_Size;
 
          --
-         --  Scan instructions backwards looking for the preceding 'push {...r7}'
+         --  Scan instructions backwards looking for the preceding 'stmdb sp!, {..., r7, ...}'
          --
          Instruction_Pattern_Found := False;
+         Long_Instruction_Pattern_Found := False;
          for I in 1 .. Max_Instructions_Scanned loop
             Instruction_Pointer := Address_To_Instruction_Pointer.To_Pointer (Program_Counter);
             Instruction := Instruction_Pointer.all;
-            if Is_Push_R7 (Instruction) then
+            if Is_Push_R7_LR (Instruction) then
                Instruction_Pattern_Found := True;
                exit;
+            elsif Is_32bit_Instruction (Instruction) then
+               Long_Instruction_Pointer :=
+                 Address_To_Long_Instruction_Pointer.To_Pointer (Program_Counter);
+               Long_Instruction := Long_Instruction_Pointer.all;
+               if Is_STMDB_SP_R7 (Long_Instruction) then
+                  Long_Instruction_Pattern_Found := True;
+                  exit;
+               end if;
             end if;
 
             Program_Counter := Program_Counter - Instruction_Size;
          end loop;
 
-         if not Instruction_Pattern_Found then
+         if not Instruction_Pattern_Found and then
+            not Long_Instruction_Pattern_Found then
             return False;
          end if;
       end if;
 
-      --
-      --  The preceding instruction is the 'push {...r7}' or the 'push {...r7, lr}'
-      --  at the beginning of the prolog:
-      --
-      --  NOTE: At this point, stack_pointer has the value that SP had right
-      --  after executing the 'push {...r7...}'
-      --
-      if Is_Push_R7 (Instruction) and then
-        not Push_Operand_Includes_LR (Instruction) then
+      if Instruction_Pattern_Found then
+         --
+         --  The preceding instruction is the 'push {..., r7, ..., lr}'
+         --  at the beginning of the prolog:
+         --
+         --  NOTE: At this point, stack_pointer has the value that SP had right
+         --  after executing the 'push {..., r7, ..., lr}'
+         --
          Saved_R7_Stack_Offset := Get_Pushed_R7_Stack_Offset (Instruction);
-         Stack_Pointer := Stack_Pointer + (Saved_R7_Stack_Offset + Stack_Entry_Size);
-         if To_Integer (Stack_Pointer) >= To_Integer (Stack_End) then
-            return False;
-         end if;
-
-         Program_Counter := Program_Counter - Instruction_Size;
-
+         Saved_LR_Stack_Offset := Saved_R7_Stack_Offset + Stack_Entry_Size;
+      elsif Long_Instruction_Pattern_Found then
          --
-         --  Scan instructions backwards looking for the preceding 'push {...r7, lr}'
+         --  The preceding instruction is the 'stmdb sp! {..., r7, ..., lr}'
+         --  at the beginning of the prolog:
          --
-         Instruction_Pattern_Found := False;
-         for I in 1 .. Max_Instructions_Scanned loop
-            Instruction_Pointer := Address_To_Instruction_Pointer.To_Pointer (Program_Counter);
-            Instruction := Instruction_Pointer.all;
-            if Is_Push_R7 (Instruction) and then
-               Push_Operand_Includes_LR (Instruction) then
-               Instruction_Pattern_Found := True;
-               exit;
-            end if;
-
-            Program_Counter := Program_Counter - Instruction_Size;
-         end loop;
-
-         if not Instruction_Pattern_Found then
-            return False;
-         end if;
-      end if;
-
-      if not Is_Push_R7 (Instruction) or else not Push_Operand_Includes_LR (Instruction) then
+         --  NOTE: At this point, stack_pointer has the value that SP had right
+         --  after executing the 'stmdb sp!, {..., r7, ..., lr}'
+         --
+         Saved_R7_Stack_Offset := Get_Pushed_R7_Stack_Offset (Long_Instruction);
+         Saved_LR_Stack_Offset := Get_Pushed_LR_Stack_Offset (Long_Instruction);
+      else
          return False;
       end if;
 
-      --
-      --  The preceding instruction is the 'push {...r7, lr}'
-      --  at the beginning of the prolog:
-      --
-      --  NOTE: At this point, stack_pointer has the value that SP had right
-      --  after executing the 'push {...r7, lr}'
-      --
-      Saved_R7_Stack_Offset := Get_Pushed_R7_Stack_Offset (Instruction);
-      if To_Integer (Stack_Pointer + Saved_R7_Stack_Offset) >=
-        To_Integer (Stack_End) then
+      if To_Integer (Stack_Pointer + Saved_R7_Stack_Offset) >= To_Integer (Stack_End) then
          return False;
       end if;
 
@@ -322,13 +380,9 @@ package body Stack_Trace_Capture is
       end if;
 
       Stack_Entry_Pointer :=
-         Address_To_Stack_Entry_Pointer.To_Pointer (
-            Stack_Pointer + (Saved_R7_Stack_Offset +
-            (Stack_Entry_Type'Size / Byte'Size)));
+        Address_To_Stack_Entry_Pointer.To_Pointer (Stack_Pointer + Saved_LR_Stack_Offset);
 
-      Prev_Return_Address :=
-        To_Address (Integer_Address (Stack_Entry_Pointer.all));
-
+      Prev_Return_Address := To_Address (Integer_Address (Stack_Entry_Pointer.all));
       if (To_Integer (Prev_Return_Address) and Arm_Thumb_Code_Flag) = 0 then
          return False;
       end if;
@@ -417,7 +471,7 @@ package body Stack_Trace_Capture is
             Stack_Trace_Entry := Program_Counter;
          else
             --
-            -- The next stack-trace entry is the address of the instruction
+            -- The next stack-trace entry is the address of the BL or BLX instruction
             -- preceding the instruction at the return address, unless we
             -- have reached the bottom of the call chain.
             --
@@ -431,6 +485,12 @@ package body Stack_Trace_Capture is
             if Is_BLX (Instruction_Pointer.all) then
                Instruction_Address := Instruction_Address - Instruction_Size;
             else
+               --
+               --  NOTE: A BL instruction is a 32-bit instruction. The first
+               --  half-word (located at a lower address) contains the instruction
+               --  opcode. Since we are traversing the instruction stream in
+               --  reverse, we find first the seconfd half-word.
+               --
                if Is_BL32_Second_Half(Instruction_Pointer.all) then
                   Instruction_Pointer :=
                      Address_To_Instruction_Pointer.To_Pointer (
@@ -438,7 +498,11 @@ package body Stack_Trace_Capture is
                   if Is_BL32_First_Half(Instruction_Pointer.all) then
                      Instruction_Address :=
                        Instruction_Address - 2*Instruction_Size;
+                  else
+                     exit;
                   end if;
+               else
+                  exit;
                end if;
             end if;
 
@@ -459,12 +523,15 @@ package body Stack_Trace_Capture is
 
    -- ** --
 
+   --
+   --  NOTE: This subprogram and subprograms invoked from it cannot use
+   --  assertions, since this subprogram is invoked indirectly from
+   --  Last_Chance_Handler. Otherwise, an infinite will happen.
+   --
    procedure Get_Stack_Trace (Stack_Trace : out Stack_Trace_Type;
                               Num_Entries_Captured : out Natural) is
-      Return_Address : constant Address :=
-        To_Address (To_Integer (Get_LR_Register));
-      Frame_Pointer : Address :=
-        To_Address (To_Integer (Get_Frame_Pointer_Register));
+      Return_Address : constant Address := Get_LR_Register;
+      Frame_Pointer : Address := Get_Frame_Pointer_Register;
       Found_Prev_Stack_Frame : Boolean;
       Stack_Start : Address;
       Stack_End : Address;
@@ -494,11 +561,9 @@ package body Stack_Trace_Capture is
          return;
       end if;
 
-      --if In_Stack_Return_Address /= Return_Address then
-      --   return;
-      --end if;
-
-      pragma Assert (In_Stack_Return_Address = Return_Address);
+      if In_Stack_Return_Address /= Return_Address then
+         return;
+      end if;
 
       Unwind_Execution_Stack(Return_Address,
                              Frame_Pointer,
