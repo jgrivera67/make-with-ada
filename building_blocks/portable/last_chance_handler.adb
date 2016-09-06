@@ -28,6 +28,7 @@ with System; use System;
 with Microcontroller.Arm_Cortex_M; use Microcontroller.Arm_Cortex_M;
 with Microcontroller.MCU_Specific;
 with Runtime_Logs;
+with Ada.Text_IO;
 
 package body Last_Chance_Handler is
 
@@ -51,8 +52,15 @@ package body Last_Chance_Handler is
       Caller : constant Address := Return_Address_To_Call_Address (Get_LR_Register);
 
    begin
-      Runtime_Logs.Error_Print ("Exception: " & Msg_Text & ":" & Line'Image,
-                                Caller);
+      if Line /= 0 then
+         Runtime_Logs.Error_Print ("Exception: '" & Msg_Text & "' at line " & Line'Image,
+                                   Caller);
+         Ada.Text_IO.Put_Line ("*** Exception: '" & Msg_Text & "' at line " & Line'Image);
+      else
+         Runtime_Logs.Error_Print ("Exception: '" & Msg_Text & "'", Caller);
+         Ada.Text_IO.Put_Line ("*** Exception: '" & Msg_Text & "'");
+      end if;
+
       case Current_Disposition is
          when System_Reset =>
             Microcontroller.MCU_Specific.System_Reset;

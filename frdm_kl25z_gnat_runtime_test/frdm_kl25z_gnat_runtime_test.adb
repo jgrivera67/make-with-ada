@@ -24,9 +24,6 @@
 --  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 --  POSSIBILITY OF SUCH DAMAGE.
 --
-
-with Last_Chance_Handler;  pragma Unreferenced (Last_Chance_Handler);
-
 with Ada.Text_IO; use Ada.Text_IO;
 with Ada.Real_Time; use Ada.Real_Time;
 with Kinetis_KL25Z; use Kinetis_KL25Z;

@@ -26,27 +26,15 @@
 --
 
 --
---  @summary Stack trace capture service
+--  @summary Application-specific global parameters and tunables
 --
-with System; use System;
+package App_Parameters is
 
-package Stack_Trace_Capture is
-
-   type Stack_Trace_Type is array (Positive range <>) of Address;
-
-   procedure Get_Stack_Trace (Stack_Trace : out Stack_Trace_Type;
-                              Num_Entries_Captured : out Natural)
-     with Post => Num_Entries_Captured <= Stack_Trace'Length;
    --
-   --  Get the stack trace of the calling task
+   --  Sizes (in bytes) of the runtime log buffers
    --
-   --  @param Stack_Trace Buffer where captured stack trace is to be returned.
-   --  @param Num_Entries_Captured Number of stack trace entries actaully
-   --                              entries captured.
-   --  @pre Code calling this function needs to be compiled with the
-   --       '-fno-omit-frame-pointer' gcc option.
-   --  @pre Code calling this function uses register R7 as the frame pointer
-   --       register.
-   --
+   Debug_Log_Buffer_Size : constant Positive := 2048;
+   Error_Log_Buffer_Size : constant Positive := 1024;
+   Info_Log_Buffer_Size : constant Positive := 1024;
 
-end Stack_Trace_Capture;
+end App_Parameters;

@@ -5,9 +5,9 @@ project frdm_kl25z_autonomous_car is
    for Main use ("frdm_kl25z_autonomous_car.adb");
    for Source_Dirs use (".",
                         "../building_blocks/portable",
-                        "../building_blocks/arm_cortex_m0plus",
-                        "../building_blocks/nxp_kinetis_kl25z",
-                        "../building_blocks/frdm_kl25z");
+                        "../building_blocks/cpu_specific/arm_cortex_m0plus",
+                        "../building_blocks/mcu_specific/nxp_kinetis_kl25z",
+                        "../building_blocks/board_specific/frdm_kl25z");
 
    for Object_Dir use "obj";
 

@@ -26,6 +26,7 @@
 --
 
 with System; use System;
+with App_Parameters; use App_Parameters;
 private with Interfaces;
 
 --
@@ -62,13 +63,6 @@ package Runtime_Logs is
 
 private
    use Interfaces;
-
-   --
-   --  Sizes (in bytes) of the runtime log buffers
-   --
-   Debug_Log_Buffer_Size : constant Positive := 512;
-   Error_Log_Buffer_Size : constant Positive := 256;
-   Info_Log_Buffer_Size : constant Positive := 256;
 
    --
    --  State variables of runtime log
