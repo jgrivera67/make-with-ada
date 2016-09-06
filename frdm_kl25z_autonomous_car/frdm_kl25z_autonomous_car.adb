@@ -25,7 +25,6 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with System;
 with Interfaces;
 with Runtime_Logs;
 with Reset_Counter;
@@ -37,7 +36,7 @@ with GNAT.Source_Info;
 with Last_Chance_Handler;
 
 procedure Frdm_Kl25z_Autonomous_Car is
-   pragma Priority (System.Priority'First);
+   --pragma Priority (System.Priority'First);
 
    procedure Log_Start_Info is
       Reset_Count : constant Interfaces.Unsigned_32 := Reset_Counter.Get;
@@ -48,7 +47,6 @@ procedure Frdm_Kl25z_Autonomous_Car is
          "Main task started (reset count:" & Reset_Count'Image &
          ", last reset cause: " &
          Microcontroller.Reset_Cause_Strings (Reset_Cause).all & ")");
-
    end Log_Start_Info;
 
    -- ** --

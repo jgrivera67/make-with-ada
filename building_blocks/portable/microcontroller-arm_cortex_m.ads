@@ -113,9 +113,20 @@ package Microcontroller.Arm_Cortex_M is
      Component_Size => 1, Size => Unsigned_16'Size;
 
    --
+   --  Entries in the execution stack for an ARM Cortex-M processor
+   ---
+   type Stack_Entry_Type is new Unsigned_32;
+
+   --
    --  'sub sp, #imm7' instruction immediate operand mask
    --
    Sub_SP_Immeditate_Operand_Mask : constant Byte := 16#7F#;
+
+   Instruction_Size : constant Storage_Offset := Thumb_Instruction_Type'Size / Byte'Size;
+   --  Size of an ARM THUMB 16-bit instruction in bytes
+
+   Stack_Entry_Size : constant Storage_Offset := Stack_Entry_Type'Size / Byte'Size;
+   --  Size in bytes of an entry in the execution stack
 
    -- ** --
 
@@ -212,5 +223,14 @@ package Microcontroller.Arm_Cortex_M is
    --  "blx" instruction opcode mask (16-bit instruction)
 
    procedure Break_Point with Inline;
+
+   function Get_Pushed_R7_Stack_Offset(Push_Instruction : Thumb_Instruction_Type)
+                                       return Storage_Offset;
+
+   function Get_Pushed_R7_Stack_Offset(Stmdb_Sp_Instruction : Thumb_32bit_Instruction_Type)
+                                       return Storage_Offset;
+
+   function Get_Pushed_LR_Stack_Offset(Stmdb_Sp_Instruction : Thumb_32bit_Instruction_Type)
+                                       return Storage_Offset;
 
 end Microcontroller.Arm_Cortex_M;

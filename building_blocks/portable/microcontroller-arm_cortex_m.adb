@@ -153,4 +153,76 @@ package body Microcontroller.Arm_Cortex_M is
       Asm ("bkpt #0", Volatile => True);
    end Break_Point;
 
+   -------------------------------------------------------
+   -- Get_Pushed_R7_Stack_Offset - for push instruction --
+   -------------------------------------------------------
+
+   function Get_Pushed_R7_Stack_Offset(Push_Instruction : Thumb_Instruction_Type)
+                                          return Storage_Offset
+   is
+      Reg_List_Operand : Register_List_Operand_Type with
+        Import, Address => Push_Instruction.Operand'Address;
+      Bits_Set_Count : Storage_Offset := 0;
+   begin
+      --
+      --  Check if registers r0 .. r6 are saved on the stack by the push
+      --  instruction
+      --
+      for I in 0 .. 6 loop
+         if Reg_List_Operand (I) = 1 then
+            Bits_Set_Count := Bits_Set_Count + 1;
+         end if;
+      end loop;
+
+      return Bits_Set_Count * Stack_Entry_Size;
+   end Get_Pushed_R7_Stack_Offset;
+
+   --------------------------------------------------------
+   -- Get_Pushed_R7_Stack_Offset - for stmdb instruction --
+   --------------------------------------------------------
+
+   function Get_Pushed_R7_Stack_Offset(Stmdb_Sp_Instruction : Thumb_32bit_Instruction_Type)
+                                       return Storage_Offset
+   is
+      Reg_List_Operand : Register_Long_List_Operand_Type with
+        Import, Address => Stmdb_Sp_Instruction.Operand2'Address;
+      Bits_Set_Count : Storage_Offset := 0;
+   begin
+      --
+      --  Check if registers r0 .. r6 are saved on the stack by the push
+      --  instruction
+      --
+      for I in 0 .. 6 loop
+         if Reg_List_Operand (I) = 1 then
+            Bits_Set_Count := Bits_Set_Count + 1;
+         end if;
+      end loop;
+
+      return Bits_Set_Count * Stack_Entry_Size;
+   end Get_Pushed_R7_Stack_Offset;
+
+   --------------------------------------------------------
+   -- Get_Pushed_LR_Stack_Offset - for stmdb instruction --
+   --------------------------------------------------------
+
+   function Get_Pushed_LR_Stack_Offset(Stmdb_Sp_Instruction : Thumb_32bit_Instruction_Type)
+                                       return Storage_Offset
+   is
+      Reg_List_Operand : Register_Long_List_Operand_Type with
+        Import, Address => Stmdb_Sp_Instruction.Operand2'Address;
+      Bits_Set_Count : Storage_Offset := 0;
+   begin
+      --
+      --  Check if registers r0 .. r12 are saved on the stack by the push
+      --  instruction
+      --
+      for I in 0 .. 12 loop
+         if Reg_List_Operand (I) = 1 then
+            Bits_Set_Count := Bits_Set_Count + 1;
+         end if;
+      end loop;
+
+      return Bits_Set_Count * Stack_Entry_Size;
+   end Get_Pushed_LR_Stack_Offset;
+
 end Microcontroller.Arm_Cortex_M;

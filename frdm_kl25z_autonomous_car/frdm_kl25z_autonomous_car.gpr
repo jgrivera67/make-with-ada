@@ -25,7 +25,7 @@ project frdm_kl25z_autonomous_car is
              -- "-gnatwe",                     --  Treat warnings as errors
              "-gnat2012",                   --  Use Ada 2012
              "-Wall",                       --  All GCC warnings
-             "-Wstack-usage=256",           -- check stack usage per subprogram
+             --"-Wstack-usage=256",           -- check stack usage per subprogram
              "-fno-omit-frame-pointer",     -- To be able to unwind the stack
              -- "-E",                          --  Generate stack trace for exceptions
              "-O2");                        --  Optimise (level 2/3)

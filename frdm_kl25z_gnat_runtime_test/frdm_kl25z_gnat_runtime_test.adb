@@ -103,7 +103,6 @@ procedure FRDM_KL25Z_Gnat_Runtime_Test is
    LED_Toggle_State : Boolean := True;
 
 begin --  FRDM_KL25Z_Gnat_Runtime_Test
-
    --  Test LED and "delay until"
    Led_Test;
 
