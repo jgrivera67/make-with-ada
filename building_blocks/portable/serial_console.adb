@@ -28,6 +28,7 @@ with Uarts.Driver;
 with Generic_Ring_Buffers;
 with Runtime_Logs;
 with Ada.Synchronous_Task_Control; use Ada.Synchronous_Task_Control;
+with System;
 
 package body Serial_Console is
 
@@ -69,7 +70,7 @@ package body Serial_Console is
      new Generic_Ring_Buffers (Max_Num_Elements => Console_Output_Buffer_Size,
                                Element_Type => Byte);
 
-   task type Console_Output_Task_Type;
+   task type Console_Output_Task_Type with Priority => System.Priority'First + 1;
 
    --
    --  State variables of the serial console
