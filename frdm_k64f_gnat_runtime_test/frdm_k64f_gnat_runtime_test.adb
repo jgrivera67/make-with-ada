@@ -36,7 +36,7 @@ procedure FRDM_K64F_Gnat_Runtime_Test is
 
    procedure Led_Test is
       PCR_Value : PORT.PCR_Type;
-      Pin_Array_Value : GPIO.Pin_Array;
+      Pin_Array_Value : PORT.Pin_Array_Type;
    begin
       PCR_Value := PORT.PortB_Registers.PCR (22);
       PCR_Value.MUX := 1;
@@ -91,7 +91,7 @@ procedure FRDM_K64F_Gnat_Runtime_Test is
    -- ** --
 
    procedure Toggle_LED_Green (Toggle_State : in out Boolean) is
-      Pin_Array_Value : GPIO.Pin_Array;
+      Pin_Array_Value : PORT.Pin_Array_Type;
    begin
       Pin_Array_Value := (26 => 1, others => 0);
       if Toggle_State then

@@ -31,6 +31,7 @@ with Microcontroller.MCU_Specific;
 with Reset_Counter;
 with Memory_Utils;
 with Runtime_Logs.Dump;
+with Color_Led;
 with Interfaces; use Interfaces;
 
 --
@@ -178,5 +179,61 @@ package body Command_Parser_Common is
    begin
       Microcontroller.MCU_Specific.System_Reset;
    end Cmd_Reset;
+
+   -- ** --
+
+   function Parse_Color (Color_Name : String;
+                         Color : out Color_Led.Led_Color_Type) return Boolean is
+   begin
+      if Color_Name = "black" then
+         Color := Color_Led.Black;
+      elsif Color_Name = "red" then
+         Color := Color_Led.Red;
+      elsif Color_Name = "green" then
+         Color := Color_Led.Green;
+      elsif Color_Name = "yellow" then
+         Color := Color_Led.Yellow;
+      elsif Color_Name = "blue" then
+         Color := Color_Led.Blue;
+      elsif Color_Name = "magenta" then
+         Color := Color_Led.Magenta;
+      elsif Color_Name = "cyan" then
+         Color := Color_Led.Cyan;
+      elsif Color_Name = "white" then
+         Color := Color_Led.White;
+      else
+         return False;
+      end if;
+
+      return True;
+
+   end Parse_Color;
+
+   -- ** --
+
+   procedure Cmd_Test_Color is
+      Token : Command_Line.Token_Type;
+      Token_Found : Boolean;
+      Color : Color_Led.Led_Color_Type;
+      Old_Color : Color_Led.Led_Color_Type;
+      Parsing_Ok : Boolean;
+   begin
+      Token_Found := Command_Line.Get_Next_Token (Token);
+      if not Token_Found then
+         goto Error;
+      end if;
+
+      Parsing_Ok := Parse_Color (Token.String_Value (1 .. Token.Length), Color);
+      if not Parsing_Ok then
+         goto Error;
+      end if;
+
+      Old_Color := Color_Led.Set_Color (Color);
+      return;
+
+      <<Error>>
+      Serial_Console.Print_String ("Error: Invalid syntax for command 'test color'" &
+                                     ASCII.LF);
+   end Cmd_Test_Color;
 
 end Command_Parser_Common;

@@ -72,7 +72,7 @@ begin -- Frdm_K64f_Iot_Stack
    Log_Start_Info;
 
    --  Initialize devices used:
-   --Pin_Config.Initialize;
+   Pin_Config.Initialize;
    Color_Led.Initialize;
    Serial_Console.Initialize;
 

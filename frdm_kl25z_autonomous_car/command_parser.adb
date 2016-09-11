@@ -58,6 +58,8 @@ package body Command_Parser is
      ASCII.HT & "set car-turning-wheel-motor-duty-cycle (or tdc) <value: 100 .. 200>" & ASCII.LF &
      ASCII.HT & "save-config (or sc) - Save car controller configuration parameters" & ASCII.LF &
      ASCII.HT & "reset - Reset microcontroller" & ASCII.LF &
+     ASCII.HT & "test color <color: black, red, green, yellow, blue, magenta, cyan, white)> - Test LED color" & ASCII.LF &
+     ASCII.HT & "test assert - Test assert failure" & ASCII.LF &
      ASCII.HT & "help (or h) - Prints this message" & ASCII.LF;
 
    --
@@ -131,10 +133,75 @@ package body Command_Parser is
 
    -- ** --
 
-   procedure Cmd_Set is
+   function Parse_Test_Command (Command : String) return Boolean is
    begin
-      pragma Assert (False);--???
-      Serial_Console.Print_String("Not implemented yet" & ASCII.LF);
+      if Command = "color" then
+         Command_Parser_Common.Cmd_Test_Color;
+      elsif Command = "assert" then
+         pragma Assert (False);
+      else
+         return False;
+      end if;
+
+      return True;
+   end Parse_Test_Command;
+
+   -- ** --
+
+   procedure Cmd_Test is
+      Token : Command_Line.Token_Type;
+      Token_Found : Boolean;
+      Parsing_Ok : Boolean;
+   begin
+      Token_Found := Command_Line.Get_Next_Token (Token);
+      if not Token_Found then
+         goto Error;
+
+      end if;
+
+      Parsing_Ok := Parse_Test_Command (Token.String_Value (1 .. Token.Length));
+      if not Parsing_Ok then
+         goto Error;
+      end if;
+
+      return;
+
+      <<Error>>
+      Serial_Console.Print_String ("Error: Invalid syntax for command 'test'" &
+                                     ASCII.LF);
+   end Cmd_Test;
+
+   -- ** --
+
+   function Parse_Set_Command (Set_Command : String) return Boolean is
+   begin
+      Serial_Console.Print_String ("set command not implemented yet" & ASCII.LF);
+      return True;
+   end Parse_Set_Command;
+
+   -- ** --
+
+   procedure Cmd_Set is
+      Token : Command_Line.Token_Type;
+      Token_Found : Boolean;
+      Parsing_Ok : Boolean;
+   begin
+      Token_Found := Command_Line.Get_Next_Token (Token);
+      if not Token_Found then
+         goto Error;
+
+      end if;
+
+      Parsing_Ok := Parse_Set_Command (Token.String_Value (1 .. Token.Length));
+      if not Parsing_Ok then
+         goto Error;
+      end if;
+
+      return;
+
+   <<Error>>
+      Serial_Console.Print_String ("Error: Invalid syntax for command 'set'" &
+                                   ASCII.LF);
    end Cmd_Set;
 
    -- ** --
@@ -183,6 +250,8 @@ package body Command_Parser is
             Cmd_Save_Car_Controller_Config_Params;
          elsif Command = "reset" then
             Command_Parser_Common.Cmd_Reset;
+         elsif Command = "test" then
+            Cmd_Test;
          else
             Serial_Console.Print_String (
                "Command '" & Command & "' is not recognized" & ASCII.LF);

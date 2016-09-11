@@ -28,7 +28,6 @@
 with Command_Line;
 with Serial_Console;
 with Command_Parser_Common;
-with Color_Led;
 
 --
 --  Application-specific command parser implementation
@@ -46,7 +45,8 @@ package body Command_Parser is
      ASCII.HT & "print-config (or pc) - Print configuration parameters" & ASCII.LF &
      ASCII.HT & "save-config (or sc) - Save car controller configuration parameters" & ASCII.LF &
      ASCII.HT & "reset - Reset microcontroller" & ASCII.LF &
-     ASCII.HT & "set color <color: black, red, green, yellow, blue, magenta, cyan, white)>" & ASCII.LF &
+     ASCII.HT & "test color <color: black, red, green, yellow, blue, magenta, cyan, white)> - Test LED color" & ASCII.LF &
+     ASCII.HT & "test assert - Test assert failure" & ASCII.LF &
      ASCII.HT & "help (or h) - Prints this message" & ASCII.LF;
 
    --
@@ -85,71 +85,49 @@ package body Command_Parser is
 
    -- ** --
 
-   function Parse_Color (Color_Name : String;
-                         Color : out Color_Led.Led_Color_Type) return Boolean is
+   function Parse_Test_Command (Command : String) return Boolean is
    begin
-      if Color_Name = "black" then
-         Color := Color_Led.Black;
-      elsif Color_Name = "red" then
-         Color := Color_Led.Red;
-      elsif Color_Name = "green" then
-         Color := Color_Led.Green;
-      elsif Color_Name = "yellow" then
-         Color := Color_Led.Yellow;
-      elsif Color_Name = "blue" then
-         Color := Color_Led.Blue;
-      elsif Color_Name = "magenta" then
-         Color := Color_Led.Magenta;
-      elsif Color_Name = "cyan" then
-         Color := Color_Led.Cyan;
-      elsif Color_Name = "white" then
-         Color := Color_Led.White;
+      if Command = "color" then
+         Command_Parser_Common.Cmd_Test_Color;
+      elsif Command = "assert" then
+         pragma Assert (False);
       else
          return False;
       end if;
 
       return True;
-
-   end Parse_Color;
+   end Parse_Test_Command;
 
    -- ** --
 
-   procedure Cmd_Set_Color is
+   procedure Cmd_Test is
       Token : Command_Line.Token_Type;
       Token_Found : Boolean;
-      Color : Color_Led.Led_Color_Type;
-      Old_Color : Color_Led.Led_Color_Type;
       Parsing_Ok : Boolean;
    begin
       Token_Found := Command_Line.Get_Next_Token (Token);
       if not Token_Found then
          goto Error;
+
       end if;
 
-      Parsing_Ok := Parse_Color (Token.String_Value (1 .. Token.Length), Color);
+      Parsing_Ok := Parse_Test_Command (Token.String_Value (1 .. Token.Length));
       if not Parsing_Ok then
          goto Error;
       end if;
 
-      Old_Color := Color_Led.Set_Color (Color);
       return;
 
-   <<Error>>
-      Serial_Console.Print_String ("Error: Invalid syntax for command 'log-tail'" &
+      <<Error>>
+      Serial_Console.Print_String ("Error: Invalid syntax for command 'test'" &
                                      ASCII.LF);
-   end Cmd_Set_Color;
+   end Cmd_Test;
 
    -- ** --
 
    function Parse_Set_Command (Set_Command : String) return Boolean is
    begin
-      if Set_Command = "color" then
-         Cmd_Set_Color;
-      else
-         pragma Assert (False); --???
-         return False;
-      end if;
-
+      Serial_Console.Print_String ("set command not implemented yet" & ASCII.LF);
       return True;
    end Parse_Set_Command;
 
@@ -175,8 +153,7 @@ package body Command_Parser is
 
    <<Error>>
       Serial_Console.Print_String ("Error: Invalid syntax for command 'set'" &
-                                     ASCII.LF);
-
+                                   ASCII.LF);
    end Cmd_Set;
 
    -- ** --
@@ -215,6 +192,8 @@ package body Command_Parser is
             Cmd_Save_Config_Params;
          elsif Command = "reset" then
             Command_Parser_Common.Cmd_Reset;
+         elsif Command = "test" then
+            Cmd_Test;
          else
             Serial_Console.Print_String (
                "Command '" & Command & "' is not recognized" & ASCII.LF);

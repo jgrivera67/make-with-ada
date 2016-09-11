@@ -24,10 +24,14 @@
 --  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 --  POSSIBILITY OF SUCH DAMAGE.
 --
-with Microcontroller.CPU_Specific; use Microcontroller.CPU_Specific;
-with Kinetis_KL25Z.RCM; use Kinetis_KL25Z;
+with Microcontroller.CPU_Specific;
+with Microcontroller.Arm_Cortex_M;
+with Kinetis_KL25Z.RCM;
 
 package body Microcontroller.MCU_Specific is
+   use Microcontroller.CPU_Specific;
+   use Microcontroller.Arm_Cortex_M;
+   use Kinetis_KL25Z;
 
    ------------------
    -- System_Reset --
@@ -35,8 +39,9 @@ package body Microcontroller.MCU_Specific is
 
    procedure System_Reset is
       AIRCR_Value : AIRCR_Type;
+      Old_Primask : Word;
    begin
-      Disable_Interrupts;
+      Old_Primask := Disable_Interrupts;
 
       Data_Synchronization_Barrier;
       AIRCR_Value := (VECTKEY => 16#5FA#,

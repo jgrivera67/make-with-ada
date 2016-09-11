@@ -41,4 +41,6 @@ package Command_Parser_Common is
 
    procedure Cmd_Reset;
 
+   procedure Cmd_Test_Color;
+
 end Command_Parser_Common;

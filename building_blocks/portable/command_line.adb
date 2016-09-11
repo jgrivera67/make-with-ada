@@ -30,6 +30,9 @@ package body Command_Line is
    subtype Buffer_Index_Type is Positive range 1 .. 128;
    subtype Buffer_Length_Type is Natural range 0 .. Buffer_Index_Type'Last;
 
+   type Command_Line_State_Type is (Command_Line_Empty,
+                                    Command_Line_Filled,
+                                    Last_Token_Found);
    --
    --  Command line state variables
    --
@@ -37,6 +40,7 @@ package body Command_Line is
       Initialized : Boolean := False;
       Prompt : access constant String;
       Buffer : aliased String (Buffer_Index_Type);
+      State : Command_Line_State_Type := Command_Line_Empty;
       Buffer_Filled_Length : Buffer_Length_Type := 0;
       Buffer_Cursor : Buffer_Index_Type := Buffer_Index_Type'First;
    end record;
@@ -51,9 +55,7 @@ package body Command_Line is
 
    procedure Initialize (Prompt : not null access constant String) is
    begin
-      pragma Assert (Command_Line_Var.Buffer_Filled_Length = 0);
-      pragma Assert (Command_Line_Var.Buffer_Cursor = Buffer_Index_Type'First);
-
+      pragma Assert (Command_Line_Var.State = Command_Line_Empty);
       Command_Line_Var.Prompt := Prompt;
       Command_Line_Var.Initialized := True;
    end Initialize;
@@ -108,10 +110,25 @@ package body Command_Line is
       Token_Start_Index : Buffer_Index_Type;
 
    begin -- Get_Next_Token
-      while Command_Line_Var.Buffer_Filled_Length = 0 loop
-         Read_Command_Line (Command_Line_Var.Buffer,
-                            Command_Line_Var.Buffer_Filled_Length);
-      end loop;
+
+      case Command_Line_Var.State is
+         when Command_Line_Empty =>
+            Command_Line_Var.Buffer_Filled_Length := 0;
+            loop
+               Read_Command_Line (Command_Line_Var.Buffer,
+                                  Command_Line_Var.Buffer_Filled_Length);
+               exit when Command_Line_Var.Buffer_Filled_Length /= 0;
+            end loop;
+
+            Command_Line_Var.Buffer_Cursor := Buffer_Index_Type'First;
+            Command_Line_Var.State := Command_Line_Filled;
+
+         when Last_Token_Found =>
+            goto No_More_Tokens;
+
+         when Command_Line_Filled =>
+            null;
+      end case;
 
       -- Skip spaces:
       Cursor := Command_Line_Var.Buffer_Cursor;
@@ -146,15 +163,13 @@ package body Command_Line is
       if Cursor <= Command_Line_Var.Buffer_Filled_Length then
          Command_Line_Var.Buffer_Cursor := Cursor;
       else
-         Command_Line_Var.Buffer_Filled_Length := 0;
-         Command_Line_Var.Buffer_Cursor := Buffer_Index_Type'First;
+         Command_Line_Var.State := Last_Token_Found;
       end if;
 
       return True;
 
    <<No_More_Tokens>>
-      Command_Line_Var.Buffer_Filled_Length := 0;
-      Command_Line_Var.Buffer_Cursor := Buffer_Index_Type'First;
+      Command_Line_Var.State := Command_Line_Empty;
       return False;
    end Get_Next_Token;
 
