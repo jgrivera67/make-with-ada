@@ -24,41 +24,83 @@
 --  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 --  POSSIBILITY OF SUCH DAMAGE.
 --
+
 package body Pin_Config.Driver is
    --
    --  Matrix to keep track of what pins are currently in use. If a pin is not
    --  in use (Set_Pin_Function has not been called for it), its entry is
    --  null.
    --
-   Pins_In_Use_Map : array (Pin_Port_Type, PORT.Pin_Index_Type) of
-     access constant Pin_Info_Type := (others => (others => null));
+   Pins_In_Use_Map : array (Pin_Port_Type, PORT.Pin_Index_Type) of Boolean :=
+     (others => (others => False));
 
-   --
-   --  Subprogram Set_Pin_function
-   --
-   procedure Set_Pin_Function (Pin_Info_Ptr : access constant Pin_Info_Type;
+   ----------------------
+   -- Set_Pin_function --
+   ----------------------
+
+   procedure Set_Pin_Function (Pin_Info : Pin_Info_Type;
                                Drive_Strength_Enable : Boolean;
                                Pullup_Resistor : Boolean) is
-      Pins_In_Use_Entry : access constant Pin_Info_Type renames
-        Pins_In_Use_Map (Pin_Info_Ptr.Pin_Port, Pin_Info_Ptr.Pin_Index);
+      Pins_In_Use_Entry : Boolean renames
+        Pins_In_Use_Map (Pin_Info.Pin_Port, Pin_Info.Pin_Index);
 
       Port_Registers : access PORT.Registers_Type renames
-        Ports (Pin_Info_Ptr.Pin_Port);
+        Ports (Pin_Info.Pin_Port);
+      PCR_Value : PORT.PCR_Type;
    begin
-      if Pins_In_Use_Entry /= null then
-         --  CAPTURE_ERROR("Pin already allocated", Pin_Info.Pin_port,
-         --                Pin_Info.Pin_index);
-         raise Program_Error;
-      end if;
-
-      Port_Registers.all.PCR (Pin_Info_Ptr.Pin_Index) :=
-        (MUX => Pin_Function_Type'Pos (Pin_Info_Ptr.Pin_Function),
+      pragma Assert (not Pins_In_Use_Entry);
+      PCR_Value :=
+        (MUX => Pin_Function_Type'Pos (Pin_Info.Pin_Function),
          DSE => Boolean'Pos (Drive_Strength_Enable),
          PS | PE => Boolean'Pos (Pullup_Resistor),
          IRQC => 0,
          others => 0);
 
-      Pins_In_Use_Entry := Pin_Info_Ptr;
+      Port_Registers.all.PCR (Pin_Info.Pin_Index) := PCR_Value;
+      Pins_In_Use_Entry := True;
    end Set_Pin_Function;
+
+   --------------------
+   -- Enable_Pin_Irq --
+   --------------------
+
+   procedure Enable_Pin_Irq(Pin_Info : Pin_Info_Type;
+                            Pin_Irq_Mode : Pin_Irq_Mode_Type) is
+      Port_Registers : access PORT.Registers_Type renames
+        Ports (Pin_Info.Pin_Port);
+      PCR_Value : PORT.PCR_Type;
+   begin
+      PCR_Value := Port_Registers.all.PCR (Pin_Info.Pin_Index);
+      PCR_Value.IRQC := Pin_Irq_Mode'Enum_Rep;
+      Port_Registers.all.PCR (Pin_Info.Pin_Index) := PCR_Value;
+   end Enable_Pin_Irq;
+
+   --------------------
+   -- Disable_Pin_Irq --
+   --------------------
+
+   procedure Disable_Pin_Irq(Pin_Info : Pin_Info_Type) is
+      Port_Registers : access PORT.Registers_Type renames
+        Ports (Pin_Info.Pin_Port);
+      PCR_Value : PORT.PCR_Type;
+   begin
+      PCR_Value := Port_Registers.all.PCR (Pin_Info.Pin_Index);
+      PCR_Value.IRQC := Pin_Irq_None'Enum_Rep;
+      Port_Registers.all.PCR (Pin_Info.Pin_Index) := PCR_Value;
+   end Disable_Pin_Irq;
+
+   -------------------
+   -- Clear_Pin_Irq --
+   -------------------
+
+   procedure Clear_Pin_Irq(Pin_Info : Pin_Info_Type) is
+      Port_Registers : access PORT.Registers_Type renames
+        Ports (Pin_Info.Pin_Port);
+      ISFR_Value : PORT.Pin_Array_Type := (others => 0);
+   begin
+
+      ISFR_Value (Pin_Info.Pin_Index) := 1;
+      Port_Registers.all.ISFR := ISFR_Value;
+   end Clear_Pin_Irq;
 
 end Pin_Config.Driver;

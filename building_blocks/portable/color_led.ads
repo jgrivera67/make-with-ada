@@ -24,42 +24,59 @@
 --  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 --  POSSIBILITY OF SUCH DAMAGE.
 --
-with Kinetis_K64F.PORT;
-use Kinetis_K64F;
 
-package Pin_Config is
+private with Gpio_Ports.Driver;
+
+--
+--  @summary Multi-color LED services
+--
+package Color_Led is
    pragma Preelaborate;
 
-   --
-   --  Pin port names
-   --
-   type Pin_Port_Type is (PIN_PORT_A,
-                          PIN_PORT_B,
-                          PIN_PORT_C,
-                          PIN_PORT_D,
-                          PIN_PORT_E);
+   type Led_Color_Type is (Black,
+                           Red,
+                           Green,
+                           Yellow,
+                           Blue,
+                           Magenta,
+                           Cyan,
+                           White);
 
-   function Initialized return Boolean;
+   function Initialized return Boolean with Inline;
    -- @private (Used only in contracts)
 
-   procedure Initialize
-     with Pre => not Initialized;
+   procedure Initialize with Pre => not Initialized;
    --
-   -- Initialize the Pin configurator specific for an MCU
+   --  Initializes the multi-color LED peripheral
    --
+
+   function Set_Color (New_Color : Led_Color_Type) return Led_Color_Type
+     with Pre => Initialized;
+   --
+   --  Set the current color of the multi-color LED
+   --
+   --  @param New_Color new color to be set on the LED
+   --
+   --  @return previous color the LED had
+   --
+
+   procedure Toggle_Color (Color : Led_Color_Type)
+     with Pre => Initialized and then
+                 Color /= Black;
+   --
+   --  Toggle the given color. If the current LED color is 'Color',
+   --
+
 
 private
-   --
-   -- Table of pointers to the PORT registers for each GPIO port
-   --
-   Ports : constant array (Pin_Port_Type) of access PORT.Registers_Type :=
-     (PIN_PORT_A => PORT.PORTA_Registers'Access,
-      PIN_PORT_B => PORT.PORTB_Registers'Access,
-      PIN_PORT_C => PORT.PORTC_Registers'Access,
-      PIN_PORT_D => PORT.PORTD_Registers'Access,
-      PIN_PORT_E => PORT.PORTE_Registers'Access);
+   use Gpio_Ports.Driver;
 
-   Pin_Config_Initialized : Boolean := False;
+   type Rgb_Led_Type is record
+      Red_Pin : Gpio_Pin_Type;
+      Green_Pin : Gpio_Pin_Type;
+      Blue_Pin : Gpio_Pin_Type;
+      Current_Color : Led_Color_Type;
+      Initialized : Boolean;
+   end record;
 
-   function Initialized return Boolean is (Pin_Config_Initialized);
-end Pin_Config;
+end Color_Led;

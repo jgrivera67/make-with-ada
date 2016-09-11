@@ -43,8 +43,7 @@ package Runtime_Logs is
 
    subtype Max_Screen_Lines_Type is Positive range 1 .. 100;
 
-   function Initialized return Boolean
-     with Inline;
+   function Initialized return Boolean;
    -- @private (Used only in contracts)
 
    procedure Initialize
@@ -54,8 +53,10 @@ package Runtime_Logs is
                           Code_Address : Address := Null_Address)
      with Pre => Initialized;
 
+   function Generate_Unique_Error_Code return Address;
+
    procedure Error_Print (Msg : String;
-                          Code_Address : Address)
+                          Code_Address : Address := Generate_Unique_Error_Code)
      with Pre => Initialized;
 
    procedure Info_Print (Msg : String)
@@ -106,5 +107,9 @@ private
        (Debug_Log => Protected_Debug_Log_Var'Access,
         Error_Log => Protected_Error_Log_Var'Access,
         Info_Log => Protected_Info_Log_Var'Access);
+
+   Runtime_Logs_Initialized : Boolean := False;
+
+   function Initialized return Boolean is (Runtime_Logs_Initialized);
 
 end Runtime_Logs;

@@ -24,42 +24,32 @@
 --  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 --  POSSIBILITY OF SUCH DAMAGE.
 --
-with Kinetis_K64F.PORT;
-use Kinetis_K64F;
 
-package Pin_Config is
-   pragma Preelaborate;
+with Kinetis_K64F.SIM;
 
-   --
-   --  Pin port names
-   --
-   type Pin_Port_Type is (PIN_PORT_A,
-                          PIN_PORT_B,
-                          PIN_PORT_C,
-                          PIN_PORT_D,
-                          PIN_PORT_E);
+package body Pin_Config is
 
-   function Initialized return Boolean;
-   -- @private (Used only in contracts)
+   ----------------
+   -- Initialize --
+   ----------------
 
-   procedure Initialize
-     with Pre => not Initialized;
-   --
-   -- Initialize the Pin configurator specific for an MCU
-   --
+   procedure Initialize is
+      SCGC5_Value : SIM.SCGC5_Type;
+   begin
+      --
+      --  Enable all of the GPIO port clocks:
+      --
+      --  NOTE: Clocks of GPIO ports need to be enabled to configure pin muxing.
+      --
+      SCGC5_Value := SIM.Registers.SCGC5;
+      SCGC5_Value.PORTA := 1;
+      SCGC5_Value.PORTB := 1;
+      SCGC5_Value.PORTC := 1;
+      SCGC5_Value.PORTD := 1;
+      SCGC5_Value.PORTE := 1;
+      SIM.Registers.SCGC5 := SCGC5_Value;
 
-private
-   --
-   -- Table of pointers to the PORT registers for each GPIO port
-   --
-   Ports : constant array (Pin_Port_Type) of access PORT.Registers_Type :=
-     (PIN_PORT_A => PORT.PORTA_Registers'Access,
-      PIN_PORT_B => PORT.PORTB_Registers'Access,
-      PIN_PORT_C => PORT.PORTC_Registers'Access,
-      PIN_PORT_D => PORT.PORTD_Registers'Access,
-      PIN_PORT_E => PORT.PORTE_Registers'Access);
+      Pin_Config_Initialized := True;
+   end Initialize;
 
-   Pin_Config_Initialized : Boolean := False;
-
-   function Initialized return Boolean is (Pin_Config_Initialized);
 end Pin_Config;

@@ -25,8 +25,11 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
+private with Generic_Ring_Buffers;
+private with Interfaces.Bit_Types;
+
 --
--- UART serial port driver
+-- @summary UART serial port driver
 --
 package Uarts.Driver is
    subtype Baud_Rate_Type is Positive range 110 .. 921600;
@@ -95,5 +98,40 @@ package Uarts.Driver is
    --
    -- @return ASCII code of received character
    --
+
+private
+   use Interfaces.Bit_Types;
+
+   --
+   --  Size of a UART's ring buffer in bytes
+   --
+   Receive_Queue_Size : constant Natural := 16;
+
+   --
+   --  Ring buffer of bytes
+   --
+   package Byte_Ring_Buffers is
+     new Generic_Ring_Buffers (Max_Num_Elements => Receive_Queue_Size,
+                               Element_Type => Byte);
+
+   --
+   --  State variables of a UART device object
+   --
+   type Uart_Device_Var_Type is limited record
+      Initialized : Boolean := False;
+      Received_Bytes_Dropped : Natural := 0;
+      Errors : Natural := 0;
+      Receive_Queue : Byte_Ring_Buffers.Ring_Buffer_Type;
+   end record;
+
+   --
+   --  Array of UART state records, one for each UART.
+   --
+   Uart_Devices_Var :
+     array (Uart_Device_Id_Type) of aliased Uart_Device_Var_Type;
+
+   function Initialized (Uart_Device_Id : Uart_Device_Id_Type)
+                            return Boolean is
+     (Uart_Devices_Var (Uart_Device_Id).Initialized);
 
 end Uarts.Driver;

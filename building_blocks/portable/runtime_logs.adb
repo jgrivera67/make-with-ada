@@ -31,6 +31,7 @@ with Ada.Task_Identification;
 with System.Storage_Elements; use System.Storage_Elements;
 with Reset_Counter;
 with Stack_Trace_Capture;
+with Microcontroller.Arm_Cortex_M;
 
 package body Runtime_Logs is
    --
@@ -38,12 +39,6 @@ package body Runtime_Logs is
    --  a runtime log entry.
    --
    Max_Stack_Trace_Entries : constant positive := 8;
-
-   Runtime_Logs_Initialized : Boolean := False;
-
-   -- ** --
-
-   function Initialized return Boolean is (Runtime_Logs_Initialized);
 
    -- ** --
 
@@ -80,7 +75,19 @@ package body Runtime_Logs is
 
    -- ** --
 
-   procedure Error_Print (Msg : String; Code_Address : Address) is
+   function Generate_Unique_Error_Code return Address is
+      --
+      -- NOTE : This function must not be inlined
+      --
+      use Microcontroller.Arm_Cortex_M;
+   begin
+      return Return_Address_To_Call_Address (Get_LR_Register);
+   end Generate_Unique_Error_Code;
+
+   -- ** --
+
+   procedure Error_Print (Msg : String;
+                          Code_Address : Address := Generate_Unique_Error_Code) is
    begin
       Protected_Error_Log_Var.Capture_Entry (Msg, Code_Address);
    end Error_Print;

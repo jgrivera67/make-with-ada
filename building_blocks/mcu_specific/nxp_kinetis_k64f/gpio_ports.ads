@@ -24,42 +24,26 @@
 --  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 --  POSSIBILITY OF SUCH DAMAGE.
 --
-with Kinetis_K64F.PORT;
-use Kinetis_K64F;
+private with Kinetis_K64F.GPIO;
+private with Pin_Config;
 
-package Pin_Config is
+--
+--  @summary MCU-specific GPIO declarations
+--
+package Gpio_Ports is
    pragma Preelaborate;
 
-   --
-   --  Pin port names
-   --
-   type Pin_Port_Type is (PIN_PORT_A,
-                          PIN_PORT_B,
-                          PIN_PORT_C,
-                          PIN_PORT_D,
-                          PIN_PORT_E);
-
-   function Initialized return Boolean;
-   -- @private (Used only in contracts)
-
-   procedure Initialize
-     with Pre => not Initialized;
-   --
-   -- Initialize the Pin configurator specific for an MCU
-   --
-
 private
-   --
-   -- Table of pointers to the PORT registers for each GPIO port
-   --
-   Ports : constant array (Pin_Port_Type) of access PORT.Registers_Type :=
-     (PIN_PORT_A => PORT.PORTA_Registers'Access,
-      PIN_PORT_B => PORT.PORTB_Registers'Access,
-      PIN_PORT_C => PORT.PORTC_Registers'Access,
-      PIN_PORT_D => PORT.PORTD_Registers'Access,
-      PIN_PORT_E => PORT.PORTE_Registers'Access);
+   use Kinetis_K64F;
 
-   Pin_Config_Initialized : Boolean := False;
+   --
+   -- Table of pointers to the registers for each GPIO port
+   --
+   Ports : constant array (Pin_Config.Pin_Port_Type) of access GPIO.Registers_Type :=
+     (Pin_Config.PIN_PORT_A => GPIO.PortA_Registers'Access,
+      Pin_Config.PIN_PORT_B => GPIO.PortB_Registers'Access,
+      Pin_Config.PIN_PORT_C => GPIO.PortC_Registers'Access,
+      Pin_Config.PIN_PORT_D => GPIO.PortD_Registers'Access,
+      Pin_Config.PIN_PORT_E => GPIO.PortE_Registers'Access);
 
-   function Initialized return Boolean is (Pin_Config_Initialized);
-end Pin_Config;
+end Gpio_Ports;

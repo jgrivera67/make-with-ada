@@ -100,12 +100,6 @@ package Microcontroller is
 
    -- ** --
 
-   procedure Disable_Interrupts with Inline;
-
-   procedure Data_Synchronization_Barrier with Inline;
-
-   -- ** --
-
    generic
       Mcu_Peripheral_Bridge_Min_Addr : Integer_Address;
       Mcu_Peripheral_Bridge_Max_Addr : Integer_Address;

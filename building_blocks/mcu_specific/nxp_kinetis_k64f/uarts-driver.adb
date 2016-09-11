@@ -28,8 +28,6 @@ with Kinetis_K64F.UART;
 with Kinetis_K64F.SIM;
 with Microcontroller_Clocks;
 with Pin_Config.Driver;
-with Generic_Ring_Buffers;
-with Interfaces.Bit_Types;
 with Ada.Interrupts;
 with Ada.Interrupts.Names;
 with System;
@@ -37,30 +35,7 @@ with System;
 package body Uarts.Driver is
    use Kinetis_K64F;
    use Microcontroller_Clocks;
-   use Interfaces.Bit_Types;
    use Ada.Interrupts;
-
-   --
-   --  Size of a UART's ring buffer in bytes
-   --
-   Receive_Queue_Size : constant Natural := 16;
-
-   --
-   --  Ring buffer of bytes
-   --
-   package Byte_Ring_Buffers is
-     new Generic_Ring_Buffers (Max_Num_Elements => Receive_Queue_Size,
-                               Element_Type => Byte);
-
-   --
-   --  State variables of a UART device object
-   --
-   type Uart_Device_Var_Type is limited record
-      Initialized : Boolean := False;
-      Received_Bytes_Dropped : Natural := 0;
-      Errors : Natural := 0;
-      Receive_Queue : Byte_Ring_Buffers.Ring_Buffer_Type;
-   end record;
 
    --
    --  Record type for the constant portion of a UART device object
@@ -81,12 +56,6 @@ package body Uarts.Driver is
       Rx_Pin_Pullup_Resistor_Enabled : Boolean;
       Source_Clock_Freq_In_Hz : Hertz_Type;
    end record;
-
-   --
-   --  Array of UART state records, one for each UART.
-   --
-   Uart_Devices_Var :
-     array (Uart_Device_Id_Type) of aliased Uart_Device_Var_Type;
 
    --
    --  Array of UART device objects to be placed on flash:
@@ -201,12 +170,6 @@ package body Uarts.Driver is
 
    -- ** --
 
-   function Initialized (Uart_Device_Id : Uart_Device_Id_Type)
-                         return Boolean is
-     (Uart_Devices_Var (Uart_Device_Id).Initialized);
-
-   -- ** --
-
    procedure Initialize (Uart_Device_Id : Uart_Device_Id_Type;
                          Baud_Rate : Baud_Rate_Type) is
 
@@ -299,15 +262,15 @@ package body Uarts.Driver is
                                        others => 0);
 
       --  Configure Tx pin:
-      Pin_Config.Driver.Set_Pin_Function (Uart_Device.Tx_Pin'Access,
-                                   Drive_Strength_Enable => True,
-                                   Pullup_Resistor => False);
+      Pin_Config.Driver.Set_Pin_Function (Uart_Device.Tx_Pin,
+                                          Drive_Strength_Enable => True,
+                                          Pullup_Resistor => False);
 
       --  Configure Rx pin:
-      Pin_Config.Driver.Set_Pin_Function (
-         Uart_Device.Rx_Pin'Access,
-         Drive_Strength_Enable => True,
-         Pullup_Resistor => Uart_Device.Rx_Pin_Pullup_Resistor_Enabled);
+      Pin_Config.Driver.Set_Pin_Function (Uart_Device.Rx_Pin,
+                                          Drive_Strength_Enable => True,
+                                          Pullup_Resistor =>
+                                            Uart_Device.Rx_Pin_Pullup_Resistor_Enabled);
 
       --  Configure baud rate:
       Set_Baud_Rate;

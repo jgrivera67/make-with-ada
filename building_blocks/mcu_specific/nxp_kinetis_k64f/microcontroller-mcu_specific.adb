@@ -25,10 +25,14 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with Microcontroller.CPU_Specific; use Microcontroller.CPU_Specific;
-with Kinetis_K64F.RCM; use Kinetis_K64F;
+with Microcontroller.CPU_Specific;
+with Microcontroller.Arm_Cortex_M;
+with Kinetis_K64F.RCM;
 
 package body Microcontroller.MCU_Specific is
+   use Microcontroller.CPU_Specific;
+   use Microcontroller.Arm_Cortex_M;
+   use Kinetis_K64F;
 
    ------------------
    -- System_Reset --
@@ -36,8 +40,9 @@ package body Microcontroller.MCU_Specific is
 
    procedure System_Reset is
       AIRCR_Value : AIRCR_Type;
+      Old_Primask : Word;
    begin
-      Disable_Interrupts;
+      Old_Primask := Disable_Interrupts;
       Data_Synchronization_Barrier;
       AIRCR_Value := SCB.AIRCR;
       AIRCR_Value := (VECTKEY => 16#5FA#,

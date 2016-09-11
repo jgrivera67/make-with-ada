@@ -40,6 +40,17 @@ package Pin_Config is
                           PIN_PORT_D,
                           PIN_PORT_E);
 
+   function Initialized return Boolean;
+   -- @private (Used only in contracts)
+
+   procedure Initialize
+     with Pre => not Initialized;
+   --
+   -- Initialize the Pin configurator specific for an MCU
+   --
+
+private
+
    --
    -- Table of pointers to the PORT registers for each GPIO port
    --
@@ -50,4 +61,7 @@ package Pin_Config is
       PIN_PORT_D => PORT.PortD_Registers'Access,
       PIN_PORT_E => PORT.PortE_Registers'Access);
 
+   Pin_Config_Initialized : Boolean := False;
+
+   function Initialized return Boolean is (Pin_Config_Initialized);
 end Pin_Config;

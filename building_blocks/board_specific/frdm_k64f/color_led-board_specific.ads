@@ -25,14 +25,34 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with  Microcontroller.Arm_Cortex_M;
+with Pin_Config.Driver;
 
-package body Microcontroller is
+--
+--  @summary Board-specific Multi-color LED declarations
+--
+private package Color_Led.Board_Specific is
+   pragma Preelaborate;
 
-   procedure Disable_Interrupts renames
-     Microcontroller.Arm_Cortex_M.Disable_Interrupts;
+   Rgb_Led : Rgb_Led_Type :=
+     (Red_Pin => (Pin_Info =>
+                      (Pin_Port => Pin_Config.PIN_PORT_B,
+                       Pin_Index => 22,
+                       Pin_Function => Pin_Config.Driver.PIN_FUNCTION_ALT1),
+                  Is_Active_High => False),
 
-   procedure Data_Synchronization_Barrier renames
-     Microcontroller.Arm_Cortex_M.Data_Synchronization_Barrier;
+      Green_Pin => (Pin_Info =>
+                        (Pin_Port => Pin_Config.PIN_PORT_E,
+                         Pin_Index => 26,
+                         Pin_Function => Pin_Config.Driver.PIN_FUNCTION_ALT1),
+                    Is_Active_High => False),
 
-end Microcontroller;
+      Blue_Pin => (Pin_Info =>
+                       (Pin_Port => Pin_Config.PIN_PORT_B,
+                        Pin_Index => 21,
+                        Pin_Function => Pin_Config.Driver.PIN_FUNCTION_ALT1),
+                   Is_Active_High => False),
+
+      Current_Color => Black,
+      Initialized => False);
+
+end Color_Led.Board_Specific;

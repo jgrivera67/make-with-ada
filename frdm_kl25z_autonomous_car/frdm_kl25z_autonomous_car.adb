@@ -30,6 +30,8 @@ with Interfaces;
 with Runtime_Logs;
 with Reset_Counter;
 with Microcontroller.MCU_Specific;
+with Pin_Config;
+with Color_Led;
 with Serial_Console;
 with Command_Parser;
 --with Car_Controller;
@@ -65,9 +67,15 @@ procedure Frdm_Kl25z_Autonomous_Car is
 
 begin -- Frdm_Kl25z_Autonomous_Car
    Last_Chance_Handler.Set_Last_Chance_Disposition (Last_Chance_Handler.System_Reset);
+
    Runtime_Logs.Initialize;
    Log_Start_Info;
+
+   --  Initialize devices used:
+   Pin_Config.Initialize;
+   Color_Led.Initialize;
    Serial_Console.Initialize;
+
    Print_Greeting;
    Command_Parser.Initialize;
    --Car_Controller.Initialize;

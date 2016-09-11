@@ -24,42 +24,43 @@
 --  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 --  POSSIBILITY OF SUCH DAMAGE.
 --
-with Kinetis_K64F.PORT;
-use Kinetis_K64F;
 
-package Pin_Config is
+with Pin_Config.Driver;
+
+--
+--  @summary MCU-independent GPIO services
+--
+package Gpio_Ports.Driver is
    pragma Preelaborate;
 
-   --
-   --  Pin port names
-   --
-   type Pin_Port_Type is (PIN_PORT_A,
-                          PIN_PORT_B,
-                          PIN_PORT_C,
-                          PIN_PORT_D,
-                          PIN_PORT_E);
+   use Pin_Config.Driver;
 
-   function Initialized return Boolean;
-   -- @private (Used only in contracts)
-
-   procedure Initialize
-     with Pre => not Initialized;
    --
-   -- Initialize the Pin configurator specific for an MCU
+   --  GPIO pin configuration parameters
    --
+   type Gpio_Pin_Type is record
+      Pin_Info : Pin_Info_Type;
+      Is_Active_High : Boolean;
+   end record;
 
-private
-   --
-   -- Table of pointers to the PORT registers for each GPIO port
-   --
-   Ports : constant array (Pin_Port_Type) of access PORT.Registers_Type :=
-     (PIN_PORT_A => PORT.PORTA_Registers'Access,
-      PIN_PORT_B => PORT.PORTB_Registers'Access,
-      PIN_PORT_C => PORT.PORTC_Registers'Access,
-      PIN_PORT_D => PORT.PORTD_Registers'Access,
-      PIN_PORT_E => PORT.PORTE_Registers'Access);
+   procedure Configure_Pin(Gpio_Pin : Gpio_Pin_Type;
+                           Drive_Strength_Enable : Boolean;
+                           Pullup_Resistor : Boolean;
+                           Is_Output_Pin : Boolean);
 
-   Pin_Config_Initialized : Boolean := False;
+   procedure Activate_Output_Pin(Gpio_Pin : Gpio_Pin_Type);
 
-   function Initialized return Boolean is (Pin_Config_Initialized);
-end Pin_Config;
+   procedure Deactivate_Output_Pin(Gpio_Pin : Gpio_Pin_Type);
+
+   procedure Toggle_Output_Pin(Gpio_Pin : Gpio_Pin_Type);
+
+   function Read_Input_Pin(Gpio_Pin : Gpio_Pin_Type) return Boolean;
+
+   procedure Enable_Pin_Irq(Gpio_Pin : Gpio_Pin_Type;
+                            Pin_Irq_Mode : Pin_Irq_Mode_Type);
+
+   procedure Disable_Pin_Irq(Gpio_Pin : Gpio_Pin_Type);
+
+   procedure Clear_Pin_Irq(Gpio_Pin : Gpio_Pin_Type);
+
+end Gpio_Ports.Driver;

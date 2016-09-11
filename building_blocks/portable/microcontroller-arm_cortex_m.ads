@@ -130,8 +130,11 @@ package Microcontroller.Arm_Cortex_M is
 
    -- ** --
 
-   procedure Disable_Interrupts;
-   -- Disable interrupts in the CPU
+   function Disable_Interrupts return Word;
+   -- Disable interrupts in the CPU and retrun the previous value of the Primask register
+
+   procedure Restore_Interrupts (Old_Primask : Word);
+   -- Restore interrupts enable state from Old_Primask
 
    procedure Data_Synchronization_Barrier;
    -- Data memory barrier

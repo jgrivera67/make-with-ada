@@ -32,10 +32,31 @@ package body Microcontroller.Arm_Cortex_M is
    -- Disable_Interrupts --
    ------------------------
 
-   procedure Disable_Interrupts is
+   function Disable_Interrupts return Word is
+      Reg_Value : Word;
    begin
-      Asm ("cpsid i", Volatile => True);
+      Asm ("mrs %0, primask" & ASCII.LF &
+           "cpsid i" & ASCII.LF &
+           "isb" & ASCII.LF,
+           Outputs => Word'Asm_Output ("=r", Reg_Value),
+           Volatile => True, Clobber => "memory");
+
+      return Reg_Value;
    end Disable_Interrupts;
+
+   ------------------------
+   -- Restore_Interrupts --
+   ------------------------
+
+   procedure Restore_Interrupts (Old_Primask : Word) is
+   begin
+      if (Old_Primask and 16#1#) = 0 then
+         Asm ("isb" & ASCII.LF &
+              "cpsie i" & ASCII.LF,
+              Volatile => True, Clobber => "memory");
+      end if;
+   end Restore_Interrupts;
+
 
    ----------------------------------
    -- Data_Synchronization_Barrier --
