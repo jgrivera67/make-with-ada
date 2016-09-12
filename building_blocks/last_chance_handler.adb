@@ -59,15 +59,15 @@ package body Last_Chance_Handler is
 
       if Line /= 0 then
          Runtime_Logs.Error_Print ("Exception: '" & Msg_Text (1 .. Msg_Length) &
-                                   "' at line " & Line'Image, Caller);
-         Ada.Text_IO.Put_Line (ASCII.LF &
-                               "*** Exception: '" & Msg_Text (1 .. Msg_Length) &
+                                     "' at line " & Line'Image, Caller);
+         Ada.Text_IO.New_Line;
+         Ada.Text_IO.Put_Line ("*** Exception: '" & Msg_Text (1 .. Msg_Length) &
                                "' at line " & Line'Image);
       else
          Runtime_Logs.Error_Print ("Exception: '" & Msg_Text (1 .. Msg_Length) &
-                                   "'", Caller);
-         Ada.Text_IO.Put_Line (ASCII.LF &
-                               "*** Exception: '" & Msg_Text (1 .. Msg_Length) &
+                                     "'", Caller);
+         Ada.Text_IO.New_Line;
+         Ada.Text_IO.Put_Line ("*** Exception: '" & Msg_Text (1 .. Msg_Length) &
                                "'");
       end if;
 
