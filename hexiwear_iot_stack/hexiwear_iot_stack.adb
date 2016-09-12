@@ -66,7 +66,7 @@ procedure Hexiwear_Iot_Stack is
    end Print_Greeting;
 
 begin -- Hexiwear_Iot_Stack
-   Last_Chance_Handler.Set_Last_Chance_Disposition (Last_Chance_Handler.System_Reset);
+   Last_Chance_Handler.Set_Last_Chance_Disposition (Last_Chance_Handler.Dummy_Infinite_Loop);
 
    Runtime_Logs.Initialize;
    Log_Start_Info;

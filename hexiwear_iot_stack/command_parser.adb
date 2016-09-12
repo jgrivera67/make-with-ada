@@ -192,6 +192,8 @@ package body Command_Parser is
             Cmd_Save_Config_Params;
          elsif Command = "reset" then
             Command_Parser_Common.Cmd_Reset;
+         elsif Command = "test" then
+            Cmd_Test;
          else
             Serial_Console.Print_String (
                "Command '" & Command & "' is not recognized" & ASCII.LF);
