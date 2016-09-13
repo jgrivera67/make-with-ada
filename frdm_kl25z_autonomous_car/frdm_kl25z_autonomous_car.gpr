@@ -10,7 +10,8 @@ project frdm_kl25z_autonomous_car is
                         "../building_blocks/board_specific/frdm_kl25z",
                         "../drivers",
                         "../drivers/mcu_specific/nxp_kinetis_kl25z",
-                        "../drivers/board_specific/frdm_kl25z");
+                        "../drivers/board_specific/frdm_kl25z",
+                        "../SVD/nxp_kinetis_kl25z");
 
    for Object_Dir use "obj";
 

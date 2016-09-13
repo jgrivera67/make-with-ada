@@ -25,8 +25,10 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
+private with Kinetis_KL25Z.UART;
+
 --
--- UART platform-dependent declarations
+-- @summary UART platform-dependent declarations
 --
 package Uarts is
    --
@@ -36,5 +38,8 @@ package Uarts is
      (UART0,
       UART1,
       UART2);
+
+private
+   package UART renames Kinetis_KL25Z.UART;
 
 end Uarts;

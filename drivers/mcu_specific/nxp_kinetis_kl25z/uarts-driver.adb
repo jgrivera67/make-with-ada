@@ -24,86 +24,17 @@
 --  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 --  POSSIBILITY OF SUCH DAMAGE.
 --
-with Kinetis_KL25Z.UART;
+
 with Kinetis_KL25Z.SIM;
-with Microcontroller_Clocks;
-with Pin_Config.Driver;
 with Ada.Interrupts;
 with Ada.Interrupts.Names;
 with System;
+with Uarts.Driver.Board_Specific_Private;
 
 package body Uarts.Driver is
    use Kinetis_KL25Z;
-   use Microcontroller_Clocks;
    use Ada.Interrupts;
-
-   --
-   --  Record type for the constant portion of a UART device object
-   --
-   --  @field Registers_Ptr Pointer to the UART I/O registers
-   --  @field Tx_Pin        MCU pin used as the Tx pin
-   --  @field Rx_Pin        MCU pin used as the Rx pin
-   --  @field Rx_Pin_Pullup_Resistor_Enabled
-   --                       Flag indicating if pullup resistor is to be enabled
-   --                       for the Rx pin
-   --  @field Source_Clock_Freq_In_Hz
-   --                       UART module source clock frequency
-   --
-   type Uart_Device_Const_Type is limited record
-      Registers_Ptr : access UART.Registers_Type;
-      Tx_Pin : aliased Pin_Config.Driver.Pin_Info_Type;
-      Rx_Pin : aliased Pin_Config.Driver.Pin_Info_Type;
-      Rx_Pin_Pullup_Resistor_Enabled : Boolean;
-      Source_Clock_Freq_In_Hz : Hertz_Type;
-   end record;
-
-   --
-   --  Array of UART device objects to be placed on flash:
-   --
-   Uart_Devices :
-      constant array (Uart_Device_Id_Type) of Uart_Device_Const_Type :=
-        (UART0 =>
-           (Registers_Ptr => UART.Uart0_Registers'Access,
-            Tx_Pin =>
-              (Pin_Port => Pin_Config.PIN_PORT_A,
-               Pin_Index => 1,
-               Pin_Function => Pin_Config.Driver.PIN_FUNCTION_ALT2),
-            Rx_Pin =>
-              (Pin_Port => Pin_Config.PIN_PORT_A,
-               Pin_Index => 2,
-               Pin_Function => Pin_Config.Driver.PIN_FUNCTION_ALT2),
-            Rx_Pin_Pullup_Resistor_Enabled => False,
-            Source_Clock_Freq_In_Hz => Bus_Clock_Frequency --  see table 5-2
-           ),
-
-         UART1 =>
-           (Registers_Ptr => UART.Uart1_Registers'Access,
-            Tx_Pin =>
-              (Pin_Port => Pin_Config.PIN_PORT_C,
-               Pin_Index => 4,
-               Pin_Function => Pin_Config.Driver.PIN_FUNCTION_ALT3),
-            Rx_Pin =>
-              (Pin_Port => Pin_Config.PIN_PORT_C,
-               Pin_Index => 3,
-               Pin_Function => Pin_Config.Driver.PIN_FUNCTION_ALT3),
-            Rx_Pin_Pullup_Resistor_Enabled => False,
-            Source_Clock_Freq_In_Hz => Bus_Clock_Frequency --  see table 5-2
-           ),
-
-         UART2 =>
-           (Registers_Ptr => UART.Uart2_Registers'Access,
-            Tx_Pin =>
-              (Pin_Port => Pin_Config.PIN_PORT_D,
-               Pin_Index => 3,
-               Pin_Function => Pin_Config.Driver.PIN_FUNCTION_ALT3),
-            Rx_Pin =>
-              (Pin_Port => Pin_Config.PIN_PORT_D,
-               Pin_Index => 2,
-               Pin_Function => Pin_Config.Driver.PIN_FUNCTION_ALT3),
-            Rx_Pin_Pullup_Resistor_Enabled => False,
-            Source_Clock_Freq_In_Hz => Bus_Clock_Frequency --  see table 5-2
-           )
-        );
+   use Uarts.Driver.Board_Specific_Private;
 
    --
    --  Protected object to define Interrupt handlers for all UARTs

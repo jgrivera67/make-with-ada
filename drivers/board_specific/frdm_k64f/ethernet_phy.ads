@@ -25,24 +25,15 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-private with Kinetis_K64F.UART;
-
 --
--- UART MCU-specific declarations
+--  @summary Ethernet PHY driver
 --
-package Uarts is
+package Ethernet_Phy is
    --
-   -- IDs of UART instances
+   -- IDs of Ethernet PHYs
    --
    type Uart_Device_Id_Type is
-     (UART0,
-      UART1,
-      UART2,
-      UART3,
-      UART4,
-      UART5);
+     (Ethernet_Phy0);
 
-private
-   package UART renames Kinetis_K64F.UART;
+end Ethernet_Phy;
 
-end Uarts;

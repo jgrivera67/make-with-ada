@@ -66,7 +66,7 @@ procedure Frdm_Kl25z_Autonomous_Car is
    end Print_Greeting;
 
 begin -- Frdm_Kl25z_Autonomous_Car
-   Last_Chance_Handler.Set_Last_Chance_Disposition (Last_Chance_Handler.System_Reset);
+   Last_Chance_Handler.Set_Last_Chance_Disposition (Last_Chance_Handler.Dummy_Infinite_Loop);
 
    Runtime_Logs.Initialize;
    Log_Start_Info;

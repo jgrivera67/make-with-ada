@@ -27,6 +27,8 @@
 
 private with Generic_Ring_Buffers;
 private with Interfaces.Bit_Types;
+private with Pin_Config.Driver;
+private with Microcontroller_Clocks;
 
 --
 -- @summary UART serial port driver
@@ -101,6 +103,7 @@ package Uarts.Driver is
 
 private
    use Interfaces.Bit_Types;
+   use Microcontroller_Clocks;
 
    --
    --  Size of a UART's ring buffer in bytes
@@ -113,6 +116,26 @@ private
    package Byte_Ring_Buffers is
      new Generic_Ring_Buffers (Max_Num_Elements => Receive_Queue_Size,
                                Element_Type => Byte);
+
+   --
+   --  Record type for the constant portion of a UART device object
+   --
+   --  @field Registers_Ptr Pointer to the UART I/O registers
+   --  @field Tx_Pin        MCU pin used as the Tx pin
+   --  @field Rx_Pin        MCU pin used as the Rx pin
+   --  @field Rx_Pin_Pullup_Resistor_Enabled
+   --                       Flag indicating if pullup resistor is to be enabled
+   --                       for the Rx pin
+   --  @field Source_Clock_Freq_In_Hz
+   --                       UART module source clock frequency
+   --
+   type Uart_Device_Const_Type is limited record
+      Registers_Ptr : access UART.Registers_Type;
+      Tx_Pin : aliased Pin_Config.Driver.Pin_Info_Type;
+      Rx_Pin : aliased Pin_Config.Driver.Pin_Info_Type;
+      Rx_Pin_Pullup_Resistor_Enabled : Boolean;
+      Source_Clock_Freq_In_Hz : Hertz_Type;
+   end record;
 
    --
    --  State variables of a UART device object
