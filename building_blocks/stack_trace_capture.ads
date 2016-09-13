@@ -25,11 +25,11 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
+with System; use System;
+
 --
 --  @summary Stack trace capture service
 --
-with System; use System;
-
 package Stack_Trace_Capture is
 
    type Stack_Trace_Type is array (Positive range <>) of Address;

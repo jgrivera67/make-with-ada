@@ -67,7 +67,6 @@ package Color_Led is
    --  Toggle the given color. If the current LED color is 'Color',
    --
 
-
 private
    use Gpio_Ports.Driver;
 
