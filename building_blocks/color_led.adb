@@ -25,10 +25,10 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with Color_Led.Board_Specific;
+with Color_Led.Board_Specific_Private;
 
 package body Color_Led is
-   use Color_Led.Board_Specific;
+   use Color_Led.Board_Specific_Private;
 
    type Rgb_Color_Type is record
       Red : Boolean;

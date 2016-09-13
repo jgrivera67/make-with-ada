@@ -30,7 +30,7 @@ with Pin_Config.Driver;
 --
 --  @summary Board-specific Multi-color LED declarations
 --
-private package Color_Led.Board_Specific is
+private package Color_Led.Board_Specific_Private is
    pragma Preelaborate;
 
    Rgb_Led : Rgb_Led_Type :=
@@ -55,4 +55,4 @@ private package Color_Led.Board_Specific is
       Current_Color => Black,
       Initialized => False);
 
-end Color_Led.Board_Specific;
+end Color_Led.Board_Specific_Private;

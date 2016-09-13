@@ -30,29 +30,29 @@ with Pin_Config.Driver;
 --
 --  @summary Board-specific Multi-color LED declarations
 --
-private package Color_Led.Board_Specific is
+private package Color_Led.Board_Specific_Private is
    pragma Preelaborate;
 
    Rgb_Led : Rgb_Led_Type :=
      (Red_Pin => (Pin_Info =>
-                      (Pin_Port => Pin_Config.PIN_PORT_B,
-                       Pin_Index => 22,
+                      (Pin_Port => Pin_Config.PIN_PORT_C,
+                       Pin_Index => 8,
                        Pin_Function => Pin_Config.Driver.PIN_FUNCTION_ALT1),
                   Is_Active_High => False),
 
       Green_Pin => (Pin_Info =>
-                        (Pin_Port => Pin_Config.PIN_PORT_E,
-                         Pin_Index => 26,
+                        (Pin_Port => Pin_Config.PIN_PORT_D,
+                         Pin_Index => 0,
                          Pin_Function => Pin_Config.Driver.PIN_FUNCTION_ALT1),
                     Is_Active_High => False),
 
       Blue_Pin => (Pin_Info =>
-                       (Pin_Port => Pin_Config.PIN_PORT_B,
-                        Pin_Index => 21,
+                       (Pin_Port => Pin_Config.PIN_PORT_C,
+                        Pin_Index => 9,
                         Pin_Function => Pin_Config.Driver.PIN_FUNCTION_ALT1),
                    Is_Active_High => False),
 
       Current_Color => Black,
       Initialized => False);
 
-end Color_Led.Board_Specific;
+end Color_Led.Board_Specific_Private;
