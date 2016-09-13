@@ -120,9 +120,9 @@ package Serial_Console is
                  Top_line <= Bottom_Line;
    --
    --  Erase a range of lines
-   --  @param Top_Line: First line of the range
-   --  @param Bottom_Line: last line of the range
-   --  @param Preserve_Cursor: flag to indicate if cursor need to be
+   --  @param Top_Line First line of the range
+   --  @param Bottom_Line last line of the range
+   --  @param Preserve_Cursor flag to indicate if cursor need to be
    --  saved/restored
    --
 

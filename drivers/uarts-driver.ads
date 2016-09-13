@@ -51,8 +51,6 @@ package Uarts.Driver is
    -- @param Uart_Device_Id UART Id
    -- @param Baud_Rate      Baud rate
    --
-   -- @return True, if yes, False, otherwise
-   --
 
    function Can_Transmit_Char (Uart_Device_Id : Uart_Device_Id_Type)
                                return Boolean
@@ -73,8 +71,6 @@ package Uarts.Driver is
    --
    -- @param Uart_Device_Id UART Id
    -- @param Char           character ASCII code
-   -- @param Blocking       Flag indicating if call will block or not
-   --                       waiting for the character to be transmitted
    --
 
    function Can_Receive_Char
@@ -95,8 +91,6 @@ package Uarts.Driver is
    -- Receives a character on the given UART
    --
    -- @param Uart_Device_Id UART Id
-   -- @param Blocking       Flag indicating if call will block or not
-   --                       waiting for a character to be received
    --
    -- @return ASCII code of received character
    --

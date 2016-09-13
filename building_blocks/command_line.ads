@@ -37,7 +37,7 @@ package Command_Line is
 
    --
    --  Token object retruned by Get_Next_Token
-   --  @field String_Pointer Pointer to the token string
+   --  @field String_Value Token string buffer
    --  @field Length Number of characters in the token string
    --
    type Token_Type is record
