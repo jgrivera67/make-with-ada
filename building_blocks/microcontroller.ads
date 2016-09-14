@@ -25,29 +25,18 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with System; use System;
-with Interfaces; use Interfaces;
-with Interfaces.Bit_Types; use Interfaces.Bit_Types;
-with System.Storage_Elements; use System.Storage_Elements;
+with System;
+with Interfaces;
+with System.Storage_Elements;
 
 --
 -- @summary Micrcontroller operations
 --
 package Microcontroller is
    pragma Preelaborate;
-
-   type Bytes_Array is array (Positive range <>) of Byte;
-   type Words_Array is array (Positive range <>) of Word;
-
-   type Hertz_Type is range 1 .. 1_000_000_000;
-
-   subtype Two_Bits is UInt2;
-   subtype Three_Bits is UInt3;
-   subtype Four_Bits is UInt4;
-   subtype Five_Bits is UInt5;
-   subtype Six_Bits is UInt6;
-   subtype Nine_Bits is UInt9;
-   subtype Half_Word is Unsigned_16;
+   use System;
+   use Interfaces;
+   use System.Storage_Elements;
 
    --
    --  System reset causes

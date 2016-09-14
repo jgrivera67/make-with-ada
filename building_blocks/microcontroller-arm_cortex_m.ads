@@ -25,11 +25,14 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
+with Interfaces.Bit_Types;
+
 --
 -- @summary ARM Cortex-M declarations
 --
 package Microcontroller.Arm_Cortex_M is
    pragma Preelaborate;
+   use Interfaces.Bit_Types;
 
    Bl_Instruction_Size : constant := 4;
    -- Size of of the "bl" instruction in bytes for ARM thumb-2

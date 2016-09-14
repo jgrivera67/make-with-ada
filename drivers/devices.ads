@@ -24,26 +24,27 @@
 --  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 --  POSSIBILITY OF SUCH DAMAGE.
 --
-private with Kinetis_K64F.GPIO;
-private with Pin_Config;
+
+with Interfaces.Bit_Types;
 
 --
---  @summary MCU-specific GPIO declarations
+--  @summary DEclarations common to all devices
 --
-package Gpio_Ports is
+package Devices is
    pragma Preelaborate;
+   use Interfaces;
+   use Interfaces.Bit_Types;
 
-private
-   use Kinetis_K64F;
+   type Bytes_Array is array (Positive range <>) of Byte;
+   type Words_Array is array (Positive range <>) of Word;
 
-   --
-   -- Table of pointers to the registers for each GPIO port
-   --
-   Ports : constant array (Pin_Config.Pin_Port_Type) of access GPIO.Registers_Type :=
-     (Pin_Config.PIN_PORT_A => GPIO.PortA_Registers'Access,
-      Pin_Config.PIN_PORT_B => GPIO.PortB_Registers'Access,
-      Pin_Config.PIN_PORT_C => GPIO.PortC_Registers'Access,
-      Pin_Config.PIN_PORT_D => GPIO.PortD_Registers'Access,
-      Pin_Config.PIN_PORT_E => GPIO.PortE_Registers'Access);
+   subtype Two_Bits is UInt2;
+   subtype Three_Bits is UInt3;
+   subtype Four_Bits is UInt4;
+   subtype Five_Bits is UInt5;
+   subtype Six_Bits is UInt6;
+   subtype Nine_Bits is UInt9;
+   subtype Twelve_Bits is UInt12;
+   subtype Half_Word is Unsigned_16;
 
-end Gpio_Ports;
+end Devices;

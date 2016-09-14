@@ -25,15 +25,23 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
---
---  @summary Ethernet PHY driver
---
-package Ethernet_Phy is
-   --
-   -- IDs of Ethernet PHYs
-   --
-   type Uart_Device_Id_Type is
-     (Ethernet_Phy0);
+separate(Pin_Mux_Driver)
+   procedure Initialize is
+      SCGC5_Value : SIM.SCGC5_Type;
+   begin
+      --
+      --  Enable all of the GPIO port clocks:
+      --
+      --  NOTE: Clocks of GPIO ports need to be enabled to configure pin muxing.
+      --
+      SCGC5_Value := SIM.Registers.SCGC5;
+      SCGC5_Value.PORTA := 1;
+      SCGC5_Value.PORTB := 1;
+      SCGC5_Value.PORTC := 1;
+      SCGC5_Value.PORTD := 1;
+      SCGC5_Value.PORTE := 1;
+      SIM.Registers.SCGC5 := SCGC5_Value;
 
-end Ethernet_Phy;
+      Pin_Mux_Initialized := True;
+   end Initialize;
 

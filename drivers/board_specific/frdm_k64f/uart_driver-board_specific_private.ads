@@ -28,7 +28,7 @@
 --
 -- @summary Board-specific UART driver private declarations
 --
-private package Uarts.Driver.Board_Specific_Private is
+private package Uart_Driver.Board_Specific_Private is
    --
    --  Array of UART device objects to be placed on flash:
    --
@@ -36,13 +36,13 @@ private package Uarts.Driver.Board_Specific_Private is
      (UART0 =>
         (Registers_Ptr => UART.Uart0_Registers'Access,
          Tx_Pin =>
-           (Pin_Port => Pin_Config.PIN_PORT_B,
+           (Pin_Port => PIN_PORT_B,
             Pin_Index => 17,
-            Pin_Function => Pin_Config.Driver.PIN_FUNCTION_ALT3),
+            Pin_Function => PIN_FUNCTION_ALT3),
          Rx_Pin =>
-           (Pin_Port => Pin_Config.PIN_PORT_B,
+           (Pin_Port => PIN_PORT_B,
             Pin_Index => 16,
-            Pin_Function => Pin_Config.Driver.PIN_FUNCTION_ALT3),
+            Pin_Function => PIN_FUNCTION_ALT3),
          Rx_Pin_Pullup_Resistor_Enabled => False,
          Source_Clock_Freq_In_Hz => System_Clock_Frequency --  see table 5-2
         ),
@@ -50,13 +50,13 @@ private package Uarts.Driver.Board_Specific_Private is
       UART1 =>
         (Registers_Ptr => UART.Uart1_Registers'Access,
          Tx_Pin =>
-           (Pin_Port => Pin_Config.PIN_PORT_B, -- TODO: Fix this
+           (Pin_Port => PIN_PORT_B, -- TODO: Fix this
             Pin_Index => 17,                   -- TODO: Fix this
-            Pin_Function => Pin_Config.Driver.PIN_FUNCTION_ALT3),
+            Pin_Function => PIN_FUNCTION_ALT3),
          Rx_Pin =>
-           (Pin_Port => Pin_Config.PIN_PORT_B, -- TODO: Fix this
+           (Pin_Port => PIN_PORT_B, -- TODO: Fix this
             Pin_Index => 16,                   -- TODO: Fix this
-            Pin_Function => Pin_Config.Driver.PIN_FUNCTION_ALT3),
+            Pin_Function => PIN_FUNCTION_ALT3),
          Rx_Pin_Pullup_Resistor_Enabled => False,
          Source_Clock_Freq_In_Hz => System_Clock_Frequency -- TODO: Fix this
         ),
@@ -64,13 +64,13 @@ private package Uarts.Driver.Board_Specific_Private is
       UART2 =>
         (Registers_Ptr => UART.Uart2_Registers'Access,
          Tx_Pin =>
-           (Pin_Port => Pin_Config.PIN_PORT_B, -- TODO: Fix this
+           (Pin_Port => PIN_PORT_B, -- TODO: Fix this
             Pin_Index => 17,                   -- TODO: Fix this
-            Pin_Function => Pin_Config.Driver.PIN_FUNCTION_ALT3),
+            Pin_Function => PIN_FUNCTION_ALT3),
          Rx_Pin =>
-           (Pin_Port => Pin_Config.PIN_PORT_B, -- TODO: Fix this
+           (Pin_Port => PIN_PORT_B, -- TODO: Fix this
             Pin_Index => 16,                   -- TODO: Fix this
-            Pin_Function => Pin_Config.Driver.PIN_FUNCTION_ALT3),
+            Pin_Function => PIN_FUNCTION_ALT3),
          Rx_Pin_Pullup_Resistor_Enabled => False,
          Source_Clock_Freq_In_Hz => System_Clock_Frequency -- TODO: Fix this
         ),
@@ -78,13 +78,13 @@ private package Uarts.Driver.Board_Specific_Private is
       UART3 =>
         (Registers_Ptr => UART.Uart3_Registers'Access,
          Tx_Pin =>
-           (Pin_Port => Pin_Config.PIN_PORT_B, -- TODO: Fix this
+           (Pin_Port => PIN_PORT_B, -- TODO: Fix this
             Pin_Index => 17,                   -- TODO: Fix this
-            Pin_Function => Pin_Config.Driver.PIN_FUNCTION_ALT3),
+            Pin_Function => PIN_FUNCTION_ALT3),
          Rx_Pin =>
-           (Pin_Port => Pin_Config.PIN_PORT_B, -- TODO: Fix this
+           (Pin_Port => PIN_PORT_B, -- TODO: Fix this
             Pin_Index => 16,                   -- TODO: Fix this
-            Pin_Function => Pin_Config.Driver.PIN_FUNCTION_ALT3),
+            Pin_Function => PIN_FUNCTION_ALT3),
          Rx_Pin_Pullup_Resistor_Enabled => False,
          Source_Clock_Freq_In_Hz => System_Clock_Frequency -- TODO: Fix this
         ),
@@ -92,13 +92,13 @@ private package Uarts.Driver.Board_Specific_Private is
       UART4 =>
         (Registers_Ptr => UART.Uart4_Registers'Access,
          Tx_Pin =>
-           (Pin_Port => Pin_Config.PIN_PORT_C,
+           (Pin_Port => PIN_PORT_C,
             Pin_Index => 15,
-            Pin_Function => Pin_Config.Driver.PIN_FUNCTION_ALT3),
+            Pin_Function => PIN_FUNCTION_ALT3),
          Rx_Pin =>
-           (Pin_Port => Pin_Config.PIN_PORT_C,
+           (Pin_Port => PIN_PORT_C,
             Pin_Index => 14,
-            Pin_Function => Pin_Config.Driver.PIN_FUNCTION_ALT3),
+            Pin_Function => PIN_FUNCTION_ALT3),
          Rx_Pin_Pullup_Resistor_Enabled => True,
          Source_Clock_Freq_In_Hz => Bus_Clock_Frequency --  see table 5-2
         ),
@@ -106,16 +106,16 @@ private package Uarts.Driver.Board_Specific_Private is
       UART5 =>
         (Registers_Ptr => UART.Uart5_Registers'Access,
          Tx_Pin =>
-           (Pin_Port => Pin_Config.PIN_PORT_C, -- TODO: Fix this
+           (Pin_Port => PIN_PORT_C, -- TODO: Fix this
             Pin_Index => 15,                   -- TODO: Fix this
-            Pin_Function => Pin_Config.Driver.PIN_FUNCTION_ALT3),
+            Pin_Function => PIN_FUNCTION_ALT3),
          Rx_Pin =>
-           (Pin_Port => Pin_Config.PIN_PORT_C, -- TODO: Fix this
+           (Pin_Port => PIN_PORT_C, -- TODO: Fix this
             Pin_Index => 14,                   -- TODO: Fix this
-            Pin_Function => Pin_Config.Driver.PIN_FUNCTION_ALT3),
+            Pin_Function => PIN_FUNCTION_ALT3),
          Rx_Pin_Pullup_Resistor_Enabled => True,
          Source_Clock_Freq_In_Hz => Bus_Clock_Frequency -- TODO: Fix this
         )
      );
 
-end Uarts.Driver.Board_Specific_Private;
+end Uart_Driver.Board_Specific_Private;

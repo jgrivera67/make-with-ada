@@ -215,7 +215,7 @@ package body Command_Parser_Common is
       Token : Command_Line.Token_Type;
       Token_Found : Boolean;
       Color : Color_Led.Led_Color_Type;
-      Old_Color : Color_Led.Led_Color_Type;
+      Old_Color : Color_Led.Led_Color_Type with Unreferenced;
       Parsing_Ok : Boolean;
    begin
       Token_Found := Command_Line.Get_Next_Token (Token);

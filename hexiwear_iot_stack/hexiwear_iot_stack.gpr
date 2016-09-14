@@ -10,7 +10,8 @@ project hexiwear_iot_stack is
                         "../building_blocks/board_specific/hexiwear",
                         "../drivers",
                         "../drivers/mcu_specific/nxp_kinetis_k64f",
-                        "../drivers/board_specific/hexiwear");
+                        "../drivers/board_specific/hexiwear",
+                        "../SVD/nxp_kinetis_k64f");
 
    for Object_Dir use "obj";
 

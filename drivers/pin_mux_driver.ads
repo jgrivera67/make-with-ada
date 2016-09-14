@@ -25,8 +25,15 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-package Pin_Config.Driver is
+with Devices.MCU_Specific;
+
+--
+--  @summary Pin MUX driver
+--
+package Pin_Mux_Driver is
    pragma Preelaborate;
+   use Devices.MCU_Specific;
+   use Devices;
 
    --
    --  Pin functions
@@ -69,6 +76,16 @@ package Pin_Config.Driver is
       Pin_Function : Pin_Function_Type;
    end record;
 
+
+   function Initialized return Boolean;
+   -- @private (Used only in contracts)
+
+   procedure Initialize
+     with Pre => not Initialized;
+   --
+   -- Initialize the Pin Muxer hardware module
+   --
+
    procedure Set_Pin_Function (
       Pin_Info : Pin_Info_Type;
       Drive_Strength_Enable : Boolean;
@@ -96,11 +113,19 @@ package Pin_Config.Driver is
    --  Disable generation of IRQs on a given pin
    --
    --  @param Pin_Info Pin information
+   --
 
    procedure Clear_Pin_Irq(Pin_Info : Pin_Info_Type);
    --
    --  Clear outstanding IRQ on a given pin
    --
    --  @param Pin_Info Pin information
+   --
 
-end Pin_Config.Driver;
+private
+
+   Pin_Mux_Initialized : Boolean := False;
+
+   function Initialized return Boolean is (Pin_Mux_Initialized);
+
+end Pin_Mux_Driver;

@@ -24,26 +24,43 @@
 --  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 --  POSSIBILITY OF SUCH DAMAGE.
 --
-private with Kinetis_KL25Z.GPIO;
-private with Pin_Config;
 
+with Devices.MCU_Specific;
+with Pin_Mux_Driver;
 --
---  @summary MCU-specific GPIO declarations
+--  @summary GPIO driver
 --
-package Gpio_Ports is
+package Gpio_Driver is
    pragma Preelaborate;
-
-private
-   use Kinetis_KL25Z;
+   use Devices.MCU_Specific;
+   use Pin_Mux_Driver;
 
    --
-   -- Table of pointers to the registers for each GPIO port
+   --  GPIO pin configuration parameters
    --
-   Ports : constant array (Pin_Config.Pin_Port_Type) of access GPIO.Registers_Type :=
-     (Pin_Config.PIN_PORT_A => GPIO.PortA_Registers'Access,
-      Pin_Config.PIN_PORT_B => GPIO.PortB_Registers'Access,
-      Pin_Config.PIN_PORT_C => GPIO.PortC_Registers'Access,
-      Pin_Config.PIN_PORT_D => GPIO.PortD_Registers'Access,
-      Pin_Config.PIN_PORT_E => GPIO.PortE_Registers'Access);
+   type Gpio_Pin_Type is record
+      Pin_Info : Pin_Info_Type;
+      Is_Active_High : Boolean;
+   end record;
 
-end Gpio_Ports;
+   procedure Configure_Pin(Gpio_Pin : Gpio_Pin_Type;
+                           Drive_Strength_Enable : Boolean;
+                           Pullup_Resistor : Boolean;
+                           Is_Output_Pin : Boolean);
+
+   procedure Activate_Output_Pin(Gpio_Pin : Gpio_Pin_Type);
+
+   procedure Deactivate_Output_Pin(Gpio_Pin : Gpio_Pin_Type);
+
+   procedure Toggle_Output_Pin(Gpio_Pin : Gpio_Pin_Type);
+
+   function Read_Input_Pin(Gpio_Pin : Gpio_Pin_Type) return Boolean;
+
+   procedure Enable_Pin_Irq(Gpio_Pin : Gpio_Pin_Type;
+                            Pin_Irq_Mode : Pin_Irq_Mode_Type);
+
+   procedure Disable_Pin_Irq(Gpio_Pin : Gpio_Pin_Type);
+
+   procedure Clear_Pin_Irq(Gpio_Pin : Gpio_Pin_Type);
+
+end Gpio_Driver;

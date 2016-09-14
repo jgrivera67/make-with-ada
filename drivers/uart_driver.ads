@@ -25,20 +25,22 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
+with Devices.MCU_Specific;
 private with Generic_Ring_Buffers;
 private with Interfaces.Bit_Types;
-private with Pin_Config.Driver;
+private with Pin_Mux_Driver;
 private with Microcontroller_Clocks;
 
 --
 -- @summary UART serial port driver
 --
-package Uarts.Driver is
+package Uart_Driver is
+   use Devices.MCU_Specific;
+
    subtype Baud_Rate_Type is Positive range 110 .. 921600;
 
    function Initialized
-      (Uart_Device_Id : Uart_Device_Id_Type) return Boolean
-      with Inline;
+      (Uart_Device_Id : Uart_Device_Id_Type) return Boolean;
    -- @private (Used only in contracts)
 
 
@@ -98,6 +100,7 @@ package Uarts.Driver is
 private
    use Interfaces.Bit_Types;
    use Microcontroller_Clocks;
+   use Pin_Mux_Driver;
 
    --
    --  Size of a UART's ring buffer in bytes
@@ -125,8 +128,8 @@ private
    --
    type Uart_Device_Const_Type is limited record
       Registers_Ptr : access UART.Registers_Type;
-      Tx_Pin : aliased Pin_Config.Driver.Pin_Info_Type;
-      Rx_Pin : aliased Pin_Config.Driver.Pin_Info_Type;
+      Tx_Pin : aliased Pin_Info_Type;
+      Rx_Pin : aliased Pin_Info_Type;
       Rx_Pin_Pullup_Resistor_Enabled : Boolean;
       Source_Clock_Freq_In_Hz : Hertz_Type;
    end record;
@@ -142,7 +145,7 @@ private
    end record;
 
    --
-   --  Array of UART state records, one for each UART.
+   --  Array of UART device objects
    --
    Uart_Devices_Var :
      array (Uart_Device_Id_Type) of aliased Uart_Device_Var_Type;
@@ -151,4 +154,4 @@ private
                             return Boolean is
      (Uart_Devices_Var (Uart_Device_Id).Initialized);
 
-end Uarts.Driver;
+end Uart_Driver;

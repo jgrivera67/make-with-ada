@@ -24,44 +24,22 @@
 --  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 --  POSSIBILITY OF SUCH DAMAGE.
 --
+private with Devices.MCU_Specific;
 
-with Kinetis_KL25Z.PORT;
-use Kinetis_KL25Z;
-
-package Pin_Config is
+--
+--  @summary MCU-specific GPIO declarations
+--
+private package Gpio_Driver.MCU_Specific_Private is
    pragma Preelaborate;
 
    --
-   --  Pin port names
+   -- Table of pointers to the registers for each GPIO port
    --
-   type Pin_Port_Type is (PIN_PORT_A,
-                          PIN_PORT_B,
-                          PIN_PORT_C,
-                          PIN_PORT_D,
-                          PIN_PORT_E);
+   Ports : constant array (Pin_Port_Type) of access GPIO.Registers_Type :=
+     (PIN_PORT_A => GPIO.PortA_Registers'Access,
+      PIN_PORT_B => GPIO.PortB_Registers'Access,
+      PIN_PORT_C => GPIO.PortC_Registers'Access,
+      PIN_PORT_D => GPIO.PortD_Registers'Access,
+      PIN_PORT_E => GPIO.PortE_Registers'Access);
 
-   function Initialized return Boolean;
-   -- @private (Used only in contracts)
-
-   procedure Initialize
-     with Pre => not Initialized;
-   --
-   -- Initialize the Pin configurator specific for an MCU
-   --
-
-private
-
-   --
-   -- Table of pointers to the PORT registers for each GPIO port
-   --
-   Ports : constant array (Pin_Port_Type) of access PORT.Registers_Type :=
-     (PIN_PORT_A => PORT.PortA_Registers'Access,
-      PIN_PORT_B => PORT.PortB_Registers'Access,
-      PIN_PORT_C => PORT.PortC_Registers'Access,
-      PIN_PORT_D => PORT.PortD_Registers'Access,
-      PIN_PORT_E => PORT.PortE_Registers'Access);
-
-   Pin_Config_Initialized : Boolean := False;
-
-   function Initialized return Boolean is (Pin_Config_Initialized);
-end Pin_Config;
+end Gpio_Driver.MCU_Specific_Private;

@@ -25,42 +25,20 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with Pin_Config.Driver;
-
 --
---  @summary MCU-independent GPIO services
+--  @summary Pin MUX driver private declarations
 --
-package Gpio_Ports.Driver is
+private package Pin_Mux_Driver.MCU_Specific_Private is
    pragma Preelaborate;
 
-   use Pin_Config.Driver;
-
    --
-   --  GPIO pin configuration parameters
+   -- Table of pointers to the PORT registers for each GPIO port
    --
-   type Gpio_Pin_Type is record
-      Pin_Info : Pin_Info_Type;
-      Is_Active_High : Boolean;
-   end record;
+   Ports : constant array (Pin_Port_Type) of access PORT.Registers_Type :=
+     (PIN_PORT_A => PORT.PORTA_Registers'Access,
+      PIN_PORT_B => PORT.PORTB_Registers'Access,
+      PIN_PORT_C => PORT.PORTC_Registers'Access,
+      PIN_PORT_D => PORT.PORTD_Registers'Access,
+      PIN_PORT_E => PORT.PORTE_Registers'Access);
 
-   procedure Configure_Pin(Gpio_Pin : Gpio_Pin_Type;
-                           Drive_Strength_Enable : Boolean;
-                           Pullup_Resistor : Boolean;
-                           Is_Output_Pin : Boolean);
-
-   procedure Activate_Output_Pin(Gpio_Pin : Gpio_Pin_Type);
-
-   procedure Deactivate_Output_Pin(Gpio_Pin : Gpio_Pin_Type);
-
-   procedure Toggle_Output_Pin(Gpio_Pin : Gpio_Pin_Type);
-
-   function Read_Input_Pin(Gpio_Pin : Gpio_Pin_Type) return Boolean;
-
-   procedure Enable_Pin_Irq(Gpio_Pin : Gpio_Pin_Type;
-                            Pin_Irq_Mode : Pin_Irq_Mode_Type);
-
-   procedure Disable_Pin_Irq(Gpio_Pin : Gpio_Pin_Type);
-
-   procedure Clear_Pin_Irq(Gpio_Pin : Gpio_Pin_Type);
-
-end Gpio_Ports.Driver;
+end Pin_Mux_Driver.MCU_Specific_Private;

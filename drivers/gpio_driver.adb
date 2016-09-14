@@ -27,10 +27,12 @@
 
 with Interfaces.Bit_Types;
 with Microcontroller.Arm_Cortex_M;
+with Gpio_Driver.MCU_Specific_Private;
 
-package body Gpio_Ports.Driver is
+package body Gpio_Driver is
    use Interfaces.Bit_Types;
    use Microcontroller.Arm_Cortex_M;
+   use Gpio_Driver.MCU_Specific_Private;
 
    -------------------
    -- Configure_Pin --
@@ -49,8 +51,8 @@ package body Gpio_Ports.Driver is
    begin
       Old_Primask := Disable_Interrupts;
 
-      Pin_Config.Driver.Set_Pin_Function(Gpio_Pin.Pin_Info,
-                                         Drive_Strength_Enable, Pullup_Resistor);
+      Pin_Mux_Driver.Set_Pin_Function(Gpio_Pin.Pin_Info,
+                                      Drive_Strength_Enable, Pullup_Resistor);
 
       PDDR_Value := Gpio_Registers.PDDR;
       PDDR_Value (Gpio_Pin.Pin_Info.Pin_Index) := Boolean'Pos (Is_Output_Pin);
@@ -68,7 +70,7 @@ package body Gpio_Ports.Driver is
         Ports (Gpio_Pin.Pin_Info.Pin_Port);
       PDDR_Value : Pin_Array_Type;
       Pin_Array_Value : Pin_Array_Type := (others => 0);
-      Pin_Index : Pin_Config.Driver.Pin_Index_Type renames Gpio_Pin.Pin_Info.Pin_Index;
+      Pin_Index : Pin_Index_Type renames Gpio_Pin.Pin_Info.Pin_Index;
    begin
       PDDR_Value := Gpio_Registers.PDDR;
       pragma Assert (PDDR_Value (Pin_Index) /= 0);
@@ -90,7 +92,7 @@ package body Gpio_Ports.Driver is
         Ports (Gpio_Pin.Pin_Info.Pin_Port);
       PDDR_Value : Pin_Array_Type;
       Pin_Array_Value : Pin_Array_Type := (others => 0);
-      Pin_Index : Pin_Config.Driver.Pin_Index_Type renames Gpio_Pin.Pin_Info.Pin_Index;
+      Pin_Index : Pin_Index_Type renames Gpio_Pin.Pin_Info.Pin_Index;
    begin
       PDDR_Value := Gpio_Registers.PDDR;
       pragma Assert (PDDR_Value (Pin_Index) /= 0);
@@ -112,7 +114,7 @@ package body Gpio_Ports.Driver is
         Ports (Gpio_Pin.Pin_Info.Pin_Port);
       PDDR_Value : Pin_Array_Type;
       Pin_Array_Value : Pin_Array_Type := (others => 0);
-      Pin_Index : Pin_Config.Driver.Pin_Index_Type renames Gpio_Pin.Pin_Info.Pin_Index;
+      Pin_Index : Pin_Index_Type renames Gpio_Pin.Pin_Info.Pin_Index;
    begin
       PDDR_Value := Gpio_Registers.PDDR;
       pragma Assert (PDDR_Value (Pin_Index) /= 0);
@@ -128,7 +130,7 @@ package body Gpio_Ports.Driver is
    function Read_Input_Pin (Gpio_Pin : Gpio_Pin_Type) return Boolean is
       Gpio_Registers : access GPIO.Registers_Type renames
         Ports (Gpio_Pin.Pin_Info.Pin_Port);
-      Pin_Index : Pin_Config.Driver.Pin_Index_Type renames Gpio_Pin.Pin_Info.Pin_Index;
+      Pin_Index : Pin_Index_Type renames Gpio_Pin.Pin_Info.Pin_Index;
       PDIR_Value : Pin_Array_Type;
    begin
       PDIR_Value := Gpio_Registers.PDIR;
@@ -146,7 +148,7 @@ package body Gpio_Ports.Driver is
       Port_Registers : access GPIO.Registers_Type renames
         Ports (Gpio_Pin.Pin_Info.Pin_Port);
    begin
-       Pin_Config.Driver.Enable_Pin_Irq (Gpio_Pin.Pin_Info, Pin_Irq_Mode);
+       Pin_Mux_Driver.Enable_Pin_Irq (Gpio_Pin.Pin_Info, Pin_Irq_Mode);
    end Enable_Pin_Irq;
 
    ---------------------
@@ -155,7 +157,7 @@ package body Gpio_Ports.Driver is
 
    procedure Disable_Pin_Irq (Gpio_Pin : Gpio_Pin_Type) is
    begin
-      Pin_Config.Driver.Disable_Pin_Irq (Gpio_Pin.Pin_Info);
+      Pin_Mux_Driver.Disable_Pin_Irq (Gpio_Pin.Pin_Info);
    end Disable_Pin_Irq;
 
    -------------------
@@ -164,7 +166,7 @@ package body Gpio_Ports.Driver is
 
    procedure Clear_Pin_Irq (Gpio_Pin : Gpio_Pin_Type) is
    begin
-      Pin_Config.Driver.Clear_Pin_Irq (Gpio_Pin.Pin_Info);
+      Pin_Mux_Driver.Clear_Pin_Irq (Gpio_Pin.Pin_Info);
    end Clear_Pin_Irq;
 
-end Gpio_Ports.Driver;
+end Gpio_Driver;

@@ -25,24 +25,14 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-private with Kinetis_K64F.UART;
-
 --
--- UART MCU-specific declarations
+--  @summary External devices in the FRDM-K64F board
 --
-package Uarts is
+package Devices.Board_Specific is
    --
-   -- IDs of UART instances
+   -- IDs of Ethernet PHYs
    --
-   type Uart_Device_Id_Type is
-     (UART0,
-      UART1,
-      UART2,
-      UART3,
-      UART4,
-      UART5);
+   type Ethernet_Phy_Id_Type is
+     (PHY0);
 
-private
-   package UART renames Kinetis_K64F.UART;
-
-end Uarts;
+end Devices.Board_Specific;

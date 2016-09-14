@@ -25,31 +25,20 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with Kinetis_K64F.SIM;
+with Devices.MCU_Specific;
 
-package body Pin_Config is
+private package Pin_Mux_Driver.MCU_Specific_Private is
+   pragma Preelaborate;
+   use Devices.MCU_Specific;
 
-   ----------------
-   -- Initialize --
-   ----------------
+   --
+   -- Table of pointers to the PORT registers for each GPIO port
+   --
+   Ports : constant array (Pin_Port_Type) of access PORT.Registers_Type :=
+     (PIN_PORT_A => PORT.PortA_Registers'Access,
+      PIN_PORT_B => PORT.PortB_Registers'Access,
+      PIN_PORT_C => PORT.PortC_Registers'Access,
+      PIN_PORT_D => PORT.PortD_Registers'Access,
+      PIN_PORT_E => PORT.PortE_Registers'Access);
 
-   procedure Initialize is
-      SCGC5_Value : SIM.SCGC5_Type;
-   begin
-      --
-      --  Enable all of the GPIO port clocks:
-      --
-      --  NOTE: Clocks of GPIO ports need to be enabled to configure pin muxing.
-      --
-      SCGC5_Value := SIM.Registers.SCGC5;
-      SCGC5_Value.PORTA := 1;
-      SCGC5_Value.PORTB := 1;
-      SCGC5_Value.PORTC := 1;
-      SCGC5_Value.PORTD := 1;
-      SCGC5_Value.PORTE := 1;
-      SIM.Registers.SCGC5 := SCGC5_Value;
-
-      Pin_Config_Initialized := True;
-   end Initialize;
-
-end Pin_Config;
+end Pin_Mux_Driver.MCU_Specific_Private;

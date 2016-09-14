@@ -25,7 +25,11 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-package body Pin_Config.Driver is
+with Pin_Mux_Driver.MCU_Specific_Private;
+
+package body Pin_Mux_Driver is
+   use Pin_Mux_Driver.MCU_Specific_Private;
+
    --
    --  Matrix to keep track of what pins are currently in use. If a pin is not
    --  in use (Set_Pin_Function has not been called for it), its entry is
@@ -33,6 +37,13 @@ package body Pin_Config.Driver is
    --
    Pins_In_Use_Map : array (Pin_Port_Type, PORT.Pin_Index_Type) of Boolean :=
      (others => (others => False));
+
+   ----------------
+   -- Initialize --
+   ----------------
+
+   procedure Initialize is separate;
+   -- This procedure is MCU-specific
 
    ----------------------
    -- Set_Pin_function --
@@ -103,4 +114,4 @@ package body Pin_Config.Driver is
       Port_Registers.all.ISFR := ISFR_Value;
    end Clear_Pin_Irq;
 
-end Pin_Config.Driver;
+end Pin_Mux_Driver;

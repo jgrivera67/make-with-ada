@@ -25,7 +25,7 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-private with Gpio_Ports.Driver;
+private with Gpio_Driver;
 
 --
 --  @summary Multi-color LED services
@@ -68,7 +68,7 @@ package Color_Led is
    --
 
 private
-   use Gpio_Ports.Driver;
+   use Gpio_Driver;
 
    type Rgb_Led_Type is record
       Red_Pin : Gpio_Pin_Type;

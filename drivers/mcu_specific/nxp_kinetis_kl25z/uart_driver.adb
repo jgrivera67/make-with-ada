@@ -24,16 +24,15 @@
 --  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 --  POSSIBILITY OF SUCH DAMAGE.
 --
-with Kinetis_K64F.SIM;
+
 with Ada.Interrupts;
 with Ada.Interrupts.Names;
 with System;
-with Uarts.Driver.Board_Specific_Private;
+with Uart_Driver.Board_Specific_Private;
 
-package body Uarts.Driver is
-   use Kinetis_K64F;
+package body Uart_Driver is
    use Ada.Interrupts;
-   use Uarts.Driver.Board_Specific_Private;
+   use Uart_Driver.Board_Specific_Private;
 
    --
    --  Protected object to define Interrupt handlers for all UARTs
@@ -56,10 +55,17 @@ package body Uarts.Driver is
 
    Uart_Receive_Queue_Name : aliased constant String := "UART Rx queue";
 
-   -- ** --
-
+   --
+   --  Subprogram Initialize
+   --
    procedure Initialize (Uart_Device_Id : Uart_Device_Id_Type;
                          Baud_Rate : Baud_Rate_Type) is
+      --
+      --  Helper subprograms
+      --
+      procedure Enable_Clock;
+      procedure Select_Clock_Source;
+      procedure Set_Baud_Rate;
 
       Uart_Device : Uart_Device_Const_Type renames
         Uart_Devices (Uart_Device_Id);
@@ -68,56 +74,127 @@ package body Uarts.Driver is
       Uart_Registers_Ptr : access UART.Registers_Type renames
         Uart_Device.Registers_Ptr;
 
-      -- ** --
-
+      --
+      --  Subprogram Enable_Clock
+      --
       procedure Enable_Clock is
          SCGC4_Value : SIM.SCGC4_Type := SIM.Registers.SCGC4;
-         SCGC1_Value : SIM.SCGC1_Type := SIM.Registers.SCGC1;
       begin
          case Uart_Device_Id is
             when UART0 =>
                SCGC4_Value.UART0 := 1;
-               SIM.Registers.SCGC4 := SCGC4_Value;
             when UART1 =>
                SCGC4_Value.UART1 := 1;
-               SIM.Registers.SCGC4 := SCGC4_Value;
             when UART2 =>
                SCGC4_Value.UART2 := 1;
-               SIM.Registers.SCGC4 := SCGC4_Value;
-            when UART3 =>
-               SCGC4_Value.UART3 := 1;
-               SIM.Registers.SCGC4 := SCGC4_Value;
-            when UART4 =>
-               SCGC1_Value.UART4 := 1;
-               SIM.Registers.SCGC1 := SCGC1_Value;
-            when UART5 =>
-               SCGC1_Value.UART5 := 1;
-               SIM.Registers.SCGC1 := SCGC1_Value;
          end case;
 
+         SIM.Registers.SCGC4 := SCGC4_Value;
       end Enable_Clock;
 
-      -- ** --
-
-      procedure Set_Baud_Rate is
-         BDH_Value : UART.BDH_Type;
-         Clock_Freq : Hertz_Type renames
-           Uart_Device.Source_Clock_Freq_In_Hz;
-         Calculated_SBR : Positive range 1 .. 16#1FFF#;
-         Encoded_Baud_Rate : UART.Encoded_Baud_Rate_Type with
-           Address => Calculated_SBR'Address;
+      --
+      --  Subprogram Select_Clock_Source
+      --
+      procedure Select_Clock_Source is
+         SOPT2_Value : SIM.SOPT2_Type;
       begin
-         --  Calculate baud rate settings:
-         Calculated_SBR := Positive (Clock_Freq) / (Positive (Baud_Rate) * 16);
+         case Uart_Device_Id is
+            when UART0 =>
+               --
+               --  Select the clock source to be used for this UART peripheral:
+               --  01 =  MCGFLLCLK clock or MCGPLLCLK/2 clock
+               --
+               SOPT2_Value := SIM.Registers.SOPT2;
+               SOPT2_Value.UART0SRC := 1;
+               SIM.Registers.SOPT2 := SOPT2_Value;
 
-         --  Set BDH and BDL registers:
-         BDH_Value := Uart_Registers_Ptr.all.BDH;
-         BDH_Value.SBR := Encoded_Baud_Rate.High_Part;
-         Uart_Registers_Ptr.all.BDH := BDH_Value;
-         Uart_Registers_Ptr.all.BDL := Encoded_Baud_Rate.Low_Part;
+            --
+            --  TODO: Add other UARTs as needed
+            --
+            when others =>
+               raise Program_Error;
+         end case;
+      end Select_Clock_Source;
+
+      --
+      --  Subprogram Set_Baud_Rate
+      --
+      procedure Set_Baud_Rate is
+         SBR_Field_Value : Positive range 1 .. 16#1FFF#;
+         SBR_Field_Encoded : UART.Encoded_Baud_Rate_Type with
+           Address => SBR_Field_Value'Address;
+         Uart_Clock : Positive;
+         Calculated_Baud_Rate : Baud_Rate_Type;
+         Baud_Diff : Natural;
+         Baud_Diff2 : Natural;
+         OSR_Value : Natural;
+         C4_Value : UART.C4_Type;
+         C5_Value : UART.C5_Type;
+         BDH_Value : UART.BDH_Type;
+      begin
+         --
+         --  Calculate the first baud rate using the lowest OSR value possible.
+         --
+         Uart_Clock := Get_Pll_Frequency_Hz / 2;
+         SBR_Field_Value := Uart_Clock / (Positive (Baud_Rate) * 4);
+         Calculated_Baud_Rate :=
+           Baud_Rate_Type (Uart_Clock / (4 * SBR_Field_Value));
+         if Calculated_Baud_Rate > Baud_Rate then
+            Baud_Diff := Natural (Calculated_Baud_Rate - Baud_Rate);
+         else
+            Baud_Diff := Natural (Baud_Rate - Calculated_Baud_Rate);
+         end if;
+
+         OSR_Value := 4;
+
+         if Uart_Device_Id = UART0 then
+            --  Select the best OSR value:
+            for I in 5 .. 32 loop
+               SBR_Field_Value := Uart_Clock / (Baud_Rate * I);
+               Calculated_Baud_Rate := Uart_Clock / (I * SBR_Field_Value);
+
+               if Calculated_Baud_Rate > Baud_Rate then
+                  Baud_Diff2 := Calculated_Baud_Rate - Baud_Rate;
+               else
+                  Baud_Diff2 := Baud_Rate - Calculated_Baud_Rate;
+               end if;
+
+               if Baud_Diff2 <= Baud_Diff then
+                  Baud_Diff := Baud_Diff2;
+                  OSR_Value := I;
+               end if;
+            end loop;
+
+            pragma Assert (Baud_Diff < (Baud_Rate / 100) * 3);
+
+            --
+            --  If the OSR is between 4x and 8x then both
+            --  edge sampling MUST be turned on.
+            --
+            if OSR_Value in  4 .. 8 then
+               C5_Value := UART.Uart0_Registers.C5;
+               C5_Value.BOTHEDGE := 1;
+               UART.Uart0_Registers.C5 := C5_Value;
+            end if;
+
+            --  Setup OSR value:
+            C4_Value := UART.Uart0_Registers.C4;
+            C4_Value.OSR := UInt5 (OSR_Value - 1);
+            UART.Uart0_Registers.C4 := C4_Value;
+            SBR_Field_Value := Uart_Clock / (Baud_Rate * OSR_Value);
+         else
+            SBR_Field_Value := Uart_Clock / (Baud_Rate * 16);
+         end if;
+
+         --  Set baud rate in the device:
+         BDH_Value := UART.Uart0_Registers.BDH;
+         BDH_Value.SBR := SBR_Field_Encoded.High_Part;
+         Uart_Registers_Ptr.BDH := BDH_Value;
+         Uart_Registers_Ptr.BDL := SBR_Field_Encoded.Low_Part;
       end Set_Baud_Rate;
 
-      -- ** --
+      --
+      --  Local variables
       --
       C2_Value : UART.C2_Type;
       C1_Value : UART.C1_Type;
@@ -125,6 +202,7 @@ package body Uarts.Driver is
    begin -- Initialize
       pragma Assert (not Uart_Device_Var.Initialized);
 
+      Select_Clock_Source;
       Enable_Clock;
 
       --  Disable UART's transmitter and receiver, while UART is being
@@ -139,26 +217,16 @@ package body Uarts.Driver is
       C1_Value := (others => 0);
       Uart_Registers_Ptr.all.C1 := C1_Value;
 
-      --  Configure Tx and RX FIFOs:
-      --  - Rx FIFO water mark = 1 (generate interrupt when Rx FIFO is not
-      --    empty)
-      --  - Enable Tx and Rx FIFOs
-      --  - Flush Tx and Rx FIFOs
-      Uart_Registers_Ptr.all.RWFIFO := 1;
-      Uart_Registers_Ptr.all.PFIFO := (RXFE => 1, TXFE => 1, others => 0);
-      Uart_Registers_Ptr.all.CFIFO := (RXFLUSH => 1, TXFLUSH => 1,
-                                       others => 0);
-
       --  Configure Tx pin:
-      Pin_Config.Driver.Set_Pin_Function (Uart_Device.Tx_Pin,
-                                          Drive_Strength_Enable => True,
-                                          Pullup_Resistor => False);
+      Set_Pin_Function (Uart_Device.Tx_Pin,
+                        Drive_Strength_Enable => True,
+                        Pullup_Resistor => False);
 
-      --  Configure Rx pin:
-      Pin_Config.Driver.Set_Pin_Function (Uart_Device.Rx_Pin,
-                                          Drive_Strength_Enable => True,
-                                          Pullup_Resistor =>
-                                            Uart_Device.Rx_Pin_Pullup_Resistor_Enabled);
+      --  Configure rx pin:
+      Set_Pin_Function (Uart_Device.Rx_Pin,
+                        Drive_Strength_Enable => True,
+                        Pullup_Resistor =>
+                          Uart_Device.Rx_Pin_Pullup_Resistor_Enabled);
 
       --  Configure baud rate:
       Set_Baud_Rate;
@@ -175,7 +243,7 @@ package body Uarts.Driver is
 
      --
      --  Enable interrupts in the interrupt controller (NVIC):
-     --  NOTE: This is implicitly done by the Ada runtime
+     --  NOTE: This is implictly done by the Ada runtime
      --
 
       --  Enable UART's transmitter and receiver:
@@ -187,8 +255,9 @@ package body Uarts.Driver is
 
    end Initialize;
 
-   -- ** --
-
+   --
+   --  Subprogram Can_Transmit_Char
+   --
    function Can_Transmit_Char
      (Uart_Device_Id : Uart_Device_Id_Type) return Boolean is
 
@@ -198,8 +267,9 @@ package body Uarts.Driver is
       return (Uart_Registers_Ptr.all.S1.TDRE = 1);
    end Can_Transmit_Char;
 
-   -- ** --
-
+   --
+   --  Subprogram Put_Char
+   --
    procedure Put_Char (Uart_Device_Id : Uart_Device_Id_Type;
                        Char : Character) is
       Uart_Registers_Ptr : access UART.Registers_Type renames
@@ -212,8 +282,9 @@ package body Uarts.Driver is
       Uart_Registers_Ptr.all.D := Byte (Character'Pos (Char));
    end Put_Char;
 
-   -- ** --
-
+   --
+   --  Subprogram Can_Receive_Char
+   --
    function Can_Receive_Char (Uart_Device_Id : Uart_Device_Id_Type)
                                return Boolean is
       Uart_Registers_Ptr : access UART.Registers_Type renames
@@ -222,8 +293,9 @@ package body Uarts.Driver is
       return (Uart_Registers_Ptr.all.S1.RDRF = 1);
    end Can_Receive_Char;
 
-   -- ** --
-
+   --
+   --  Subprogram Get_Char
+   --
    function Get_Char (Uart_Device_Id : Uart_Device_Id_Type) return Character is
       Uart_Device_Var : Uart_Device_Var_Type renames
         Uart_Devices_Var (Uart_Device_Id);
@@ -300,4 +372,4 @@ package body Uarts.Driver is
 
    end Uart_Interrupts_Object;
 
-end Uarts.Driver;
+end Uart_Driver;

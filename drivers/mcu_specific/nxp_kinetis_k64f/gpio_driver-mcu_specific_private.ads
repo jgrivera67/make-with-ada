@@ -25,36 +25,20 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with Devices.MCU_Specific;
-with Pin_Mux_Driver;
-
 --
---  @summary Board-specific Multi-color LED declarations
+--  @summary MCU-specific GPIO declarations
 --
-private package Color_Led.Board_Specific_Private is
+private package Gpio_Driver.MCU_Specific_Private is
    pragma Preelaborate;
-   use Devices.MCU_Specific;
 
-   Rgb_Led : Rgb_Led_Type :=
-     (Red_Pin => (Pin_Info =>
-                      (Pin_Port => PIN_PORT_B,
-                       Pin_Index => 22,
-                       Pin_Function => Pin_Mux_Driver.PIN_FUNCTION_ALT1),
-                  Is_Active_High => False),
+   --
+   -- Table of pointers to the registers for each GPIO port
+   --
+   Ports : constant array (Pin_Port_Type) of access GPIO.Registers_Type :=
+     (PIN_PORT_A => GPIO.PortA_Registers'Access,
+      PIN_PORT_B => GPIO.PortB_Registers'Access,
+      PIN_PORT_C => GPIO.PortC_Registers'Access,
+      PIN_PORT_D => GPIO.PortD_Registers'Access,
+      PIN_PORT_E => GPIO.PortE_Registers'Access);
 
-      Green_Pin => (Pin_Info =>
-                        (Pin_Port => PIN_PORT_E,
-                         Pin_Index => 26,
-                         Pin_Function => Pin_Mux_Driver.PIN_FUNCTION_ALT1),
-                    Is_Active_High => False),
-
-      Blue_Pin => (Pin_Info =>
-                       (Pin_Port => PIN_PORT_B,
-                        Pin_Index => 21,
-                        Pin_Function => Pin_Mux_Driver.PIN_FUNCTION_ALT1),
-                   Is_Active_High => False),
-
-      Current_Color => Black,
-      Initialized => False);
-
-end Color_Led.Board_Specific_Private;
+end Gpio_Driver.MCU_Specific_Private;

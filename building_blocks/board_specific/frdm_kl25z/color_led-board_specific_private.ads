@@ -25,31 +25,34 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with Pin_Config.Driver;
+with Devices.MCU_Specific;
+with Pin_Mux_Driver;
 
 --
 --  @summary Board-specific Multi-color LED declarations
 --
 private package Color_Led.Board_Specific_Private is
    pragma Preelaborate;
+   use Devices.MCU_Specific;
+   use Pin_Mux_Driver;
 
    Rgb_Led : Rgb_Led_Type :=
      (Red_Pin => (Pin_Info =>
-                      (Pin_Port => Pin_Config.PIN_PORT_B,
+                      (Pin_Port => PIN_PORT_B,
                        Pin_Index => 18,
-                       Pin_Function => Pin_Config.Driver.PIN_FUNCTION_ALT1),
+                       Pin_Function => PIN_FUNCTION_ALT1),
                   Is_Active_High => False),
 
       Green_Pin => (Pin_Info =>
-                        (Pin_Port => Pin_Config.PIN_PORT_B,
+                        (Pin_Port => PIN_PORT_B,
                          Pin_Index => 19,
-                         Pin_Function => Pin_Config.Driver.PIN_FUNCTION_ALT1),
+                         Pin_Function => PIN_FUNCTION_ALT1),
                     Is_Active_High => False),
 
       Blue_Pin => (Pin_Info =>
-                       (Pin_Port => Pin_Config.PIN_PORT_D,
+                       (Pin_Port => PIN_PORT_D,
                         Pin_Index => 1,
-                        Pin_Function => Pin_Config.Driver.PIN_FUNCTION_ALT1),
+                        Pin_Function => PIN_FUNCTION_ALT1),
                    Is_Active_High => False),
 
       Current_Color => Black,

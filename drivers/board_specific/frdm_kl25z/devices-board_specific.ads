@@ -25,21 +25,9 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-private with Kinetis_KL25Z.UART;
-
 --
--- @summary UART platform-dependent declarations
+--  @summary External devices in the FRDM-KL25Z board
 --
-package Uarts is
-   --
-   -- IDs of UART instances
-   --
-   type Uart_Device_Id_Type is
-     (UART0,
-      UART1,
-      UART2);
+package Devices.Board_Specific is
 
-private
-   package UART renames Kinetis_KL25Z.UART;
-
-end Uarts;
+end Devices.Board_Specific;

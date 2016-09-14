@@ -27,16 +27,23 @@
 
 pragma Restrictions (No_Elaboration_Code);
 
+with Devices;
+with Interfaces.Bit_Types;
+
+--
 --  @summary CPU-specfic declarations for the ARM Cortex-M4 core
+--
 package Microcontroller.CPU_Specific is
    pragma Preelaborate;
+   use Devices;
+   use Interfaces.Bit_Types;
 
     --  CPUID base register
    type CPUID_Type is record
       Revision : Four_Bits;
-      Part_Number: UInt12;
-      Architecture : Uint4;
-      Variant : Uint4;
+      Part_Number: Twelve_Bits;
+      Architecture : Four_Bits;
+      Variant : Four_Bits;
       Implementer : Byte;
    end record with Size => Word'Size, Bit_Order => Low_Order_First;
 

@@ -25,31 +25,37 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
+with Kinetis_KL25Z.PORT;
 with Kinetis_KL25Z.SIM;
+with Kinetis_KL25Z.GPIO;
+with Kinetis_KL25Z.UART;
 
-package body Pin_Config is
+--
+--  @summary Devices in the NXP Kinetis KL25Z MCU
+--
+package Devices.MCU_Specific is
+   pragma Preelaborate;
 
-   ----------------
-   -- Initialize --
-   ----------------
+   --
+   --  Pin port names
+   --
+   type Pin_Port_Type is (PIN_PORT_A,
+                          PIN_PORT_B,
+                          PIN_PORT_C,
+                          PIN_PORT_D,
+                          PIN_PORT_E);
 
-   procedure Initialize is
-      SCGC5_Value : SIM.SCGC5_Type;
-   begin
-      --
-      --  Enable all of the GPIO port clocks:
-      --
-      --  NOTE: Clocks of GPIO ports need to be enabled to configure pin muxing.
-      --
-      SCGC5_Value := SIM.Registers.SCGC5;
-      SCGC5_Value.PORTA := 1;
-      SCGC5_Value.PORTB := 1;
-      SCGC5_Value.PORTC := 1;
-      SCGC5_Value.PORTD := 1;
-      SCGC5_Value.PORTE := 1;
-      SIM.Registers.SCGC5 := SCGC5_Value;
+   --
+   -- IDs of UART instances
+   --
+   type Uart_Device_Id_Type is
+     (UART0,
+      UART1,
+      UART2);
 
-      Pin_Config_Initialized := True;
-   end Initialize;
+   package PORT renames Kinetis_KL25Z.PORT;
+   package SIM renames Kinetis_KL25Z.SIM;
+   package GPIO renames Kinetis_KL25Z.GPIO;
+   package UART renames Kinetis_KL25Z.UART;
 
-end Pin_Config;
+end Devices.MCU_Specific;

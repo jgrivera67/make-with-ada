@@ -27,11 +27,13 @@
 with Microcontroller.CPU_Specific;
 with Microcontroller.Arm_Cortex_M;
 with Kinetis_KL25Z.RCM;
+with Interfaces.Bit_Types;
 
 package body Microcontroller.MCU_Specific is
    use Microcontroller.CPU_Specific;
    use Microcontroller.Arm_Cortex_M;
    use Kinetis_KL25Z;
+   use Interfaces.Bit_Types;
 
    ------------------
    -- System_Reset --
@@ -39,7 +41,7 @@ package body Microcontroller.MCU_Specific is
 
    procedure System_Reset is
       AIRCR_Value : AIRCR_Type;
-      Old_Primask : Word;
+      Old_Primask : Word with Unreferenced;
    begin
       Old_Primask := Disable_Interrupts;
 

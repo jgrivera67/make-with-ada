@@ -28,7 +28,7 @@
 --
 -- @summary Board-specific UART driver private declarations
 --
-private package Uarts.Driver.Board_Specific_Private is
+private package Uart_Driver.Board_Specific_Private is
 
    --
    --  Array of UART device objects to be placed on flash:
@@ -38,13 +38,13 @@ private package Uarts.Driver.Board_Specific_Private is
      (UART0 =>
         (Registers_Ptr => UART.Uart0_Registers'Access,
          Tx_Pin =>
-           (Pin_Port => Pin_Config.PIN_PORT_A,
+           (Pin_Port => PIN_PORT_A,
             Pin_Index => 1,
-            Pin_Function => Pin_Config.Driver.PIN_FUNCTION_ALT2),
+            Pin_Function => PIN_FUNCTION_ALT2),
          Rx_Pin =>
-           (Pin_Port => Pin_Config.PIN_PORT_A,
+           (Pin_Port => PIN_PORT_A,
             Pin_Index => 2,
-            Pin_Function => Pin_Config.Driver.PIN_FUNCTION_ALT2),
+            Pin_Function => PIN_FUNCTION_ALT2),
          Rx_Pin_Pullup_Resistor_Enabled => False,
          Source_Clock_Freq_In_Hz => Bus_Clock_Frequency --  see table 5-2
         ),
@@ -52,13 +52,13 @@ private package Uarts.Driver.Board_Specific_Private is
       UART1 =>
         (Registers_Ptr => UART.Uart1_Registers'Access,
          Tx_Pin =>
-           (Pin_Port => Pin_Config.PIN_PORT_C,
+           (Pin_Port => PIN_PORT_C,
             Pin_Index => 4,
-            Pin_Function => Pin_Config.Driver.PIN_FUNCTION_ALT3),
+            Pin_Function => PIN_FUNCTION_ALT3),
          Rx_Pin =>
-           (Pin_Port => Pin_Config.PIN_PORT_C,
+           (Pin_Port => PIN_PORT_C,
             Pin_Index => 3,
-            Pin_Function => Pin_Config.Driver.PIN_FUNCTION_ALT3),
+            Pin_Function => PIN_FUNCTION_ALT3),
          Rx_Pin_Pullup_Resistor_Enabled => False,
          Source_Clock_Freq_In_Hz => Bus_Clock_Frequency --  see table 5-2
         ),
@@ -66,16 +66,16 @@ private package Uarts.Driver.Board_Specific_Private is
       UART2 =>
         (Registers_Ptr => UART.Uart2_Registers'Access,
          Tx_Pin =>
-           (Pin_Port => Pin_Config.PIN_PORT_D,
+           (Pin_Port => PIN_PORT_D,
             Pin_Index => 3,
-            Pin_Function => Pin_Config.Driver.PIN_FUNCTION_ALT3),
+            Pin_Function => PIN_FUNCTION_ALT3),
          Rx_Pin =>
-           (Pin_Port => Pin_Config.PIN_PORT_D,
+           (Pin_Port => PIN_PORT_D,
             Pin_Index => 2,
-            Pin_Function => Pin_Config.Driver.PIN_FUNCTION_ALT3),
+            Pin_Function => PIN_FUNCTION_ALT3),
          Rx_Pin_Pullup_Resistor_Enabled => False,
          Source_Clock_Freq_In_Hz => Bus_Clock_Frequency --  see table 5-2
         )
      );
 
-end Uarts.Driver.Board_Specific_Private;
+end Uart_Driver.Board_Specific_Private;

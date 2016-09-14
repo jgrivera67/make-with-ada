@@ -24,23 +24,25 @@
 --  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 --  POSSIBILITY OF SUCH DAMAGE.
 --
-with Uarts.Driver;
+with Devices.MCU_Specific;
+with Uart_Driver;
 with Generic_Ring_Buffers;
 with Runtime_Logs;
 with Ada.Synchronous_Task_Control; use Ada.Synchronous_Task_Control;
 with System;
 
 package body Serial_Console is
+   use Devices.MCU_Specific;
 
    --
    -- UART used for the serial console
    --
-   Console_Uart : constant Uarts.Uart_Device_Id_Type := Uarts.UART0;
+   Console_Uart : constant Uart_Device_Id_Type := UART0;
 
    --
    -- Baud rate for the console UART
    --
-   Console_Uart_Baud_Rate : constant Uarts.Driver.Baud_Rate_Type := 115_200;
+   Console_Uart_Baud_Rate : constant Uart_Driver.Baud_Rate_Type := 115_200;
 
    --
    --  Size (in bytes) of the console output ring buffer
@@ -98,7 +100,7 @@ package body Serial_Console is
 
    procedure Initialize is
    begin
-      Uarts.Driver.Initialize (Console_Uart, Console_Uart_Baud_Rate);
+      Uart_Driver.Initialize (Console_Uart, Console_Uart_Baud_Rate);
       Byte_Ring_Buffers.Initialize (Console_Var.Output_Buffer,
                                     Console_Output_Buffer_Name'Access);
       Set_True (Console_Var.Lock);
@@ -372,13 +374,13 @@ package body Serial_Console is
 
    procedure Get_Char (C : out Character) is
    begin
-      C := Uarts.Driver.Get_Char (Console_Uart);
+      C := Uart_Driver.Get_Char (Console_Uart);
    end Get_Char;
 
    -- ** --
 
    function Is_Input_Available return Boolean is
-      (Uarts.Driver.Can_Receive_Char (Console_Uart));
+      (Uart_Driver.Can_Receive_Char (Console_Uart));
 
    -- ** --
 
@@ -397,10 +399,10 @@ package body Serial_Console is
          Char := Character'Val (Byte_Read);
 
          if Char = ASCII.LF then
-            Uarts.Driver.Put_Char (Console_Uart, ASCII.CR);
-            Uarts.Driver.Put_Char (Console_Uart, ASCII.LF);
+            Uart_Driver.Put_Char (Console_Uart, ASCII.CR);
+            Uart_Driver.Put_Char (Console_Uart, ASCII.LF);
          else
-            Uarts.Driver.Put_Char (Console_Uart, Char);
+            Uart_Driver.Put_Char (Console_Uart, Char);
          end if;
       end loop;
 

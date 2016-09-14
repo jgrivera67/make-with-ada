@@ -30,7 +30,7 @@ with Interfaces;
 with Runtime_Logs;
 with Reset_Counter;
 with Microcontroller.MCU_Specific;
-with Pin_Config;
+with Pin_Mux_Driver;
 with Color_Led;
 with Serial_Console;
 with Command_Parser;
@@ -72,7 +72,7 @@ begin -- Hexiwear_Iot_Stack
    Log_Start_Info;
 
    --  Initialize devices used:
-   Pin_Config.Initialize;
+   Pin_Mux_Driver.Initialize;
    Color_Led.Initialize;
    Serial_Console.Initialize;
 
