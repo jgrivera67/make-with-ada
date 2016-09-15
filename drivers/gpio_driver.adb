@@ -28,11 +28,13 @@
 with Interfaces.Bit_Types;
 with Microcontroller.Arm_Cortex_M;
 with Gpio_Driver.MCU_Specific_Private;
+with Devices.MCU_Specific;
 
 package body Gpio_Driver is
    use Interfaces.Bit_Types;
    use Microcontroller.Arm_Cortex_M;
    use Gpio_Driver.MCU_Specific_Private;
+   use Devices.MCU_Specific;
 
    -------------------
    -- Configure_Pin --
@@ -46,7 +48,7 @@ package body Gpio_Driver is
    is
       Old_Primask : Word;
       Gpio_Registers : access GPIO.Registers_Type renames
-        Ports (Gpio_Pin.Pin_Info.Pin_Port);
+        Gpio_Ports (Gpio_Pin.Pin_Info.Pin_Port);
       PDDR_Value : Pin_Array_Type;
    begin
       Old_Primask := Disable_Interrupts;
@@ -67,7 +69,7 @@ package body Gpio_Driver is
 
    procedure Activate_Output_Pin (Gpio_Pin : Gpio_Pin_Type) is
       Gpio_Registers : access GPIO.Registers_Type renames
-        Ports (Gpio_Pin.Pin_Info.Pin_Port);
+        Gpio_Ports (Gpio_Pin.Pin_Info.Pin_Port);
       PDDR_Value : Pin_Array_Type;
       Pin_Array_Value : Pin_Array_Type := (others => 0);
       Pin_Index : Pin_Index_Type renames Gpio_Pin.Pin_Info.Pin_Index;
@@ -89,7 +91,7 @@ package body Gpio_Driver is
 
    procedure Deactivate_Output_Pin (Gpio_Pin : Gpio_Pin_Type) is
       Gpio_Registers : access GPIO.Registers_Type renames
-        Ports (Gpio_Pin.Pin_Info.Pin_Port);
+        Gpio_Ports (Gpio_Pin.Pin_Info.Pin_Port);
       PDDR_Value : Pin_Array_Type;
       Pin_Array_Value : Pin_Array_Type := (others => 0);
       Pin_Index : Pin_Index_Type renames Gpio_Pin.Pin_Info.Pin_Index;
@@ -111,7 +113,7 @@ package body Gpio_Driver is
 
    procedure Toggle_Output_Pin (Gpio_Pin : Gpio_Pin_Type) is
       Gpio_Registers : access GPIO.Registers_Type renames
-        Ports (Gpio_Pin.Pin_Info.Pin_Port);
+        Gpio_Ports (Gpio_Pin.Pin_Info.Pin_Port);
       PDDR_Value : Pin_Array_Type;
       Pin_Array_Value : Pin_Array_Type := (others => 0);
       Pin_Index : Pin_Index_Type renames Gpio_Pin.Pin_Info.Pin_Index;
@@ -129,7 +131,7 @@ package body Gpio_Driver is
 
    function Read_Input_Pin (Gpio_Pin : Gpio_Pin_Type) return Boolean is
       Gpio_Registers : access GPIO.Registers_Type renames
-        Ports (Gpio_Pin.Pin_Info.Pin_Port);
+        Gpio_Ports (Gpio_Pin.Pin_Info.Pin_Port);
       Pin_Index : Pin_Index_Type renames Gpio_Pin.Pin_Info.Pin_Index;
       PDIR_Value : Pin_Array_Type;
    begin
@@ -145,8 +147,6 @@ package body Gpio_Driver is
      (Gpio_Pin : Gpio_Pin_Type;
       Pin_Irq_Mode : Pin_Irq_Mode_Type)
    is
-      Port_Registers : access GPIO.Registers_Type renames
-        Ports (Gpio_Pin.Pin_Info.Pin_Port);
    begin
        Pin_Mux_Driver.Enable_Pin_Irq (Gpio_Pin.Pin_Info, Pin_Irq_Mode);
    end Enable_Pin_Irq;

@@ -25,14 +25,12 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with Devices.MCU_Specific;
 with Pin_Mux_Driver;
 --
 --  @summary GPIO driver
 --
 package Gpio_Driver is
    pragma Preelaborate;
-   use Devices.MCU_Specific;
    use Pin_Mux_Driver;
 
    --

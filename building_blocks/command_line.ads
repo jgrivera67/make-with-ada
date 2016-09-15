@@ -58,7 +58,7 @@ package Command_Line is
 
    function Get_Next_Token (Token : out Token_Type) return Boolean
      with Pre => Initialized,
-     Post => (if not Get_Next_Token'Result then Token = Token'Old);
+          Post => (if not Get_Next_Token'Result then Token = Token'Old);
    --
    --  Retrieves the next token from the command-line buffer, if any. A token
    --  is any string of printable non-space (blanks or tabs) characters.

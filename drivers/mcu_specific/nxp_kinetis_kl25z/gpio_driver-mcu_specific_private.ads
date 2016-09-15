@@ -24,18 +24,20 @@
 --  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 --  POSSIBILITY OF SUCH DAMAGE.
 --
-private with Devices.MCU_Specific;
+
+with Devices.MCU_Specific;
 
 --
 --  @summary MCU-specific GPIO declarations
 --
 private package Gpio_Driver.MCU_Specific_Private is
    pragma Preelaborate;
+   use Devices.MCU_Specific;
 
    --
    -- Table of pointers to the registers for each GPIO port
    --
-   Ports : constant array (Pin_Port_Type) of access GPIO.Registers_Type :=
+   Gpio_Ports : constant array (Pin_Port_Type) of access GPIO.Registers_Type :=
      (PIN_PORT_A => GPIO.PortA_Registers'Access,
       PIN_PORT_B => GPIO.PortB_Registers'Access,
       PIN_PORT_C => GPIO.PortC_Registers'Access,

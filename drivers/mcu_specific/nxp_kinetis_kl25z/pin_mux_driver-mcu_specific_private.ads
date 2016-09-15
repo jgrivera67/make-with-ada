@@ -25,11 +25,8 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with Devices.MCU_Specific;
-
 private package Pin_Mux_Driver.MCU_Specific_Private is
    pragma Preelaborate;
-   use Devices.MCU_Specific;
 
    --
    -- Table of pointers to the PORT registers for each GPIO port
