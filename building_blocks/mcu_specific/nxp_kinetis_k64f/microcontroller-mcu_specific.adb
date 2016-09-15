@@ -36,32 +36,6 @@ package body Microcontroller.MCU_Specific is
    use Kinetis_K64F;
    use Interfaces.Bit_Types;
 
-   ------------------
-   -- System_Reset --
-   ------------------
-
-   procedure System_Reset is
-      AIRCR_Value : AIRCR_Type;
-      Old_Primask : Word with Unreferenced;
-   begin
-      Old_Primask := Disable_Interrupts;
-      Data_Synchronization_Barrier;
-      AIRCR_Value := SCB.AIRCR;
-      AIRCR_Value := (VECTKEY => 16#5FA#,
-                      SYSRESETREQ => 1,
-                      PRIGROUP => AIRCR_Value.PRIGROUP,
-                      others => 0);
-
-      SCB.AIRCR := AIRCR_Value;
-      Data_Synchronization_Barrier;
-
-      --  Wait until reset is completed.
-      loop
-         null;
-      end loop;
-
-   end System_Reset;
-
    -----------------------------
    -- Find_System_Reset_Cause --
    -----------------------------
@@ -96,5 +70,31 @@ package body Microcontroller.MCU_Specific is
 
       return Reset_Cause;
    end Find_System_Reset_Cause;
+
+   ------------------
+   -- System_Reset --
+   ------------------
+
+   procedure System_Reset is
+      AIRCR_Value : AIRCR_Type;
+      Old_Primask : Word with Unreferenced;
+   begin
+      Old_Primask := Disable_Interrupts;
+      Data_Synchronization_Barrier;
+      AIRCR_Value := SCB.AIRCR;
+      AIRCR_Value := (VECTKEY => 16#5FA#,
+                      SYSRESETREQ => 1,
+                      PRIGROUP => AIRCR_Value.PRIGROUP,
+                      others => 0);
+
+      SCB.AIRCR := AIRCR_Value;
+      Data_Synchronization_Barrier;
+
+      --  Wait until reset is completed.
+      loop
+         null;
+      end loop;
+
+   end System_Reset;
 
 end Microcontroller.MCU_Specific;

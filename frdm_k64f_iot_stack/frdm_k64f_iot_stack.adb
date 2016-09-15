@@ -40,6 +40,9 @@ with Last_Chance_Handler;
 procedure Frdm_K64f_Iot_Stack is
    pragma Priority (System.Priority'First + 2);
 
+   procedure Log_Start_Info;
+   procedure Print_Greeting;
+
    procedure Log_Start_Info is
       Reset_Count : constant Interfaces.Unsigned_32 := Reset_Counter.Get;
       Reset_Cause : constant Microcontroller.System_Reset_Causes_Type :=
@@ -59,14 +62,16 @@ procedure Frdm_K64f_Iot_Stack is
       Serial_Console.Lock;
       Serial_Console.Clear_Screen;
       Serial_Console.Print_String (
-        "IoT Stack (Written in Ada 2012, built on " & GNAT.Source_Info.Compilation_Date &
+        "IoT Stack (Written in Ada 2012, built on " &
+        GNAT.Source_Info.Compilation_Date &
         " at " & GNAT.Source_Info.Compilation_Time & ")" & ASCII.LF);
 
       Serial_Console.Unlock;
    end Print_Greeting;
 
 begin -- Frdm_K64f_Iot_Stack
-   Last_Chance_Handler.Set_Last_Chance_Disposition (Last_Chance_Handler.Dummy_Infinite_Loop);
+   Last_Chance_Handler.Set_Last_Chance_Disposition
+     (Last_Chance_Handler.Dummy_Infinite_Loop);
 
    Runtime_Logs.Initialize;
    Log_Start_Info;

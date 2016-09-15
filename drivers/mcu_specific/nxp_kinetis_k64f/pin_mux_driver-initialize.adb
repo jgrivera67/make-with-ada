@@ -25,14 +25,15 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-separate(Pin_Mux_Driver)
+separate (Pin_Mux_Driver)
    procedure Initialize is
       SCGC5_Value : SIM.SCGC5_Type;
    begin
       --
       --  Enable all of the GPIO port clocks:
       --
-      --  NOTE: Clocks of GPIO ports need to be enabled to configure pin muxing.
+      --  NOTE: Clocks of GPIO ports need to be enabled to configure pin
+      --  muxing.
       --
       SCGC5_Value := SIM.Registers.SCGC5;
       SCGC5_Value.PORTA := 1;
@@ -44,4 +45,3 @@ separate(Pin_Mux_Driver)
 
       Pin_Mux_Initialized := True;
    end Initialize;
-

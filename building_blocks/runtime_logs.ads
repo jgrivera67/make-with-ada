@@ -37,14 +37,14 @@ private with Interfaces;
 --
 package Runtime_Logs is
 
-   type Log_Type is (DEBUG_LOG,
-                     ERROR_LOG,
-                     INFO_LOG);
+   type Log_Type is (Debug_Log,
+                     Error_Log,
+                     Info_Log);
 
    subtype Max_Screen_Lines_Type is Positive range 1 .. 100;
 
    function Initialized return Boolean;
-   -- @private (Used only in contracts)
+   --  @private (Used only in contracts)
 
    procedure Initialize
      with Pre => not Initialized;
@@ -89,15 +89,21 @@ private
 
    Debug_Log_Var : aliased Runtime_Log_Type (Debug_Log_Buffer_Size)
      with Linker_Section => ".runtime_logs";
-   Protected_Debug_Log_Var : aliased Protected_Runtime_Log_Type (Debug_Log_Var'Access);
+
+   Protected_Debug_Log_Var :
+     aliased Protected_Runtime_Log_Type (Debug_Log_Var'Access);
 
    Error_Log_Var : aliased Runtime_Log_Type (Error_Log_Buffer_Size)
      with Linker_Section => ".runtime_logs";
-   Protected_Error_Log_Var : aliased Protected_Runtime_Log_Type (Error_Log_Var'Access);
+
+   Protected_Error_Log_Var :
+     aliased Protected_Runtime_Log_Type (Error_Log_Var'Access);
 
    Info_Log_Var : aliased Runtime_Log_Type (Info_Log_Buffer_Size)
      with Linker_Section => ".runtime_logs";
-   Protected_Info_Log_Var : aliased Protected_Runtime_Log_Type (Info_Log_Var'Access);
+
+   Protected_Info_Log_Var :
+     aliased Protected_Runtime_Log_Type (Info_Log_Var'Access);
 
    --
    --  All runtime logs

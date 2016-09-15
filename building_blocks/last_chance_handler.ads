@@ -40,7 +40,8 @@ package Last_Chance_Handler is
 
    procedure Set_Last_Chance_Disposition (Disposition : Disposition_Type);
 
-   procedure Last_Chance_Handler (Msg : System.Address; Line : Integer) with No_Return;
+   procedure Last_Chance_Handler (Msg : System.Address; Line : Integer)
+     with No_Return;
    pragma Export (C, Last_Chance_Handler, "__gnat_last_chance_handler");
 
 end Last_Chance_Handler;

@@ -35,12 +35,12 @@ package body Serial_Console is
    use Devices.MCU_Specific;
 
    --
-   -- UART used for the serial console
+   --  UART used for the serial console
    --
    Console_Uart : constant Uart_Device_Id_Type := UART0;
 
    --
-   -- Baud rate for the console UART
+   --  Baud rate for the console UART
    --
    Console_Uart_Baud_Rate : constant Uart_Driver.Baud_Rate_Type := 115_200;
 
@@ -72,7 +72,8 @@ package body Serial_Console is
      new Generic_Ring_Buffers (Max_Num_Elements => Console_Output_Buffer_Size,
                                Element_Type => Byte);
 
-   task type Console_Output_Task_Type with Priority => System.Priority'First + 1;
+   task type Console_Output_Task_Type
+     with Priority => System.Priority'First + 1;
 
    --
    --  State variables of the serial console
@@ -88,7 +89,8 @@ package body Serial_Console is
       Lock : Suspension_Object;
    end record;
 
-   Console_Output_Buffer_Name : aliased constant String := "Console Output Buffer";
+   Console_Output_Buffer_Name : aliased constant String :=
+     "Console Output Buffer";
 
    Console_Var : Console_Type;
 
@@ -131,7 +133,7 @@ package body Serial_Console is
 
    -- ** --
 
-   procedure Put_Char(C : Character) is
+   procedure Put_Char (C : Character) is
    begin
       Byte_Ring_Buffers.Write(Console_Var.Output_Buffer,
                               Byte (Character'Pos (C)));
@@ -139,7 +141,7 @@ package body Serial_Console is
 
    -- ** --
 
-   procedure Print_String(S : String) is
+   procedure Print_String (S : String) is
    begin
       for I in S'Range loop
          Put_Char (S (I));

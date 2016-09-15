@@ -34,22 +34,14 @@ package body Last_Chance_Handler is
 
    Current_Disposition : Disposition_Type := Dummy_Infinite_Loop;
 
-   ---------------------------------
-   -- Set_Last_Chance_Disposition --
-   ---------------------------------
-
-   procedure Set_Last_Chance_Disposition (Disposition : Disposition_Type) is
-   begin
-      Current_Disposition := Disposition;
-   end Set_Last_Chance_Disposition;
-
    -------------------------
    -- Last_Chance_Handler --
    -------------------------
 
    procedure Last_Chance_Handler (Msg : System.Address; Line : Integer) is
       Msg_Text : String (1 .. 80) with Address => Msg;
-      Caller : constant Address := Return_Address_To_Call_Address (Get_LR_Register);
+      Caller : constant Address :=
+        Return_Address_To_Call_Address (Get_LR_Register);
       Msg_Length : Natural := 0;
    begin
       for Msg_Char of Msg_Text loop
@@ -58,16 +50,20 @@ package body Last_Chance_Handler is
       end loop;
 
       if Line /= 0 then
-         Runtime_Logs.Error_Print ("Exception: '" & Msg_Text (1 .. Msg_Length) &
-                                     "' at line " & Line'Image, Caller);
+         Runtime_Logs.Error_Print ("Exception: '" &
+                                   Msg_Text (1 .. Msg_Length) &
+                                   "' at line " & Line'Image, Caller);
          Ada.Text_IO.New_Line;
-         Ada.Text_IO.Put_Line ("*** Exception: '" & Msg_Text (1 .. Msg_Length) &
+         Ada.Text_IO.Put_Line ("*** Exception: '"
+                               & Msg_Text (1 .. Msg_Length) &
                                "' at line " & Line'Image);
       else
-         Runtime_Logs.Error_Print ("Exception: '" & Msg_Text (1 .. Msg_Length) &
-                                     "'", Caller);
+         Runtime_Logs.Error_Print ("Exception: '" &
+                                   Msg_Text (1 .. Msg_Length) &
+                                   "'", Caller);
          Ada.Text_IO.New_Line;
-         Ada.Text_IO.Put_Line ("*** Exception: '" & Msg_Text (1 .. Msg_Length) &
+         Ada.Text_IO.Put_Line ("*** Exception: '" &
+                               Msg_Text (1 .. Msg_Length) &
                                "'");
       end if;
 
@@ -86,5 +82,14 @@ package body Last_Chance_Handler is
       end case;
 
    end Last_Chance_Handler;
+
+   ---------------------------------
+   -- Set_Last_Chance_Disposition --
+   ---------------------------------
+
+   procedure Set_Last_Chance_Disposition (Disposition : Disposition_Type) is
+   begin
+      Current_Disposition := Disposition;
+   end Set_Last_Chance_Disposition;
 
 end Last_Chance_Handler;

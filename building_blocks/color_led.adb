@@ -51,47 +51,7 @@ package body Color_Led is
 
    -- ** --
 
-   function Initialized return Boolean is (Rgb_Led.Initialized);
-
-   ----------------
-   -- Initialize --
-   ----------------
-
-   procedure Initialize is
-   begin
-      --
-      --  Configure Red pin:
-      --
-      Configure_Pin(Rgb_Led.Red_Pin,
-                    Drive_Strength_Enable => False,
-                    Pullup_Resistor       => False,
-                    Is_Output_Pin         => True);
-
-      Deactivate_Output_Pin (Rgb_Led.Red_Pin);
-
-      --
-      --  Configure Green pin:
-      --
-      Configure_Pin(Rgb_Led.Green_Pin,
-                    Drive_Strength_Enable => False,
-                    Pullup_Resistor       => False,
-                    Is_Output_Pin         => True);
-
-      Deactivate_Output_Pin (Rgb_Led.Green_Pin);
-
-      --
-      --  Configure Blue pin:
-      --
-      Configure_Pin(Rgb_Led.Blue_Pin,
-                    Drive_Strength_Enable => False,
-                    Pullup_Resistor       => False,
-                    Is_Output_Pin         => True);
-
-      Deactivate_Output_Pin (Rgb_Led.Blue_Pin);
-
-      Rgb_Led.Current_Color := Black;
-      Rgb_Led.Initialized := True;
-   end Initialize;
+   procedure Do_Set_Color (New_Color : Led_Color_Type);
 
    ------------------
    -- do_Set_Color --
@@ -118,6 +78,52 @@ package body Color_Led is
       end if;
    end Do_Set_Color;
 
+   -----------------
+   -- Initialized --
+   -----------------
+
+   function Initialized return Boolean is (Rgb_Led.Initialized);
+
+   ----------------
+   -- Initialize --
+   ----------------
+
+   procedure Initialize is
+   begin
+      --
+      --  Configure Red pin:
+      --
+      Configure_Pin (Rgb_Led.Red_Pin,
+                     Drive_Strength_Enable => False,
+                     Pullup_Resistor       => False,
+                     Is_Output_Pin         => True);
+
+      Deactivate_Output_Pin (Rgb_Led.Red_Pin);
+
+      --
+      --  Configure Green pin:
+      --
+      Configure_Pin (Rgb_Led.Green_Pin,
+                     Drive_Strength_Enable => False,
+                     Pullup_Resistor       => False,
+                     Is_Output_Pin         => True);
+
+      Deactivate_Output_Pin (Rgb_Led.Green_Pin);
+
+      --
+      --  Configure Blue pin:
+      --
+      Configure_Pin (Rgb_Led.Blue_Pin,
+                     Drive_Strength_Enable => False,
+                     Pullup_Resistor       => False,
+                     Is_Output_Pin         => True);
+
+      Deactivate_Output_Pin (Rgb_Led.Blue_Pin);
+
+      Rgb_Led.Current_Color := Black;
+      Rgb_Led.Initialized := True;
+   end Initialize;
+
    ---------------
    -- Set_Color --
    ---------------
@@ -136,8 +142,8 @@ package body Color_Led is
 
    procedure Toggle_Color (Color : Led_Color_Type) is
    begin
-      if Rgb_Led.Current_Color = Color or else
-         Rgb_Led.Current_Color = Black then
+      if Rgb_Led.Current_Color = Color or else Rgb_Led.Current_Color = Black
+      then
          if Rgb_Colors (Color).Red then
             Toggle_Output_Pin (Rgb_Led.Red_Pin);
          end if;

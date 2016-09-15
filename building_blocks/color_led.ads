@@ -43,7 +43,7 @@ package Color_Led is
                            White);
 
    function Initialized return Boolean with Inline;
-   -- @private (Used only in contracts)
+   --  @private (Used only in contracts)
 
    procedure Initialize with Pre => not Initialized;
    --

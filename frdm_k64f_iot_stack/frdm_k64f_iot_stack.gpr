@@ -25,7 +25,7 @@ project frdm_k64f_iot_stack is
              "-gnatf",                      --  Full, verbose error messages
              "-gnatwa",                     --  All optional warnings
              "-gnatVa",                     --  All validity checks
-             -- "-gnaty3abcdefhiklmnoOprstux", --  Style checks
+             --"-gnaty3abcdefhiklmnoOprstux", --  Style checks
              -- "-gnatwe",                     --  Treat warnings as errors
              "-gnat2012",                   --  Use Ada 2012
              "-Wall",                       --  All GCC warnings

@@ -38,12 +38,55 @@ package body Pin_Mux_Driver is
    Pins_In_Use_Map : array (Pin_Port_Type, PORT.Pin_Index_Type) of Boolean :=
      (others => (others => False));
 
+   -------------------
+   -- Clear_Pin_Irq --
+   -------------------
+
+   procedure Clear_Pin_Irq (Pin_Info : Pin_Info_Type) is
+      Port_Registers : access PORT.Registers_Type renames
+        Ports (Pin_Info.Pin_Port);
+      ISFR_Value : PORT.Pin_Array_Type := (others => 0);
+   begin
+
+      ISFR_Value (Pin_Info.Pin_Index) := 1;
+      Port_Registers.all.ISFR := ISFR_Value;
+   end Clear_Pin_Irq;
+
+   --------------------
+   -- Disable_Pin_Irq --
+   --------------------
+
+   procedure Disable_Pin_Irq (Pin_Info : Pin_Info_Type) is
+      Port_Registers : access PORT.Registers_Type renames
+        Ports (Pin_Info.Pin_Port);
+      PCR_Value : PORT.PCR_Type;
+   begin
+      PCR_Value := Port_Registers.all.PCR (Pin_Info.Pin_Index);
+      PCR_Value.IRQC := Pin_Irq_None'Enum_Rep;
+      Port_Registers.all.PCR (Pin_Info.Pin_Index) := PCR_Value;
+   end Disable_Pin_Irq;
+
+   --------------------
+   -- Enable_Pin_Irq --
+   --------------------
+
+   procedure Enable_Pin_Irq (Pin_Info : Pin_Info_Type;
+                             Pin_Irq_Mode : Pin_Irq_Mode_Type) is
+      Port_Registers : access PORT.Registers_Type renames
+        Ports (Pin_Info.Pin_Port);
+      PCR_Value : PORT.PCR_Type;
+   begin
+      PCR_Value := Port_Registers.all.PCR (Pin_Info.Pin_Index);
+      PCR_Value.IRQC := Pin_Irq_Mode'Enum_Rep;
+      Port_Registers.all.PCR (Pin_Info.Pin_Index) := PCR_Value;
+   end Enable_Pin_Irq;
+
    ----------------
    -- Initialize --
    ----------------
 
    procedure Initialize is separate;
-   -- This procedure is MCU-specific
+   --  This procedure is MCU-specific
 
    ----------------------
    -- Set_Pin_function --
@@ -70,48 +113,5 @@ package body Pin_Mux_Driver is
       Port_Registers.all.PCR (Pin_Info.Pin_Index) := PCR_Value;
       Pins_In_Use_Entry := True;
    end Set_Pin_Function;
-
-   --------------------
-   -- Enable_Pin_Irq --
-   --------------------
-
-   procedure Enable_Pin_Irq(Pin_Info : Pin_Info_Type;
-                            Pin_Irq_Mode : Pin_Irq_Mode_Type) is
-      Port_Registers : access PORT.Registers_Type renames
-        Ports (Pin_Info.Pin_Port);
-      PCR_Value : PORT.PCR_Type;
-   begin
-      PCR_Value := Port_Registers.all.PCR (Pin_Info.Pin_Index);
-      PCR_Value.IRQC := Pin_Irq_Mode'Enum_Rep;
-      Port_Registers.all.PCR (Pin_Info.Pin_Index) := PCR_Value;
-   end Enable_Pin_Irq;
-
-   --------------------
-   -- Disable_Pin_Irq --
-   --------------------
-
-   procedure Disable_Pin_Irq(Pin_Info : Pin_Info_Type) is
-      Port_Registers : access PORT.Registers_Type renames
-        Ports (Pin_Info.Pin_Port);
-      PCR_Value : PORT.PCR_Type;
-   begin
-      PCR_Value := Port_Registers.all.PCR (Pin_Info.Pin_Index);
-      PCR_Value.IRQC := Pin_Irq_None'Enum_Rep;
-      Port_Registers.all.PCR (Pin_Info.Pin_Index) := PCR_Value;
-   end Disable_Pin_Irq;
-
-   -------------------
-   -- Clear_Pin_Irq --
-   -------------------
-
-   procedure Clear_Pin_Irq(Pin_Info : Pin_Info_Type) is
-      Port_Registers : access PORT.Registers_Type renames
-        Ports (Pin_Info.Pin_Port);
-      ISFR_Value : PORT.Pin_Array_Type := (others => 0);
-   begin
-
-      ISFR_Value (Pin_Info.Pin_Index) := 1;
-      Port_Registers.all.ISFR := ISFR_Value;
-   end Clear_Pin_Irq;
 
 end Pin_Mux_Driver;
