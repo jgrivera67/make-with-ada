@@ -92,12 +92,12 @@ private package Uart_Driver.Board_Specific_Private is
       UART4 =>
         (Registers_Ptr => UART.Uart4_Registers'Access,
          Tx_Pin =>
-           (Pin_Port => PIN_PORT_C,
-            Pin_Index => 15,
+           (Pin_Port => PIN_PORT_E,
+            Pin_Index => 24,
             Pin_Function => PIN_FUNCTION_ALT3),
          Rx_Pin =>
-           (Pin_Port => PIN_PORT_C,
-            Pin_Index => 14,
+           (Pin_Port => PIN_PORT_E,
+            Pin_Index => 25,
             Pin_Function => PIN_FUNCTION_ALT3),
          Rx_Pin_Pullup_Resistor_Enabled => True,
          Source_Clock_Freq_In_Hz => Bus_Clock_Frequency --  see table 5-2
