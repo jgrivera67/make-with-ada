@@ -25,47 +25,50 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with Kinetis_K64F.PORT;
-with Kinetis_K64F.SIM;
-with Kinetis_K64F.GPIO;
-with Kinetis_K64F.UART;
-with MK64F12.ENET;
+with Interfaces;
+with System;
+with Microcontroller.MCU_Specific;
 
 --
---  @summary Devices in the Kinetis K64F MCU
+--  @summary CRC-32 accelerator driver
 --
-package Devices.MCU_Specific is
+package Crc_32_Accelerator_Driver is
    pragma Preelaborate;
+   use Interfaces;
+   use System;
+   use Microcontroller.MCU_Specific;
+   use Microcontroller;
 
-   --
-   --  Pin port names
-   --
-   type Pin_Port_Type is (PIN_PORT_A,
-                          PIN_PORT_B,
-                          PIN_PORT_C,
-                          PIN_PORT_D,
-                          PIN_PORT_E);
+   function Initialized return Boolean;
+   --  @private (Used only in contracts)
 
+   procedure Initialize
+     with Pre => not Initialized;
    --
-   -- IDs of UART instances
+   --  Initialize the CRC-32 accelerator hardware module
    --
-   type Uart_Device_Id_Type is
-     (UART0,
-      UART1,
-      UART2,
-      UART3,
-      UART4,
-      UART5);
 
+   function Compute_Crc_32 (Start_Address : Address; Num_Bytes : Positive;
+                            Byte_Order : Cpu_Byte_Order_Type)
+                            return Unsigned_32
+     with Pre => Initialized and
+                 Memory_Map.Valid_RAM_Address (Start_Address);
    --
-   -- IDs of Ethernet MAC instances
+   --  Calculate CRC-32 for a given block of memory by running the CRC
+   --  accelerator
    --
-   type Ethernet_Mac_Id_Type is (MAC0);
+   --  @param Start_Address Start address of the data buffer for which
+   --                       CRC is to be computed
+   --  @param Num_Bytes     Size of the data buffer
+   --
+   --  @param Byte_Order    Byte order for the data buffer
+   --  @return Computed CRC-32
+   --
 
-   package PORT renames Kinetis_K64F.PORT;
-   package SIM renames Kinetis_K64F.SIM;
-   package GPIO renames Kinetis_K64F.GPIO;
-   package UART renames Kinetis_K64F.UART;
-   package ENET renames MK64F12.ENET;
+private
 
-end Devices.MCU_Specific;
+   Crc_32_Accelerator_Initialized : Boolean := False;
+
+   function Initialized return Boolean is (Crc_32_Accelerator_Initialized);
+
+end Crc_32_Accelerator_Driver;

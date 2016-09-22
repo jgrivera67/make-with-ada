@@ -25,47 +25,9 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with Kinetis_K64F.PORT;
-with Kinetis_K64F.SIM;
-with Kinetis_K64F.GPIO;
-with Kinetis_K64F.UART;
-with MK64F12.ENET;
-
 --
---  @summary Devices in the Kinetis K64F MCU
+--  @summary Bluetooth services
 --
-package Devices.MCU_Specific is
-   pragma Preelaborate;
+package Bluetooth is
 
-   --
-   --  Pin port names
-   --
-   type Pin_Port_Type is (PIN_PORT_A,
-                          PIN_PORT_B,
-                          PIN_PORT_C,
-                          PIN_PORT_D,
-                          PIN_PORT_E);
-
-   --
-   -- IDs of UART instances
-   --
-   type Uart_Device_Id_Type is
-     (UART0,
-      UART1,
-      UART2,
-      UART3,
-      UART4,
-      UART5);
-
-   --
-   -- IDs of Ethernet MAC instances
-   --
-   type Ethernet_Mac_Id_Type is (MAC0);
-
-   package PORT renames Kinetis_K64F.PORT;
-   package SIM renames Kinetis_K64F.SIM;
-   package GPIO renames Kinetis_K64F.GPIO;
-   package UART renames Kinetis_K64F.UART;
-   package ENET renames MK64F12.ENET;
-
-end Devices.MCU_Specific;
+end Bluetooth;

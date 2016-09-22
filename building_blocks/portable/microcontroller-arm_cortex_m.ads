@@ -28,14 +28,14 @@
 with Interfaces.Bit_Types;
 
 --
--- @summary ARM Cortex-M declarations
+--  @summary ARM Cortex-M declarations
 --
 package Microcontroller.Arm_Cortex_M is
    pragma Preelaborate;
    use Interfaces.Bit_Types;
 
    Bl_Instruction_Size : constant := 4;
-   -- Size of of the "bl" instruction in bytes for ARM thumb-2
+   --  Size of of the "bl" instruction in bytes for ARM thumb-2
 
    Arm_Thumb_Code_Flag : constant := 16#1#;
    --  In ARM Cortex-M code, the lowest bit of the target address of a branch
@@ -43,12 +43,15 @@ package Microcontroller.Arm_Cortex_M is
    --  target code must be executed in THUMB mode.
 
    --
-   -- Values that LR can be set to, to return from an exception:
+   --  Values that LR can be set to, to return from an exception:
    --
    Cpu_Exc_Return_To_Handler_Mode : constant Unsigned_32 := 16#FFFFFFF1#;
-   Cpu_Exc_Return_To_Thread_Mode_Using_Msp : constant Unsigned_32 := 16#FFFFFFF9#;
-   Cpu_Exc_Return_To_Thread_Mode_Using_Psp : constant Unsigned_32 := 16#FFFFFFFD#;
-   Cpu_Exc_Return_To_Thread_Mode_Using_Psp_Fpu : constant Unsigned_32 := 16#FFFFFFED#;
+   Cpu_Exc_Return_To_Thread_Mode_Using_Msp : constant Unsigned_32 :=
+     16#FFFFFFF9#;
+   Cpu_Exc_Return_To_Thread_Mode_Using_Psp : constant Unsigned_32 :=
+     16#FFFFFFFD#;
+   Cpu_Exc_Return_To_Thread_Mode_Using_Psp_Fpu : constant Unsigned_32 :=
+     16#FFFFFFED#;
 
    -- ** --
 
@@ -125,26 +128,34 @@ package Microcontroller.Arm_Cortex_M is
    --
    Sub_SP_Immeditate_Operand_Mask : constant Byte := 16#7F#;
 
-   Instruction_Size : constant Storage_Offset := Thumb_Instruction_Type'Size / Byte'Size;
+   Instruction_Size : constant Storage_Offset :=
+     Thumb_Instruction_Type'Size / Byte'Size;
    --  Size of an ARM THUMB 16-bit instruction in bytes
 
-   Stack_Entry_Size : constant Storage_Offset := Stack_Entry_Type'Size / Byte'Size;
+   Stack_Entry_Size : constant Storage_Offset :=
+     Stack_Entry_Type'Size / Byte'Size;
    --  Size in bytes of an entry in the execution stack
 
    -- ** --
 
-   function Disable_Interrupts return Word;
-   -- Disable interrupts in the CPU and retrun the previous value of the Primask register
+   function Disable_Cpu_Interrupts return Word;
+   --
+   --  Disable interrupts in the CPU and retrun the previous value of the
+   --  Primask register
+   --
 
-   procedure Restore_Interrupts (Old_Primask : Word);
-   -- Restore interrupts enable state from Old_Primask
+   procedure Restore_Cpu_Interrupts (Old_Primask : Word);
+   --  Restore interrupts enable state from Old_Primask
+
+   function Are_Interrupts_Disabled return Boolean with Inline;
+   --  Tell if interrupts are disabled in the CPU
 
    procedure Data_Synchronization_Barrier;
-   -- Data memory barrier
+   --  Data memory barrier
 
    function Return_Address_To_Call_Address (Return_Address : Address)
                                             return Address with Inline;
-   -- Calculates the call address for given a return address for ARM Cortex-M
+   --  Calculates the call address for given a return address for ARM Cortex-M
 
    function Get_LR_Register return Address with Inline_Always;
    --  Capture current value of the ARM core LR (r14) register
@@ -164,7 +175,8 @@ package Microcontroller.Arm_Cortex_M is
    function Is_Cpu_Using_MSP_Stack_Pointer return Boolean with Inline;
    --  Tell if the CPU is current stack pointer is the MSP stack pointer
 
-   function Is_Cpu_Exception_Return (Return_Address : Address) return Boolean is
+   function Is_Cpu_Exception_Return (Return_Address : Address)
+                                     return Boolean is
      (To_Integer (Return_Address) >=
           Integer_Address (Cpu_Exc_Return_To_Thread_Mode_Using_Psp_Fpu));
    --  Tell if a return address is one of the exception return special values
@@ -188,7 +200,7 @@ package Microcontroller.Arm_Cortex_M is
 
    function Is_32bit_Instruction (Instruction : Thumb_Instruction_Type)
                                   return Boolean with Inline;
-   -- Tell if a half-word is the lower half-word of a 32-bit instruction
+   --  Tell if a half-word is the lower half-word of a 32-bit instruction
 
    function Is_STMDB_SP_R7 (Long_Instruction : Thumb_32bit_Instruction_Type)
                         return Boolean is
@@ -204,13 +216,17 @@ package Microcontroller.Arm_Cortex_M is
 
    function Is_Push_R7_LR (Instruction : Thumb_Instruction_Type)
                            return Boolean is
-     (Is_Push_R7 (Instruction) and then Push_Operand_Includes_LR (Instruction));
+     (Is_Push_R7 (Instruction) and then
+      Push_Operand_Includes_LR (Instruction));
    --  Tell if it is the 'push {...,r7, lr}' instruction
 
-   function Stmdb_Register_List_Includes_LR (Instruction : Thumb_32bit_Instruction_Type)
-                                      return Boolean is
-     ((Instruction.Operand2 and 16#4000#) /= 0);
-   --  Tell if  'stmdb' instruction modifier "append lr to reg list" is present
+   function Stmdb_Register_List_Includes_LR (
+      Instruction : Thumb_32bit_Instruction_Type) return Boolean is
+      ((Instruction.Operand2 and 16#4000#) /= 0);
+   --
+   --  Tell if  'stmdb' instruction modifier "append lr to reg list" is
+   --  present
+   --
 
    function Is_BL32_First_Half (Instruction : Thumb_Instruction_Type)
                                  return Boolean is
@@ -230,13 +246,25 @@ package Microcontroller.Arm_Cortex_M is
 
    procedure Break_Point with Inline;
 
-   function Get_Pushed_R7_Stack_Offset(Push_Instruction : Thumb_Instruction_Type)
-                                       return Storage_Offset;
+   function Get_Pushed_R7_Stack_Offset (
+      Push_Instruction : Thumb_Instruction_Type) return Storage_Offset;
 
-   function Get_Pushed_R7_Stack_Offset(Stmdb_Sp_Instruction : Thumb_32bit_Instruction_Type)
-                                       return Storage_Offset;
+   function Get_Pushed_R7_Stack_Offset (
+      Stmdb_Sp_Instruction : Thumb_32bit_Instruction_Type)
+      return Storage_Offset;
 
-   function Get_Pushed_LR_Stack_Offset(Stmdb_Sp_Instruction : Thumb_32bit_Instruction_Type)
-                                       return Storage_Offset;
+   function Get_Pushed_LR_Stack_Offset (
+      Stmdb_Sp_Instruction : Thumb_32bit_Instruction_Type)
+      return Storage_Offset;
+
+   function Is_Caller_An_Interrupt_Handler return Boolean is
+      (Is_Cpu_Using_MSP_Stack_Pointer);
+   --  Tell if the caller is an ISR or a CPU exception handler
+
+   function Byte_Swap (Value : Unsigned_16) return Unsigned_16 with inline;
+   --  Do a byte-swap of a 16-bit value
+
+   function Byte_Swap (Value : Unsigned_32) return Unsigned_32 with inline;
+   --  Do a byte-swap of a 32-bit value
 
 end Microcontroller.Arm_Cortex_M;

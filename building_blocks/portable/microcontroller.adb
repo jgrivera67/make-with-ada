@@ -25,47 +25,26 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with Kinetis_K64F.PORT;
-with Kinetis_K64F.SIM;
-with Kinetis_K64F.GPIO;
-with Kinetis_K64F.UART;
-with MK64F12.ENET;
+package body Microcontroller is
 
---
---  @summary Devices in the Kinetis K64F MCU
---
-package Devices.MCU_Specific is
-   pragma Preelaborate;
+   ------------------------
+   -- Get_Cpu_Byte_Order --
+   ------------------------
 
-   --
-   --  Pin port names
-   --
-   type Pin_Port_Type is (PIN_PORT_A,
-                          PIN_PORT_B,
-                          PIN_PORT_C,
-                          PIN_PORT_D,
-                          PIN_PORT_E);
+   function Get_Cpu_Byte_Order return Cpu_Byte_Order_Type is
+      Two_Byte_Value : constant Unsigned_16 := 16#00FF#;
+      Byte_Array_View : array (1 .. 2) of Unsigned_8
+        with Address => Two_Byte_Value'Address;
 
-   --
-   -- IDs of UART instances
-   --
-   type Uart_Device_Id_Type is
-     (UART0,
-      UART1,
-      UART2,
-      UART3,
-      UART4,
-      UART5);
+   begin
+      if Byte_Array_View (1) = 16#FF# then
+         pragma Assert (Byte_Array_View (2) = 16#00#);
+         return Little_Endian;
+      else
+         pragma Assert (Byte_Array_View (1) = 16#FF#);
+         pragma Assert (Byte_Array_View (2) = 16#00#);
+         return Big_Endian;
+      end if;
+   end Get_Cpu_Byte_Order;
 
-   --
-   -- IDs of Ethernet MAC instances
-   --
-   type Ethernet_Mac_Id_Type is (MAC0);
-
-   package PORT renames Kinetis_K64F.PORT;
-   package SIM renames Kinetis_K64F.SIM;
-   package GPIO renames Kinetis_K64F.GPIO;
-   package UART renames Kinetis_K64F.UART;
-   package ENET renames MK64F12.ENET;
-
-end Devices.MCU_Specific;
+end Microcontroller;

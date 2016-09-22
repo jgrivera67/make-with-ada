@@ -93,8 +93,9 @@ package body Pin_Mux_Driver is
    ----------------------
 
    procedure Set_Pin_Function (Pin_Info : Pin_Info_Type;
-                               Drive_Strength_Enable : Boolean;
-                               Pullup_Resistor : Boolean) is
+                               Drive_Strength_Enable : Boolean := False;
+                               Pullup_Resistor : Boolean := False;
+                               Open_Drain_Enable : Boolean := False) is
       Pins_In_Use_Entry : Boolean renames
         Pins_In_Use_Map (Pin_Info.Pin_Port, Pin_Info.Pin_Index);
 

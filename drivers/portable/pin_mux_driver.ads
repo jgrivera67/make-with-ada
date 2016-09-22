@@ -88,8 +88,9 @@ package Pin_Mux_Driver is
 
    procedure Set_Pin_Function (
       Pin_Info : Pin_Info_Type;
-      Drive_Strength_Enable : Boolean;
-      Pullup_Resistor : Boolean)
+      Drive_Strength_Enable : Boolean := False;
+      Pullup_Resistor : Boolean := False;
+      Open_Drain_Enable : Boolean := False)
      with Pre => Initialized;
    --
    --  Configure function for a given pin in the MCU's pin muxer

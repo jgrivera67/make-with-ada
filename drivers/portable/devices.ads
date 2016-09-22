@@ -47,4 +47,16 @@ package Devices is
    subtype Twelve_Bits is UInt12;
    subtype Half_Word is Unsigned_16;
 
+   --
+   --  Type used in Unchecked_Union records that present memory-mapped I/O
+   --  registers
+   --
+   type Register_View_Type is (Bit_Fields_View, Whole_Register_View);
+
+   --
+   --  Counter type for iterations of a polling loop
+   --  waiting for response from the Ethernet PHY
+   --
+   type Polling_Count_Type is range 1 .. 50_000;
+
 end Devices;

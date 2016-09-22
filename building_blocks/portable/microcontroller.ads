@@ -28,15 +28,24 @@
 with System;
 with Interfaces;
 with System.Storage_Elements;
+with Microcontroller_Clocks;
 
 --
--- @summary Micrcontroller operations
+--  @summary Micrcontroller operations
 --
 package Microcontroller is
    pragma Preelaborate;
    use System;
    use Interfaces;
    use System.Storage_Elements;
+   use Microcontroller_Clocks;
+
+   type Mega_Hertz_Type is range 1 .. (Hertz_Type'Last / 1_000_000);
+
+   Cpu_Clock_Frequency_MHz : constant Mega_Hertz_Type :=
+     Mega_Hertz_Type (Cpu_Clock_Frequency / 1_000_000);
+
+   type Cpu_Byte_Order_Type is (Little_Endian, Big_Endian);
 
    --
    --  System reset causes
@@ -87,6 +96,11 @@ package Microcontroller is
    Mcu_Private_Peripherals_Min_Addr : constant Integer_Address := 16#E0000000#;
    Mcu_Private_Peripherals_Max_Addr : constant Integer_Address := 16#E00FFFFF#;
 
+   --
+   --  Memory protection unit (MPU) region alignment in bytes
+   --
+   Mpu_Region_Alignment : constant Positive := 32;
+
    -- ** --
 
    generic
@@ -109,7 +123,8 @@ package Microcontroller is
             Mcu_Peripheral_Bridge_Min_Addr .. Mcu_Peripheral_Bridge_Max_Addr
           or else
           To_Integer (Address_Value) in
-            Mcu_Private_Peripherals_Min_Addr .. Mcu_Private_Peripherals_Max_Addr);
+            Mcu_Private_Peripherals_Min_Addr ..
+            Mcu_Private_Peripherals_Max_Addr);
 
       -------------------------
       -- Valid_Flash_Address --
@@ -118,8 +133,9 @@ package Microcontroller is
       function Valid_Flash_Address
         (Address_Value : Address)
          return Boolean
-      is (To_Integer (Address_Value) in Mcu_Flash_Base_Addr + Integer_Address (1) ..
-          Mcu_Flash_Base_Addr + Integer_Address (Mcu_Flash_Size - 1));
+      is (To_Integer (Address_Value) in
+            Mcu_Flash_Base_Addr + Integer_Address (1) ..
+            Mcu_Flash_Base_Addr + Integer_Address (Mcu_Flash_Size - 1));
 
       -----------------------
       -- Valid_RAM_Address --
@@ -128,8 +144,8 @@ package Microcontroller is
       function Valid_RAM_Address
         (Address_Value : Address)
          return Boolean
-      is (To_Integer (Address_Value) in Mcu_SRAM_Base_Addr ..
-          Mcu_SRAM_Base_Addr + Integer_Address (Mcu_SRAM_Size - 1));
+      is (To_Integer (Address_Value) in Mcu_Sram_Base_Addr ..
+          Mcu_Sram_Base_Addr + Integer_Address (Mcu_Sram_Size - 1));
 
       -----------------------
       -- Valid_RAM_Pointer --
@@ -146,4 +162,9 @@ package Microcontroller is
       --  alignment to be used a valid pointer
       --
    end Generic_Memory_Map;
+
+   -- ** --
+
+   function Get_Cpu_Byte_Order return Cpu_Byte_Order_Type with inline;
+
 end Microcontroller;

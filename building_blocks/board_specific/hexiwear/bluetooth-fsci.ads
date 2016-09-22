@@ -25,47 +25,46 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with Kinetis_K64F.PORT;
-with Kinetis_K64F.SIM;
-with Kinetis_K64F.GPIO;
-with Kinetis_K64F.UART;
-with MK64F12.ENET;
+with Interfaces.Bit_Types;
+with System;
 
 --
---  @summary Devices in the Kinetis K64F MCU
+--  @summary FSCI interface to KW40 BLE host stack
 --
-package Devices.MCU_Specific is
-   pragma Preelaborate;
+package Bluetooth.FSCI is
+   use Interfaces.Bit_Types;
+   use Interfaces;
 
    --
-   --  Pin port names
+   --  FSCI protocol packet header
    --
-   type Pin_Port_Type is (PIN_PORT_A,
-                          PIN_PORT_B,
-                          PIN_PORT_C,
-                          PIN_PORT_D,
-                          PIN_PORT_E);
+   --  @field STX Used for synchronization over the serial interface.
+   --  The value is always 0x02.
+   --  @field Opcode_Group Distinguishes between different layers (e.g., GAP,
+   --                      GATT, GATTDB).
+   --  @field Message_Type Specifies the exact message opcode that is
+   --                      contained in the packet.
+   --  @field Length       The length of the packet payload, excluding the
+   --                      header and the checksum. The length field content
+   --                      shall be provided in little endian format.
+   --
+   --  An FSCI format has the following layout:
+   --  header (5 bytes), payload ('length' bytes), Checksum (1 byte)
+   --
+   type FSCI_Packet_Header_Type is record
+      STX : Byte := 16#02#;
+      Opcode_Group : Byte;
+      Message_Type : Byte;
+      Length : Unsigned_16;
+   end record
+     with Size => 5 * Byte'Size,
+          Bit_Order => System.Low_Order_First;
 
-   --
-   -- IDs of UART instances
-   --
-   type Uart_Device_Id_Type is
-     (UART0,
-      UART1,
-      UART2,
-      UART3,
-      UART4,
-      UART5);
+   for FSCI_Packet_Header_Type use record
+      STX          at 0 range 0 .. 7;
+      Opcode_Group at 1 range 0 .. 7;
+      Message_Type at 2 range 0 .. 7;
+      Length       at 3 range 0 .. 15;
+   end record;
 
-   --
-   -- IDs of Ethernet MAC instances
-   --
-   type Ethernet_Mac_Id_Type is (MAC0);
-
-   package PORT renames Kinetis_K64F.PORT;
-   package SIM renames Kinetis_K64F.SIM;
-   package GPIO renames Kinetis_K64F.GPIO;
-   package UART renames Kinetis_K64F.UART;
-   package ENET renames MK64F12.ENET;
-
-end Devices.MCU_Specific;
+end Bluetooth.FSCI;

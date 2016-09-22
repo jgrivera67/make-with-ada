@@ -30,7 +30,7 @@
 --
 
 with System;
-with Ada.Synchronous_Task_Control; use Ada.Synchronous_Task_Control;
+private with Ada.Synchronous_Task_Control;
 
 generic
    type Element_Type is private;
@@ -61,6 +61,8 @@ package Generic_Ring_Buffers is
      with Pre => Initialized (Ring_Buffer);
 
 private
+   use Ada.Synchronous_Task_Control;
+
    subtype Buffer_Index_Type is Positive range 1 .. Max_Num_Elements;
 
    type Buffer_Data_Type is array (Buffer_Index_Type) of Element_Type;

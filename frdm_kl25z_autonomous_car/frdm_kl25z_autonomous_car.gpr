@@ -4,11 +4,11 @@ project frdm_kl25z_autonomous_car is
 
    for Main use ("frdm_kl25z_autonomous_car.adb");
    for Source_Dirs use (".",
-                        "../building_blocks",
+                        "../building_blocks/portable",
                         "../building_blocks/cpu_specific/arm_cortex_m0plus",
                         "../building_blocks/mcu_specific/nxp_kinetis_kl25z",
                         "../building_blocks/board_specific/frdm_kl25z",
-                        "../drivers",
+                        "../drivers/portable",
                         "../drivers/mcu_specific/nxp_kinetis_kl25z",
                         "../drivers/board_specific/frdm_kl25z",
                         "../SVD/nxp_kinetis_kl25z");

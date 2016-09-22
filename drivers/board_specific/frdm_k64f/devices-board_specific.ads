@@ -29,9 +29,5 @@
 --  @summary External devices in the FRDM-K64F board
 --
 package Devices.Board_Specific is
-   --
-   -- IDs of Ethernet PHYs
-   --
-   type Ethernet_Phy_Id_Type is (PHY0);
 
 end Devices.Board_Specific;

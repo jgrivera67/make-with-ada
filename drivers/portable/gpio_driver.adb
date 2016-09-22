@@ -51,7 +51,7 @@ package body Gpio_Driver is
         Gpio_Ports (Gpio_Pin.Pin_Info.Pin_Port);
       PDDR_Value : Pin_Array_Type;
    begin
-      Old_Primask := Disable_Interrupts;
+      Old_Primask := Disable_Cpu_Interrupts;
 
       Pin_Mux_Driver.Set_Pin_Function(Gpio_Pin.Pin_Info,
                                       Drive_Strength_Enable, Pullup_Resistor);
@@ -60,7 +60,7 @@ package body Gpio_Driver is
       PDDR_Value (Gpio_Pin.Pin_Info.Pin_Index) := Boolean'Pos (Is_Output_Pin);
       Gpio_Registers.PDDR := PDDR_Value;
 
-      Restore_Interrupts (Old_Primask);
+      Restore_Cpu_Interrupts (Old_Primask);
    end Configure_Pin;
 
    -------------------------

@@ -32,7 +32,7 @@ private with Pin_Mux_Driver;
 private with Microcontroller_Clocks;
 
 --
--- @summary UART serial port driver
+--  @summary UART serial port driver
 --
 package Uart_Driver is
    use Devices.MCU_Specific;
@@ -41,17 +41,16 @@ package Uart_Driver is
 
    function Initialized
       (Uart_Device_Id : Uart_Device_Id_Type) return Boolean;
-   -- @private (Used only in contracts)
-
+   --  @private (Used only in contracts)
 
    procedure Initialize (Uart_Device_Id : Uart_Device_Id_Type;
                          Baud_Rate : Baud_Rate_Type)
      with Pre => not Initialized (Uart_Device_Id);
    --
-   -- Initialize the given UART
+   --  Initialize the given UART
    --
-   -- @param Uart_Device_Id UART Id
-   -- @param Baud_Rate      Baud rate
+   --  @param Uart_Device_Id UART Id
+   --  @param Baud_Rate      Baud rate
    --
 
    function Can_Transmit_Char (Uart_Device_Id : Uart_Device_Id_Type)
@@ -60,19 +59,19 @@ package Uart_Driver is
    --
    --  Tell if there is a character can be transmitted
    --
-   -- @param Uart_Device_Id UART Id
+   --  @param Uart_Device_Id UART Id
    --
-   -- @return True, if yes, False, otherwise
+   --  @return True, if yes, False, otherwise
    --
 
    procedure Put_Char (Uart_Device_Id : Uart_Device_Id_Type;
                        Char : Character)
      with Pre => Initialized (Uart_Device_Id);
    --
-   -- Transmits a character on the given UART
+   --  Transmits a character on the given UART
    --
-   -- @param Uart_Device_Id UART Id
-   -- @param Char           character ASCII code
+   --  @param Uart_Device_Id UART Id
+   --  @param Char           character ASCII code
    --
 
    function Can_Receive_Char
@@ -81,20 +80,20 @@ package Uart_Driver is
    --
    --  Tell if there is a character ready to be received
    --
-   -- @param Uart_Device_Id UART Id
+   --  @param Uart_Device_Id UART Id
    --
-   -- @return True, if yes, False, otherwise
+   --  @return True, if yes, False, otherwise
    --
 
    function Get_Char
       (Uart_Device_Id : Uart_Device_Id_Type) return Character
       with Pre => Initialized (Uart_Device_Id);
    --
-   -- Receives a character on the given UART
+   --  Receives a character on the given UART
    --
-   -- @param Uart_Device_Id UART Id
+   --  @param Uart_Device_Id UART Id
    --
-   -- @return ASCII code of received character
+   --  @return ASCII code of received character
    --
 
 private
@@ -127,7 +126,7 @@ private
    --                       UART module source clock frequency
    --
    type Uart_Device_Const_Type is limited record
-      Registers_Ptr : access UART.Registers_Type;
+      Registers_Ptr : not null access UART.Registers_Type;
       Tx_Pin : aliased Pin_Info_Type;
       Rx_Pin : aliased Pin_Info_Type;
       Rx_Pin_Pullup_Resistor_Enabled : Boolean;
