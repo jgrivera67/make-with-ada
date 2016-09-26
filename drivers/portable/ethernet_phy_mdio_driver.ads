@@ -61,7 +61,7 @@ package Ethernet_Phy_Mdio_Driver is
                                  Phy_Register_Value : Phy_Register_Value_Type)
      with Pre => Initialized (Ethernet_Mac_Id) and then
                  not Is_Caller_An_Interrupt_Handler and then
-                 not Are_Interrupts_Disabled;
+                 not Are_Cpu_Interrupts_Disabled;
    --
    --  Write a value to a given Ethernet PHY control register via
    --  the RMII management interface over the MDIO bus.
@@ -80,7 +80,7 @@ package Ethernet_Phy_Mdio_Driver is
                                return Phy_Register_Value_Type
      with Pre => Initialized (Ethernet_Mac_Id) and then
                  not Is_Caller_An_Interrupt_Handler and then
-                 not Are_Interrupts_Disabled;
+                 not Are_Cpu_Interrupts_Disabled;
    --
    --  Reads a value from a given Ethernet PHY control register via
    --  the RMII management interface over the MDIO bus.

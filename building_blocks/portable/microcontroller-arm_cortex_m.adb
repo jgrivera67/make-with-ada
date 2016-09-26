@@ -32,7 +32,7 @@ package body Microcontroller.Arm_Cortex_M is
    -- Are_Interrupts_Disabled --
    -----------------------------
 
-   function Are_Interrupts_Disabled return Boolean is
+   function Are_Cpu_Interrupts_Disabled return Boolean is
       Reg_Value : Word;
    begin
       Asm ("mrs %0, primask" & ASCII.LF,
@@ -40,7 +40,7 @@ package body Microcontroller.Arm_Cortex_M is
            Volatile => True);
 
       return (Reg_Value and 16#1#) /= 0;
-   end Are_Interrupts_Disabled;
+   end Are_Cpu_Interrupts_Disabled;
 
    -----------------
    -- Break_Point --

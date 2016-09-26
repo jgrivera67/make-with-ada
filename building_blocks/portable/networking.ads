@@ -27,6 +27,7 @@
 
 with Interfaces.Bit_Types;
 with Microcontroller;
+with System;
 private with Microcontroller.Arm_Cortex_M;
 private with Ada.Synchronous_Task_Control;
 limited private with Networking.Layer2;
@@ -38,11 +39,17 @@ package Networking is
    use Interfaces.Bit_Types;
    use Interfaces;
    use Microcontroller;
+   use System;
 
    --
    --  Cortex-M cores run in little-endian byte-order mode
    --
    Host_Byte_Order : constant Cpu_Byte_Order_Type := Little_Endian;
+
+   --
+   --  Network byte order is big endian
+   --
+   Network_Byte_Order : constant Cpu_Byte_Order_Type := Big_Endian;
 
    --
    --  Maximum transfer unit for Ethernet (frame size without CRC)
@@ -164,22 +171,44 @@ private
    type Network_Packet_Queue_Type;
 
    --
-   --  States of a packet being received (incoming packet)
+   --  State flags for a packet being received (incoming packet)
    --
-   type Rx_Packet_State_Type is (Packet_In_Rx_Pool,
-                                 Packet_In_Rx_Transit,
-                                 Packet_In_Rx_Use_By_App,
-                                 Packet_In_Rx_Queue,
-                                 Packet_Rx_Failed,
-                                 Packet_In_Icmp_Queue,
-                                 Packet_In_Icmpv6_Queue);
+   type Rx_Packet_State_Flags_Type is record
+      Packet_In_Rx_Pool : Boolean := True;
+      Packet_In_Rx_Transit : Boolean := False;
+      Packet_In_Rx_Use_By_App : Boolean := False;
+      Packet_In_Rx_Queue : Boolean := False;
+      Packet_Rx_Failed : Boolean := False;
+      Packet_In_Icmp_Queue : Boolean := False;
+      Packet_In_Icmpv6_Queue : Boolean := False;
+   end record with Size => Unsigned_8'Size;
+
+   for Rx_Packet_State_Flags_Type use record
+      Packet_In_Rx_Pool at 0 range 0 .. 0;
+      Packet_In_Rx_Transit at 0 range 1 .. 1;
+      Packet_In_Rx_Use_By_App at 0 range 2 .. 2;
+      Packet_In_Rx_Queue at 0 range 3 .. 3;
+      Packet_Rx_Failed at 0 range 4 .. 4;
+      Packet_In_Icmp_Queue at 0 range 5 .. 5;
+      Packet_In_Icmpv6_Queue at 0 range 6 .. 6;
+   end record;
+
    --
-   --  States of a packet being transmitted (outgoing packet)
+   --  States flags for a packet being transmitted (outgoing packet)
    --
-   type Tx_Packet_State_Type is (Packet_In_Tx_Pool,
-                                 Packet_In_Tx_Transit,
-                                 Packet_In_Tx_Use_By_App,
-                                 Packet_Free_After_Tx_Complete);
+   type Tx_Packet_State_Flags_Type is record
+      Packet_In_Tx_Pool : Boolean := True;
+      Packet_In_Tx_Transit : Boolean := False;
+      Packet_In_Tx_Use_By_App : Boolean := False;
+      Packet_Free_After_Tx_Complete : Boolean := False;
+   end record with Size => Unsigned_8'Size;
+
+   for Tx_Packet_State_Flags_Type use record
+      Packet_In_Tx_Pool at 0 range 0 .. 0;
+      Packet_In_Tx_Transit at 0 range 1 .. 1;
+      Packet_In_Tx_Use_By_App at 0 range 2 .. 2;
+      Packet_Free_After_Tx_Complete at 0 range 3 .. 3;
+   end record;
 
    --
    --  Network packet object type
@@ -209,19 +238,19 @@ private
    --
    type Network_Packet_Type
      (Traffic_Direction : Network_Traffic_Direction_Type) is limited record
-      Total_Length : Unsigned_16;
-      Queue_Ptr : access Network_Packet_Queue_Type;
-      Next_Ptr : access Network_Packet_Type;
-      Data_Payload : Net_Packet_Buffer_Type;
+      Total_Length : Unsigned_16 := 0;
+      Queue_Ptr : access Network_Packet_Queue_Type := null;
+      Next_Ptr : access Network_Packet_Type := null;
+      Data_Payload_Buffer : Net_Packet_Buffer_Type;
       case Traffic_Direction is
          when Rx =>
             Rx_Buffer_Descriptor_Index : Net_Rx_Packet_Index_Type;
-            Rx_State : Rx_Packet_State_Type;
+            Rx_State_Flags : Rx_Packet_State_Flags_Type;
             Layer2_End_Point_Ptr :
                access Networking.Layer2.Layer2_End_Point_Type;
          when Tx =>
             Tx_Buffer_Descriptor_Index : Net_Tx_Packet_Index_Type;
-            Tx_State : Tx_Packet_State_Type;
+            Tx_State_Flags : Tx_Packet_State_Flags_Type;
       end case;
    end record with Alignment => Mpu_Region_Alignment;
 

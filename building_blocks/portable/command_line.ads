@@ -28,8 +28,8 @@
 --
 --  @summary Command-line reader
 --
---  @description Provides services to capture command-line input from the serial
---  console.
+--  @description Provides services to capture command-line input from the
+--   serial console.
 --
 package Command_Line is
 

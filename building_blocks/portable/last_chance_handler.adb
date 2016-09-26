@@ -25,12 +25,15 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 with System; use System;
-with Microcontroller.Arm_Cortex_M; use Microcontroller.Arm_Cortex_M;
+with Microcontroller.Arm_Cortex_M;
 with Microcontroller.MCU_Specific;
 with Runtime_Logs;
 with Ada.Text_IO;
+with Interfaces.Bit_Types;
 
 package body Last_Chance_Handler is
+   use Microcontroller.Arm_Cortex_M;
+   use Interfaces.Bit_Types;
 
    Current_Disposition : Disposition_Type := Dummy_Infinite_Loop;
 
@@ -43,12 +46,19 @@ package body Last_Chance_Handler is
       Caller : constant Address :=
         Return_Address_To_Call_Address (Get_LR_Register);
       Msg_Length : Natural := 0;
+      Old_Interrupt_Mask : Word with Unreferenced;
    begin
+      --
+      --  Calculate length of the null-terminated 'Msg' string:
+      --
       for Msg_Char of Msg_Text loop
          Msg_Length := Msg_Length + 1;
          exit when Msg_Char = ASCII.NUL;
       end loop;
 
+      --
+      --  Print exception message  to error log and UART0:
+      --
       if Line /= 0 then
          Runtime_Logs.Error_Print ("Exception: '" &
                                    Msg_Text (1 .. Msg_Length) &
@@ -76,6 +86,7 @@ package body Last_Chance_Handler is
             Microcontroller.MCU_Specific.System_Reset;
 
          when Dummy_Infinite_Loop =>
+            Old_Interrupt_Mask := Disable_Cpu_Interrupts;
             loop
                null;
             end loop;

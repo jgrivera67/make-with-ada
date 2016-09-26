@@ -67,8 +67,10 @@ package body Runtime_Logs.Dump is
             Dump_Cursor := Dump_Cursor + 1;
          end if;
 
+         exit when Dump_Cursor = Dump_End_Index;
+
          if  Char_Value = ASCII.LF then
-            if Screen_Lines_Count = 1 and then Dump_Cursor /= Dump_End_Index then
+            if Screen_Lines_Count = 1 then
                Serial_Console.Print_String (
                   "<Enter> - next line, 'q' - quit, <any other key> - next page" &
                   ASCII.CR);
@@ -92,8 +94,6 @@ package body Runtime_Logs.Dump is
                Screen_Lines_Count := Screen_Lines_Count - 1;
             end if;
          end if;
-
-         exit when Dump_Cursor = Dump_End_Index;
       end loop;
 
    end Dump_Log_Fragment;

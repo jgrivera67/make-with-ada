@@ -26,8 +26,8 @@
 --
 
 with System; use System;
-with App_Parameters; use App_Parameters;
-private with Interfaces;
+with App_Parameters;
+with Interfaces;
 
 --
 --  @summary Runtime log services
@@ -36,6 +36,8 @@ private with Interfaces;
 --  in-memory logs.
 --
 package Runtime_Logs is
+   use Interfaces;
+   use App_Parameters;
 
    type Log_Type is (Debug_Log,
                      Error_Log,
@@ -62,9 +64,10 @@ package Runtime_Logs is
    procedure Info_Print (Msg : String)
      with Pre => Initialized;
 
-private
-   use Interfaces;
+   procedure Unsigned_32_To_Hexadecimal (Value : Unsigned_32;
+                                         Buffer : out String);
 
+private
    --
    --  State variables of runtime log
    --

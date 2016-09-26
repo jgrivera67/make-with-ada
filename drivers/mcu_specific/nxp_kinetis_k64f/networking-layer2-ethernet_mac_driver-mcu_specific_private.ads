@@ -54,7 +54,9 @@ private package Networking.Layer2.Ethernet_Mac_Driver.MCU_Specific_Private is
    --  corresponds to the number of multicast addresses added to the
    --  corresponding bucket (bit in the GAUR/GALR bit hash table)
    --
-   type Multicast_Hash_Table_Counts_Type is array (1 .. 64) of Byte;
+   type Multicast_Hash_Table_Index_Type is mod 2 ** 6;
+   type Multicast_Hash_Table_Counts_Type is
+     array (Multicast_Hash_Table_Index_Type) of Byte;
 
    --
    --  Rx buffer descriptor control flags type
@@ -409,5 +411,8 @@ private package Networking.Layer2.Ethernet_Mac_Driver.MCU_Specific_Private is
       Tx_Buffer_Descriptors : Ethernet_Tx_Buffer_Descriptors_Type;
       Rx_Buffer_Descriptors : Ethernet_Rx_Buffer_Descriptors_Type;
    end record;
+     --  with Type_Invariant =>
+     --    Tx_Ring_Write_Cursor /= Tx_Ring_Read_Cursor or else
+     --    Tx_Ring_Entries_Filled = 0;
 
 end Networking.Layer2.Ethernet_Mac_Driver.MCU_Specific_Private;

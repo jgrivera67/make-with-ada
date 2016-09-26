@@ -147,7 +147,7 @@ package Microcontroller.Arm_Cortex_M is
    procedure Restore_Cpu_Interrupts (Old_Primask : Word);
    --  Restore interrupts enable state from Old_Primask
 
-   function Are_Interrupts_Disabled return Boolean with Inline;
+   function Are_Cpu_Interrupts_Disabled return Boolean with Inline;
    --  Tell if interrupts are disabled in the CPU
 
    procedure Data_Synchronization_Barrier;

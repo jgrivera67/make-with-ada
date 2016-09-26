@@ -26,7 +26,7 @@
 --
 
 --
---  @summary Application-specific global parameters and tunables
+--  @summary Application-specific compile-time global parameters and tunables
 --
 package App_Parameters is
 

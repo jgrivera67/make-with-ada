@@ -28,7 +28,7 @@ with Interfaces; use Interfaces;
 with Interfaces.Bit_Types; use Interfaces.Bit_Types;
 
 --
--- Serial console services
+--  Serial console services
 --
 package Serial_Console is
    --
@@ -53,7 +53,7 @@ package Serial_Console is
 
    function Initialized return Boolean
       with Inline;
-   -- @private (Used only in contracts)
+   --  @private (Used only in contracts)
 
    procedure Initialize
      with Pre => not Initialized;
@@ -71,17 +71,18 @@ package Serial_Console is
           Pre => Initialized and then
                  Is_Locked;
 
-   procedure Put_Char(C : Character)
+   procedure Put_Char (C : Character)
      with Pre => Initialized;
 
-   procedure Print_String(S : String)
+   procedure Print_String (S : String)
      with Pre => Initialized and then
                  Is_Locked;
 
-   procedure Print_Pos_String(Line : Line_Type;
-                              Column : Column_Type;
-                              S : String;
-                              Attributes : Attributes_Vector_Type := Attributes_Normal)
+   procedure Print_Pos_String (Line : Line_Type;
+                               Column : Column_Type;
+                               S : String;
+                               Attributes : Attributes_Vector_Type :=
+                                 Attributes_Normal)
      with Pre => Initialized and then
                  Is_Locked;
 
@@ -117,7 +118,7 @@ package Serial_Console is
                           Preserve_Cursor : Boolean := False)
      with Pre => Initialized and then
                  Is_Locked and then
-                 Top_line <= Bottom_Line;
+                 Top_Line <= Bottom_Line;
    --
    --  Erase a range of lines
    --  @param Top_Line First line of the range
@@ -134,7 +135,7 @@ package Serial_Console is
                                 Bottom_Line : Line_Type)
      with Pre => Initialized and then
                  Is_Locked and then
-                 Top_line < Bottom_Line;
+                 Top_Line < Bottom_Line;
    --
    --  Set scroll region for the console screen to the given range of lines
    --

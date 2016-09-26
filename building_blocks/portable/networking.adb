@@ -28,7 +28,6 @@
 with Networking.Layer2;
 
 package body Networking is
-
    Networking_Stack_Initialized : Boolean := False;
 
    -----------------

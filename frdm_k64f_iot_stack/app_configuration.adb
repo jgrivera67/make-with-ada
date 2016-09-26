@@ -25,48 +25,27 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with Interfaces.Bit_Types;
+with Generic_App_Config;
+with Runtime_Logs;
 
---
---  @summary DEclarations common to all devices
---
-package Devices is
-   pragma Preelaborate;
-   use Interfaces;
-   use Interfaces.Bit_Types;
+package body App_Configuration is
 
-   type Bytes_Array is array (Positive range <>) of Byte;
-   type Words_Array is array (Positive range <>) of Word;
+   package App_Config is new
+     Generic_App_Config (Config_Parameters_Type);
 
-   subtype Two_Bits is UInt2;
-   subtype Three_Bits is UInt3;
-   subtype Four_Bits is UInt4;
-   subtype Five_Bits is UInt5;
-   subtype Six_Bits is UInt6;
-   subtype Nine_Bits is UInt9;
-   subtype Twelve_Bits is UInt12;
-   subtype Half_Word is Unsigned_16;
+   Config_Parameters : Config_Parameters_Type;
 
-   --
-   --  Type used in Unchecked_Union records that present memory-mapped I/O
-   --  registers
-   --
-   type Register_View_Type is (Bit_Fields_View, Whole_Register_View);
+   --------------------------------------
+   -- Load_And_Apply_Config_Parameters --
+   --------------------------------------
 
-   --
-   --  Counter type for iterations of a polling loop
-   --  waiting for response from the Ethernet PHY
-   --
-   type Polling_Count_Type is range 1 .. 50_000;
+   procedure Load_And_Apply_Config_Parameters is
+   begin
+      App_Config.Load_Config (Config_Parameters);
 
-   function Bit_Mask (Bit_Index : UInt5) return Unsigned_32 is
-     (Shift_Left (Unsigned_32 (1), Natural (Bit_Index)));
-   --
-   --  Return the 32-bit mask for a given bit index
-   --
-   --  @param Bit_Index bit index: 0 .. 31. Bit 0 is LSB, bit 31 is MSB.
-   --
-   --  @return Bit mask
-   --
+      --  Generated stub: replace with real body!
+      pragma Compile_Time_Warning (True, "Load_And_Apply_Config_Parameters unimplemented");
+      Runtime_Logs.Debug_Print ("Load_And_Apply_Config_Parameters not implemented yet");
+   end Load_And_Apply_Config_Parameters;
 
-end Devices;
+end App_Configuration;

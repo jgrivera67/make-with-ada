@@ -32,10 +32,9 @@ with Pin_Mux_Driver;
 --  @summary Board-specific Multi-color LED declarations
 --
 private package Color_Led.Board_Specific_Private is
-   pragma Preelaborate;
    use Devices.MCU_Specific;
 
-   Rgb_Led : Rgb_Led_Type :=
+   Rgb_Led_Pins : aliased constant Rgb_Led_Pins_Type :=
      (Red_Pin => (Pin_Info =>
                       (Pin_Port => PIN_PORT_B,
                        Pin_Index => 22,
@@ -52,9 +51,6 @@ private package Color_Led.Board_Specific_Private is
                        (Pin_Port => PIN_PORT_B,
                         Pin_Index => 21,
                         Pin_Function => Pin_Mux_Driver.PIN_FUNCTION_ALT1),
-                   Is_Active_High => False),
-
-      Current_Color => Black,
-      Initialized => False);
+                   Is_Active_High => False));
 
 end Color_Led.Board_Specific_Private;

@@ -250,6 +250,30 @@ package body Runtime_Logs is
 
    -- ** --
 
+   procedure Unsigned_32_To_Hexadecimal (Value : Unsigned_32;
+                                         Buffer : out String)
+   is
+      Hex_Digit : Unsigned_32 range 16#0# .. 16#f#;
+      Value_Left : Unsigned_32 := Value;
+   begin
+      for I in reverse Buffer'Range loop
+         Hex_Digit := Value_Left and 16#f#;
+         if Hex_Digit < 16#a# then
+            Buffer (I) := Character'Val (Hex_Digit + Character'Pos ('0'));
+         else
+            Buffer (I) := Character'Val ((Hex_Digit - 16#a#) +
+                                           Character'Pos ('A'));
+         end if;
+
+         Value_Left := Shift_Right (Value_Left, 4);
+      end loop;
+
+      pragma Assert (Value_Left = 0);
+
+   end Unsigned_32_To_Hexadecimal;
+
+   -- ** --
+
    protected body Protected_Runtime_Log_Type is
 
       procedure Capture_Entry (Msg : String; Code_Address : Address) is

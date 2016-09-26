@@ -34,14 +34,20 @@ with Pin_Mux_Driver;
 with Color_Led;
 with Serial_Console;
 with Command_Parser;
+with Nor_Flash_Driver;
+with Networking;
 with GNAT.Source_Info;
+with Ada.Real_Time;
 with Last_Chance_Handler;
+with App_Configuration;
 
 procedure Frdm_K64f_Iot_Stack is
    pragma Priority (System.Priority'First + 2);
 
    procedure Log_Start_Info;
    procedure Print_Greeting;
+
+   -- ** --
 
    procedure Log_Start_Info is
       Reset_Count : constant Interfaces.Unsigned_32 := Reset_Counter.Get;
@@ -69,9 +75,19 @@ procedure Frdm_K64f_Iot_Stack is
       Serial_Console.Unlock;
    end Print_Greeting;
 
+   -- ** --
+
+   Heartbeat_Period_Ms : constant Ada.Real_Time.Time_Span :=
+     Ada.Real_Time.Milliseconds (500);
+
+   Old_Color : Color_Led.Led_Color_Type with Unreferenced;
+
+   -- ** --
+
 begin -- Frdm_K64f_Iot_Stack
    Last_Chance_Handler.Set_Last_Chance_Disposition
-     (Last_Chance_Handler.Dummy_Infinite_Loop);
+      (Last_Chance_Handler.Dummy_Infinite_Loop);
+      --(Last_Chance_Handler.Break_Point);
 
    Runtime_Logs.Initialize;
    Log_Start_Info;
@@ -80,6 +96,13 @@ begin -- Frdm_K64f_Iot_Stack
    Pin_Mux_Driver.Initialize;
    Color_Led.Initialize;
    Serial_Console.Initialize;
+   Nor_Flash_Driver.Initialize;
+   Networking.Initialize;
+
+   App_Configuration.Load_And_Apply_Config_Parameters;
+
+   Old_Color := Color_Led.Set_Color (Color_Led.Blue);
+   Color_Led.Turn_On_Blinker (Heartbeat_Period_Ms);
 
    Print_Greeting;
    Command_Parser.Initialize;

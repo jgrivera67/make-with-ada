@@ -37,6 +37,22 @@ package Networking.Layer2.Ethernet_Mac_Driver is
      (Ethernet_Mac_Id : Ethernet_Mac_Id_Type) return Boolean with Inline;
    --  @private (Used only in contracts)
 
+   function Network_Packet_Ownwed_By_App (Net_Packet : Network_Packet_Type)
+                                          return Boolean with Inline;
+   --  @private (Used only in contracts)
+
+   function Network_Packet_In_Transit (Net_Packet : Network_Packet_Type)
+                                       return Boolean with Inline;
+   --  @private (Used only in contracts)
+
+   function Network_Packet_Length (Net_Packet : Network_Packet_Type)
+                                   return Unsigned_16 with Inline;
+   --  @private (Used only in contracts)
+
+   function Network_Packet_Rx_Failed (Net_Packet : Network_Packet_Type)
+                                      return Boolean with Inline;
+   --  @private (Used only in contracts)
+
    procedure Initialize (Ethernet_Mac_Id : Ethernet_Mac_Id_Type;
                          Layer2_End_Point_Ptr :
                             not null access Layer2_End_Point_Type)
@@ -59,28 +75,35 @@ package Networking.Layer2.Ethernet_Mac_Driver is
 
    procedure Add_Multicast_Addr (Ethernet_Mac_Id : Ethernet_Mac_Id_Type;
                                  Mac_Address : Ethernet_Mac_Address_Type)
-     with Pre => Initialized (Ethernet_Mac_Id);
+     with Pre =>
+       Initialized (Ethernet_Mac_Id) and
+       (Mac_Address (Mac_Address'First) and Mac_Multicast_Address_Mask) /= 0;
    --
    --  Add a multicast MAC address to the given Ethernet device
    --
    --  @param Ethernet_Mac_Id Ethernet Mac Id
-   --  @paaram Mac_Address Ethernet MAC address
+   --  @param Mac_Address Ethernet MAC address
    --
 
    procedure Remove_Multicast_Addr (Ethernet_Mac_Id : Ethernet_Mac_Id_Type;
                                     Mac_Address : Ethernet_Mac_Address_Type)
-     with Pre => Initialized (Ethernet_Mac_Id);
+     with Pre =>
+       Initialized (Ethernet_Mac_Id) and then
+       (Mac_Address (Mac_Address'First) and Mac_Multicast_Address_Mask) /= 0;
    --
    --  Remove a multicast MAC address from the given Ethernet device
    --
    --  @param Ethernet_Mac_Id Ethernet Mac Id
-   --  @paaram Mac_Address Ethernet MAC address
+   --  @param Mac_Address Ethernet MAC address
    --
 
    procedure Start_Tx_Packet_Transmit (Ethernet_Mac_Id : Ethernet_Mac_Id_Type;
-                                       Tx_Packet : Network_Packet_Type)
-     with Pre => Initialized (Ethernet_Mac_Id) and
-                 Tx_Packet.Traffic_Direction = Tx;
+                                       Tx_Packet : in out Network_Packet_Type)
+     with Pre => Initialized (Ethernet_Mac_Id) and then
+                 Tx_Packet.Traffic_Direction = Tx and then
+                 Network_Packet_Ownwed_By_App (Tx_Packet) and then
+                 not Network_Packet_In_Transit (Tx_Packet) and then
+                 Network_Packet_Length (Tx_Packet) /= 0;
    --
    --  Initiates the transmission of a Tx packet, by assigning it to the next
    --  available Tx descriptor in the Tx descriptor ring, marking that
@@ -91,9 +114,12 @@ package Networking.Layer2.Ethernet_Mac_Driver is
    --
 
    procedure Repost_Rx_Packet (Ethernet_Mac_Id : Ethernet_Mac_Id_Type;
-                               Rx_Packet : Network_Packet_Type)
-     with Pre => Initialized (Ethernet_Mac_Id) and
-                 Rx_Packet.Traffic_Direction = Rx;
+                               Rx_Packet : in out Network_Packet_Type)
+     with Pre => Initialized (Ethernet_Mac_Id) and then
+                 Rx_Packet.Traffic_Direction = Rx and then
+                 not Network_Packet_In_Transit (Rx_Packet) and then
+                 (Network_Packet_Ownwed_By_App (Rx_Packet) or else
+                  Network_Packet_Rx_Failed (Rx_Packet));
    --
    --  Re-post the given Rx packet to the Ethernet MAC's Rx ring, by assigning
    --  it to the next available Rx descriptor in the Rx descriptor ring,
@@ -103,5 +129,26 @@ package Networking.Layer2.Ethernet_Mac_Driver is
    --  @param Ethernet_Mac_Id Ethernet Mac Id
    --  @param tx_Packet : Network packet buffer to be re-posted
    --
+
+private
+
+   function Network_Packet_Ownwed_By_App (Net_Packet : Network_Packet_Type)
+                                          return Boolean is
+      (case Net_Packet.Traffic_Direction is
+         when Tx => Net_Packet.Tx_State_Flags.Packet_In_Tx_Use_By_App,
+         when Rx => Net_Packet.Rx_State_Flags.Packet_In_Rx_Use_By_App);
+
+   function Network_Packet_In_Transit (Net_Packet : Network_Packet_Type)
+                                       return Boolean is
+     (case Net_Packet.Traffic_Direction is
+         when Tx => Net_Packet.Tx_State_Flags.Packet_In_Tx_Transit,
+         when Rx => Net_Packet.Rx_State_Flags.Packet_In_Rx_Transit);
+
+   function Network_Packet_Rx_Failed (Net_Packet : Network_Packet_Type)
+      return Boolean is (Net_Packet.Rx_State_Flags.Packet_Rx_Failed);
+
+   function Network_Packet_Length (Net_Packet : Network_Packet_Type)
+                                     return Unsigned_16 is
+      (Net_Packet.Total_Length);
 
 end Networking.Layer2.Ethernet_Mac_Driver;

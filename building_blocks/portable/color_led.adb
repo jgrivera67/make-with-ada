@@ -26,6 +26,7 @@
 --
 
 with Color_Led.Board_Specific_Private;
+with Runtime_Logs;
 
 package body Color_Led is
    use Color_Led.Board_Specific_Private;
@@ -35,6 +36,10 @@ package body Color_Led is
       Green : Boolean;
       Blue : Boolean;
    end record;
+
+   procedure Do_Set_Color (New_Color : Led_Color_Type);
+
+   -- ** --
 
    --
    --  Mapping of LED colors to RGB color component
@@ -49,9 +54,12 @@ package body Color_Led is
       Cyan => (Green => True, Blue => True, others => False),
       White => (others => True));
 
-   -- ** --
+   --
+   --  RGB LED singleton object
+   --
+   Rgb_Led : aliased Rgb_Led_Type (Rgb_Led_Pins'Access);
 
-   procedure Do_Set_Color (New_Color : Led_Color_Type);
+   -- ** --
 
    ------------------
    -- do_Set_Color --
@@ -60,21 +68,21 @@ package body Color_Led is
    procedure Do_Set_Color (New_Color : Led_Color_Type) is
    begin
       if Rgb_Colors (New_Color).Red then
-         Activate_Output_Pin (Rgb_Led.Red_Pin);
+         Activate_Output_Pin (Rgb_Led.Pins_Ptr.Red_Pin);
       else
-         Deactivate_Output_Pin (Rgb_Led.Red_Pin);
+         Deactivate_Output_Pin (Rgb_Led.Pins_Ptr.Red_Pin);
       end if;
 
       if Rgb_Colors (New_Color).Green then
-         Activate_Output_Pin (Rgb_Led.Green_Pin);
+         Activate_Output_Pin (Rgb_Led.Pins_Ptr.Green_Pin);
       else
-         Deactivate_Output_Pin (Rgb_Led.Green_Pin);
+         Deactivate_Output_Pin (Rgb_Led.Pins_Ptr.Green_Pin);
       end if;
 
       if Rgb_Colors (New_Color).Blue then
-         Activate_Output_Pin (Rgb_Led.Blue_Pin);
+         Activate_Output_Pin (Rgb_Led.Pins_Ptr.Blue_Pin);
       else
-         Deactivate_Output_Pin (Rgb_Led.Blue_Pin);
+         Deactivate_Output_Pin (Rgb_Led.Pins_Ptr.Blue_Pin);
       end if;
    end Do_Set_Color;
 
@@ -93,35 +101,36 @@ package body Color_Led is
       --
       --  Configure Red pin:
       --
-      Configure_Pin (Rgb_Led.Red_Pin,
+      Configure_Pin (Rgb_Led.Pins_Ptr.Red_Pin,
                      Drive_Strength_Enable => False,
                      Pullup_Resistor       => False,
                      Is_Output_Pin         => True);
 
-      Deactivate_Output_Pin (Rgb_Led.Red_Pin);
+      Deactivate_Output_Pin (Rgb_Led.Pins_Ptr.Red_Pin);
 
       --
       --  Configure Green pin:
       --
-      Configure_Pin (Rgb_Led.Green_Pin,
+      Configure_Pin (Rgb_Led.Pins_Ptr.Green_Pin,
                      Drive_Strength_Enable => False,
                      Pullup_Resistor       => False,
                      Is_Output_Pin         => True);
 
-      Deactivate_Output_Pin (Rgb_Led.Green_Pin);
+      Deactivate_Output_Pin (Rgb_Led.Pins_Ptr.Green_Pin);
 
       --
       --  Configure Blue pin:
       --
-      Configure_Pin (Rgb_Led.Blue_Pin,
+      Configure_Pin (Rgb_Led.Pins_Ptr.Blue_Pin,
                      Drive_Strength_Enable => False,
                      Pullup_Resistor       => False,
                      Is_Output_Pin         => True);
 
-      Deactivate_Output_Pin (Rgb_Led.Blue_Pin);
+      Deactivate_Output_Pin (Rgb_Led.Pins_Ptr.Blue_Pin);
 
       Rgb_Led.Current_Color := Black;
       Rgb_Led.Initialized := True;
+      Set_True (Rgb_Led.Initialized_Condvar);
    end Initialize;
 
    ---------------
@@ -142,30 +151,69 @@ package body Color_Led is
 
    procedure Toggle_Color (Color : Led_Color_Type) is
    begin
-      if Rgb_Led.Current_Color = Color or else Rgb_Led.Current_Color = Black
-      then
+      if Rgb_Led.Current_Color = Color then
          if Rgb_Colors (Color).Red then
-            Toggle_Output_Pin (Rgb_Led.Red_Pin);
+            Toggle_Output_Pin (Rgb_Led.Pins_Ptr.Red_Pin);
          end if;
 
          if Rgb_Colors (Color).Green then
-            Toggle_Output_Pin (Rgb_Led.Green_Pin);
+            Toggle_Output_Pin (Rgb_Led.Pins_Ptr.Green_Pin);
          end if;
 
          if Rgb_Colors (Color).Blue then
-            Toggle_Output_Pin (Rgb_Led.Blue_Pin);
+            Toggle_Output_Pin (Rgb_Led.Pins_Ptr.Blue_Pin);
          end if;
 
-         if Rgb_Led.Current_Color = Color then
-            Rgb_Led.Current_Color := Black;
-         else
-            Rgb_Led.Current_Color := Color;
-         end if;
+         Rgb_Led.Current_Toggle := not Rgb_Led.Current_Toggle;
       else
          Do_Set_Color (Color);
          Rgb_Led.Current_Color := Color;
+         Rgb_Led.Current_Toggle := False;
       end if;
 
    end Toggle_Color;
+
+   ----------------------
+   -- Turn_Off_Blinker --
+   ----------------------
+
+   procedure Turn_Off_Blinker
+   is
+   begin
+      Rgb_Led.Blinking_Period := Milliseconds (0);
+      Set_False (Rgb_Led.Blinking_On_Condvar);
+   end Turn_Off_Blinker;
+
+   ---------------------
+   -- Turn_On_Blinker --
+   ---------------------
+
+   procedure Turn_On_Blinker (Period : Time_Span)
+   is
+   begin
+      Rgb_Led.Blinking_Period := Period;
+      Set_True (Rgb_Led.Blinking_On_Condvar);
+   end Turn_On_Blinker;
+
+   -- ** --
+
+   --
+   --  LED Blinker task
+   --
+   task body Led_Blinker_Task_Type is
+      Next_Time : Time := Clock;
+   begin
+      Suspend_Until_True (Rgb_Led_Ptr.Initialized_Condvar);
+      Runtime_Logs.Info_Print ("LED Blinker task started");
+      loop
+         if Rgb_Led_Ptr.Blinking_Period = Milliseconds (0) then
+            Suspend_Until_True (Rgb_Led_Ptr.Blinking_On_Condvar);
+         end if;
+
+         Toggle_Color (Rgb_Led.Current_Color);
+         Next_Time := Next_Time + Rgb_Led_Ptr.Blinking_Period;
+         delay until Next_Time;
+      end loop;
+   end Led_Blinker_Task_Type;
 
 end Color_Led;

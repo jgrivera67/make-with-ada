@@ -25,13 +25,16 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
+with Ada.Real_Time;
+with System;
 private with Gpio_Driver;
+private with Ada.Synchronous_Task_Control;
 
 --
 --  @summary Multi-color LED services
 --
 package Color_Led is
-   pragma Preelaborate;
+   use Ada.Real_Time;
 
    type Led_Color_Type is (Black,
                            Red,
@@ -61,21 +64,50 @@ package Color_Led is
    --
 
    procedure Toggle_Color (Color : Led_Color_Type)
-     with Pre => Initialized and then
-                 Color /= Black;
+     with Pre => Initialized;
    --
    --  Toggle the given color. If the current LED color is 'Color',
    --
 
+   procedure Turn_On_Blinker (Period : Time_Span)
+     with Pre => Initialized and then
+                 Period /= Milliseconds (0);
+   --
+   --  Turn on LED blinking every 'Period' milliseconds, using current color
+   --
+
+   procedure Turn_Off_Blinker
+     with Pre => Initialized;
+   --
+   --  Turn off LED blinking, leaving the LED steady in the current color
+   --
+
 private
    use Gpio_Driver;
+   use Ada.Synchronous_Task_Control;
 
-   type Rgb_Led_Type is record
+   type Rgb_Led_Type;
+
+   task type Led_Blinker_Task_Type (
+      Rgb_Led_Ptr : not null access Rgb_Led_Type)
+      with Priority => System.Priority'Last - 1;
+
+   type Rgb_Led_Pins_Type is record
       Red_Pin : Gpio_Pin_Type;
       Green_Pin : Gpio_Pin_Type;
       Blue_Pin : Gpio_Pin_Type;
-      Current_Color : Led_Color_Type;
-      Initialized : Boolean;
+   end record;
+
+   type Rgb_Led_Type (
+      Pins_Ptr : not null access constant Rgb_Led_Pins_Type)
+   is limited record
+      Initialized : Boolean := False;
+      Current_Color : Led_Color_Type := Black;
+      Current_Toggle : Boolean := False;
+      Blinking_Period : Time_Span := Milliseconds (0) with Volatile;
+      Blinking_On_Condvar : Suspension_Object;
+      Initialized_Condvar : Suspension_Object;
+      Blinker_Task : Led_Blinker_Task_Type (Rgb_Led_Type'Access);
    end record;
 
 end Color_Led;

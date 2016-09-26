@@ -28,10 +28,12 @@ with Ada.Interrupts;
 with Ada.Interrupts.Names;
 with System;
 with Uart_Driver.Board_Specific_Private;
+with Microcontroller.Arm_Cortex_M;
 
 package body Uart_Driver is
    use Ada.Interrupts;
    use Uart_Driver.Board_Specific_Private;
+   use Microcontroller.Arm_Cortex_M;
 
    --
    --  Protected object to define Interrupt handlers for all UARTs
@@ -39,7 +41,8 @@ package body Uart_Driver is
    protected Uart_Interrupts_Object is
       pragma Interrupt_Priority (System.Interrupt_Priority'Last);
    private
-      procedure Uart_Irq_Common_Handler (Uart_Device_Id : Uart_Device_Id_Type);
+      procedure Uart_Irq_Common_Handler (Uart_Device_Id : Uart_Device_Id_Type)
+         with Pre => not Are_Cpu_Interrupts_Disabled;
 
       procedure Uart0_Irq_Handler;
       pragma Attach_Handler (Uart0_Irq_Handler, Names.UART0_Interrupt);
@@ -271,13 +274,14 @@ package body Uart_Driver is
          if  S1_Value.S1_OR /= 0 or else
              S1_Value.NF /= 0 or else
              S1_Value.FE /= 0 or else
-             S1_Value.PF /= 0 then
+             S1_Value.PF /= 0
+         then
             Uart_Device_Var.Errors := Uart_Device_Var.Errors + 1;
 
             --  Clear error conditions:
             S1_Value := (S1_OR | NF | FE | PF => 1, others => 0);
             Uart_Registers_Ptr.S1 := S1_Value;
-          end if;
+         end if;
 
       end Uart_Irq_Common_Handler;
 

@@ -28,11 +28,14 @@
 with Command_Line;
 with Serial_Console;
 with Command_Parser_Common;
-
+with Microcontroller.Arm_Cortex_M;
+with Interfaces.Bit_Types;
 --
 --  Application-specific command parser implementation
 --
 package body Command_Parser is
+   use Microcontroller.Arm_Cortex_M;
+   use Interfaces.Bit_Types;
 
    procedure Cmd_Print_Config_Params;
 
@@ -44,9 +47,7 @@ package body Command_Parser is
 
    procedure Cmd_Test;
 
-   function Parse_Set_Command (Set_Command : String) return Boolean;
-
-   function Parse_Test_Command (Command : String) return Boolean;
+   procedure Cmd_Test_Hang;
 
    -- ** --
 
@@ -68,6 +69,7 @@ package body Command_Parser is
      ASCII.HT & "test color <color: black, red, green, yellow, blue, " &
      "magenta, cyan, white)> - Test LED color" & ASCII.LF &
      ASCII.HT & "test assert - Test assert failure" & ASCII.LF &
+     ASCII.HT & "test hang - Cause an artificial hang" & ASCII.LF &
      ASCII.HT & "help (or h) - Prints this message" & ASCII.LF;
 
    --
@@ -108,6 +110,19 @@ package body Command_Parser is
    -- ** --
 
    procedure Cmd_Set is
+      function Parse_Set_Command (Set_Command : String) return Boolean;
+
+      -- ** --
+
+      function Parse_Set_Command (Set_Command : String) return Boolean is
+      begin
+         Serial_Console.Print_String ("set command not implemented yet" &
+                                        ASCII.LF);
+         return True;
+      end Parse_Set_Command;
+
+      -- ** --
+
       Token : Command_Line.Token_Type;
       Token_Found : Boolean;
       Parsing_Ok : Boolean;
@@ -132,7 +147,39 @@ package body Command_Parser is
 
    -- ** --
 
+   procedure Cmd_Test_Hang is
+      Old_Interrupts_Mask : Word;
+   begin
+      Old_Interrupts_Mask := Disable_Cpu_Interrupts;
+      loop
+         null;
+      end loop;
+   end Cmd_Test_Hang;
+
+   -- ** --
+
    procedure Cmd_Test is
+      function Parse_Test_Command (Command : String) return Boolean;
+
+      -- ** --
+
+      function Parse_Test_Command (Command : String) return Boolean is
+      begin
+         if Command = "color" then
+            Command_Parser_Common.Cmd_Test_Color;
+         elsif Command = "assert" then
+            pragma Assert (False);
+         elsif Command = "hang" then
+            Cmd_Test_Hang;
+         else
+            return False;
+         end if;
+
+         return True;
+      end Parse_Test_Command;
+
+      -- ** --
+
       Token : Command_Line.Token_Type;
       Token_Found : Boolean;
       Parsing_Ok : Boolean;
@@ -217,29 +264,5 @@ package body Command_Parser is
       Command_Dispatcher (Token.String_Value (1 .. Token.Length));
       Serial_Console.Unlock;
    end Parse_Command;
-
-   -- ** --
-
-   function Parse_Set_Command (Set_Command : String) return Boolean is
-   begin
-      Serial_Console.Print_String ("set command not implemented yet" &
-                                   ASCII.LF);
-      return True;
-   end Parse_Set_Command;
-
-   -- ** --
-
-   function Parse_Test_Command (Command : String) return Boolean is
-   begin
-      if Command = "color" then
-         Command_Parser_Common.Cmd_Test_Color;
-      elsif Command = "assert" then
-         pragma Assert (False);
-      else
-         return False;
-      end if;
-
-      return True;
-   end Parse_Test_Command;
 
 end Command_Parser;

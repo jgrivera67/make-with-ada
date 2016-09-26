@@ -25,48 +25,32 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with Interfaces.Bit_Types;
+with Networking.Layer3;
 
 --
---  @summary DEclarations common to all devices
+--  @summary Application-specific run-time configurable parameters
 --
-package Devices is
-   pragma Preelaborate;
-   use Interfaces;
-   use Interfaces.Bit_Types;
-
-   type Bytes_Array is array (Positive range <>) of Byte;
-   type Words_Array is array (Positive range <>) of Word;
-
-   subtype Two_Bits is UInt2;
-   subtype Three_Bits is UInt3;
-   subtype Four_Bits is UInt4;
-   subtype Five_Bits is UInt5;
-   subtype Six_Bits is UInt6;
-   subtype Nine_Bits is UInt9;
-   subtype Twelve_Bits is UInt12;
-   subtype Half_Word is Unsigned_16;
+package App_Configuration is
+   use Networking.Layer3;
 
    --
-   --  Type used in Unchecked_Union records that present memory-mapped I/O
-   --  registers
+   --  FRRDM-K64F IoT stack configurable parameters
    --
-   type Register_View_Type is (Bit_Fields_View, Whole_Register_View);
+   type Config_Parameters_Type is limited record
+      --
+      --  IPv4 configuration
+      --
+      Local_IPv4_Address : IPv4_Address_Type;
+      IPv4_Subnet_Prefix : IPv4_Subnet_Prefix_Type;
 
-   --
-   --  Counter type for iterations of a polling loop
-   --  waiting for response from the Ethernet PHY
-   --
-   type Polling_Count_Type is range 1 .. 50_000;
+      --
+      --  Networking stack tracing switches
+      --
+      Net_Tracing_Layer2_On : Boolean := False;
+      Net_Tracing_Layer3_On : Boolean := False;
+      Net_Tracing_Layer4_On : Boolean := False;
+   end record;
 
-   function Bit_Mask (Bit_Index : UInt5) return Unsigned_32 is
-     (Shift_Left (Unsigned_32 (1), Natural (Bit_Index)));
-   --
-   --  Return the 32-bit mask for a given bit index
-   --
-   --  @param Bit_Index bit index: 0 .. 31. Bit 0 is LSB, bit 31 is MSB.
-   --
-   --  @return Bit mask
-   --
+   procedure Load_And_Apply_Config_Parameters;
 
-end Devices;
+end App_Configuration;
