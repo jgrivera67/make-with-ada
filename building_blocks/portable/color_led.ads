@@ -102,11 +102,11 @@ private
       Pins_Ptr : not null access constant Rgb_Led_Pins_Type)
    is limited record
       Initialized : Boolean := False;
+      Initialized_Condvar : Suspension_Object;
       Current_Color : Led_Color_Type := Black;
       Current_Toggle : Boolean := False;
       Blinking_Period : Time_Span := Milliseconds (0) with Volatile;
       Blinking_On_Condvar : Suspension_Object;
-      Initialized_Condvar : Suspension_Object;
       Blinker_Task : Led_Blinker_Task_Type (Rgb_Led_Type'Access);
    end record;
 

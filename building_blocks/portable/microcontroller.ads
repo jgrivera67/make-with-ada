@@ -93,10 +93,21 @@ package Microcontroller is
 
    -- ** --
 
+   --
+   -- First address of on-core peripherals for ARM cortex-M cores
+   --
    Mcu_Private_Peripherals_Min_Addr : constant Integer_Address := 16#E0000000#;
+
+   --
+   -- Last address of on-core peripherals for ARM cortex-M cores
+   --
    Mcu_Private_Peripherals_Max_Addr : constant Integer_Address := 16#E00FFFFF#;
 
    --
+   --  Stack entry size in bytes for a 32-bit CPU
+   --
+   Cpu_Stack_Entry_Size : constant Positive := 4;
+
    --  Memory protection unit (MPU) region alignment in bytes
    --
    Mpu_Region_Alignment : constant Positive := 32;

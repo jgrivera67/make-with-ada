@@ -30,6 +30,7 @@
 --
 
 with System;
+with Microcontroller.Arm_Cortex_M;
 private with Ada.Synchronous_Task_Control;
 
 generic
@@ -37,12 +38,13 @@ generic
    Max_Num_Elements : Positive;
 package Generic_Ring_Buffers is
    pragma Preelaborate;
+   use Microcontroller.Arm_Cortex_M;
 
    type Ring_Buffer_Type is limited private;
 
    function Initialized (Ring_Buffer : Ring_Buffer_Type) return Boolean
      with Inline;
-   -- @private (Used only in contracts)
+   --  @private (Used only in contracts)
 
    procedure Initialize (Ring_Buffer : out Ring_Buffer_Type;
                          Name : not null access constant String);
@@ -50,15 +52,18 @@ package Generic_Ring_Buffers is
    procedure Write_Non_Blocking (Ring_Buffer : in out Ring_Buffer_Type;
                                  Element : Element_Type;
                                  Write_Ok : out Boolean)
-     with Pre => Initialized (Ring_Buffer);
+     with Pre => Initialized (Ring_Buffer) and then
+                 not Are_Cpu_Interrupts_Disabled;
 
    procedure Write (Ring_Buffer : in out Ring_Buffer_Type;
                     Element : Element_Type)
-     with Pre => Initialized (Ring_Buffer);
+     with Pre => Initialized (Ring_Buffer) and then
+                 not Are_Cpu_Interrupts_Disabled;
 
    procedure Read (Ring_Buffer : in out Ring_Buffer_Type;
                    Element : out Element_Type)
-     with Pre => Initialized (Ring_Buffer);
+     with Pre => Initialized (Ring_Buffer) and then
+                 not Are_Cpu_Interrupts_Disabled;
 
 private
    use Ada.Synchronous_Task_Control;
@@ -92,7 +97,7 @@ private
    end Buffer_Type;
 
    --
-   -- Ring buffer type
+   --  Ring buffer type
    --
    type Ring_Buffer_Type is limited record
       Initialized : Boolean := False;

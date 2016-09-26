@@ -28,6 +28,7 @@
 with System; use System;
 with App_Parameters;
 with Interfaces;
+with Microcontroller.Arm_Cortex_M;
 
 --
 --  @summary Runtime log services
@@ -38,6 +39,7 @@ with Interfaces;
 package Runtime_Logs is
    use Interfaces;
    use App_Parameters;
+   use Microcontroller.Arm_Cortex_M;
 
    type Log_Type is (Debug_Log,
                      Error_Log,
@@ -53,16 +55,19 @@ package Runtime_Logs is
 
    procedure Debug_Print (Msg : String;
                           Code_Address : Address := Null_Address)
-     with Pre => Initialized;
+     with Pre => Initialized and then
+                 not Are_Cpu_Interrupts_Disabled;
 
    function Generate_Unique_Error_Code return Address;
 
    procedure Error_Print (Msg : String;
                           Code_Address : Address := Generate_Unique_Error_Code)
-     with Pre => Initialized;
+     with Pre => Initialized and then
+                 not Are_Cpu_Interrupts_Disabled;
 
    procedure Info_Print (Msg : String)
-     with Pre => Initialized;
+     with Pre => Initialized and then
+                  not Are_Cpu_Interrupts_Disabled;
 
    procedure Unsigned_32_To_Hexadecimal (Value : Unsigned_32;
                                          Buffer : out String);

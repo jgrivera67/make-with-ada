@@ -40,8 +40,9 @@ with GNAT.Source_Info;
 with Ada.Real_Time;
 with Last_Chance_Handler;
 with App_Configuration;
+with IoT_Stack_Demo;
 
-procedure Frdm_K64f_Iot_Stack is
+procedure Main is
    pragma Priority (System.Priority'First + 2);
 
    procedure Log_Start_Info;
@@ -84,7 +85,7 @@ procedure Frdm_K64f_Iot_Stack is
 
    -- ** --
 
-begin -- Frdm_K64f_Iot_Stack
+begin -- Main
    Last_Chance_Handler.Set_Last_Chance_Disposition
       (Last_Chance_Handler.Dummy_Infinite_Loop);
       --(Last_Chance_Handler.Break_Point);
@@ -104,10 +105,12 @@ begin -- Frdm_K64f_Iot_Stack
    Old_Color := Color_Led.Set_Color (Color_Led.Blue);
    Color_Led.Turn_On_Blinker (Heartbeat_Period_Ms);
 
+   IoT_Stack_Demo.Initialize;
+
    Print_Greeting;
    Command_Parser.Initialize;
 
    loop
       Command_Parser.Parse_Command;
    end loop;
-end Frdm_K64f_Iot_Stack;
+end Main;

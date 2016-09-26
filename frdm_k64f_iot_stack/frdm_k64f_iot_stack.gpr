@@ -2,7 +2,7 @@ project frdm_k64f_iot_stack is
 
    for Languages use ("ada");
 
-   for Main use ("frdm_k64f_iot_stack.adb");
+   for Main use ("main.adb");
    for Source_Dirs use (".",
                         "../building_blocks/portable",
                         "../building_blocks/cpu_specific/arm_cortex_m4",
