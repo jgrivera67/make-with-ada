@@ -27,7 +27,6 @@
 
 with Interfaces.Bit_Types;
 with Microcontroller;
-with System;
 private with Microcontroller.Arm_Cortex_M;
 private with Ada.Synchronous_Task_Control;
 limited private with Networking.Layer2;
@@ -36,10 +35,10 @@ limited private with Networking.Layer2;
 --  @summary Root package of a zero-copy Networking stack for Microcontrollers
 --
 package Networking is
+   pragma Preelaborate;
    use Interfaces.Bit_Types;
    use Interfaces;
    use Microcontroller;
-   use System;
 
    --
    --  Cortex-M cores run in little-endian byte-order mode
@@ -81,7 +80,10 @@ package Networking is
    --  Network packet data buffer size rounded-up to the required alignment
    --
    Net_Packet_Data_Buffer_Size : constant Positive :=
-      Round_Up (Ethernet_Max_Frame_Size, Net_Packet_Data_Buffer_Alignment);
+      --  Round_Up (Ethernet_Max_Frame_Size, Net_Packet_Data_Buffer_Alignment)
+     (((Ethernet_Max_Frame_Size - 1) /
+       Net_Packet_Data_Buffer_Alignment) + 1) *
+     Net_Packet_Data_Buffer_Alignment;
 
    --
    --  Maximum number of Tx packet buffers
@@ -155,6 +157,8 @@ package Networking is
    --  Check that a network packet is not in a queue
    --
 
+   -- ** --
+
    --
    --  Packet payload data buffer
    --
@@ -162,13 +166,32 @@ package Networking is
      array (1 .. Net_Packet_Data_Buffer_Size) of Byte
      with Alignment => Net_Packet_Data_Buffer_Alignment;
 
+   type Net_Rx_Packet_Array_Type is
+     array (Net_Rx_Packet_Index_Type) of
+     Network_Packet_Type (Traffic_Direction => Rx);
+
+   type Net_Tx_Packet_Array_Type is
+     array (Net_Tx_Packet_Index_Type) of
+     Network_Packet_Type (Traffic_Direction => Tx);
+
+   type Network_Packet_Queue_Type (Use_Mutex : Boolean) is limited private;
+
+   --
+   --  Pool of Tx packets
+   --
+   --  @field Free_List Free list of Tx packet objects
+   --  @field Tx_Packets Tx packet objects
+   --
+   type Net_Tx_Packet_Pool_Type is limited record
+      Free_List : Network_Packet_Queue_Type (Use_Mutex => False);
+      Tx_Packets : Net_Tx_Packet_Array_Type;
+   end record;
+
 private
 
    use Microcontroller.Arm_Cortex_M;
    use Microcontroller;
    use Ada.Synchronous_Task_Control;
-
-   type Network_Packet_Queue_Type;
 
    --
    --  State flags for a packet being received (incoming packet)
@@ -286,20 +309,6 @@ private
             null;
       end case;
    end record;
-
-   --
-   --  Statically allocated pool of Rx packet objects
-   --
-   type Net_Rx_Packet_Pool_Type is
-     array (Net_Rx_Packet_Index_Type) of
-     Network_Packet_Type (Traffic_Direction => Rx);
-
-   --
-   --  Statically allocated pool of Tx packet objects
-   --
-   type Net_Tx_Packet_Pool_Type is
-     array (Net_Tx_Packet_Index_Type) of
-     Network_Packet_Type (Traffic_Direction => Tx);
 
    -- ** --
 

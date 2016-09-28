@@ -25,18 +25,9 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with Networking.Layer2;
-with Networking.Layer3;
-with Networking.Layer4;
+with Runtime_Logs;
 
-package body Networking is
-   Networking_Stack_Initialized : Boolean := False;
-
-   -----------------
-   -- Initialized --
-   -----------------
-
-   function Initialized return Boolean is (Networking_Stack_Initialized);
+package body Networking.Layer4 is
 
    ----------------
    -- Initialize --
@@ -45,13 +36,10 @@ package body Networking is
    procedure Initialize
    is
    begin
-      Networking.Layer2.Initialize;
-      Networking.Layer3.Initialize;
-      Networking.Layer4.Initialize;
-      Networking.Layer2.Start_Layer2_End_Points;
-      Networking.Layer3.Start_Layer3_Tasks;
-
-      Networking_Stack_Initialized := True;
+      --  Generated stub: replace with real body!
+      pragma Compile_Time_Warning (Standard.True, "Initialize unimplemented");
+      Runtime_Logs.Debug_Print ("Layer4 Initialize unimplemented");
+      Layer4_Initialized := True;
    end Initialize;
 
-end Networking;
+end Networking.Layer4;

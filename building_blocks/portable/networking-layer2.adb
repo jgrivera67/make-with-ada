@@ -34,7 +34,8 @@ package body Networking.Layer2 is
    -- Enqueue_Rx_Packet --
    -----------------------
 
-   procedure Enqueue_Rx_Packet (Layer2_End_Point : Layer2_End_Point_Type;
+   procedure Enqueue_Rx_Packet (Layer2_End_Point :
+                                  in out Layer2_End_Point_Type;
                                 Rx_Packet : in out Network_Packet_Type)
    is
    begin
@@ -54,7 +55,7 @@ package body Networking.Layer2 is
          Mac_Address_Str'First;
    begin
       for I in Mac_Address'Range loop
-         Unsigned_32_To_Hexadecimal (
+         Unsigned_To_Hexadecimal (
             Unsigned_32 (Mac_Address (I)),
             Mac_Address_Str (Str_Cursor .. Str_Cursor + 1));
 
@@ -65,6 +66,18 @@ package body Networking.Layer2 is
       end loop;
    end Ethernet_Mac_Address_To_String;
 
+   ---------------------
+   -- Get_Mac_Address --
+   ---------------------
+
+   procedure Get_Mac_Address (
+      Ethernet_Mac_Id : Ethernet_Mac_Id_Type;
+      Mac_Address : out Ethernet_Mac_Address_Type) is
+   begin
+      Mac_Address := Layer2_Var.Local_Ethernet_Layer2_End_Points
+                        (Ethernet_Mac_Id).Mac_Address;
+   end Get_Mac_Address;
+
    ----------------
    -- Initialize --
    ----------------
@@ -74,16 +87,20 @@ package body Networking.Layer2 is
    begin
       --  Generated stub: replace with real body!
       pragma Compile_Time_Warning (Standard.True, "Initialize unimplemented");
+      Runtime_Logs.Debug_Print ("Layer2 Initialize unimplemented");
+      Layer2_Var.Initialized := True;
    end Initialize;
 
    ----------------
    -- Initialize --
    ----------------
 
-   procedure Initialize (Layer2_End_Point : Layer2_End_Point_Type)
+   procedure Initialize (Layer2_End_Point : in out Layer2_End_Point_Type)
    is
    begin
       pragma Compile_Time_Warning (True, "Initialize layer2 end point unimplemented");
+      Layer2_End_Point.Initialized := True;
+      --Set_True (Layer2_End_Point.Initialized_Condvar);
    end Initialize;
 
    -----------------------
@@ -96,6 +113,16 @@ package body Networking.Layer2 is
       pragma Compile_Time_Warning (True, "Release_Tx_Packet unimplemented");
    end Release_Tx_Packet;
 
+   -----------------------------
+   -- Start_Layer2_End_Points --
+   -----------------------------
+
+   procedure Start_Layer2_End_Points is
+   begin
+      pragma Compile_Time_Warning (True, "Start_Layer2_End_Points unimplemented");
+      Runtime_Logs.Debug_Print ("Start_Layer2_End_Points unimplemented");
+   end Start_Layer2_End_Points;
+
    -- ** --
 
    -------------------------------
@@ -104,8 +131,11 @@ package body Networking.Layer2 is
 
    task body Packet_Receiver_Task_Type is
    begin
-      --  Generated stub: replace with real body!
-      pragma Compile_Time_Warning (Standard.True, "Packet_Receiver_Task_Type unimplemented");
+      Suspend_Until_True (Layer2_End_Point_Ptr.Initialized_Condvar);
+      Runtime_Logs.Info_Print ("Layer-2 end point task started");
+      loop
+         null;--???
+      end loop;
    end Packet_Receiver_Task_Type;
 
 end Networking.Layer2;

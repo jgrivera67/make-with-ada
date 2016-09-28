@@ -43,7 +43,7 @@ package body Microcontroller.MCU_Specific is
       AIRCR_Value : AIRCR_Type;
       Old_Primask : Word with Unreferenced;
    begin
-      Old_Primask := Disable_Interrupts;
+      Old_Primask := Disable_Cpu_Interrupts;
 
       Data_Synchronization_Barrier;
       AIRCR_Value := (VECTKEY => 16#5FA#,

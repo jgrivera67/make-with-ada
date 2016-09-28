@@ -49,6 +49,12 @@ package Generic_Ring_Buffers is
    procedure Initialize (Ring_Buffer : out Ring_Buffer_Type;
                          Name : not null access constant String);
 
+   --
+   --  Note: The procedures below cannot be called with interrupts disabled,
+   --  as they call a protected object that has Interrupt_Priority, which
+   --  causes interrupts to be unconditanlly enabled upon return.
+   --
+
    procedure Write_Non_Blocking (Ring_Buffer : in out Ring_Buffer_Type;
                                  Element : Element_Type;
                                  Write_Ok : out Boolean)

@@ -29,15 +29,32 @@
 --  @summary Networking layer 4 (transport layer) services
 --
 package Networking.Layer4 is
+   pragma Preelaborate;
 
    type Layer4_Kind_Type is (Layer4_UDP);
 
    type Layer4_End_Point_Type (Layer4_Kind : Layer4_Kind_Type) is
    limited private;
 
+   -- ** --
+
+   function Initialized return Boolean;
+   --  @private (Used only in contracts)
+
+   procedure Initialize
+     with Pre => not Initialized;
+   --  Initializes layer4
+
 private
 
    type Layer4_End_Point_Type (Layer4_Kind : Layer4_Kind_Type) is limited
      null record; --  ???
+
+   Layer4_Initialized : Boolean := False;
+
+   -- ** --
+
+   function Initialized return Boolean is
+     (Layer4_Initialized);
 
 end Networking.Layer4;

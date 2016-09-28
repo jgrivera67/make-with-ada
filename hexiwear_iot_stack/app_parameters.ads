@@ -29,6 +29,7 @@
 --  @summary Application-specific global parameters and tunables
 --
 package App_Parameters is
+   pragma Preelaborate;
 
    --
    --  Sizes (in bytes) of the runtime log buffers

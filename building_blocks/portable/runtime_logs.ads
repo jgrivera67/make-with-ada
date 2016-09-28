@@ -37,6 +37,7 @@ with Microcontroller.Arm_Cortex_M;
 --  in-memory logs.
 --
 package Runtime_Logs is
+   pragma Preelaborate;
    use Interfaces;
    use App_Parameters;
    use Microcontroller.Arm_Cortex_M;
@@ -52,6 +53,12 @@ package Runtime_Logs is
 
    procedure Initialize
      with Pre => not Initialized;
+
+   --
+   --  Note: The procedures below cannot be called with interrupts disabled,
+   --  as they call a protected object that has Interrupt_Priority, which
+   --  causes interrupts to be unconditanlly enabled upon return.
+   --
 
    procedure Debug_Print (Msg : String;
                           Code_Address : Address := Null_Address)
@@ -69,8 +76,11 @@ package Runtime_Logs is
      with Pre => Initialized and then
                   not Are_Cpu_Interrupts_Disabled;
 
-   procedure Unsigned_32_To_Hexadecimal (Value : Unsigned_32;
-                                         Buffer : out String);
+   function Unsigned_To_Decimal (Value : Unsigned_32;
+                                 Buffer : out String) return Natural;
+
+   procedure Unsigned_To_Hexadecimal (Value : Unsigned_32;
+                                      Buffer : out String);
 
 private
    --

@@ -35,6 +35,7 @@ with Color_Led;
 with Serial_Console;
 with Command_Parser;
 with GNAT.Source_Info;
+with Ada.Real_Time;
 with Last_Chance_Handler;
 
 procedure Hexiwear_Iot_Stack is
@@ -65,6 +66,15 @@ procedure Hexiwear_Iot_Stack is
       Serial_Console.Unlock;
    end Print_Greeting;
 
+   -- ** --
+
+   Heartbeat_Period_Ms : constant Ada.Real_Time.Time_Span :=
+     Ada.Real_Time.Milliseconds (500);
+
+   Old_Color : Color_Led.Led_Color_Type with Unreferenced;
+
+   -- ** --
+
 begin -- Hexiwear_Iot_Stack
    Last_Chance_Handler.Set_Last_Chance_Disposition (Last_Chance_Handler.Dummy_Infinite_Loop);
 
@@ -75,6 +85,9 @@ begin -- Hexiwear_Iot_Stack
    Pin_Mux_Driver.Initialize;
    Color_Led.Initialize;
    Serial_Console.Initialize;
+
+   Old_Color := Color_Led.Set_Color (Color_Led.Blue);
+   Color_Led.Turn_On_Blinker (Heartbeat_Period_Ms);
 
    Print_Greeting;
    Command_Parser.Initialize;

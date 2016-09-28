@@ -25,15 +25,13 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with Ada.Unchecked_Conversion;
-with Ada.Real_Time;
-with Ada.Task_Identification;
-with System.Storage_Elements; use System.Storage_Elements;
+
+with System.Storage_Elements;
 with Reset_Counter;
 with Stack_Trace_Capture;
-with Microcontroller.Arm_Cortex_M;
 
 package body Runtime_Logs is
+   use System.Storage_Elements;
 
    procedure Log_Print_Stack_Trace (Runtime_Log : in out Runtime_Log_Type;
                                     Num_Entries_To_Skip : Natural);
@@ -85,7 +83,6 @@ package body Runtime_Logs is
       --
       --  NOTE : This function must not be inlined
       --
-      use Microcontroller.Arm_Cortex_M;
    begin
       return Return_Address_To_Call_Address (Get_LR_Register);
    end Generate_Unique_Error_Code;
@@ -182,7 +179,7 @@ package body Runtime_Logs is
    -- ** --
 
    procedure Log_Print_Uint32_Hexadecimal (Runtime_Log :
-                                             in out Runtime_Log_Type;
+                                           in out Runtime_Log_Type;
                                            Value : Unsigned_32) is
       Buffer : String (1 .. 8);
       Hex_Digit : Unsigned_32 range 16#0# .. 16#f#;
@@ -250,8 +247,40 @@ package body Runtime_Logs is
 
    -- ** --
 
-   procedure Unsigned_32_To_Hexadecimal (Value : Unsigned_32;
-                                         Buffer : out String)
+   function Unsigned_To_Decimal (Value : Unsigned_32;
+                                 Buffer : out String) return Natural
+  is
+      Tmp_Buffer : String (1 .. 10);
+      Start_Index : Positive range Tmp_Buffer'Range := Tmp_Buffer'First;
+      Value_Left : Unsigned_32 := Value;
+      Actual_Length : Positive;
+   begin
+      for I in reverse Tmp_Buffer'Range loop
+         Tmp_Buffer (I) := Character'Val ((Value_Left mod 10) +
+                                          Character'Pos ('0'));
+         Value_Left := Value_Left / 10;
+         if Value_Left = 0 then
+            Start_Index := I;
+            exit;
+         end if;
+      end loop;
+
+      Actual_Length := (Tmp_Buffer'Last - Start_Index) + 1;
+      if Buffer'Length >= Actual_Length then
+         Buffer (Buffer'First .. Actual_Length) :=
+           Tmp_Buffer (Start_Index .. Tmp_Buffer'Last);
+      else
+         raise Program_Error
+            with "Unsigned_To_Decimal: buffer too small";
+      end if;
+
+      return Actual_Length;
+   end Unsigned_To_Decimal;
+
+   -- ** --
+
+   procedure Unsigned_To_Hexadecimal (Value : Unsigned_32;
+                                      Buffer : out String)
    is
       Hex_Digit : Unsigned_32 range 16#0# .. 16#f#;
       Value_Left : Unsigned_32 := Value;
@@ -270,56 +299,16 @@ package body Runtime_Logs is
 
       pragma Assert (Value_Left = 0);
 
-   end Unsigned_32_To_Hexadecimal;
+   end Unsigned_To_Hexadecimal;
 
    -- ** --
 
-   protected body Protected_Runtime_Log_Type is
-
-      procedure Capture_Entry (Msg : String; Code_Address : Address) is
-         function Time_To_Unsigned_64 is
-           new Ada.Unchecked_Conversion (Source => Ada.Real_Time.Time,
-                                         Target => Unsigned_64);
-
-         function Task_Id_To_Unsigned_32 is
-           new Ada.Unchecked_Conversion (Source =>
-                                            Ada.Task_Identification.Task_Id,
-                                         Target => Unsigned_32);
-
-         Time_Stamp : constant Ada.Real_Time.Time := Ada.Real_Time.Clock;
-         Calling_Task_Id : constant Ada.Task_Identification.Task_Id :=
-           Ada.Task_Identification.Current_Task;
-
-      begin
-         Log_Print_Uint32_Decimal (Runtime_Log_Ptr.all,
-                                   Runtime_Log_Ptr.Seq_Num);
-         Log_Put_Char (Runtime_Log_Ptr.all, ':');
-         Log_Print_Uint64_Decimal (
-            Runtime_Log_Ptr.all, Time_To_Unsigned_64 (Time_Stamp));
-         Log_Put_Char (Runtime_Log_Ptr.all, ':');
-         Log_Print_Uint32_Hexadecimal (
-            Runtime_Log_Ptr.all, Task_Id_To_Unsigned_32 (Calling_Task_Id));
-
-         Log_Put_Char (Runtime_Log_Ptr.all, ':');
-
-         if Code_Address /= Null_Address then
-            Log_Print_Uint32_Hexadecimal (
-              Runtime_Log_Ptr.all,
-              Unsigned_32 (To_Integer (Code_Address)));
-         end if;
-
-         Log_Put_Char (Runtime_Log_Ptr.all, ':');
-         Log_Print_String (Runtime_Log_Ptr.all, Msg);
-         Log_Put_Char (Runtime_Log_Ptr.all, ASCII.LF);
-         if Runtime_Log_Ptr = Error_Log_Var'Access then
-            Log_Print_Stack_Trace (Runtime_Log_Ptr.all,
-                                   Num_Entries_To_Skip => 0);
-         end if;
-
-         Runtime_Log_Ptr.Seq_Num := Runtime_Log_Ptr.Seq_Num + 1;
-
-      end Capture_Entry;
-
-   end Protected_Runtime_Log_Type;
+   --
+   --  Note: The following portected body is separate to move out the
+   --  dependency of this package on Ada.Real_time. This package needs
+   --  to be preelaborated and cannot depend on packages that cannot be
+   --  preelaborated.
+   --
+   protected body Protected_Runtime_Log_Type is separate;
 
 end Runtime_Logs;

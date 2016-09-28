@@ -25,9 +25,7 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-private with System;
 private with Ada.Synchronous_Task_Control;
-private with Microcontroller;
 
 --
 --  @summary IoT stack demo
@@ -42,11 +40,13 @@ package IoT_Stack_Demo is
 
 private
    use Ada.Synchronous_Task_Control;
-   use Microcontroller;
 
    type IoT_Stack_Demo_Type is limited record
       Initialized : Boolean := False;
-      Initialized_Condvar : Suspension_Object;
+      Network_Stats_Task_Suspension_Obj : Suspension_Object;
+      Udp_Server_Task_Suspension_Obj : Suspension_Object;
+      Bluetooth_Terminal_Task_Suspension_Obj : Suspension_Object;
+      Udp_Multicast_Receiver_Task_Suspension_Obj : Suspension_Object;
    end record;
 
    --
@@ -54,22 +54,13 @@ private
    --
    IoT_Stack_Demo : IoT_Stack_Demo_Type;
 
-   --
-   --  Task stack size in bytes
-   --
-   Task_Stack_Size : constant Positive := 256 * Cpu_Stack_Entry_Size;
+   task Network_Stats_Task;
 
-   task Udp_Server_Task
-     with Storage_Size => Task_Stack_Size,
-     Priority => System.Priority'Last - 10;
+   task Udp_Server_Task;
 
-   task Bluetooth_Terminal_Task
-     with Storage_Size => Task_Stack_Size,
-          Priority => System.Priority'Last - 10;
+   task Bluetooth_Terminal_Task;
 
-   task Udp_Multicast_Receiver_Task
-     with Storage_Size => Task_Stack_Size,
-          Priority => System.Priority'Last - 10;
+   task Udp_Multicast_Receiver_Task;
 
    function Initialized return Boolean is
      (IoT_Stack_Demo.Initialized);

@@ -38,6 +38,7 @@ with Ada.Interrupts;
 with Ada.Interrupts.Names;
 with System.Address_To_Access_Conversions;
 with Microcontroller.MCU_Specific;
+with System;
 
 package body Networking.Layer2.Ethernet_Mac_Driver is
    use Networking.Layer2.Ethernet_Mac_Driver.MCU_Specific_Private;
@@ -51,6 +52,7 @@ package body Networking.Layer2.Ethernet_Mac_Driver is
    use Crc_32_Accelerator_Driver;
    use Ada.Interrupts;
    use Microcontroller.MCU_Specific;
+   use System;
 
    -- ** --
 
@@ -346,7 +348,7 @@ package body Networking.Layer2.Ethernet_Mac_Driver is
       is
          Buffer_Desc_Address_Str : String (1 .. 8);
       begin
-         Unsigned_32_To_Hexadecimal (
+         Unsigned_To_Hexadecimal (
             Unsigned_32 (To_Integer (Buffer_Desc_Address)),
                                     Buffer_Desc_Address_Str);
 
@@ -491,7 +493,7 @@ package body Networking.Layer2.Ethernet_Mac_Driver is
       is
          Buffer_Desc_Address_Str : String (1 .. 8);
       begin
-         Unsigned_32_To_Hexadecimal (
+         Unsigned_To_Hexadecimal (
             Unsigned_32 (To_Integer (Buffer_Desc_Address)),
                                     Buffer_Desc_Address_Str);
 
@@ -857,7 +859,8 @@ package body Networking.Layer2.Ethernet_Mac_Driver is
       Mac_Registers_Ptr.RDSR := RDSR_Value;
 
       Mac_Registers_Ptr.MRBR.R_BUF_SIZE :=
-        MK64F12.UInt10 (Net_Packet_Data_Buffer_Size);
+        MK64F12.UInt10 (
+           Shift_Right (Unsigned_32 (Net_Packet_Data_Buffer_Size), 4));
 
       for I in Net_Rx_Packet_Index_Type loop
          declare
@@ -865,7 +868,7 @@ package body Networking.Layer2.Ethernet_Mac_Driver is
              MCU_Specific_Private.Ethernet_Rx_Buffer_Descriptor_Type renames
               Ethernet_Mac_Var.Rx_Buffer_Descriptors (I);
             Rx_Packet : Network_Packet_Type renames
-              Ethernet_Mac_Var.Layer2_End_Point_Ptr.Rx_Packet_Pool (I);
+              Ethernet_Mac_Var.Layer2_End_Point_Ptr.Rx_Packets (I);
          begin
             Rx_Packet.Rx_Buffer_Descriptor_Index := I;
             Rx_Packet.Rx_State_Flags.Packet_In_Rx_Transit := True;

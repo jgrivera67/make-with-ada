@@ -1725,14 +1725,14 @@ package MK64F12.FTM is
       FMS_WPEN_Field_1 => 1);
 
    --  Fault Detection Flag
-   type FMS_FAULTF_Field_1 is
+   type FMS_FAULTF_Field_1_Type is
      (
       --  No fault condition was detected.
       FMS_FAULTF_Field_0,
       --  A fault condition was detected.
       FMS_FAULTF_Field_1)
      with Size => 1;
-   for FMS_FAULTF_Field_1 use
+   for FMS_FAULTF_Field_1_Type use
      (FMS_FAULTF_Field_0 => 0,
       FMS_FAULTF_Field_1 => 1);
 
@@ -1747,7 +1747,7 @@ package MK64F12.FTM is
       --  Write Protection Enable
       WPEN          : FMS_WPEN_Field := MK64F12.FTM.FMS_WPEN_Field_0;
       --  Read-only. Fault Detection Flag
-      FAULTF_1      : FMS_FAULTF_Field_1 := MK64F12.FTM.FMS_FAULTF_Field_0;
+      FAULTF_1      : FMS_FAULTF_Field_1_Type := MK64F12.FTM.FMS_FAULTF_Field_0;
       --  unspecified
       Reserved_8_31 : MK64F12.UInt24 := 16#0#;
    end record

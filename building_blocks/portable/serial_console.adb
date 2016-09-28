@@ -118,7 +118,8 @@ package body Serial_Console is
                        Column : Column_Type;
                        Height : Line_Type;
                        Width : Column_Type;
-                       Attributes : Attributes_Vector_Type) is
+                       Attributes : Attributes_Vector_Type :=
+                         Attributes_Normal) is
    begin
       Set_Cursor_And_Attributes (Line, Column, Attributes, True);
 
@@ -159,7 +160,8 @@ package body Serial_Console is
    procedure Draw_Horizontal_Line (Line : Line_Type;
                                    Column : Column_Type;
                                    Width : Column_Type;
-                                   Attributes : Attributes_Vector_Type) is
+                                   Attributes : Attributes_Vector_Type :=
+                                     Attributes_Normal) is
    begin
       Set_Cursor_And_Attributes (Line, Column, Attributes, True);
 
@@ -244,6 +246,10 @@ package body Serial_Console is
 
    procedure Lock is
    begin
+      --
+      --  TODO: This is not going to work if there are more than one waiter
+      --  (i.e. more than two tasks using the serial console).
+      --
       Suspend_Until_True (Console_Var.Lock);
    end Lock;
 

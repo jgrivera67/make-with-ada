@@ -35,12 +35,13 @@ with Color_Led;
 with Serial_Console;
 with Command_Parser;
 with Nor_Flash_Driver;
-with Networking;
+--with Networking;
 with GNAT.Source_Info;
 with Ada.Real_Time;
 with Last_Chance_Handler;
-with App_Configuration;
-with IoT_Stack_Demo;
+--with App_Configuration;
+--with IoT_Stack_Demo;
+with Ada.Text_IO; --???
 
 procedure Main is
    pragma Priority (System.Priority'First + 2);
@@ -86,6 +87,7 @@ procedure Main is
    -- ** --
 
 begin -- Main
+   Ada.Text_IO.Put_Line ("Here1");--???
    Last_Chance_Handler.Set_Last_Chance_Disposition
       (Last_Chance_Handler.Dummy_Infinite_Loop);
       --(Last_Chance_Handler.Break_Point);
@@ -98,14 +100,14 @@ begin -- Main
    Color_Led.Initialize;
    Serial_Console.Initialize;
    Nor_Flash_Driver.Initialize;
-   Networking.Initialize;
+   --Networking.Initialize;
 
-   App_Configuration.Load_And_Apply_Config_Parameters;
+   --App_Configuration.Load_And_Apply_Config_Parameters;
 
    Old_Color := Color_Led.Set_Color (Color_Led.Blue);
    Color_Led.Turn_On_Blinker (Heartbeat_Period_Ms);
 
-   IoT_Stack_Demo.Initialize;
+   --IoT_Stack_Demo.Initialize;
 
    Print_Greeting;
    Command_Parser.Initialize;

@@ -160,7 +160,8 @@ package Serial_Console is
                        Column : Column_Type;
                        Height : Line_Type;
                        Width : Column_Type;
-                       Attributes : Attributes_Vector_Type)
+                       Attributes : Attributes_Vector_Type :=
+                         Attributes_Normal)
      with Pre => Initialized and then
                  Is_Locked and then
                  Line + Height in Line_Type and then
@@ -169,7 +170,8 @@ package Serial_Console is
    procedure Draw_Horizontal_Line (Line : Line_Type;
                                    Column : Column_Type;
                                    Width : Column_Type;
-                                   Attributes : Attributes_Vector_Type)
+                                   Attributes : Attributes_Vector_Type :=
+                                     Attributes_Normal)
      with Pre => Initialized and then
                  Is_Locked and then
                  Column + Width in Column_Type;
