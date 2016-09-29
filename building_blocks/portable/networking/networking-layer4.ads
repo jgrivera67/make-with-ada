@@ -31,7 +31,7 @@
 package Networking.Layer4 is
    pragma Preelaborate;
 
-   type Layer4_Kind_Type is (Layer4_UDP);
+   type Layer4_Kind_Type is (Layer4_UDP, Layer4_TCP);
 
    type Layer4_End_Point_Type (Layer4_Kind : Layer4_Kind_Type) is
    limited private;
@@ -48,7 +48,15 @@ package Networking.Layer4 is
 private
 
    type Layer4_End_Point_Type (Layer4_Kind : Layer4_Kind_Type) is limited
-     null record; --  ???
+      record
+         Initialized : Boolean := False;
+         case Layer4_Kind is
+            when Layer4_UDP =>
+               null;--???
+            when Layer4_TCP =>
+               null;
+         end case;
+      end record;
 
    Layer4_Initialized : Boolean := False;
 

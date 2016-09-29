@@ -10,6 +10,7 @@ project frdm_k64f_iot_stack is
                         "../building_blocks/mcu_specific/nxp_kinetis_k64f",
                         "../building_blocks/board_specific/frdm_k64f",
                         "../drivers/portable",
+                        "../drivers/portable/networking",
                         "../drivers/mcu_specific/nxp_kinetis_k64f",
                         "../drivers/board_specific/frdm_k64f",
                         "../SVD/nxp_kinetis_k64f");
