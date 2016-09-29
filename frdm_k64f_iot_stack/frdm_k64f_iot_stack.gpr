@@ -5,6 +5,7 @@ project frdm_k64f_iot_stack is
    for Main use ("main.adb");
    for Source_Dirs use (".",
                         "../building_blocks/portable",
+                        "../building_blocks/portable/networking",
                         "../building_blocks/cpu_specific/arm_cortex_m4",
                         "../building_blocks/mcu_specific/nxp_kinetis_k64f",
                         "../building_blocks/board_specific/frdm_k64f",
