@@ -12,7 +12,9 @@ project frdm_k64f_iot_stack is
                         "../drivers/portable",
                         "../drivers/portable/networking",
                         "../drivers/mcu_specific/nxp_kinetis_k64f",
+                        "../drivers/mcu_specific/nxp_kinetis_k64f/networking",
                         "../drivers/board_specific/frdm_k64f",
+                        "../drivers/board_specific/frdm_k64f/networking",
                         "../SVD/nxp_kinetis_k64f");
 
    for Object_Dir use "obj";

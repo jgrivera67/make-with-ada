@@ -35,12 +35,12 @@ with Color_Led;
 with Serial_Console;
 with Command_Parser;
 with Nor_Flash_Driver;
---with Networking;
+with Networking;
 with GNAT.Source_Info;
 with Ada.Real_Time;
 with Last_Chance_Handler;
---with App_Configuration;
---with IoT_Stack_Demo;
+with App_Configuration;
+with IoT_Stack_Demo;
 with Ada.Text_IO; --???
 
 procedure Main is
