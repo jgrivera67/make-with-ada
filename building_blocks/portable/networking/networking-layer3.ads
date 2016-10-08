@@ -86,7 +86,7 @@ package Networking.Layer3 is
                             return Boolean;
    --  @private (Used only in contracts)
 
-   procedure Initialize (Layer3_End_Point : out Layer3_End_Point_Type)
+   procedure Initialize (Layer3_End_Point : in out Layer3_End_Point_Type)
      with Pre => not Initialized (Layer3_End_Point);
    --  Initializes layer3 end point
 
@@ -121,7 +121,7 @@ private
       record
          Initialized : Boolean := False;
          Layer2_End_Point_Ptr :
-            not null access Networking.Layer2.Layer2_End_Point_Type;
+            access Networking.Layer2.Layer2_End_Point_Type := null;
          case Layer3_Kind is
             when Layer3_IPv4 =>
                IPv4 : IPv4_End_Point_Type;

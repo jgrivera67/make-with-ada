@@ -267,7 +267,7 @@ package body Runtime_Logs is
 
       Actual_Length := (Tmp_Buffer'Last - Start_Index) + 1;
       if Buffer'Length >= Actual_Length then
-         Buffer (Buffer'First .. Actual_Length) :=
+         Buffer (Buffer'First .. Buffer'First + Actual_Length - 1) :=
            Tmp_Buffer (Start_Index .. Tmp_Buffer'Last);
       else
          raise Program_Error

@@ -33,6 +33,7 @@ project frdm_k64f_iot_stack is
              -- "-gnatwe",                     --  Treat warnings as errors
              "-gnat2012",                   --  Use Ada 2012
              "-Wall",                       --  All GCC warnings
+             "-v",
              "-O2");                        --  Optimise (level 2/3)
 
       for Local_Configuration_Pragmas use "../gnat_pragmas.adc";

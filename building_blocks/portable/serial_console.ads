@@ -47,9 +47,9 @@ package Serial_Console is
 
    Attributes_Normal : constant Attributes_Vector_Type := (others => 0);
 
-   type Line_Type is new Positive;
+   type Line_Type is range 1 .. 999;
 
-   type Column_Type is new Positive;
+   type Column_Type is range 1 .. 999;
 
    function Initialized return Boolean
       with Inline;

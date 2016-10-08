@@ -62,7 +62,7 @@ package body Networking.Layer3 is
    -- Initialize --
    ----------------
 
-   procedure Initialize (Layer3_End_Point : out Layer3_End_Point_Type)
+   procedure Initialize (Layer3_End_Point : in out Layer3_End_Point_Type)
    is
    begin
 

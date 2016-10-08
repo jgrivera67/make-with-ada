@@ -35,7 +35,15 @@ package body Last_Chance_Handler is
    use Microcontroller.Arm_Cortex_M;
    use Interfaces.Bit_Types;
 
-   Current_Disposition : Disposition_Type := Dummy_Infinite_Loop;
+   --
+   --  Dispositions for the last chance exception handler
+   --
+   type Disposition_Type is (System_Reset,
+                             Break_Point,
+                             Dummy_Infinite_Loop);
+
+   Disposition : constant Disposition_Type := Dummy_Infinite_Loop;
+
 
    -------------------------
    -- Last_Chance_Handler --
@@ -60,24 +68,28 @@ package body Last_Chance_Handler is
       --  Print exception message  to error log and UART0:
       --
       if Line /= 0 then
-         Runtime_Logs.Error_Print ("Exception: '" &
-                                   Msg_Text (1 .. Msg_Length) &
-                                   "' at line " & Line'Image, Caller);
          Ada.Text_IO.New_Line;
          Ada.Text_IO.Put_Line ("*** Exception: '"
                                & Msg_Text (1 .. Msg_Length) &
-                               "' at line " & Line'Image);
+                                 "' at line " & Line'Image);
+         if Runtime_Logs.Initialized then
+            Runtime_Logs.Error_Print ("Exception: '" &
+                                      Msg_Text (1 .. Msg_Length) &
+                                      "' at line " & Line'Image, Caller);
+         end if;
       else
-         Runtime_Logs.Error_Print ("Exception: '" &
-                                   Msg_Text (1 .. Msg_Length) &
-                                   "'", Caller);
          Ada.Text_IO.New_Line;
          Ada.Text_IO.Put_Line ("*** Exception: '" &
                                Msg_Text (1 .. Msg_Length) &
-                               "'");
+                                 "'");
+         if Runtime_Logs.Initialized then
+            Runtime_Logs.Error_Print ("Exception: '" &
+                                      Msg_Text (1 .. Msg_Length) &
+                                        "'", Caller);
+         end if;
       end if;
 
-      case Current_Disposition is
+      case Disposition is
          when System_Reset =>
             Microcontroller.MCU_Specific.System_Reset;
 
@@ -93,14 +105,5 @@ package body Last_Chance_Handler is
       end case;
 
    end Last_Chance_Handler;
-
-   ---------------------------------
-   -- Set_Last_Chance_Disposition --
-   ---------------------------------
-
-   procedure Set_Last_Chance_Disposition (Disposition : Disposition_Type) is
-   begin
-      Current_Disposition := Disposition;
-   end Set_Last_Chance_Disposition;
 
 end Last_Chance_Handler;

@@ -24,21 +24,15 @@
 --  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 --  POSSIBILITY OF SUCH DAMAGE.
 --
+
+pragma Restrictions (No_Elaboration_Code);
+
 with System;
 
 --
 --  @summary Last chance exception handler.
 --
 package Last_Chance_Handler is
-
-   --
-   --  Dispositions for the last chance exception handler
-   --
-   type Disposition_Type is (System_Reset,
-                             Break_Point,
-                             Dummy_Infinite_Loop);
-
-   procedure Set_Last_Chance_Disposition (Disposition : Disposition_Type);
 
    procedure Last_Chance_Handler (Msg : System.Address; Line : Integer)
      with No_Return;

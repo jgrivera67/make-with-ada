@@ -34,6 +34,7 @@ with System;
 package body Serial_Console is
    use Devices.MCU_Specific;
    use Ada.Synchronous_Task_Control;
+   use Runtime_Logs;
 
    --
    --  Baud rate for the console UART
@@ -262,16 +263,17 @@ package body Serial_Console is
                                  Attributes_Normal)
    is
    begin
-      Set_Cursor_And_Attributes (Line, Column, Attributes, True);
+      Set_Cursor_And_Attributes (Line, Column, Attributes, Save_Old => True);
       Print_String (S);
+      Restore_Cursor_and_Attributes;
    end Print_Pos_String;
 
    -- ** --
 
    procedure Print_String (S : String) is
    begin
-      for I in S'Range loop
-         Put_Char (S (I));
+      for C of S loop
+         Put_Char (C);
       end loop;
    end Print_String;
 
@@ -312,13 +314,23 @@ package body Serial_Console is
                                         Column : Column_Type;
                                         Attributes : Attributes_Vector_Type;
                                         Save_Old : Boolean := False) is
+      Line_Str : String (1 .. 3);
+      Line_Str_Length : Natural;
+      Col_Str : String (1 .. 3);
+      Col_Str_Length : Natural;
    begin
       if Save_Old then
          Save_Cursor_and_Attributes;
       end if;
 
+      Line_Str_Length := Unsigned_To_Decimal (Unsigned_32 (Line), Line_Str);
+      pragma Assert (Line_Str_Length > 0);
+      Col_Str_Length := Unsigned_To_Decimal (Unsigned_32 (Column), Col_Str);
+      pragma Assert (Col_Str_Length > 0);
+
       --  Send VT100 control sequence to position cursor:
-      Print_String (ASCII.ESC & "[" & Line'Image & ";" & Column'Image & "H");
+      Print_String (ASCII.ESC & "[" & Line_Str (1 .. Line_Str_Length) & ";" &
+                    Col_Str (1 .. Col_Str_Length) & "H");
 
       if Attributes /= Console_Var.Current_Attributes then
          Console_Var.Current_Attributes := Attributes;
@@ -350,22 +362,36 @@ package body Serial_Console is
 
    procedure Set_Scroll_Region (Top_Line : Line_Type;
                                 Bottom_Line : Line_Type) is
+      Top_Line_Str : String (1 .. 3);
+      Top_Line_Str_Length : Natural;
+      Bottom_Line_Str : String (1 .. 3);
+      Bottom_Line_Str_Length : Natural;
    begin
       --
       --  Send VT100 control sequence to set scroll region:
       --
-      Print_String (ASCII.ESC & "[" & Top_Line'Image & ";" &
-                    Bottom_Line'Image & "r");
+      Top_Line_Str_Length := Unsigned_To_Decimal (Unsigned_32 (Top_Line),
+                                                  Top_Line_Str);
+      pragma Assert (Top_Line_Str_Length > 0);
+      Bottom_Line_Str_Length := Unsigned_To_Decimal (Unsigned_32 (Bottom_Line),
+                                                     Bottom_Line_Str);
+      pragma Assert (Bottom_Line_Str_Length > 0);
+      Print_String (ASCII.ESC & "[" & Top_Line_Str (1 .. Top_Line_Str_Length) &
+                    ";" & Bottom_Line_Str (1 .. Bottom_Line_Str_Length) & "r");
    end Set_Scroll_Region;
 
    -- ** --
 
    procedure Set_Scroll_Region_To_Screen_Bottom (Top_Line : Line_Type) is
+      Top_Line_Str : String (1 .. 3);
+      Length : Natural;
    begin
       --
       --  Send VT100 control sequence to set scroll region:
       --
-      Print_String (ASCII.ESC & "[" & Top_Line'Image & ";0r");
+      Length := Unsigned_To_Decimal (Unsigned_32 (Top_Line), Top_Line_Str);
+      pragma Assert (Length > 0);
+      Print_String (ASCII.ESC & "[" & Top_Line_Str (1 .. Length) & ";0r");
    end Set_Scroll_Region_To_Screen_Bottom;
 
    -- ** --

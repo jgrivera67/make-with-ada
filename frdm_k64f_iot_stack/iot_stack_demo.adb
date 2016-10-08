@@ -126,6 +126,13 @@ package body IoT_Stack_Demo is
          Serial_Console.Print_Pos_String (23, 1,
             "Last UDP message received");
          Serial_Console.Draw_Box (22, 26, 3, 82);
+
+         --
+         --  Set scroll region for command line
+         --
+         Serial_Console.Set_Scroll_Region_To_Screen_Bottom (25);
+         Serial_Console.Set_Cursor_And_Attributes (
+            25, 1, Serial_Console.Attributes_Normal);
       end Init_Network_Stats_Display;
 
       -------------------------------
