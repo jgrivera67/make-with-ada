@@ -38,6 +38,7 @@ with Command_Parser;
 with GNAT.Source_Info;
 with Ada.Real_Time;
 with Last_Chance_Handler;
+pragma Unreferenced (Last_Chance_Handler);
 
 procedure Frdm_Kl25z_Autonomous_Car is
    pragma Priority (System.Priority'First + 2);
@@ -76,8 +77,6 @@ procedure Frdm_Kl25z_Autonomous_Car is
    -- ** --
 
 begin -- Frdm_Kl25z_Autonomous_Car
-   Last_Chance_Handler.Set_Last_Chance_Disposition (Last_Chance_Handler.Dummy_Infinite_Loop);
-
    Runtime_Logs.Initialize;
    Log_Start_Info;
 

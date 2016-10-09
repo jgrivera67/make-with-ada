@@ -37,6 +37,7 @@ with Command_Parser;
 with GNAT.Source_Info;
 with Ada.Real_Time;
 with Last_Chance_Handler;
+pragma Unreferenced (Last_Chance_Handler);
 
 procedure Hexiwear_Iot_Stack is
    pragma Priority (System.Priority'First + 2);
@@ -76,8 +77,6 @@ procedure Hexiwear_Iot_Stack is
    -- ** --
 
 begin -- Hexiwear_Iot_Stack
-   Last_Chance_Handler.Set_Last_Chance_Disposition (Last_Chance_Handler.Dummy_Infinite_Loop);
-
    Runtime_Logs.Initialize;
    Log_Start_Info;
 
