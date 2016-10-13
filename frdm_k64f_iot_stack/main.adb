@@ -35,7 +35,7 @@ with Color_Led;
 with Serial_Console;
 with Command_Parser;
 with Nor_Flash_Driver;
-with Networking;
+with Networking.API;
 with GNAT.Source_Info;
 with Ada.Real_Time;
 with App_Configuration;
@@ -95,7 +95,7 @@ begin -- Main
    Color_Led.Initialize;
    Serial_Console.Initialize;
    Nor_Flash_Driver.Initialize;
-   Networking.Initialize;
+   Networking.API.Initialize;
 
    App_Configuration.Load_And_Apply_Config_Parameters;
 

@@ -198,7 +198,7 @@ package body Command_Parser is
 
       return;
 
-      <<Error>>
+   <<Error>>
       Serial_Console.Print_String ("Error: Invalid syntax for command 'test'" &
                                      ASCII.LF);
    end Cmd_Test;

@@ -28,7 +28,6 @@
 with System; use System;
 with App_Parameters;
 with Interfaces;
-with Microcontroller.Arm_Cortex_M;
 
 --
 --  @summary Runtime log services
@@ -37,10 +36,9 @@ with Microcontroller.Arm_Cortex_M;
 --  in-memory logs.
 --
 package Runtime_Logs is
-   pragma Preelaborate;
+   --pragma Preelaborate;
    use Interfaces;
    use App_Parameters;
-   use Microcontroller.Arm_Cortex_M;
 
    type Log_Type is (Debug_Log,
                      Error_Log,
@@ -62,19 +60,16 @@ package Runtime_Logs is
 
    procedure Debug_Print (Msg : String;
                           Code_Address : Address := Null_Address)
-     with Pre => Initialized and then
-                 not Are_Cpu_Interrupts_Disabled;
+     with Pre => Initialized;
 
    function Generate_Unique_Error_Code return Address;
 
    procedure Error_Print (Msg : String;
                           Code_Address : Address := Generate_Unique_Error_Code)
-     with Pre => Initialized and then
-                 not Are_Cpu_Interrupts_Disabled;
+     with Pre => Initialized;
 
    procedure Info_Print (Msg : String)
-     with Pre => Initialized and then
-                  not Are_Cpu_Interrupts_Disabled;
+     with Pre => Initialized;
 
    function Unsigned_To_Decimal (Value : Unsigned_32;
                                  Buffer : out String) return Natural;
@@ -93,14 +88,6 @@ private
       Wrap_Count : Unsigned_32;
    end record;
 
-   protected type Protected_Runtime_Log_Type
-     (Runtime_Log_Ptr : not null access Runtime_Log_Type) is
-      pragma Interrupt_Priority (System.Interrupt_Priority'Last);
-
-      procedure Capture_Entry (Msg : String; Code_Address : Address);
-
-   end Protected_Runtime_Log_Type;
-
    --
    --  Individual Runtime logs
    --
@@ -108,29 +95,20 @@ private
    Debug_Log_Var : aliased Runtime_Log_Type (Debug_Log_Buffer_Size)
      with Linker_Section => ".runtime_logs";
 
-   Protected_Debug_Log_Var :
-     aliased Protected_Runtime_Log_Type (Debug_Log_Var'Access);
-
    Error_Log_Var : aliased Runtime_Log_Type (Error_Log_Buffer_Size)
      with Linker_Section => ".runtime_logs";
 
-   Protected_Error_Log_Var :
-     aliased Protected_Runtime_Log_Type (Error_Log_Var'Access);
-
    Info_Log_Var : aliased Runtime_Log_Type (Info_Log_Buffer_Size)
      with Linker_Section => ".runtime_logs";
-
-   Protected_Info_Log_Var :
-     aliased Protected_Runtime_Log_Type (Info_Log_Var'Access);
 
    --
    --  All runtime logs
    --
    Runtime_Logs : constant array (Log_Type) of not null access
-     Protected_Runtime_Log_Type :=
-       (Debug_Log => Protected_Debug_Log_Var'Access,
-        Error_Log => Protected_Error_Log_Var'Access,
-        Info_Log => Protected_Info_Log_Var'Access);
+     Runtime_Log_Type :=
+       (Debug_Log => Debug_Log_Var'Access,
+        Error_Log => Error_Log_Var'Access,
+        Info_Log => Info_Log_Var'Access);
 
    Runtime_Logs_Initialized : Boolean := False;
 

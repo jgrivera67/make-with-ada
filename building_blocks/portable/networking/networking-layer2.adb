@@ -85,9 +85,13 @@ package body Networking.Layer2 is
    procedure Initialize
    is
    begin
-      --  Generated stub: replace with real body!
-      pragma Compile_Time_Warning (Standard.True, "Initialize unimplemented");
-      Runtime_Logs.Debug_Print ("Layer2 Initialize unimplemented");
+      Initialize_Tx_Packet_Pool(Layer2_Var.Tx_Packet_Pool);
+
+      for Layer2_End_Point of Layer2_Var.Local_Ethernet_Layer2_End_Points loop
+         Initialize (Layer2_End_Point);
+      end loop;
+
+      Runtime_Logs.Debug_Print ("Networking layer 2 initialized");
       Layer2_Var.Initialized := True;
    end Initialize;
 

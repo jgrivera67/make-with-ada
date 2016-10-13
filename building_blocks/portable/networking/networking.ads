@@ -29,13 +29,14 @@ with Interfaces.Bit_Types;
 with Microcontroller;
 private with Microcontroller.Arm_Cortex_M;
 private with Ada.Synchronous_Task_Control;
+private with System;
 limited private with Networking.Layer2;
 
 --
 --  @summary Root package of a zero-copy Networking stack for Microcontrollers
 --
 package Networking is
-   pragma Preelaborate;
+   --pragma Preelaborate;
    use Interfaces.Bit_Types;
    use Interfaces;
    use Microcontroller;
@@ -105,16 +106,6 @@ package Networking is
 
    -- ** --
 
-   function Initialized return Boolean with Inline;
-   --  @private (Used only in contracts)
-
-   procedure Initialize
-     with Pre => Get_Cpu_Byte_Order = Host_Byte_Order and
-                 not Initialized;
-   --
-   --  Initializes the netowrking stack subsystem
-   --
-
    function Host_To_Network_Byte_Order (Value : Unsigned_16)
       return Unsigned_16 with Inline;
    --
@@ -140,9 +131,10 @@ package Networking is
    --
 
    --
-   --  Network pack traffic direction:
+   --  Network packet traffic direction:
    --  Rx - reception
    --  Tx - transmission
+   --
    type  Network_Traffic_Direction_Type is (Rx, Tx);
 
    --
@@ -151,13 +143,12 @@ package Networking is
    type Network_Packet_Type
      (Traffic_Direction : Network_Traffic_Direction_Type) is limited private;
 
-   function Net_Packet_Not_In_Queue (Net_Packet : Network_Packet_Type)
-     return Boolean with Inline;
-   --
-   --  Check that a network packet is not in a queue
-   --
+   type Network_Packet_Access_Type is access all Network_Packet_Type;
 
-   -- ** --
+   --
+   --  Netowork packet queue type
+   --
+   type Network_Packet_Queue_Type (Use_Mutex : Boolean) is limited private;
 
    --
    --  Packet payload data buffer
@@ -168,13 +159,48 @@ package Networking is
 
    type Net_Rx_Packet_Array_Type is
      array (Net_Rx_Packet_Index_Type) of
-     Network_Packet_Type (Traffic_Direction => Rx);
+     aliased Network_Packet_Type (Traffic_Direction => Rx);
 
    type Net_Tx_Packet_Array_Type is
      array (Net_Tx_Packet_Index_Type) of
-     Network_Packet_Type (Traffic_Direction => Tx);
+     aliased Network_Packet_Type (Traffic_Direction => Tx);
 
-   type Network_Packet_Queue_Type (Use_Mutex : Boolean) is limited private;
+   -- ** --
+
+   function Initialized (Packet_Queue : Network_Packet_Queue_Type)
+                         return Boolean;
+
+   procedure Initialize_Network_Packet_Queue
+      (Packet_Queue : in out Network_Packet_Queue_Type)
+      with Pre => not Initialized (Packet_Queue);
+
+   procedure Add_Network_Packet_To_Queue
+      (Packet_Queue : aliased in out Network_Packet_Queue_Type;
+       Packet_Ptr : Network_Packet_Access_Type)
+       with Pre => Initialized (Packet_Queue) and Packet_Ptr /= null;
+   --
+   --  Adds an element at the end of a network packet queue
+   --
+   --  @param Packet_Queue     Packet queue
+   --  @param Packet_Ptr       Pointer to the packet to be added
+   --
+
+   function Remove_Network_Packet_From_Queue
+      (Packet_Queue : aliased in out Network_Packet_Queue_Type;
+       Timeout_Ms : Natural) return Network_Packet_Access_Type
+       with Pre => Initialized (Packet_Queue);
+   --
+   --  Removes the packet from the head of a network packet queue, if the queue
+   --  is not empty. Otherwise, it waits until the queue becomes non-empty.
+   --  If timeout_ms is not 0, the wait will timeout at the specified
+   --  milliseconds value.
+   --
+   --  @param Packet_Queue     Packet queue
+   --  @param Timeout_Ms       0, or timeout (in milliseconds) for waiting for
+   --                          the queue to become non-empty
+   --
+   --  @return pointer to packet removed from the queue, or null if timeout
+   --
 
    --
    --  Pool of Tx packets
@@ -183,14 +209,16 @@ package Networking is
    --  @field Tx_Packets Tx packet objects
    --
    type Net_Tx_Packet_Pool_Type is limited record
-      Free_List : Network_Packet_Queue_Type (Use_Mutex => False);
+      Free_List : aliased Network_Packet_Queue_Type (Use_Mutex => False);
       Tx_Packets : Net_Tx_Packet_Array_Type;
    end record;
+
+   procedure Initialize_Tx_Packet_Pool
+      (Tx_Packet_Pool : in out Net_Tx_Packet_Pool_Type);
 
 private
 
    use Microcontroller.Arm_Cortex_M;
-   use Microcontroller;
    use Ada.Synchronous_Task_Control;
 
    --
@@ -252,8 +280,6 @@ private
    --  Fields for all packets:
    --  @field Total_Length Total packet length, including layer2, layer3 and
    --  layer4 headers
-   --  @field Queue_Ptr Pointer to the packet queue in which this packet is
-   --  currently queued or null if none
    --  @field Next_Ptr Pointer to the next network packet in the same packet
    --  queue in which this packet is currently queued, or null if none. This
    --  field is meaningful only if Queue_Ptr is not null
@@ -262,8 +288,7 @@ private
    type Network_Packet_Type
      (Traffic_Direction : Network_Traffic_Direction_Type) is limited record
       Total_Length : Unsigned_16 := 0;
-      Queue_Ptr : access Network_Packet_Queue_Type := null;
-      Next_Ptr : access Network_Packet_Type := null;
+      Next_Ptr : Network_Packet_Access_Type := null;
       Data_Payload_Buffer : Net_Packet_Buffer_Type;
       case Traffic_Direction is
          when Rx =>
@@ -278,12 +303,20 @@ private
    end record with Alignment => Mpu_Region_Alignment;
 
    --
+   --  Network packet queue timer task type
+   --
+   task type Packet_Queue_Timer_Task_Type
+      (Packet_Queue_Ptr : not null access Network_Packet_Queue_Type)
+      with Priority => System.Priority'Last - 1; -- High priority
+
+   --
    --  Network packet queue object type
    --
    --  @field Use_Mutex (record discriminant) Flag inidcating if serialization
    --  for concurrent accesses to queueue is to be done with a mutex (true) or
    --  by disabling CPU interrupts (false)
    --
+   --  @field Initialized Flag indicating if the Initialize has been called
    --  @field Length Number of elements in the queue
    --  @field Length_High_Water_Mark largest length that the queue has ever had
    --  @field Head_Ptr Pointer to the first packet in the queue or null if the
@@ -293,14 +326,36 @@ private
    --  @field Mutex Mutex to serialize access to the queue. It is only
    --  meaningful if 'Use_Mutex' is true.
    --  @field Not_Empty_Condvar Condition variable to be signaled when a packet
-   --  is added to the queue.
+   --  is added to the queue or the queue's timer expires.
+    --
+   --  NOTE: We cannot use Ada.Execution_Time.Timers as they are not available
+   --  in the Ravenscar small-foot-print runtime library.
+   --
+   --  @field Timeout_Condvar_Ptr Pointer to suspension object to be signaled
+   --         when the timer expires.
+   --  @field Timeout_Ms Timeout value in milliseconds, after which the timer
+   --         fires if it was started (by callinng Start_Timer).
+   --  @field Timer_Started Flag indicating if the timer count down has been
+   --         started.
+   --  @field Timer_Started_Condvar Suspension object to be signaled to start
+   --         the timer count down.
+   --  @field Timer_Task task that runs the timer count down.
+   --
+   --  NOTE: We cannot use Ada.Execution_Time.Timers as they are not available
+   --  in the Ravenscar small-foot-print runtime library.
    --
    type Network_Packet_Queue_Type (Use_Mutex : Boolean) is limited record
-      Length : Unsigned_16;
-      Length_High_Water_Mark : Unsigned_16;
-      Head_Ptr : access Network_Packet_Type;
-      Tail_Ptr : access Network_Packet_Type;
-      Not_Empty_Condvar : Suspension_Object;
+      Initialized : Boolean := False;
+      Length : Unsigned_16 := 0;
+      Length_High_Water_Mark : Unsigned_16 := 0;
+      Head_Ptr : Network_Packet_Access_Type := null;
+      Tail_Ptr : Network_Packet_Access_Type := null;
+      Not_Empty_Condvar : aliased Suspension_Object;
+      Timeout_Ms : Natural;
+      Timer_Started : Boolean := False;
+      Timer_Started_Condvar : Suspension_Object;
+      Timer_Task :
+         Packet_Queue_Timer_Task_Type (Network_Packet_Queue_Type'Access);
 
       case Use_Mutex is
          when True =>
@@ -312,9 +367,9 @@ private
 
    -- ** --
 
-   function Net_Packet_Not_In_Queue (Net_Packet : Network_Packet_Type)
-                                     return Boolean is
-      (Net_Packet.Queue_Ptr = null);
+   function Initialized (Packet_Queue : Network_Packet_Queue_Type)
+                         return Boolean is
+      (Packet_Queue.Initialized);
 
    -- ** --
 

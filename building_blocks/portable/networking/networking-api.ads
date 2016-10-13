@@ -26,43 +26,17 @@
 --
 
 --
---  @summary Networking layer 4 (transport layer) services
---
-package Networking.Layer4 is
-   --pragma Preelaborate;
+--  @summary  Application interface to the networking stack
+package Networking.API is
 
-   type Layer4_Kind_Type is (Layer4_UDP, Layer4_TCP);
-
-   type Layer4_End_Point_Type (Layer4_Kind : Layer4_Kind_Type) is
-   limited private;
-
-   -- ** --
-
-   function Initialized return Boolean;
+   function Initialized return Boolean with Inline;
    --  @private (Used only in contracts)
 
    procedure Initialize
-     with Pre => not Initialized;
-   --  Initializes layer4
+     with Pre => Get_Cpu_Byte_Order = Host_Byte_Order and
+     not Initialized;
+   --
+   --  Initializes the netowrking stack subsystem
+   --
 
-private
-
-   type Layer4_End_Point_Type (Layer4_Kind : Layer4_Kind_Type) is limited
-      record
-         Initialized : Boolean := False;
-         case Layer4_Kind is
-            when Layer4_UDP =>
-               null;--???
-            when Layer4_TCP =>
-               null;
-         end case;
-      end record;
-
-   Layer4_Initialized : Boolean := False;
-
-   -- ** --
-
-   function Initialized return Boolean is
-     (Layer4_Initialized);
-
-end Networking.Layer4;
+end Networking.API;

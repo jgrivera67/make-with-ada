@@ -106,8 +106,7 @@ package body Runtime_Logs.Dump is
      (Log : Log_Type;
       Max_Screen_Lines : Max_Screen_Lines_Type)
    is
-      Runtime_Log : Runtime_Log_Type renames
-        Runtime_Logs (Log).Runtime_Log_Ptr.all;
+      Runtime_Log : Runtime_Log_Type renames Runtime_Logs (Log).all;
       Wrap_Count : constant Unsigned_32 := Runtime_Log.Wrap_Count;
       Dump_End_Index : constant Positive range Runtime_Log.Buffer'Range :=
         Runtime_Log.Cursor;
@@ -139,10 +138,12 @@ package body Runtime_Logs.Dump is
       Num_Tail_Lines : Positive;
       Max_Screen_Lines : Max_Screen_Lines_Type)
    is
-      Runtime_Log : Runtime_Log_Type renames Runtime_Logs (Log).Runtime_Log_Ptr.all;
+      Runtime_Log : Runtime_Log_Type renames Runtime_Logs (Log).all;
       Wrap_Count : constant Unsigned_32 := Runtime_Log.Wrap_Count;
-      Dump_End_Index : constant Positive range Runtime_Log.Buffer'Range := Runtime_Log.Cursor;
-      Dump_Start_Index : Positive range Runtime_Log.Buffer'Range := Dump_End_Index;
+      Dump_End_Index : constant Positive range Runtime_Log.Buffer'Range :=
+        Runtime_Log.Cursor;
+      Dump_Start_Index : Positive range Runtime_Log.Buffer'Range :=
+        Dump_End_Index;
       Dump_Cursor : Positive range Runtime_Log.Buffer'Range;
       Text_Lines_Left : Natural;
    begin

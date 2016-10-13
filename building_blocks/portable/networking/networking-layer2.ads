@@ -33,7 +33,7 @@ limited private with Networking.Layer3;
 --  @summary Networking layer 2 (data-link layer) services
 --
 package Networking.Layer2 is
-   pragma Preelaborate;
+   --pragma Preelaborate;
    use Devices.MCU_Specific;
    use Devices;
 

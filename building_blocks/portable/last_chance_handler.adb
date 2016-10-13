@@ -30,10 +30,16 @@ with Microcontroller.MCU_Specific;
 with Runtime_Logs;
 with Ada.Text_IO;
 with Interfaces.Bit_Types;
+with System.Storage_Elements;
+with Stack_Trace_Capture;
 
 package body Last_Chance_Handler is
    use Microcontroller.Arm_Cortex_M;
    use Interfaces.Bit_Types;
+   use Interfaces;
+   use System.Storage_Elements;
+
+   procedure Print_Stack_Trace (Num_Entries_To_Skip : Natural);
 
    --
    --  Dispositions for the last chance exception handler
@@ -43,7 +49,6 @@ package body Last_Chance_Handler is
                              Dummy_Infinite_Loop);
 
    Disposition : constant Disposition_Type := Dummy_Infinite_Loop;
-
 
    -------------------------
    -- Last_Chance_Handler --
@@ -72,6 +77,7 @@ package body Last_Chance_Handler is
          Ada.Text_IO.Put_Line ("*** Exception: '"
                                & Msg_Text (1 .. Msg_Length) &
                                  "' at line " & Line'Image);
+         Print_Stack_Trace (Num_Entries_To_Skip => 0);
          if Runtime_Logs.Initialized then
             Runtime_Logs.Error_Print ("Exception: '" &
                                       Msg_Text (1 .. Msg_Length) &
@@ -80,8 +86,8 @@ package body Last_Chance_Handler is
       else
          Ada.Text_IO.New_Line;
          Ada.Text_IO.Put_Line ("*** Exception: '" &
-                               Msg_Text (1 .. Msg_Length) &
-                                 "'");
+                                 Msg_Text (1 .. Msg_Length) & "'");
+         Print_Stack_Trace (Num_Entries_To_Skip => 0);
          if Runtime_Logs.Initialized then
             Runtime_Logs.Error_Print ("Exception: '" &
                                       Msg_Text (1 .. Msg_Length) &
@@ -105,5 +111,28 @@ package body Last_Chance_Handler is
       end case;
 
    end Last_Chance_Handler;
+
+   -----------------------
+   -- Print_Stack_Trace --
+   -----------------------
+
+   procedure Print_Stack_Trace (Num_Entries_To_Skip : Natural) is
+      Max_Stack_Trace_Entries : constant Positive := 8;
+      Stack_Trace :
+         Stack_Trace_Capture.Stack_Trace_Type (1 .. Max_Stack_Trace_Entries);
+
+      Num_Entries_Captured : Natural;
+      Hex_Num_Str : String (1 .. 8);
+   begin
+      Stack_Trace_Capture.Get_Stack_Trace (Stack_Trace,
+                                           Num_Entries_Captured);
+      for Stack_Trace_Entry of
+        Stack_Trace (1 + Num_Entries_To_Skip .. Num_Entries_Captured) loop
+         Ada.Text_IO.Put (ASCII.HT & "0x");
+         Runtime_Logs.Unsigned_To_Hexadecimal (
+            Unsigned_32 (To_Integer (Stack_Trace_Entry)), Hex_Num_Str);
+         Ada.Text_IO.Put_Line (Hex_Num_Str);
+      end loop;
+   end Print_Stack_Trace;
 
 end Last_Chance_Handler;

@@ -31,7 +31,7 @@ with Devices.MCU_Specific;
 --  @summary Networking layer 3 (network layer) services
 --
 package Networking.Layer3 is
-   pragma Preelaborate;
+   --pragma Preelaborate;
    use Devices.MCU_Specific;
 
    type Layer3_Kind_Type is (Layer3_IPv4, Layer3_IPv6);

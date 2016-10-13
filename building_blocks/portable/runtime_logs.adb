@@ -29,9 +29,16 @@
 with System.Storage_Elements;
 with Reset_Counter;
 with Stack_Trace_Capture;
+with Ada.Real_Time;
+with Ada.Task_Identification;
+with Ada.Unchecked_Conversion;
+with Interfaces.Bit_Types;
+with Microcontroller.Arm_Cortex_M;
 
 package body Runtime_Logs is
    use System.Storage_Elements;
+   use Interfaces.Bit_Types;
+   use Microcontroller.Arm_Cortex_M;
 
    procedure Log_Print_Stack_Trace (Runtime_Log : in out Runtime_Log_Type;
                                     Num_Entries_To_Skip : Natural);
@@ -52,6 +59,11 @@ package body Runtime_Logs is
    procedure Log_Put_Char (Runtime_Log : in out Runtime_Log_Type;
                            Char : Character);
 
+   procedure Capture_Log_Entry (Runtime_Log : in out Runtime_Log_Type;
+                                Msg : String;
+                                Code_Address : Address;
+                                With_Stack_Trace : Boolean := False);
+
    -- ** --
 
    --
@@ -62,10 +74,67 @@ package body Runtime_Logs is
 
    -- ** --
 
+   -----------------------
+   -- Capture_Log_Entry --
+   -----------------------
+
+   procedure Capture_Log_Entry (Runtime_Log : in out Runtime_Log_Type;
+                                Msg : String;
+                                Code_Address : Address;
+                                With_Stack_Trace : Boolean := False) is
+      function Time_To_Unsigned_64 is
+        new Ada.Unchecked_Conversion (Source => Ada.Real_Time.Time,
+                                      Target => Unsigned_64);
+
+      function Task_Id_To_Unsigned_32 is
+        new Ada.Unchecked_Conversion (Source =>
+                                         Ada.Task_Identification.Task_Id,
+                                      Target => Unsigned_32);
+
+      Old_Interrupt_Mask : Word;
+      Time_Stamp : constant Ada.Real_Time.Time := Ada.Real_Time.Clock;
+      Calling_Task_Id : constant Ada.Task_Identification.Task_Id :=
+        Ada.Task_Identification.Current_Task;
+
+   begin
+      Old_Interrupt_Mask := Disable_Cpu_Interrupts;
+
+      Log_Print_Uint32_Decimal (Runtime_Log,
+                                Runtime_Log.Seq_Num);
+      Log_Put_Char (Runtime_Log, ':');
+      Log_Print_Uint64_Decimal (
+         Runtime_Log, Time_To_Unsigned_64 (Time_Stamp));
+      Log_Put_Char (Runtime_Log, ':');
+      Log_Print_Uint32_Hexadecimal (
+         Runtime_Log, Task_Id_To_Unsigned_32 (Calling_Task_Id));
+
+      Log_Put_Char (Runtime_Log, ':');
+
+      if Code_Address /= Null_Address then
+         Log_Print_Uint32_Hexadecimal (
+            Runtime_Log,
+            Unsigned_32 (To_Integer (Code_Address)));
+      end if;
+
+      Log_Put_Char (Runtime_Log, ':');
+      Log_Print_String (Runtime_Log, Msg);
+      Log_Put_Char (Runtime_Log, ASCII.LF);
+      if With_Stack_Trace then
+         Log_Print_Stack_Trace (Runtime_Log,
+                                Num_Entries_To_Skip => 0);
+      end if;
+
+      Runtime_Log.Seq_Num := Runtime_Log.Seq_Num + 1;
+
+      Restore_Cpu_Interrupts (Old_Interrupt_Mask);
+
+   end Capture_Log_Entry;
+
+
    procedure Debug_Print (Msg : String;
                           Code_Address : Address := Null_Address) is
    begin
-      Protected_Debug_Log_Var.Capture_Entry (Msg, Code_Address);
+      Capture_Log_Entry (Debug_Log_Var, Msg, Code_Address);
    end Debug_Print;
 
    -- ** --
@@ -74,7 +143,8 @@ package body Runtime_Logs is
                           Code_Address : Address := Generate_Unique_Error_Code)
    is
    begin
-      Protected_Error_Log_Var.Capture_Entry (Msg, Code_Address);
+      Capture_Log_Entry (Error_Log_Var, Msg, Code_Address,
+                         With_Stack_Trace => True);
    end Error_Print;
 
    -- ** --
@@ -91,7 +161,7 @@ package body Runtime_Logs is
 
    procedure Info_Print (Msg : String) is
    begin
-      Protected_Info_Log_Var.Capture_Entry (Msg, Null_Address);
+      Capture_Log_Entry (Info_Log_Var, Msg, Null_Address);
    end Info_Print;
 
    -- ** --
@@ -114,9 +184,9 @@ package body Runtime_Logs is
 
    begin -- Initialize
       if Reset_Count = 0 then
-         for Log of Runtime_Logs loop
-            Initialize_Log (Log.Runtime_Log_Ptr.all);
-         end loop;
+         Initialize_Log (Debug_Log_Var);
+         Initialize_Log (Error_Log_Var);
+         Initialize_Log (Info_Log_Var);
       end if;
 
       Runtime_Logs_Initialized := True;
@@ -300,15 +370,5 @@ package body Runtime_Logs is
       pragma Assert (Value_Left = 0);
 
    end Unsigned_To_Hexadecimal;
-
-   -- ** --
-
-   --
-   --  Note: The following portected body is separate to move out the
-   --  dependency of this package on Ada.Real_time. This package needs
-   --  to be preelaborated and cannot depend on packages that cannot be
-   --  preelaborated.
-   --
-   protected body Protected_Runtime_Log_Type is separate;
 
 end Runtime_Logs;

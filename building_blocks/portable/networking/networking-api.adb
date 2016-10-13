@@ -25,44 +25,34 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
---
---  @summary Networking layer 4 (transport layer) services
---
-package Networking.Layer4 is
-   --pragma Preelaborate;
+with Networking.Layer2;
+with Networking.Layer3;
+with Networking.Layer4;
 
-   type Layer4_Kind_Type is (Layer4_UDP, Layer4_TCP);
+package body Networking.API is
 
-   type Layer4_End_Point_Type (Layer4_Kind : Layer4_Kind_Type) is
-   limited private;
+   Networking_Stack_Initialized : Boolean := False;
 
-   -- ** --
-
-   function Initialized return Boolean;
-   --  @private (Used only in contracts)
+   ----------------
+   -- Initialize --
+   ----------------
 
    procedure Initialize
-     with Pre => not Initialized;
-   --  Initializes layer4
+   is
+   begin
+      Networking.Layer2.Initialize;
+      Networking.Layer3.Initialize;
+      Networking.Layer4.Initialize;
+      Networking.Layer2.Start_Layer2_End_Points;
+      Networking.Layer3.Start_Layer3_Tasks;
 
-private
+      Networking_Stack_Initialized := True;
+   end Initialize;
 
-   type Layer4_End_Point_Type (Layer4_Kind : Layer4_Kind_Type) is limited
-      record
-         Initialized : Boolean := False;
-         case Layer4_Kind is
-            when Layer4_UDP =>
-               null;--???
-            when Layer4_TCP =>
-               null;
-         end case;
-      end record;
+   -----------------
+   -- Initialized --
+   -----------------
 
-   Layer4_Initialized : Boolean := False;
+   function Initialized return Boolean is (Networking_Stack_Initialized);
 
-   -- ** --
-
-   function Initialized return Boolean is
-     (Layer4_Initialized);
-
-end Networking.Layer4;
+end Networking.API;
