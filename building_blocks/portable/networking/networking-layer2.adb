@@ -269,7 +269,8 @@ package body Networking.Layer2 is
 
    begin --  Packet_Receiver_Task_Type
       Suspend_Until_True (Layer2_End_Point_Ptr.Initialized_Condvar);
-      Runtime_Logs.Info_Print ("Layer-2 end point task started");
+      Runtime_Logs.Info_Print (
+         "Layer-2 end point packet receiver task started");
 
       loop
          Dequeue_Rx_Packet (Layer2_End_Point_Ptr.all, Rx_Packet_Ptr);

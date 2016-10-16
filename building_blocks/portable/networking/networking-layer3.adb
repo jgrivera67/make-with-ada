@@ -83,6 +83,7 @@ package body Networking.Layer3 is
         IPv4_Address_Str'First;
       Length : Natural;
    begin
+      IPv4_Address_Str := (others => ASCII.NUL);
       for I in IPv4_Address'Range loop
          Length := Unsigned_To_Decimal (
                       Unsigned_32 (IPv4_Address (I)),

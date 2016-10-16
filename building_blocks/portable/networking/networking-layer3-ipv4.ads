@@ -221,4 +221,9 @@ package Networking.Layer3.IPv4 is
 
    procedure Receive_IPv4_Packet (Rx_Packet : Network_Packet_Type);
 
+   procedure Set_Local_IPv4_Address (
+      Ethernet_Mac_Id : Ethernet_Mac_Id_Type;
+      IPv4_Address : IPv4_Address_Type;
+      Subnet_Prefix : IPv4_Subnet_Prefix_Type);
+
 end Networking.Layer3.IPv4;

@@ -27,6 +27,8 @@
 
 with Generic_App_Config;
 with Runtime_Logs;
+with Devices.MCU_Specific;
+with Networking.Layer3.IPv4;
 
 package body App_Configuration is
 
@@ -46,6 +48,16 @@ package body App_Configuration is
       --  Generated stub: replace with real body!
       pragma Compile_Time_Warning (True, "Load_And_Apply_Config_Parameters unimplemented");
       Runtime_Logs.Debug_Print ("Load_And_Apply_Config_Parameters not implemented yet");
+      --  ???
+      Config_Parameters.Local_IPv4_Address := (192, 168, 8, 2);
+      Config_Parameters.IPv4_Subnet_Prefix := 24;
+      --  ???
+
+      Networking.Layer3.IPv4.Set_Local_IPv4_Address (
+         Devices.MCU_Specific.MAC0,
+         Config_Parameters.Local_IPv4_Address,
+         Config_Parameters.IPv4_Subnet_Prefix);
+
    end Load_And_Apply_Config_Parameters;
 
 end App_Configuration;
