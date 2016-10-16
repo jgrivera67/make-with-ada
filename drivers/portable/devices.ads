@@ -35,8 +35,8 @@ package Devices is
    use Interfaces;
    use Interfaces.Bit_Types;
 
-   type Bytes_Array is array (Positive range <>) of Byte;
-   type Words_Array is array (Positive range <>) of Word;
+   type Bytes_Array_Type is array (Positive range <>) of Byte;
+   type Words_Array_Type is array (Positive range <>) of Word;
 
    subtype Two_Bits is UInt2;
    subtype Three_Bits is UInt3;

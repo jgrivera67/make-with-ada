@@ -33,7 +33,7 @@ with Microcontroller.MCU_Specific;
 --  @summary CRC-32 accelerator driver
 --
 package Crc_32_Accelerator_Driver is
-   pragma Preelaborate;
+   --pragma Preelaborate;
    use Interfaces;
    use System;
    use Microcontroller.MCU_Specific;

@@ -26,16 +26,16 @@
 --
 
 with Devices.MCU_Specific;
+with Microcontroller.Arm_Cortex_M;
 private with System;
-limited private with Networking.Layer3;
+limited with Networking.Layer3;
 
 --
 --  @summary Networking layer 2 (data-link layer) services
 --
 package Networking.Layer2 is
-   --pragma Preelaborate;
    use Devices.MCU_Specific;
-   use Devices;
+   use Microcontroller.Arm_Cortex_M;
 
    --
    --  Kinds of Layer-2 end points supported
@@ -44,18 +44,6 @@ package Networking.Layer2 is
 
    type Layer2_End_Point_Type (Layer2_Kind : Layer2_Kind_Type) is
       limited private;
-
-   --
-   --  Ethernet MAC address in network byte order:
-   --  Ethernet_Mac_Address_Type (1) is most significant byte of the MAC
-   --  address
-   --  Ethernet_Mac_Address_Type (6) is least significant byte of the MAC
-   --  address
-   --
-   type Ethernet_Mac_Address_Type is new Bytes_Array (1 .. 6)
-     with Alignment => 2, Size => 6 * Byte'Size;
-
-   subtype Ethernet_Mac_Address_String_Type is String (1 .. 17);
 
    --
    --  Bit masks for first byte (most significant byte) of a MAC address
@@ -80,16 +68,22 @@ package Networking.Layer2 is
                          return Boolean;
    --  @private (Used only in contracts)
 
-   procedure Initialize (Layer2_End_Point : in out Layer2_End_Point_Type)
-     with Pre => not Initialized (Layer2_End_Point);
+   procedure Initialize (
+      Layer2_End_Point : aliased in out Layer2_End_Point_Type;
+      Ethernet_Mac_Id : Ethernet_Mac_Id_Type;
+      IPv4_End_Point_Ptr : access Networking.Layer3.Layer3_End_Point_Type;
+      IPv6_End_Point_Ptr : access Networking.Layer3.Layer3_End_Point_Type)
+     with Pre => Layer2_End_Point.Layer2_Kind = Layer2_Ethernet and then
+                 not Initialized (Layer2_End_Point);
    --  Initializes layer2 end point
 
    procedure Ethernet_Mac_Address_To_String (
       Mac_Address : Ethernet_Mac_Address_Type;
       Mac_Address_Str : out Ethernet_Mac_Address_String_Type);
 
-   procedure Enqueue_Rx_Packet (Layer2_End_Point : in out Layer2_End_Point_Type;
-                                Rx_Packet : in out Network_Packet_Type)
+   procedure Enqueue_Rx_Packet (
+      Layer2_End_Point : in out Layer2_End_Point_Type;
+      Rx_Packet : in out Network_Packet_Type)
      with Pre => Initialized (Layer2_End_Point) and then
                  Rx_Packet.Traffic_Direction = Rx;
 
@@ -97,8 +91,19 @@ package Networking.Layer2 is
       Ethernet_Mac_Id : Ethernet_Mac_Id_Type;
       Mac_Address : out Ethernet_Mac_Address_Type);
 
+   procedure Recycle_Rx_Packet (Rx_Packet : in out Network_Packet_Type)
+     with Pre => Rx_Packet.Traffic_Direction = Rx and then
+                 not Is_Caller_An_Interrupt_Handler;
+   --
+   --  Recycle a Rx packet for receiving another packet from the
+   --  corresponding layer-2 end point
+   --
+
    procedure Release_Tx_Packet (Tx_Packet : in out Network_Packet_Type)
      with Pre => Tx_Packet.Traffic_Direction = Tx;
+   --
+   --  Release a Tx packet back to the global Tx packet pool free list
+   --
 
    -- ** --
 
@@ -135,7 +140,7 @@ private
       Initialized_Condvar : Suspension_Object;
       IPv4_End_Point_Ptr : access Networking.Layer3.Layer3_End_Point_Type;
       IPv6_End_Point_Ptr : access Networking.Layer3.Layer3_End_Point_Type;
-      Rx_Packet_Queue : Network_Packet_Queue_Type (Use_Mutex => False);
+      Rx_Packet_Queue : aliased Network_Packet_Queue_Type (Use_Mutex => False);
       Rx_Packets : Net_Rx_Packet_Array_Type;
       Packet_Receiver_Task :
          Packet_Receiver_Task_Type (Layer2_End_Point_Type'Access);
@@ -146,9 +151,7 @@ private
             Mac_Address : Ethernet_Mac_Address_Type;
       end case;
    end record
-     with Alignment => Mpu_Region_Alignment,
-          Type_Invariant => IPv4_End_Point_Ptr /= null  or else
-                            IPv6_End_Point_Ptr /= null;
+     with Alignment => Mpu_Region_Alignment;
 
    type Ethernet_Layer2_End_Point_Array_Type is array (Ethernet_Mac_Id_Type) of
         aliased Layer2_End_Point_Type (Layer2_Ethernet);
@@ -173,9 +176,9 @@ private
    type Layer2_Type is limited record
       Initialized : Boolean := False;
       Tracing_On : Boolean := False;
-      Rx_Packets_Accepted_Count : Unsigned_32 := 0 with Volatile;
-      Rx_Packets_Dropped_Count : Unsigned_32 := 0 with Volatile;
-      Sent_Packets_Count : Unsigned_32 := 0 with Volatile;
+      Rx_Packets_Accepted_Count : Unsigned_32 := 0 with Atomic;
+      Rx_Packets_Dropped_Count : Unsigned_32 := 0 with Atomic;
+      Sent_Packets_Count : Unsigned_32 := 0 with Atomic;
       Tx_Packet_Pool : Net_Tx_Packet_Pool_Type;
       Local_Ethernet_Layer2_End_Points : Ethernet_Layer2_End_Point_Array_Type;
    end record with Alignment => Mpu_Region_Alignment;

@@ -29,11 +29,70 @@ with Ada.Real_Time;
 
 package body Networking is
 
-   ---------------------------------
-   -- Add_Network_Packet_To_Queue --
-   ---------------------------------
+   ----------------------------
+   -- Dequeue_Network_Packet --
+   ----------------------------
 
-   procedure Add_Network_Packet_To_Queue
+   function Dequeue_Network_Packet
+     (Packet_Queue : aliased in out Network_Packet_Queue_Type;
+      Timeout_Ms : Natural) return Network_Packet_Access_Type
+   is
+      Old_Interrupt_Mask : Word := 0;
+      Old_Head_Packet_Ptr : Network_Packet_Access_Type;
+   begin
+      if Timeout_Ms /= 0 then
+         --
+         --  Start timer to wait for the queue to become not empty:
+         --
+         Packet_Queue.Timeout_Ms := Timeout_Ms;
+         Packet_Queue.Timer_Started := True;
+         Set_True (Packet_Queue.Timer_Started_Condvar);
+      end if;
+
+      --
+      --  Wait until queue becomes not empty or the timer expires:
+      --
+      Suspend_Until_True (Packet_Queue.Not_Empty_Condvar);
+
+      if Packet_Queue.Use_Mutex then
+         Suspend_Until_True (Packet_Queue.Mutex);
+      else
+         Old_Interrupt_Mask := Disable_Cpu_Interrupts;
+      end if;
+
+      Old_Head_Packet_Ptr := Packet_Queue.Head_Ptr;
+
+      --
+      --  If Old_Head_Packet_Ptr is null, the timer expired
+      --
+      if Old_Head_Packet_Ptr /= null then
+         pragma Assert (Old_Head_Packet_Ptr.Queue_Ptr = Packet_Queue'Access);
+         Old_Head_Packet_Ptr.Queue_Ptr := null;
+         Packet_Queue.Head_Ptr := Old_Head_Packet_Ptr.Next_Ptr;
+         Old_Head_Packet_Ptr.Next_Ptr := null;
+         if Packet_Queue.Head_Ptr = null then
+            pragma Assert (Packet_Queue.Tail_Ptr = Old_Head_Packet_Ptr);
+            Packet_Queue.Tail_Ptr := null;
+         end if;
+
+         Packet_Queue.Length := Packet_Queue.Length - 1;
+         Packet_Queue.Timer_Started := False;
+      end if;
+
+      if Packet_Queue.Use_Mutex then
+         Set_True (Packet_Queue.Mutex);
+      else
+         Restore_Cpu_Interrupts (Old_Interrupt_Mask);
+      end if;
+
+      return Old_Head_Packet_Ptr;
+   end Dequeue_Network_Packet;
+
+   ----------------------------
+   -- Enqueue_Network_Packet --
+   ----------------------------
+
+   procedure Enqueue_Network_Packet
       (Packet_Queue : aliased in out Network_Packet_Queue_Type;
        Packet_Ptr : Network_Packet_Access_Type)
    is
@@ -43,7 +102,7 @@ package body Networking is
       if Packet_Queue.Use_Mutex then
          Suspend_Until_True (Packet_Queue.Mutex);
       else
-        Old_Interrupt_Mask := Disable_Cpu_Interrupts;
+         Old_Interrupt_Mask := Disable_Cpu_Interrupts;
       end if;
 
       Old_Tail_Packet_Ptr := Packet_Queue.Tail_Ptr;
@@ -54,9 +113,10 @@ package body Networking is
          Old_Tail_Packet_Ptr.Next_Ptr := Packet_Ptr;
       end if;
 
+      Packet_Ptr.Queue_Ptr := Packet_Queue'Unchecked_Access;
       Packet_Queue.Length := Packet_Queue.Length + 1;
       if Packet_Queue.Length > Packet_Queue.Length_High_Water_Mark then
-    	 Packet_Queue.Length_High_Water_Mark := Packet_Queue.Length;
+         Packet_Queue.Length_High_Water_Mark := Packet_Queue.Length;
       end if;
 
       if Packet_Queue.Use_Mutex then
@@ -66,7 +126,7 @@ package body Networking is
       end if;
 
       Set_True (Packet_Queue.Not_Empty_Condvar);
-   end Add_Network_Packet_To_Queue;
+   end Enqueue_Network_Packet;
 
    -------------------------------------
    -- Initialize_Network_Packet_Queue --
@@ -91,7 +151,7 @@ package body Networking is
    procedure Initialize_Tx_Packet_Pool
       (Tx_Packet_Pool : in out Net_Tx_Packet_Pool_Type)
    is
-     Tx_Packet_Initial_State_Flags : constant Tx_Packet_State_Flags_Type :=
+      Tx_Packet_Initial_State_Flags : constant Tx_Packet_State_Flags_Type :=
         (Packet_In_Tx_Pool => True, others => False);
    begin
       Initialize_Network_Packet_Queue (Tx_Packet_Pool.Free_List);
@@ -99,68 +159,10 @@ package body Networking is
          pragma Assert (Tx_Packet.Traffic_Direction = Tx);
          pragma Assert (Tx_Packet.Tx_State_Flags =
                         Tx_Packet_Initial_State_Flags);
-         Add_Network_Packet_To_Queue (
-            Tx_Packet_Pool.Free_List,
-            Tx_Packet'Unchecked_Access);
+         Enqueue_Network_Packet (Tx_Packet_Pool.Free_List,
+                                 Tx_Packet'Unchecked_Access);
       end loop;
    end Initialize_Tx_Packet_Pool;
-
-   --------------------------------------
-   -- Remove_Network_Packet_From_Queue --
-   --------------------------------------
-
-   function Remove_Network_Packet_From_Queue
-      (Packet_Queue : aliased in out Network_Packet_Queue_Type;
-       Timeout_Ms : Natural) return Network_Packet_Access_Type
-   is
-      Old_Interrupt_Mask : Word := 0;
-      Old_Head_Packet_Ptr : Network_Packet_Access_Type;
-   begin
-      if Timeout_Ms /= 0 then
-         --
-         --  Start timer to wait for the queue to become not empty:
-         --
-         Packet_Queue.Timeout_Ms := Timeout_Ms;
-         Packet_Queue.Timer_Started := True;
-         Set_True (Packet_Queue.Timer_Started_Condvar);
-      end if;
-
-      --
-      --  Wait until queue becomes not empty or the timer expires:
-      --
-      Suspend_Until_True (Packet_Queue.Not_Empty_Condvar);
-
-      if Packet_Queue.Use_Mutex then
-         Suspend_Until_True (Packet_Queue.Mutex);
-      else
-        Old_Interrupt_Mask := Disable_Cpu_Interrupts;
-      end if;
-
-      Old_Head_Packet_Ptr := Packet_Queue.Head_Ptr;
-
-      --
-      --  If Old_Head_Packet_Ptr is null, the timer expired
-      --
-      if Old_Head_Packet_Ptr /= null then
-         Packet_Queue.Head_Ptr := Old_Head_Packet_Ptr.Next_Ptr;
-         Old_Head_Packet_Ptr.Next_Ptr := null;
-         if Packet_Queue.Head_Ptr = null then
-            pragma Assert (Packet_Queue.Tail_Ptr = Old_Head_Packet_Ptr);
-            Packet_Queue.Tail_Ptr := null;
-         end if;
-
-         Packet_Queue.Length := Packet_Queue.Length - 1;
-         Packet_Queue.Timer_Started := False;
-      end if;
-
-      if Packet_Queue.Use_Mutex then
-         Set_True (Packet_Queue.Mutex);
-      else
-         Restore_Cpu_Interrupts (Old_Interrupt_Mask);
-      end if;
-
-      return Old_Head_Packet_Ptr;
-   end Remove_Network_Packet_From_Queue;
 
    -- ** --
 

@@ -626,8 +626,7 @@ package body Networking.Layer2.Ethernet_Mac_Driver is
       Crc_32_Accelerator_Driver.Initialize;
       Ethernet_Mac_Var.Initialized := True;
       Runtime_Logs.Debug_Print ("Ethernet MAC: Initialized MAC " &
-                                  Ethernet_Mac_Id'Image & ASCII.LF);
-
+                                Ethernet_Mac_Id'Image);
    end Initialize;
 
    -----------------

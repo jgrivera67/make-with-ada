@@ -31,7 +31,7 @@ with System; use System;
 --  @summary Stack trace capture service
 --
 package Stack_Trace_Capture is
-   pragma Preelaborate;
+   --pragma Preelaborate;
 
    type Stack_Trace_Type is array (Positive range <>) of Address;
 

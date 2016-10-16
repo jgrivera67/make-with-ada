@@ -31,7 +31,6 @@ with Devices.MCU_Specific;
 --  @summary Networking layer 3 (network layer) services
 --
 package Networking.Layer3 is
-   --pragma Preelaborate;
    use Devices.MCU_Specific;
 
    type Layer3_Kind_Type is (Layer3_IPv4, Layer3_IPv6);
@@ -69,6 +68,20 @@ package Networking.Layer3 is
    --
    type IPv6_Subnet_Prefix_Type is range 1 .. 127;
 
+   --
+   --  Layer-4 protocols
+   --
+   type Layer4_Protocol_Type is (ICMP,
+                                 TCP,
+                                 UDP,
+                                 ICMPv6)
+      with Size => Byte'Size;
+
+   for Layer4_Protocol_Type use (ICMP => 16#1#,
+                                 TCP => 16#6#,
+                                 UDP => 16#11#,
+                                 ICMPv6 => 16#3a#);
+
    -- ** --
 
    function Initialized return Boolean;
@@ -82,8 +95,8 @@ package Networking.Layer3 is
      with Pre => Initialized;
    --  Start layer3 tasks
 
-    function Initialized (Layer3_End_Point : Layer3_End_Point_Type)
-                            return Boolean;
+   function Initialized (Layer3_End_Point : Layer3_End_Point_Type)
+                         return Boolean;
    --  @private (Used only in contracts)
 
    procedure Initialize (Layer3_End_Point : in out Layer3_End_Point_Type)
@@ -101,6 +114,12 @@ package Networking.Layer3 is
    procedure IPv4_Address_To_String (
       IPv4_Address : IPv4_Address_Type;
       IPv4_Address_Str : out IPv4_Address_String_Type);
+
+   function Get_IPv4_End_Point (Ethernet_Mac_Id : Ethernet_Mac_Id_Type)
+      return access Networking.Layer3.Layer3_End_Point_Type;
+
+   function Get_IPv6_End_Point (Ethernet_Mac_Id : Ethernet_Mac_Id_Type)
+      return access Networking.Layer3.Layer3_End_Point_Type;
 
 private
 
@@ -164,5 +183,13 @@ private
    function Initialized (Layer3_End_Point : Layer3_End_Point_Type)
                             return Boolean is
      (Layer3_End_Point.Initialized);
+
+   function Get_IPv4_End_Point (Ethernet_Mac_Id : Ethernet_Mac_Id_Type)
+      return access Networking.Layer3.Layer3_End_Point_Type is
+      (Layer3_Var.Local_IPv4_End_Points (Ethernet_Mac_Id)'Access);
+
+   function Get_IPv6_End_Point (Ethernet_Mac_Id : Ethernet_Mac_Id_Type)
+      return access Networking.Layer3.Layer3_End_Point_Type is
+      (Layer3_Var.Local_IPv6_End_Points (Ethernet_Mac_Id)'Access);
 
 end Networking.Layer3;

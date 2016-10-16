@@ -194,9 +194,9 @@ package body IoT_Stack_Demo is
       Udp_Rx_Packet_Accepted_Count : Unsigned_32 := 0;
       Udp_Rx_Packet_Dropped_Count : Unsigned_32 := 0;
       Udp_Tx_Packet_Count : Unsigned_32 := 0;
-      Local_Mac_Address : Networking.Layer2.Ethernet_Mac_Address_Type;
+      Local_Mac_Address : Networking.Ethernet_Mac_Address_Type;
       Local_Mac_Address_Str :
-          Networking.Layer2.Ethernet_Mac_Address_String_Type;
+          Networking.Ethernet_Mac_Address_String_Type;
       Local_IPv4_Address : Networking.Layer3.IPv4_Address_Type;
       Local_IPv4_Subnet_Mask : Networking.Layer3.IPv4_Address_Type;
       Local_IPv4_Address_Str :

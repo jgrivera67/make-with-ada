@@ -27,6 +27,7 @@
 
 with Interfaces.Bit_Types;
 with Microcontroller;
+with Devices;
 private with Microcontroller.Arm_Cortex_M;
 private with Ada.Synchronous_Task_Control;
 private with System;
@@ -36,10 +37,10 @@ limited private with Networking.Layer2;
 --  @summary Root package of a zero-copy Networking stack for Microcontrollers
 --
 package Networking is
-   --pragma Preelaborate;
    use Interfaces.Bit_Types;
    use Interfaces;
    use Microcontroller;
+   use Devices;
 
    --
    --  Cortex-M cores run in little-endian byte-order mode
@@ -153,9 +154,15 @@ package Networking is
    --
    --  Packet payload data buffer
    --
-   type Net_Packet_Buffer_Type is
+   type Net_Packet_Buffer_Byte_Array_Type is
      array (1 .. Net_Packet_Data_Buffer_Size) of Byte
-     with Alignment => Net_Packet_Data_Buffer_Alignment;
+      with Alignment => Net_Packet_Data_Buffer_Alignment;
+
+   type Net_Packet_Buffer_Type is limited record
+      Data : Net_Packet_Buffer_Byte_Array_Type;
+   end record with Alignment => Net_Packet_Data_Buffer_Alignment;
+
+   type Net_Packet_Buffer_Access_Type is access all Net_Packet_Buffer_Type;
 
    type Net_Rx_Packet_Array_Type is
      array (Net_Rx_Packet_Index_Type) of
@@ -165,19 +172,38 @@ package Networking is
      array (Net_Tx_Packet_Index_Type) of
      aliased Network_Packet_Type (Traffic_Direction => Tx);
 
+   --
+   --  Ethernet MAC address in network byte order:
+   --  Ethernet_Mac_Address_Type (1) is most significant byte of the MAC
+   --  address
+   --  Ethernet_Mac_Address_Type (6) is least significant byte of the MAC
+   --  address
+   --
+   type Ethernet_Mac_Address_Type is new Bytes_Array_Type (1 .. 6)
+     with Alignment => 2, Size => 6 * Byte'Size;
+
+   subtype Ethernet_Mac_Address_String_Type is String (1 .. 17);
+
    -- ** --
 
    function Initialized (Packet_Queue : Network_Packet_Queue_Type)
                          return Boolean;
+   --  @private (Used only in contracts)
 
    procedure Initialize_Network_Packet_Queue
       (Packet_Queue : in out Network_Packet_Queue_Type)
       with Pre => not Initialized (Packet_Queue);
 
-   procedure Add_Network_Packet_To_Queue
+   function Network_Packet_In_Queue (Packet : Network_Packet_Type)
+                                     return Boolean;
+   --  @private (Used only in contracts)
+
+   procedure Enqueue_Network_Packet
       (Packet_Queue : aliased in out Network_Packet_Queue_Type;
        Packet_Ptr : Network_Packet_Access_Type)
-       with Pre => Initialized (Packet_Queue) and Packet_Ptr /= null;
+     with Pre => Initialized (Packet_Queue) and then
+                 Packet_Ptr /= null and then
+                 not Network_Packet_In_Queue (Packet_Ptr.all);
    --
    --  Adds an element at the end of a network packet queue
    --
@@ -185,7 +211,7 @@ package Networking is
    --  @param Packet_Ptr       Pointer to the packet to be added
    --
 
-   function Remove_Network_Packet_From_Queue
+   function Dequeue_Network_Packet
       (Packet_Queue : aliased in out Network_Packet_Queue_Type;
        Timeout_Ms : Natural) return Network_Packet_Access_Type
        with Pre => Initialized (Packet_Queue);
@@ -280,6 +306,8 @@ private
    --  Fields for all packets:
    --  @field Total_Length Total packet length, including layer2, layer3 and
    --  layer4 headers
+   --  @field Queue_Ptr Pointer to the Queue in which is package is currently
+   --  enqueued or null if none.
    --  @field Next_Ptr Pointer to the next network packet in the same packet
    --  queue in which this packet is currently queued, or null if none. This
    --  field is meaningful only if Queue_Ptr is not null
@@ -288,8 +316,9 @@ private
    type Network_Packet_Type
      (Traffic_Direction : Network_Traffic_Direction_Type) is limited record
       Total_Length : Unsigned_16 := 0;
+      Queue_Ptr : access Network_Packet_Queue_Type := null;
       Next_Ptr : Network_Packet_Access_Type := null;
-      Data_Payload_Buffer : Net_Packet_Buffer_Type;
+      Data_Payload_Buffer : aliased Net_Packet_Buffer_Type;
       case Traffic_Direction is
          when Rx =>
             Rx_Buffer_Descriptor_Index : Net_Rx_Packet_Index_Type;
@@ -327,7 +356,7 @@ private
    --  meaningful if 'Use_Mutex' is true.
    --  @field Not_Empty_Condvar Condition variable to be signaled when a packet
    --  is added to the queue or the queue's timer expires.
-    --
+   --
    --  NOTE: We cannot use Ada.Execution_Time.Timers as they are not available
    --  in the Ravenscar small-foot-print runtime library.
    --
@@ -370,6 +399,10 @@ private
    function Initialized (Packet_Queue : Network_Packet_Queue_Type)
                          return Boolean is
       (Packet_Queue.Initialized);
+
+   function Network_Packet_In_Queue (Packet : Network_Packet_Type)
+                                     return Boolean is
+     (Packet.Queue_Ptr /= null);
 
    -- ** --
 

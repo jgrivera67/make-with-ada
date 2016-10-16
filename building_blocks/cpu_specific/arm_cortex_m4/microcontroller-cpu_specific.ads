@@ -110,7 +110,7 @@ package Microcontroller.CPU_Specific is
       AIRCR : AIRCR_Type;
       SCR : Word;
       CCR : Word;
-      SHP : Bytes_Array (1 .. 12);
+      SHP : Bytes_Array_Type (1 .. 12);
       SHCSR : Word;
       CFSR : Word;
       HFSR : Word;
@@ -118,12 +118,12 @@ package Microcontroller.CPU_Specific is
       MMFAR : Word;
       BFAR : Word;
       AFSR : Word;
-      PFR : Words_Array (1 .. 2);
+      PFR : Words_Array_Type (1 .. 2);
       DFR : Word;
       ADR : Word;
-      MMFR : Words_Array (1 .. 4);
-      ISAR : Words_Array (1 .. 5);
-      Reserved : Words_Array (1 .. 5);
+      MMFR : Words_Array_Type (1 .. 4);
+      ISAR : Words_Array_Type (1 .. 5);
+      Reserved : Words_Array_Type (1 .. 5);
       CPACR : Word;
    end record with Volatile, Size => 16#8c# * Byte'Size;
 

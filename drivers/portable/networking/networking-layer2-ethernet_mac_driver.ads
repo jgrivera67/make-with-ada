@@ -25,13 +25,10 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with Devices.MCU_Specific;
-
 --
 --  @summary Ethernet MAC driver
 --
 package Networking.Layer2.Ethernet_Mac_Driver is
-   use Devices.MCU_Specific;
 
    function Initialized
      (Ethernet_Mac_Id : Ethernet_Mac_Id_Type) return Boolean with Inline;
