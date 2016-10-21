@@ -213,8 +213,10 @@ package Networking is
 
    function Dequeue_Network_Packet
       (Packet_Queue : aliased in out Network_Packet_Queue_Type;
-       Timeout_Ms : Natural) return Network_Packet_Access_Type
-       with Pre => Initialized (Packet_Queue);
+       Timeout_Ms : Natural := 0) return Network_Packet_Access_Type
+       with Pre => Initialized (Packet_Queue),
+            Post => (if Timeout_Ms = 0 then
+                        Dequeue_Network_Packet'Result /= null);
    --
    --  Removes the packet from the head of a network packet queue, if the queue
    --  is not empty. Otherwise, it waits until the queue becomes non-empty.

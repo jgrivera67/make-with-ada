@@ -26,7 +26,6 @@
 --
 
 with Devices.MCU_Specific;
-with Microcontroller.Arm_Cortex_M;
 private with System;
 limited with Networking.Layer3;
 
@@ -35,7 +34,6 @@ limited with Networking.Layer3;
 --
 package Networking.Layer2 is
    use Devices.MCU_Specific;
-   use Microcontroller.Arm_Cortex_M;
 
    --
    --  Kinds of Layer-2 end points supported
@@ -53,6 +51,15 @@ package Networking.Layer2 is
 
    -- ** --
 
+   function Allocate_Tx_Packet (Free_After_Tx_Complete : Boolean)
+                                return Network_Packet_Access_Type
+      with Pre => Initialized,
+           Post => Allocate_Tx_Packet'Result /= null;
+   --
+   --  Allocates a Tx packet from layer-2's global Tx packet pool.
+   --  If there are no free Tx packets, it waits until one becomes available
+   --
+
    function Initialized return Boolean;
    --  @private (Used only in contracts)
 
@@ -60,50 +67,47 @@ package Networking.Layer2 is
      with Pre => not Initialized;
    --  Initializes layer2
 
-   procedure Start_Layer2_End_Points
-     with Pre => Initialized;
-   --  Start layer2 end points
-
    function Initialized (Layer2_End_Point : Layer2_End_Point_Type)
                          return Boolean;
    --  @private (Used only in contracts)
 
-   procedure Initialize (
-      Layer2_End_Point : aliased in out Layer2_End_Point_Type;
-      Ethernet_Mac_Id : Ethernet_Mac_Id_Type;
-      IPv4_End_Point_Ptr : access Networking.Layer3.Layer3_End_Point_Type;
-      IPv6_End_Point_Ptr : access Networking.Layer3.Layer3_End_Point_Type)
-     with Pre => Layer2_End_Point.Layer2_Kind = Layer2_Ethernet and then
-                 not Initialized (Layer2_End_Point);
-   --  Initializes layer2 end point
-
-   procedure Ethernet_Mac_Address_To_String (
-      Mac_Address : Ethernet_Mac_Address_Type;
-      Mac_Address_Str : out Ethernet_Mac_Address_String_Type);
-
    procedure Enqueue_Rx_Packet (
       Layer2_End_Point : in out Layer2_End_Point_Type;
-      Rx_Packet : in out Network_Packet_Type)
+      Rx_Packet : aliased in out Network_Packet_Type)
      with Pre => Initialized (Layer2_End_Point) and then
                  Rx_Packet.Traffic_Direction = Rx;
 
-   procedure Get_Mac_Address (
-      Ethernet_Mac_Id : Ethernet_Mac_Id_Type;
-      Mac_Address : out Ethernet_Mac_Address_Type);
-
-   procedure Recycle_Rx_Packet (Rx_Packet : in out Network_Packet_Type)
-     with Pre => Rx_Packet.Traffic_Direction = Rx and then
-                 not Is_Caller_An_Interrupt_Handler;
+   function Link_Is_Up (Layer2_End_Point : Layer2_End_Point_Type)
+                        return Boolean
+      with Pre => Initialized (Layer2_End_Point);
    --
-   --  Recycle a Rx packet for receiving another packet from the
-   --  corresponding layer-2 end point
+   --  Tell if the physical link is up for the given layer-2 end
+   --  point
    --
 
-   procedure Release_Tx_Packet (Tx_Packet : in out Network_Packet_Type)
+   procedure Release_Tx_Packet (Tx_Packet : aliased in out Network_Packet_Type)
      with Pre => Tx_Packet.Traffic_Direction = Tx;
    --
    --  Release a Tx packet back to the global Tx packet pool free list
    --
+
+   procedure Set_Loopback_Mode (
+      Layer2_End_Point : in out Layer2_End_Point_Type;
+      On_Off : Boolean)
+      with Pre => Initialized (Layer2_End_Point);
+   --
+   --  Set loopback mode on/off for a given layer-2 end point
+   --
+
+   procedure Start_Layer2_End_Points
+     with Pre => Initialized;
+   --  Start packet reception on all layer2 end points
+
+   procedure Start_Tracing
+     with Pre => Initialized;
+
+   procedure Stop_Tracing
+     with Pre => Initialized;
 
    -- ** --
 

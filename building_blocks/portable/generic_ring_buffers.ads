@@ -92,8 +92,7 @@ private
       procedure Read (Element : out Element_Type;
                       Read_Ok : out Boolean;
                       Not_Empty_Condvar : in out Suspension_Object;
-                      Not_Full_Condvar : in out Suspension_Object)
-        with Post => (if not Read_Ok then Element = Element'Old);
+                      Not_Full_Condvar : in out Suspension_Object);
 
    private
       Buffer_Data : Buffer_Data_Type;

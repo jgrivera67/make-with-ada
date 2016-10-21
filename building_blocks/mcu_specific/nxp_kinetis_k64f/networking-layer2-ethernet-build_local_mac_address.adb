@@ -25,42 +25,32 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with Networking.Layer2.Ethernet_Mac_Driver.MCU_Specific_Private;
-with Pin_Mux_Driver;
+with Kinetis_K64F.SIM;
 
---
---  @summary Board-specific Ethernet MAC driver private declarations
---
-private package Networking.Layer2.Ethernet_Mac_Driver.Board_Specific_Private is
-   use Networking.Layer2.Ethernet_Mac_Driver.MCU_Specific_Private;
-   use Pin_Mux_Driver;
+separate (Networking.Layer2.Ethernet)
+procedure Build_Local_Mac_Address (
+   Mac_Address : out Ethernet_Mac_Address_Type) is
+   Reg_Value : Word;
+begin
+   --
+   --  Build MAC address from SoC's unique hardware identifier:
+   --
+   Reg_Value := Kinetis_K64F.SIM.Registers.UIDML;
+   Mac_Address (1) := Unsigned_8 (
+      Shift_Right (Reg_Value and Unsigned_32 (Unsigned_16'Last), 8));
+   Mac_Address (2) := Unsigned_8 (Reg_Value and Unsigned_32 (Unsigned_8'Last));
+   Reg_Value := Kinetis_K64F.SIM.Registers.UIDL;
+   Mac_Address (3) := Unsigned_8 (Shift_Right (Reg_Value, 24));
+   Mac_Address (4) := Unsigned_8 (
+      Shift_Right (Reg_Value, 16) and Unsigned_32 (Unsigned_8'Last));
+   Mac_Address (5) := Unsigned_8 (
+      Shift_Right (Reg_Value and Unsigned_32 (Unsigned_16'Last), 8));
+   Mac_Address (6) := Unsigned_8 (Reg_Value and Unsigned_32 (Unsigned_8'Last));
 
    --
-   --  Array of Ethernet MAC device constant objects to be placed on
-   --  flash:
+   --  Ensure special bits of first byte of the MAC address are properly
+   --  set:
    --
-   Ethernet_Mac_Const_Devices :
-   constant array (Ethernet_Mac_Id_Type) of Ethernet_Mac_Const_Type :=
-     (MAC0 =>
-        (Registers_Ptr => ENET.ENET_Periph'Access,
-         Ieee_1588_Timer_Pins =>
-           (1 => (Pin_Port => PIN_PORT_C,
-                  Pin_Index => 16,
-                  Pin_Function => PIN_FUNCTION_ALT4),
-
-            2 => (Pin_Port => PIN_PORT_C,
-                  Pin_Index => 17,
-                  Pin_Function => PIN_FUNCTION_ALT4),
-
-            3 => (Pin_Port => PIN_PORT_C,
-                  Pin_Index => 18,
-                  Pin_Function => PIN_FUNCTION_ALT4),
-
-            4 => (Pin_Port => PIN_PORT_C,
-                  Pin_Index => 19,
-                  Pin_Function => PIN_FUNCTION_ALT4)
-           )
-        )
-     );
-
-end Networking.Layer2.Ethernet_Mac_Driver.Board_Specific_Private;
+   Mac_Address (1) := Mac_Address (1) and not Mac_Multicast_Address_Mask;
+   Mac_Address (1) := Mac_Address (1) or Mac_Private_Address_Mask;
+end Build_Local_Mac_Address;

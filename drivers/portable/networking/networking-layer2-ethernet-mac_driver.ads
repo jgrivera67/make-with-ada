@@ -28,7 +28,7 @@
 --
 --  @summary Ethernet MAC driver
 --
-package Networking.Layer2.Ethernet_Mac_Driver is
+package Networking.Layer2.Ethernet.Mac_Driver is
 
    function Initialized
      (Ethernet_Mac_Id : Ethernet_Mac_Id_Type) return Boolean with Inline;
@@ -148,4 +148,4 @@ private
                                      return Unsigned_16 is
       (Net_Packet.Total_Length);
 
-end Networking.Layer2.Ethernet_Mac_Driver;
+end Networking.Layer2.Ethernet.Mac_Driver;

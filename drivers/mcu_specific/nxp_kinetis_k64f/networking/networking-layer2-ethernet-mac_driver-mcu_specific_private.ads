@@ -28,7 +28,7 @@
 with Pin_Mux_Driver;
 with System;
 
-private package Networking.Layer2.Ethernet_Mac_Driver.MCU_Specific_Private is
+private package Networking.Layer2.Ethernet.Mac_Driver.MCU_Specific_Private is
    use Pin_Mux_Driver;
    use System;
 
@@ -415,4 +415,4 @@ private package Networking.Layer2.Ethernet_Mac_Driver.MCU_Specific_Private is
      --    Tx_Ring_Write_Cursor /= Tx_Ring_Read_Cursor or else
      --    Tx_Ring_Entries_Filled = 0;
 
-end Networking.Layer2.Ethernet_Mac_Driver.MCU_Specific_Private;
+end Networking.Layer2.Ethernet.Mac_Driver.MCU_Specific_Private;

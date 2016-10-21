@@ -35,7 +35,7 @@ package body Networking is
 
    function Dequeue_Network_Packet
      (Packet_Queue : aliased in out Network_Packet_Queue_Type;
-      Timeout_Ms : Natural) return Network_Packet_Access_Type
+      Timeout_Ms : Natural := 0) return Network_Packet_Access_Type
    is
       Old_Interrupt_Mask : Word := 0;
       Old_Head_Packet_Ptr : Network_Packet_Access_Type;

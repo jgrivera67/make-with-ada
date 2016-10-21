@@ -25,8 +25,8 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with Networking.Layer2.Ethernet_Mac_Driver.MCU_Specific_Private;
-with Networking.Layer2.Ethernet_Mac_Driver.Board_Specific_Private;
+with Networking.Layer2.Ethernet.Mac_Driver.MCU_Specific_Private;
+with Networking.Layer2.Ethernet.Mac_Driver.Board_Specific_Private;
 with MK64F12.SIM;
 with MK64F12.ENET;
 with Pin_Mux_Driver;
@@ -40,9 +40,9 @@ with System.Address_To_Access_Conversions;
 with Microcontroller.MCU_Specific;
 with System;
 
-package body Networking.Layer2.Ethernet_Mac_Driver is
-   use Networking.Layer2.Ethernet_Mac_Driver.MCU_Specific_Private;
-   use Networking.Layer2.Ethernet_Mac_Driver.Board_Specific_Private;
+package body Networking.Layer2.Ethernet.Mac_Driver is
+   use Networking.Layer2.Ethernet.Mac_Driver.MCU_Specific_Private;
+   use Networking.Layer2.Ethernet.Mac_Driver.Board_Specific_Private;
    use MK64F12.SIM;
    use MK64F12.ENET;
    use MK64F12;
@@ -181,7 +181,7 @@ package body Networking.Layer2.Ethernet_Mac_Driver is
       if Ethernet_Mac_Var.Multicast_Hash_Table_Counts (Hash_Value) =
         Interfaces.Bit_Types.Byte'Last
       then
-         Ethernet_Mac_Address_To_String (Mac_Address, Mac_Address_Str);
+         Mac_Address_To_String (Mac_Address, Mac_Address_Str);
          raise Program_Error with "Multicast address " & Mac_Address_Str &
            " could not be added (hash bucket is full)";
       end if;
@@ -1024,7 +1024,7 @@ package body Networking.Layer2.Ethernet_Mac_Driver is
       Reg_Value : MK64F12.Word;
    begin
       if Ethernet_Mac_Var.Multicast_Hash_Table_Counts (Hash_Value) = 0 then
-         Ethernet_Mac_Address_To_String (Mac_Address, Mac_Address_Str);
+         Mac_Address_To_String (Mac_Address, Mac_Address_Str);
          raise Program_Error with "Multicast address " & Mac_Address_Str &
            " could not be removed (hash bucket is empty)";
       end if;
@@ -1532,4 +1532,4 @@ package body Networking.Layer2.Ethernet_Mac_Driver is
 
    end ENET_Interrupts_Object;
 
-end Networking.Layer2.Ethernet_Mac_Driver;
+end Networking.Layer2.Ethernet.Mac_Driver;

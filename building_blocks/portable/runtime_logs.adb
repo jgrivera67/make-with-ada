@@ -88,7 +88,7 @@ package body Runtime_Logs is
 
       function Task_Id_To_Unsigned_32 is
         new Ada.Unchecked_Conversion (Source =>
-                                         Ada.Task_Identification.Task_Id,
+                                      Ada.Task_Identification.Task_Id,
                                       Target => Unsigned_32);
 
       Old_Interrupt_Mask : Word;
