@@ -77,6 +77,12 @@ package Networking.Layer3 is
    function Get_IPv6_End_Point (Ethernet_Mac_Id : Ethernet_Mac_Id_Type)
       return access Networking.Layer3.Layer3_End_Point_Type;
 
+   procedure Start_Tracing
+     with Pre => Initialized;
+
+   procedure Stop_Tracing
+     with Pre => Initialized;
+
 private
 
    type IPv4_End_Point_Type is limited record

@@ -74,7 +74,8 @@ package Networking.Layer2.Ethernet_Mac_Driver is
                                  Mac_Address : Ethernet_Mac_Address_Type)
      with Pre =>
        Initialized (Ethernet_Mac_Id) and
-       (Mac_Address (Mac_Address'First) and Mac_Multicast_Address_Mask) /= 0;
+       (Mac_Address (Mac_Address'First) and
+        Ethernet_Mac_Multicast_Address_Mask) /= 0;
    --
    --  Add a multicast MAC address to the given Ethernet device
    --
@@ -86,7 +87,8 @@ package Networking.Layer2.Ethernet_Mac_Driver is
                                     Mac_Address : Ethernet_Mac_Address_Type)
      with Pre =>
        Initialized (Ethernet_Mac_Id) and then
-       (Mac_Address (Mac_Address'First) and Mac_Multicast_Address_Mask) /= 0;
+       (Mac_Address (Mac_Address'First) and
+        Ethernet_Mac_Multicast_Address_Mask) /= 0;
    --
    --  Remove a multicast MAC address from the given Ethernet device
    --

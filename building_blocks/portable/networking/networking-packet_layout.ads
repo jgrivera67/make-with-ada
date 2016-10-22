@@ -25,6 +25,8 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
+pragma Restrictions (No_Elaboration_Code);
+
 with System;
 with Ada.Unchecked_Conversion;
 

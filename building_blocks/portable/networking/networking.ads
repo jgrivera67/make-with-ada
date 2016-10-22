@@ -120,8 +120,8 @@ package Networking is
    --
    --  Bit masks for first byte (most significant byte) of a MAC address
    --
-   Mac_Multicast_Address_Mask : constant Byte := 16#01#;
-   Mac_Private_Address_Mask : constant Byte := 16#02#;
+   Ethernet_Mac_Multicast_Address_Mask : constant Byte := 16#01#;
+   Ethernet_Mac_Private_Address_Mask : constant Byte := 16#02#;
 
    --
    --  IPv4 address in network byte order:
@@ -137,6 +137,22 @@ package Networking is
    --  IPv4 Subnet prefix type (in number of bits)
    --
    type IPv4_Subnet_Prefix_Type is range 1 .. 31;
+
+   --
+   --  Null IPv4 address (0.0.0.0)
+   --
+   IPv4_Null_Address : constant IPv4_Address_Type := (others => 0);
+
+   --
+   --  Broadcast IPv4 address (255.255.255.255)
+   --
+   IPv4_Broadcast_Address : constant IPv4_Address_Type := (others => 255);
+
+   --
+   --  Bit mask for first octet of an IPv4 multicast address
+   --  (224.0.0.0 to 239.255.255.255)
+   --
+   IPv4_Multicast_Address_Mask : constant Byte := 16#e0#;
 
    --
    --  IPv6 address in network byte order:

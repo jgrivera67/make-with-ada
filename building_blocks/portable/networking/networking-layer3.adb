@@ -109,4 +109,22 @@ package body Networking.Layer3 is
       Runtime_Logs.Debug_Print ("Start_Layer3_Tasks Initialize unimplemented");
    end Start_Layer3_Tasks;
 
+   -------------------
+   -- Start_Tracing --
+   -------------------
+
+   procedure Start_Tracing is
+   begin
+      Layer3_Var.Tracing_On := True;
+   end Start_Tracing;
+
+   ------------------
+   -- Stop_Tracing --
+   ------------------
+
+   procedure Stop_Tracing is
+   begin
+      Layer3_Var.Tracing_On := False;
+   end Stop_Tracing;
+
 end Networking.Layer3;

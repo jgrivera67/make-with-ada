@@ -36,6 +36,28 @@ package body Networking.Layer3.IPv4 is
    --  assuming that the target CPU runs in little endian.
    --
 
+   --
+   --  Number of entries for the IPv4 ARP cache table
+   --
+   ARP_Cache_Num_Entries : constant Positive := 16;
+
+   --
+   --  ARP cache entry lifetime in ticks (20 minutes)
+   --
+   ARP_Cache_Entry_Lifetime_Ms : constant Positive := 20 * 60 * 1000;
+
+   --
+   --  Timeout in milliseconds to wait for an ARP reply after sending a
+   --  non-gratuitous ARP request (3 minutes)
+   --
+   ARP_Reply_Wait_Timeout_Ms : constant Positive := 3 * 60 * 1000;
+
+   --
+   --  Maximum number of ARP requests to be sent for a given destination
+   --  IP address, before failing with "unreachable destination".
+   --
+   ARP_Request_Max_Retries : constant Positive := 64;
+
    -----------------------
    -- Build_Subnet_Mask --
    -----------------------

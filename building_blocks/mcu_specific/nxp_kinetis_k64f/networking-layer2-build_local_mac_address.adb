@@ -51,6 +51,7 @@ begin
    --  Ensure special bits of first byte of the MAC address are properly
    --  set:
    --
-   Mac_Address (1) := Mac_Address (1) and not Mac_Multicast_Address_Mask;
-   Mac_Address (1) := Mac_Address (1) or Mac_Private_Address_Mask;
+   Mac_Address (1) := Mac_Address (1) and
+                      not Ethernet_Mac_Multicast_Address_Mask;
+   Mac_Address (1) := Mac_Address (1) or Ethernet_Mac_Private_Address_Mask;
 end Build_Local_Mac_Address;
