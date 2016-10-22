@@ -147,17 +147,6 @@ package body Command_Parser is
 
    -- ** --
 
-   procedure Cmd_Test_Hang is
-      Old_Interrupts_Mask : Word;
-   begin
-      Old_Interrupts_Mask := Disable_Cpu_Interrupts;
-      loop
-         null;
-      end loop;
-   end Cmd_Test_Hang;
-
-   -- ** --
-
    procedure Cmd_Test is
       function Parse_Test_Command (Command : String) return Boolean;
 
@@ -202,6 +191,17 @@ package body Command_Parser is
       Serial_Console.Print_String ("Error: Invalid syntax for command 'test'" &
                                      ASCII.LF);
    end Cmd_Test;
+
+   -- ** --
+
+   procedure Cmd_Test_Hang is
+      Old_Interrupts_Mask : Word with Unreferenced;
+   begin
+      Old_Interrupts_Mask := Disable_Cpu_Interrupts;
+      loop
+         null;
+      end loop;
+   end Cmd_Test_Hang;
 
    -- ** --
 

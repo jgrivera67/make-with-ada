@@ -25,8 +25,8 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with Networking.Layer2.Ethernet.Mac_Driver.MCU_Specific_Private;
-with Networking.Layer2.Ethernet.Mac_Driver.Board_Specific_Private;
+with Networking.Layer2.Ethernet_Mac_Driver.MCU_Specific_Private;
+with Networking.Layer2.Ethernet_Mac_Driver.Board_Specific_Private;
 with MK64F12.SIM;
 with MK64F12.ENET;
 with Pin_Mux_Driver;
@@ -40,9 +40,9 @@ with System.Address_To_Access_Conversions;
 with Microcontroller.MCU_Specific;
 with System;
 
-package body Networking.Layer2.Ethernet.Mac_Driver is
-   use Networking.Layer2.Ethernet.Mac_Driver.MCU_Specific_Private;
-   use Networking.Layer2.Ethernet.Mac_Driver.Board_Specific_Private;
+package body Networking.Layer2.Ethernet_Mac_Driver is
+   use Networking.Layer2.Ethernet_Mac_Driver.MCU_Specific_Private;
+   use Networking.Layer2.Ethernet_Mac_Driver.Board_Specific_Private;
    use MK64F12.SIM;
    use MK64F12.ENET;
    use MK64F12;
@@ -992,7 +992,7 @@ package body Networking.Layer2.Ethernet.Mac_Driver is
 
       Net_Packet_Address :=
         To_Address (To_Integer (Buffer_Address) -
-                        Net_Packet_Pointer.Data_Payload_Buffer'Position);
+                    Net_Packet_Pointer.Data_Payload_Buffer'Position);
 
       Net_Packet_Pointer :=
         Address_To_Network_Packet_Pointer.To_Pointer (Net_Packet_Address);
@@ -1404,7 +1404,7 @@ package body Networking.Layer2.Ethernet.Mac_Driver is
            Ethernet_Mac_Var_Devices (Ethernet_Mac_Id);
          Mac_Registers_Ptr : access ENET_Peripheral renames
            Ethernet_Mac_Const.Registers_Ptr;
-         EIR_Value : ENET_EIR_Register := Mac_Registers_Ptr.EIR;
+         EIR_Value : constant ENET_EIR_Register := Mac_Registers_Ptr.EIR;
          Clear_Interrupts_Mask : ENET_EIR_Register; -- default-initialized
          Error_Count : Natural := 0;
       begin
@@ -1532,4 +1532,4 @@ package body Networking.Layer2.Ethernet.Mac_Driver is
 
    end ENET_Interrupts_Object;
 
-end Networking.Layer2.Ethernet.Mac_Driver;
+end Networking.Layer2.Ethernet_Mac_Driver;

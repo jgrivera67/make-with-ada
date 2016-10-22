@@ -44,15 +44,19 @@ package body Generic_Ring_Buffers is
 
    -- ** --
 
-   procedure Write_Non_Blocking (Ring_Buffer : in out Ring_Buffer_Type;
-                                 Element : Element_Type;
-                                 Write_Ok : out Boolean) is
+   procedure Read (Ring_Buffer : in out Ring_Buffer_Type;
+                   Element : out Element_Type) is
+      Read_Ok : Boolean;
    begin
-      Ring_Buffer.Buffer.Write (Element,
-                                Write_Ok,
-                                Ring_Buffer.Not_Empty_Condvar,
-                                Ring_Buffer.Not_Full_Condvar);
-   end Write_Non_Blocking;
+      loop
+         Suspend_Until_True (Ring_Buffer.Not_Empty_Condvar);
+         Ring_Buffer.Buffer.Read (Element,
+                                  Read_Ok,
+                                  Ring_Buffer.Not_Empty_Condvar,
+                                  Ring_Buffer.Not_Full_Condvar);
+         exit when Read_Ok;
+      end loop;
+   end Read;
 
    -- ** --
 
@@ -72,46 +76,19 @@ package body Generic_Ring_Buffers is
 
    -- ** --
 
-   procedure Read (Ring_Buffer : in out Ring_Buffer_Type;
-                   Element : out Element_Type) is
-      Read_Ok : Boolean;
+   procedure Write_Non_Blocking (Ring_Buffer : in out Ring_Buffer_Type;
+                                 Element : Element_Type;
+                                 Write_Ok : out Boolean) is
    begin
-      loop
-         Suspend_Until_True (Ring_Buffer.Not_Empty_Condvar);
-         Ring_Buffer.Buffer.Read (Element,
-                                  Read_Ok,
-                                  Ring_Buffer.Not_Empty_Condvar,
-                                  Ring_Buffer.Not_Full_Condvar);
-         exit when Read_Ok;
-      end loop;
-   end Read;
+      Ring_Buffer.Buffer.Write (Element,
+                                Write_Ok,
+                                Ring_Buffer.Not_Empty_Condvar,
+                                Ring_Buffer.Not_Full_Condvar);
+   end Write_Non_Blocking;
 
    -- ** --
 
    protected body Buffer_Type is
-      procedure Write (Element : Element_Type;
-                       Write_Ok : out Boolean;
-                       Not_Empty_Condvar : in out Suspension_Object;
-                       Not_Full_Condvar : in out Suspension_Object) is
-      begin
-         if Num_Elements_Filled = Max_Num_Elements then
-            Set_False (Not_Full_Condvar);
-            Write_Ok := False;
-         else
-            Buffer_Data (Write_Cursor) := Element;
-            if Write_Cursor < Buffer_Index_Type'Last then
-               Write_Cursor := Write_Cursor + 1;
-            else
-               Write_Cursor := Buffer_Index_Type'First;
-            end if;
-
-            Num_Elements_Filled := Num_Elements_Filled + 1;
-            Set_True (Not_Empty_Condvar);
-            Write_Ok := True;
-         end if;
-      end Write;
-
-      -- ** --
 
       procedure Read (Element : out Element_Type;
                       Read_Ok : out Boolean;
@@ -134,6 +111,31 @@ package body Generic_Ring_Buffers is
             Read_Ok := True;
          end if;
       end Read;
+
+      -- ** --
+
+      procedure Write (Element : Element_Type;
+                       Write_Ok : out Boolean;
+                       Not_Empty_Condvar : in out Suspension_Object;
+                       Not_Full_Condvar : in out Suspension_Object) is
+      begin
+         if Num_Elements_Filled = Max_Num_Elements then
+            Set_False (Not_Full_Condvar);
+            Write_Ok := False;
+         else
+            Buffer_Data (Write_Cursor) := Element;
+            if Write_Cursor < Buffer_Index_Type'Last then
+               Write_Cursor := Write_Cursor + 1;
+            else
+               Write_Cursor := Buffer_Index_Type'First;
+            end if;
+
+            Num_Elements_Filled := Num_Elements_Filled + 1;
+            Set_True (Not_Empty_Condvar);
+            Write_Ok := True;
+         end if;
+      end Write;
+
    end Buffer_Type;
 
 end Generic_Ring_Buffers;

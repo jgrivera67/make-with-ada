@@ -26,8 +26,6 @@
 --
 
 package Microcontroller.MCU_Specific is
-   --pragma Preelaborate;
-
    --
    --  NOR Flash base address
    --

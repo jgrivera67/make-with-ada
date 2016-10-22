@@ -47,7 +47,7 @@ package Devices.MCU_Specific is
                           PIN_PORT_E);
 
    --
-   -- IDs of UART instances
+   --  IDs of UART instances
    --
    type Uart_Device_Id_Type is
      (UART0,
@@ -58,7 +58,7 @@ package Devices.MCU_Specific is
       UART5);
 
    --
-   -- IDs of Ethernet MAC instances
+   --  IDs of Ethernet MAC instances
    --
    type Ethernet_Mac_Id_Type is (MAC0);
 

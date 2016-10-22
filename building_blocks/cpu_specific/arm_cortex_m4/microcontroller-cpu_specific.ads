@@ -38,10 +38,10 @@ package Microcontroller.CPU_Specific is
    use Devices;
    use Interfaces.Bit_Types;
 
-    --  CPUID base register
+   --  CPUID base register
    type CPUID_Type is record
       Revision : Four_Bits;
-      Part_Number: Twelve_Bits;
+      Part_Number : Twelve_Bits;
       Architecture : Four_Bits;
       Variant : Four_Bits;
       Implementer : Byte;
@@ -65,7 +65,7 @@ package Microcontroller.CPU_Specific is
       PENDSTCLR : Bit;
       PENDSTSET : Bit;
       PENDSVCLR : Bit;
-      PENDSVSET: Bit;
+      PENDSVSET : Bit;
       NMIPENDSET : Bit;
    end record with Size => Word'Size, Bit_Order => Low_Order_First;
 

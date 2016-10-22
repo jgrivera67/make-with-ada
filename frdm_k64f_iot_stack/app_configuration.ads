@@ -25,13 +25,13 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with Networking.Layer3;
+with Networking;
 
 --
 --  @summary Application-specific run-time configurable parameters
 --
 package App_Configuration is
-   use Networking.Layer3;
+   use Networking;
 
    --
    --  FRRDM-K64F IoT stack configurable parameters

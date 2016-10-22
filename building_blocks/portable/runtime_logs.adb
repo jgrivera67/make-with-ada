@@ -25,7 +25,6 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-
 with System.Storage_Elements;
 with Reset_Counter;
 with Stack_Trace_Capture;
@@ -130,6 +129,7 @@ package body Runtime_Logs is
 
    end Capture_Log_Entry;
 
+   -- ** --
 
    procedure Debug_Print (Msg : String;
                           Code_Address : Address := Null_Address) is

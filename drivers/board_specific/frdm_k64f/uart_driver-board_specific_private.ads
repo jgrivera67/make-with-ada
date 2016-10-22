@@ -26,13 +26,14 @@
 --
 
 --
--- @summary Board-specific UART driver private declarations
+--  @summary Board-specific UART driver private declarations
 --
 private package Uart_Driver.Board_Specific_Private is
    --
    --  Array of UART device objects to be placed on flash:
    --
-   Uart_Devices : constant array (Uart_Device_Id_Type) of Uart_Device_Const_Type :=
+   Uart_Devices :
+     constant array (Uart_Device_Id_Type) of Uart_Device_Const_Type :=
      (UART0 =>
         (Registers_Ptr => UART.Uart0_Registers'Access,
          Tx_Pin =>

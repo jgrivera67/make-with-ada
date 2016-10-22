@@ -38,50 +38,6 @@ package Networking.Layer3 is
    type Layer3_End_Point_Type (Layer3_Kind : Layer3_Kind_Type) is
       limited private;
 
-   --
-   --  IPv4 address in network byte order:
-   --  IPv4_Address_Type (1) is most significant byte of the IPv4 address
-   --  IPv4_Address_Type (4) is least significant byte of the IPv4 address
-   --
-   type IPv4_Address_Type is  array (1 .. 4) of Byte
-     with Alignment => 4, Size => 4 * Byte'Size;
-
-   subtype IPv4_Address_String_Type is String (1 .. 15);
-
-   --
-   --  IPv4 Subnet prefix type (in number of bits)
-   --
-   type IPv4_Subnet_Prefix_Type is range 1 .. 31;
-
-   --
-   --  IPv6 address in network byte order:
-   --  IPv6_Address_Type (1) is most significant byte of the IPv4 address
-   --  IPv6_Address_Type (8) is least significant byte of the IPv4 address
-   --
-   type IPv6_Address_Type is  array (1 .. 8) of Unsigned_16
-     with Alignment => 8, Size => 8 * Unsigned_16'Size;
-
-   subtype IPv6_Address_String_Type is String (1 .. 39);
-
-   --
-   --  IPv4 Subnet prefix type (in number of bits)
-   --
-   type IPv6_Subnet_Prefix_Type is range 1 .. 127;
-
-   --
-   --  Layer-4 protocols
-   --
-   type Layer4_Protocol_Type is (ICMP,
-                                 TCP,
-                                 UDP,
-                                 ICMPv6)
-      with Size => Byte'Size;
-
-   for Layer4_Protocol_Type use (ICMP => 16#1#,
-                                 TCP => 16#6#,
-                                 UDP => 16#11#,
-                                 ICMPv6 => 16#3a#);
-
    -- ** --
 
    function Initialized return Boolean;

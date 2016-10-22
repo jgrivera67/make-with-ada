@@ -29,15 +29,16 @@ with Runtime_Logs;
 
 package body Networking.Layer3.IPv6 is
 
-   -------------------------
-   -- Receive_IPv6_Packet --
-   -------------------------
+   -----------------------------------
+   -- Process_Incoming__IPv6_Packet --
+   -----------------------------------
 
-   procedure Receive_IPv6_Packet (Rx_Packet : Network_Packet_Type) is
+   procedure Process_Incoming_IPv6_Packet (Rx_Packet : Network_Packet_Type) is
    begin
       --  Generated stub: replace with real body!
-      pragma Compile_Time_Warning (Standard.True, "Receive_IPv6_Packet unimplemented");
-      Runtime_Logs.Debug_Print ("Receive_IPv6_Packet unimplemented");
-   end Receive_IPv6_Packet;
+      pragma Compile_Time_Warning (Standard.True,
+         "Process_Incoming_IPv6_Packet unimplemented");
+      Runtime_Logs.Debug_Print ("Process_Incoming_IPv6_Packet unimplemented");
+   end Process_Incoming_IPv6_Packet;
 
 end Networking.Layer3.IPv6;

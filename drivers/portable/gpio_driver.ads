@@ -41,24 +41,24 @@ package Gpio_Driver is
       Is_Active_High : Boolean;
    end record;
 
-   procedure Configure_Pin(Gpio_Pin : Gpio_Pin_Type;
-                           Drive_Strength_Enable : Boolean;
-                           Pullup_Resistor : Boolean;
-                           Is_Output_Pin : Boolean);
+   procedure Configure_Pin (Gpio_Pin : Gpio_Pin_Type;
+                            Drive_Strength_Enable : Boolean;
+                            Pullup_Resistor : Boolean;
+                            Is_Output_Pin : Boolean);
 
-   procedure Activate_Output_Pin(Gpio_Pin : Gpio_Pin_Type);
+   procedure Activate_Output_Pin (Gpio_Pin : Gpio_Pin_Type);
 
-   procedure Deactivate_Output_Pin(Gpio_Pin : Gpio_Pin_Type);
+   procedure Deactivate_Output_Pin (Gpio_Pin : Gpio_Pin_Type);
 
-   procedure Toggle_Output_Pin(Gpio_Pin : Gpio_Pin_Type);
+   procedure Toggle_Output_Pin (Gpio_Pin : Gpio_Pin_Type);
 
-   function Read_Input_Pin(Gpio_Pin : Gpio_Pin_Type) return Boolean;
+   function Read_Input_Pin (Gpio_Pin : Gpio_Pin_Type) return Boolean;
 
-   procedure Enable_Pin_Irq(Gpio_Pin : Gpio_Pin_Type;
-                            Pin_Irq_Mode : Pin_Irq_Mode_Type);
+   procedure Enable_Pin_Irq (Gpio_Pin : Gpio_Pin_Type;
+                             Pin_Irq_Mode : Pin_Irq_Mode_Type);
 
-   procedure Disable_Pin_Irq(Gpio_Pin : Gpio_Pin_Type);
+   procedure Disable_Pin_Irq (Gpio_Pin : Gpio_Pin_Type);
 
-   procedure Clear_Pin_Irq(Gpio_Pin : Gpio_Pin_Type);
+   procedure Clear_Pin_Irq (Gpio_Pin : Gpio_Pin_Type);
 
 end Gpio_Driver;

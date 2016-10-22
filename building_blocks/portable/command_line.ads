@@ -47,22 +47,22 @@ package Command_Line is
 
    function Initialized return Boolean
      with Inline;
-   -- @private (Used only in contracts)
+   --  @private (Used only in contracts)
 
    procedure Initialize (Prompt : not null access constant String)
      with Pre => not Initialized;
    --
    --  Initializes the command-line reader state variables
-   --  @param Prompt Pointer to the string to be used as the command-line prompt
+   --  @param Prompt Pointer to the string to be used as the command-line
+   --  prompt
    --
 
    function Get_Next_Token (Token : out Token_Type) return Boolean
-     with Pre => Initialized,
-          Post => (if not Get_Next_Token'Result then Token = Token'Old);
+     with Pre => Initialized;
    --
    --  Retrieves the next token from the command-line buffer, if any. A token
-   --  is any string of printable non-space (blanks or tabs) characters.
-   --  If no tokens are left, it returns False and marks the command-line buffer
+   --  is any string of printable non-space (blanks or tabs) characters. If
+   --  no tokens are left, it returns False and marks the command-line buffer
    --  as empty. If upon etry, the command-line buffer is empty, it prints the
    --  prompt on the serial console and reads a new text line from the serial
    --  console to fill (or re-fill) the command-line buffer. It blocks until

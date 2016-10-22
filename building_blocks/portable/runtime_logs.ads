@@ -36,7 +36,6 @@ with Interfaces;
 --  in-memory logs.
 --
 package Runtime_Logs is
-   --pragma Preelaborate;
    use Interfaces;
    use App_Parameters;
 

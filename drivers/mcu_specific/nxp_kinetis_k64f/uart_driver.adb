@@ -59,8 +59,45 @@ package body Uart_Driver is
 
    -- ** --
 
+   function Can_Receive_Char (Uart_Device_Id : Uart_Device_Id_Type)
+                               return Boolean is
+      Uart_Registers_Ptr : access UART.Registers_Type renames
+        Uart_Devices (Uart_Device_Id).Registers_Ptr;
+   begin
+      return (Uart_Registers_Ptr.all.S1.RDRF = 1);
+   end Can_Receive_Char;
+
+   -- ** --
+
+   function Can_Transmit_Char
+     (Uart_Device_Id : Uart_Device_Id_Type) return Boolean is
+
+      Uart_Registers_Ptr : access UART.Registers_Type renames
+        Uart_Devices (Uart_Device_Id).Registers_Ptr;
+   begin
+      return (Uart_Registers_Ptr.all.S1.TDRE = 1);
+   end Can_Transmit_Char;
+
+   -- ** --
+
+   function Get_Char (Uart_Device_Id : Uart_Device_Id_Type) return Character is
+      Uart_Device_Var : Uart_Device_Var_Type renames
+        Uart_Devices_Var (Uart_Device_Id);
+      Byte_Read : Byte;
+      Char : Character;
+   begin
+      Byte_Ring_Buffers.Read (Uart_Device_Var.Receive_Queue, Byte_Read);
+      Char := Character'Val (Byte_Read);
+      return Char;
+   end Get_Char;
+
+   -- ** --
+
    procedure Initialize (Uart_Device_Id : Uart_Device_Id_Type;
-                         Baud_Rate : Baud_Rate_Type) is
+                         Baud_Rate : Baud_Rate_Type)
+   is
+      procedure Enable_Clock;
+      procedure Set_Baud_Rate;
 
       Uart_Device : Uart_Device_Const_Type renames
         Uart_Devices (Uart_Device_Id);
@@ -119,7 +156,7 @@ package body Uart_Driver is
       end Set_Baud_Rate;
 
       -- ** --
-      --
+
       C2_Value : UART.C2_Type;
       C1_Value : UART.C1_Type;
 
@@ -164,7 +201,7 @@ package body Uart_Driver is
       --  Configure baud rate:
       Set_Baud_Rate;
 
-       --  Initialize receive queue:
+      --  Initialize receive queue:
       Byte_Ring_Buffers.Initialize (Uart_Device_Var.Receive_Queue,
                                     Uart_Receive_Queue_Name'Access);
 
@@ -190,17 +227,6 @@ package body Uart_Driver is
 
    -- ** --
 
-   function Can_Transmit_Char
-     (Uart_Device_Id : Uart_Device_Id_Type) return Boolean is
-
-      Uart_Registers_Ptr : access UART.Registers_Type renames
-        Uart_Devices (Uart_Device_Id).Registers_Ptr;
-   begin
-      return (Uart_Registers_Ptr.all.S1.TDRE = 1);
-   end Can_Transmit_Char;
-
-   -- ** --
-
    procedure Put_Char (Uart_Device_Id : Uart_Device_Id_Type;
                        Char : Character) is
       Uart_Registers_Ptr : access UART.Registers_Type renames
@@ -215,31 +241,25 @@ package body Uart_Driver is
 
    -- ** --
 
-   function Can_Receive_Char (Uart_Device_Id : Uart_Device_Id_Type)
-                               return Boolean is
-      Uart_Registers_Ptr : access UART.Registers_Type renames
-        Uart_Devices (Uart_Device_Id).Registers_Ptr;
-   begin
-      return (Uart_Registers_Ptr.all.S1.RDRF = 1);
-   end Can_Receive_Char;
-
-   -- ** --
-
-   function Get_Char (Uart_Device_Id : Uart_Device_Id_Type) return Character is
-      Uart_Device_Var : Uart_Device_Var_Type renames
-        Uart_Devices_Var (Uart_Device_Id);
-      Byte_Read : Byte;
-      Char : Character;
-   begin
-      Byte_Ring_Buffers.Read (Uart_Device_Var.Receive_Queue, Byte_Read);
-      Char := Character'Val (Byte_Read);
-      return Char;
-   end Get_Char;
-
    --
-   -- Interrupt handlers
+   --  Interrupt handlers
    --
    protected body Uart_Interrupts_Object is
+
+      procedure Uart0_Irq_Handler is
+      begin
+         Uart_Irq_Common_Handler (UART0);
+      end Uart0_Irq_Handler;
+
+      procedure Uart1_Irq_Handler is
+      begin
+         Uart_Irq_Common_Handler (UART1);
+      end Uart1_Irq_Handler;
+
+      procedure Uart2_Irq_Handler is
+      begin
+         Uart_Irq_Common_Handler (UART2);
+      end Uart2_Irq_Handler;
 
       procedure Uart_Irq_Common_Handler
         (Uart_Device_Id : Uart_Device_Id_Type) is
@@ -253,7 +273,8 @@ package body Uart_Driver is
          Byte_Was_Stored : Boolean;
       begin
          S1_Value := Uart_Registers_Ptr.S1;
-         --  The only interrupt source we are expecting is "Receive data register full"
+         --  The only interrupt source we are expecting is "Receive data
+         --  register full"
          pragma Assert (S1_Value.RDRF /= 0);
 
          --  Read the first byte received to clear the interrupt source.
@@ -284,21 +305,6 @@ package body Uart_Driver is
          end if;
 
       end Uart_Irq_Common_Handler;
-
-      procedure Uart0_Irq_Handler is
-      begin
-         Uart_Irq_Common_Handler (UART0);
-      end Uart0_Irq_Handler;
-
-      procedure Uart1_Irq_Handler is
-      begin
-         Uart_Irq_Common_Handler (UART1);
-      end Uart1_Irq_Handler;
-
-      procedure Uart2_Irq_Handler is
-      begin
-         Uart_Irq_Common_Handler (UART2);
-      end Uart2_Irq_Handler;
 
    end Uart_Interrupts_Object;
 

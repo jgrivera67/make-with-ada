@@ -29,7 +29,6 @@
 --  @summary Networking layer 4 (transport layer) services
 --
 package Networking.Layer4 is
-   --pragma Preelaborate;
 
    type Layer4_Kind_Type is (Layer4_UDP, Layer4_TCP);
 

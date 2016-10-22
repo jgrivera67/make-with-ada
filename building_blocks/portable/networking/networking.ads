@@ -105,6 +105,54 @@ package Networking is
 
    type Net_Rx_Packet_Index_Type is range 1 .. Net_Max_Rx_Packets;
 
+   --
+   --  Ethernet MAC address in network byte order:
+   --  Ethernet_Mac_Address_Type (1) is most significant byte of the MAC
+   --  address
+   --  Ethernet_Mac_Address_Type (6) is least significant byte of the MAC
+   --  address
+   --
+   type Ethernet_Mac_Address_Type is new Bytes_Array_Type (1 .. 6)
+     with Alignment => 2, Size => 6 * Byte'Size;
+
+   subtype Ethernet_Mac_Address_String_Type is String (1 .. 17);
+
+   --
+   --  Bit masks for first byte (most significant byte) of a MAC address
+   --
+   Mac_Multicast_Address_Mask : constant Byte := 16#01#;
+   Mac_Private_Address_Mask : constant Byte := 16#02#;
+
+   --
+   --  IPv4 address in network byte order:
+   --  IPv4_Address_Type (1) is most significant byte of the IPv4 address
+   --  IPv4_Address_Type (4) is least significant byte of the IPv4 address
+   --
+   type IPv4_Address_Type is  array (1 .. 4) of Byte
+     with Alignment => 4, Size => 4 * Byte'Size;
+
+   subtype IPv4_Address_String_Type is String (1 .. 15);
+
+   --
+   --  IPv4 Subnet prefix type (in number of bits)
+   --
+   type IPv4_Subnet_Prefix_Type is range 1 .. 31;
+
+   --
+   --  IPv6 address in network byte order:
+   --  IPv6_Address_Type (1) is most significant byte of the IPv4 address
+   --  IPv6_Address_Type (8) is least significant byte of the IPv4 address
+   --
+   type IPv6_Address_Type is  array (1 .. 8) of Unsigned_16
+     with Alignment => 8, Size => 8 * Unsigned_16'Size;
+
+   subtype IPv6_Address_String_Type is String (1 .. 39);
+
+   --
+   --  IPv6 Subnet prefix type (in number of bits)
+   --
+   type IPv6_Subnet_Prefix_Type is range 1 .. 127;
+
    -- ** --
 
    function Host_To_Network_Byte_Order (Value : Unsigned_16)
@@ -171,18 +219,6 @@ package Networking is
    type Net_Tx_Packet_Array_Type is
      array (Net_Tx_Packet_Index_Type) of
      aliased Network_Packet_Type (Traffic_Direction => Tx);
-
-   --
-   --  Ethernet MAC address in network byte order:
-   --  Ethernet_Mac_Address_Type (1) is most significant byte of the MAC
-   --  address
-   --  Ethernet_Mac_Address_Type (6) is least significant byte of the MAC
-   --  address
-   --
-   type Ethernet_Mac_Address_Type is new Bytes_Array_Type (1 .. 6)
-     with Alignment => 2, Size => 6 * Byte'Size;
-
-   subtype Ethernet_Mac_Address_String_Type is String (1 .. 17);
 
    -- ** --
 

@@ -47,8 +47,10 @@ package body Command_Parser_Common is
 
    -- ** --
 
-   function Parse_Positive_Decimal_Number (Token_String : String;
-                                           Result : out Positive) return Boolean is
+   function Parse_Positive_Decimal_Number (
+      Token_String : String;
+      Result : out Positive) return Boolean
+   is
       Value : Natural := 0;
    begin
       for Char_Value of Token_String loop
@@ -56,7 +58,8 @@ package body Command_Parser_Common is
             return False;
          end if;
 
-         Value := Value*10 + (Character'Pos (Char_Value) - Character'Pos ('0'));
+         Value := Value * 10 +
+                  (Character'Pos (Char_Value) - Character'Pos ('0'));
       end loop;
 
       if Value = 0 then

@@ -35,7 +35,7 @@ private package Gpio_Driver.MCU_Specific_Private is
    use Devices.MCU_Specific;
 
    --
-   -- Table of pointers to the registers for each GPIO port
+   --  Table of pointers to the registers for each GPIO port
    --
    Gpio_Ports : constant array (Pin_Port_Type) of access GPIO.Registers_Type :=
      (PIN_PORT_A => GPIO.PortA_Registers'Access,

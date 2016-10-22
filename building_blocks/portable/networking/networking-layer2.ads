@@ -26,6 +26,8 @@
 --
 
 with Devices.MCU_Specific;
+with Microcontroller.Arm_Cortex_M;
+with Networking.Packet_Layout;
 private with System;
 limited with Networking.Layer3;
 
@@ -34,6 +36,8 @@ limited with Networking.Layer3;
 --
 package Networking.Layer2 is
    use Devices.MCU_Specific;
+   use Microcontroller.Arm_Cortex_M;
+   use Networking.Packet_Layout;
 
    --
    --  Kinds of Layer-2 end points supported
@@ -42,12 +46,6 @@ package Networking.Layer2 is
 
    type Layer2_End_Point_Type (Layer2_Kind : Layer2_Kind_Type) is
       limited private;
-
-   --
-   --  Bit masks for first byte (most significant byte) of a MAC address
-   --
-   Mac_Multicast_Address_Mask : constant Byte := 16#01#;
-   Mac_Private_Address_Mask : constant Byte := 16#02#;
 
    -- ** --
 
@@ -77,6 +75,11 @@ package Networking.Layer2 is
      with Pre => Initialized (Layer2_End_Point) and then
                  Rx_Packet.Traffic_Direction = Rx;
 
+   procedure Get_Mac_Address (
+      Ethernet_Mac_Id : Ethernet_Mac_Id_Type;
+      Mac_Address : out Ethernet_Mac_Address_Type)
+      with Global => null;
+
    function Link_Is_Up (Layer2_End_Point : Layer2_End_Point_Type)
                         return Boolean
       with Pre => Initialized (Layer2_End_Point);
@@ -85,10 +88,35 @@ package Networking.Layer2 is
    --  point
    --
 
+   procedure Mac_Address_To_String (
+      Mac_Address : Ethernet_Mac_Address_Type;
+      Mac_Address_Str : out Ethernet_Mac_Address_String_Type)
+      with Global => null;
+
+   procedure Recycle_Rx_Packet (Rx_Packet : in out Network_Packet_Type)
+     with Pre => Rx_Packet.Traffic_Direction = Rx and then
+                 not Is_Caller_An_Interrupt_Handler;
+   --
+   --  Recycle a Rx packet for receiving another packet from the
+   --  corresponding layer-2 end point
+   --
+
    procedure Release_Tx_Packet (Tx_Packet : aliased in out Network_Packet_Type)
      with Pre => Tx_Packet.Traffic_Direction = Tx;
    --
    --  Release a Tx packet back to the global Tx packet pool free list
+   --
+
+   procedure Send_Ethernet_Frame (Layer2_End_Point :
+                                  in out Layer2_End_Point_Type;
+                                  Dest_Mac_Address : Ethernet_Mac_Address_Type;
+                                  Tx_Packet : in out Network_Packet_Type;
+                                  Type_of_Frame : Ethernet.Type_of_Frame_Type;
+                                  Data_Payload_Length : Natural)
+      with Pre => Initialized (Layer2_End_Point);
+   --
+   --  Initiates the transmission of an Ethernet Frame over the given Layer-2
+   --  end point
    --
 
    procedure Set_Loopback_Mode (

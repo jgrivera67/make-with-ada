@@ -181,12 +181,12 @@ package Microcontroller.Arm_Cortex_M is
           Integer_Address (Cpu_Exc_Return_To_Thread_Mode_Using_Psp_Fpu));
    --  Tell if a return address is one of the exception return special values
 
-   function Is_Add_R7_SP_immeditate (Instruction : Thumb_Instruction_Type)
+   function Is_Add_R7_SP_Immeditate (Instruction : Thumb_Instruction_Type)
                                      return Boolean is
      (Instruction.Op_Code = 16#AF#);
    --  Tell if it is the 'add r7, sp, #imm8' instruction
 
-   function Is_Sub_SP_immeditate (Instruction : Thumb_Instruction_Type)
+   function Is_Sub_SP_Immeditate (Instruction : Thumb_Instruction_Type)
                                   return Boolean is
      (Instruction.Op_Code = 16#B0# and then
         (Instruction.Operand and 16#80#) /= 0);

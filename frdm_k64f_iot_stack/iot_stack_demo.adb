@@ -30,7 +30,7 @@ with Interfaces;
 with Runtime_Logs;
 with Serial_Console;
 with Color_Led;
-with Networking.Layer2.Ethernet;
+with Networking.Layer2;
 with Networking.Layer3;
 with Devices.MCU_Specific;
 
@@ -197,12 +197,12 @@ package body IoT_Stack_Demo is
       Local_Mac_Address : Networking.Ethernet_Mac_Address_Type;
       Local_Mac_Address_Str :
           Networking.Ethernet_Mac_Address_String_Type;
-      Local_IPv4_Address : Networking.Layer3.IPv4_Address_Type;
-      Local_IPv4_Subnet_Mask : Networking.Layer3.IPv4_Address_Type;
+      Local_IPv4_Address : Networking.IPv4_Address_Type;
+      Local_IPv4_Subnet_Mask : Networking.IPv4_Address_Type;
       Local_IPv4_Address_Str :
-         Networking.Layer3.IPv4_Address_String_Type;
+         Networking.IPv4_Address_String_Type;
       Local_IPv4_Subnet_Mask_Str :
-        Networking.Layer3.IPv4_Address_String_Type;
+        Networking.IPv4_Address_String_Type;
       Link_Is_Up : Boolean := False;
       Old_Color : Color_Led.Led_Color_Type with Unreferenced;
 
@@ -210,10 +210,10 @@ package body IoT_Stack_Demo is
       Suspend_Until_True (IoT_Stack_Demo.Network_Stats_Task_Suspension_Obj);
       Runtime_Logs.Info_Print ("Network stats display task started");
 
-      Networking.Layer2.Ethernet.Get_Mac_Address (Devices.MCU_Specific.MAC0,
-                                                  Local_Mac_Address);
+      Networking.Layer2.Get_Mac_Address (Devices.MCU_Specific.MAC0,
+                                         Local_Mac_Address);
 
-      Networking.Layer2.Ethernet.Mac_Address_To_String (
+      Networking.Layer2.Mac_Address_To_String (
          Local_Mac_Address, Local_Mac_Address_Str);
 
       Networking.Layer3.Get_IPv4_Address (Devices.MCU_Specific.MAC0,

@@ -105,7 +105,7 @@ package body Networking.Layer3 is
    is
    begin
       --  Generated stub: replace with real body!
-      pragma Compile_Time_Warning (Standard.True, "Start_Layer3_Tasks unimplemented");
+      pragma Compile_Time_Warning (True, "Start_Layer3_Tasks unimplemented");
       Runtime_Logs.Debug_Print ("Start_Layer3_Tasks Initialize unimplemented");
    end Start_Layer3_Tasks;
 

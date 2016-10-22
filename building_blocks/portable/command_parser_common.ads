@@ -30,9 +30,9 @@
 --
 package Command_Parser_Common is
 
-   function Parse_Positive_Decimal_Number (Token_String : String;
-                                           Result : out Positive) return Boolean
-     with Post => (if not Parse_Positive_Decimal_Number'Result then Result = Result'Old);
+   function Parse_Positive_Decimal_Number (
+      Token_String : String;
+      Result : out Positive) return Boolean;
 
    procedure Cmd_Print_Stats;
 

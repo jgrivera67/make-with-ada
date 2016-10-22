@@ -94,12 +94,12 @@ package Microcontroller is
    -- ** --
 
    --
-   -- First address of on-core peripherals for ARM cortex-M cores
+   --  First address of on-core peripherals for ARM cortex-M cores
    --
    Mcu_Private_Peripherals_Min_Addr : constant Integer_Address := 16#E0000000#;
 
    --
-   -- Last address of on-core peripherals for ARM cortex-M cores
+   --  Last address of on-core peripherals for ARM cortex-M cores
    --
    Mcu_Private_Peripherals_Max_Addr : constant Integer_Address := 16#E00FFFFF#;
 

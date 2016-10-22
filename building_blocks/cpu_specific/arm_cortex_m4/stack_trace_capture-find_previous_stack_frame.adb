@@ -25,14 +25,15 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-separate(Stack_Trace_Capture)
+separate (Stack_Trace_Capture)
    function Find_Previous_Stack_Frame (
       Start_Program_Counter : Address;
       Stack_End : Address;
       Frame_Pointer : in out Address;
       Prev_Return_Address : out Address) return Boolean
    --
-   --  Finds the previous stack frame while unwinding the current execution stack.
+   --  Finds the previous stack frame while unwinding the current execution
+   --  stack.
    --
    --  NOTE: This function assumes that function prologs have one of the the
    --  following code  patterns ([] means optional):
@@ -77,8 +78,9 @@ separate(Stack_Trace_Capture)
       Prev_Frame_Pointer : Address;
       Stack_Pointer : Address;
       Stack_Entry_Pointer : access constant Stack_Entry_Type;
-      Max_Instructions_Scanned : constant Positive:= 1024;
-      Stack_Entry_Alignment : constant Positive := Stack_Entry_Type'Size / Byte'Size;
+      Max_Instructions_Scanned : constant Positive := 1024;
+      Stack_Entry_Alignment : constant Positive :=
+        Stack_Entry_Type'Size / Byte'Size;
       Program_Counter : Address := Start_Program_Counter;
       Instruction_Pattern_Found : Boolean := False;
       Long_Instruction_Pattern_Found : Boolean := False;
@@ -99,29 +101,33 @@ separate(Stack_Trace_Capture)
             return False;
          end if;
 
-        --
-        --  Program_Counter is supposed to be a code address with the THUMB mode
-        --  flag already turned off.
-        --
-        if (To_Integer (Program_Counter) and Arm_Thumb_Code_Flag) /= 0 then
+         --
+         --  Program_Counter is supposed to be a code address with the THUMB
+         --  mode flag already turned off.
+         --
+         if (To_Integer (Program_Counter) and Arm_Thumb_Code_Flag) /= 0 then
             return False;
-        end if;
+         end if;
       end if;
 
-      if not Memory_Map.Valid_Ram_Pointer(Frame_Pointer, Stack_Entry_Alignment) then
+      if not Memory_Map.Valid_RAM_Pointer (Frame_Pointer,
+                                           Stack_Entry_Alignment)
+      then
          return False;
       end if;
 
       --
-      --  Scan instructions backwards looking for one of the 3 instructions in the
-      --  function prolog pattern:
+      --  Scan instructions backwards looking for one of the 3 instructions in
+      --  the function prolog pattern:
       --
       for I in 1 .. Max_Instructions_Scanned loop
-         Instruction_Pointer := Address_To_Instruction_Pointer.To_Pointer (Program_Counter);
+         Instruction_Pointer :=
+            Address_To_Instruction_Pointer.To_Pointer (Program_Counter);
          Instruction := Instruction_Pointer.all;
          if Is_Add_R7_SP_Immeditate (Instruction) or else
             Is_Sub_SP_Immeditate (Instruction) or else
-            Is_Push_R7_LR (Instruction) then
+            Is_Push_R7_LR (Instruction)
+         then
             Instruction_Pattern_Found := True;
             exit;
          elsif Is_32bit_Instruction (Instruction) then
@@ -138,14 +144,15 @@ separate(Stack_Trace_Capture)
       end loop;
 
       if not Instruction_Pattern_Found and then
-         not Long_Instruction_Pattern_Found then
+         not Long_Instruction_Pattern_Found
+      then
          return False;
       end if;
 
       if Is_Add_R7_SP_Immeditate (Instruction) then
          --
-         --  The instruction to be executed is the 'add r7, ...' in the function
-         --  prolog.
+         --  The instruction to be executed is the 'add r7, ...' in the
+         --  function prolog.
          --
          --  NOTE: the decoded operand of the add instruction is:
          --     Shift_Left (Instruction.Operand, 2)
@@ -159,21 +166,24 @@ separate(Stack_Trace_Capture)
          Program_Counter := Program_Counter - Instruction_Size;
 
          --
-         --  Scan instructions backwards looking for the preceding 'sub sp, ...'
-         --  or 'stmdb sp!, {..., r7, ...}':
+         --  Scan instructions backwards looking for the preceding
+         --  'sub sp, ...' or 'stmdb sp!, {..., r7, ...}':
          --
          Instruction_Pattern_Found := False;
          Long_Instruction_Pattern_Found := False;
          for I in 1 .. Max_Instructions_Scanned loop
-            Instruction_Pointer := Address_To_Instruction_Pointer.To_Pointer (Program_Counter);
+            Instruction_Pointer :=
+               Address_To_Instruction_Pointer.To_Pointer (Program_Counter);
             Instruction := Instruction_Pointer.all;
             if Is_Sub_SP_Immeditate (Instruction) or else
-               Is_Push_R7_LR (Instruction) then
+               Is_Push_R7_LR (Instruction)
+            then
                Instruction_Pattern_Found := True;
                exit;
             elsif Is_32bit_Instruction (Instruction) then
                Long_Instruction_Pointer :=
-                 Address_To_Long_Instruction_Pointer.To_Pointer (Program_Counter);
+                 Address_To_Long_Instruction_Pointer.
+                    To_Pointer (Program_Counter);
                Long_Instruction := Long_Instruction_Pointer.all;
                if Is_STMDB_SP_R7 (Long_Instruction) then
                   Long_Instruction_Pattern_Found := True;
@@ -185,7 +195,8 @@ separate(Stack_Trace_Capture)
          end loop;
 
          if not Instruction_Pattern_Found and then
-            not Long_Instruction_Pattern_Found then
+            not Long_Instruction_Pattern_Found
+         then
             return False;
          end if;
       else
@@ -194,16 +205,18 @@ separate(Stack_Trace_Capture)
 
       if Is_Sub_SP_Immeditate (Instruction) then
          --
-         --  The preceding instruction to be executed is the 'sub sp, ...' in the
-         --  function prolog.
+         --  The preceding instruction to be executed is the 'sub sp, ...' in
+         --  the function prolog.
          --
          --  NOTE: the decoded immediate operand of the sub instruction is
-         --     Shift_Left (Instruction.Operand and Sub_SP_Immeditate_Operand_Mask, 2)
+         --     Shift_Left (
+         --        Instruction.Operand and Sub_SP_Immeditate_Operand_Mask, 2)
          --
          --  which is a byte offset that was subtracted from the stack pointer.
          --
          Decoded_Operand :=
-           Shift_Left (Unsigned_32 (Instruction.Operand and Sub_SP_Immeditate_Operand_Mask),
+           Shift_Left (Unsigned_32 (Instruction.Operand and
+                                    Sub_SP_Immeditate_Operand_Mask),
                        2);
 
          Stack_Pointer := To_Address (To_Integer (Stack_Pointer) +
@@ -212,19 +225,22 @@ separate(Stack_Trace_Capture)
          Program_Counter := Program_Counter - Instruction_Size;
 
          --
-         --  Scan instructions backwards looking for the preceding 'stmdb sp!, {..., r7, ...}'
+         --  Scan instructions backwards looking for the preceding
+         --  'stmdb sp!, {..., r7, ...}'
          --
          Instruction_Pattern_Found := False;
          Long_Instruction_Pattern_Found := False;
          for I in 1 .. Max_Instructions_Scanned loop
-            Instruction_Pointer := Address_To_Instruction_Pointer.To_Pointer (Program_Counter);
+            Instruction_Pointer :=
+               Address_To_Instruction_Pointer.To_Pointer (Program_Counter);
             Instruction := Instruction_Pointer.all;
             if Is_Push_R7_LR (Instruction) then
                Instruction_Pattern_Found := True;
                exit;
             elsif Is_32bit_Instruction (Instruction) then
                Long_Instruction_Pointer :=
-                 Address_To_Long_Instruction_Pointer.To_Pointer (Program_Counter);
+                 Address_To_Long_Instruction_Pointer.
+                    To_Pointer (Program_Counter);
                Long_Instruction := Long_Instruction_Pointer.all;
                if Is_STMDB_SP_R7 (Long_Instruction) then
                   Long_Instruction_Pattern_Found := True;
@@ -236,7 +252,8 @@ separate(Stack_Trace_Capture)
          end loop;
 
          if not Instruction_Pattern_Found and then
-            not Long_Instruction_Pattern_Found then
+            not Long_Instruction_Pattern_Found
+         then
             return False;
          end if;
       end if;
@@ -259,13 +276,17 @@ separate(Stack_Trace_Capture)
          --  NOTE: At this point, stack_pointer has the value that SP had right
          --  after executing the 'stmdb sp!, {..., r7, ..., lr}'
          --
-         Saved_R7_Stack_Offset := Get_Pushed_R7_Stack_Offset (Long_Instruction);
-         Saved_LR_Stack_Offset := Get_Pushed_LR_Stack_Offset (Long_Instruction);
+         Saved_R7_Stack_Offset :=
+            Get_Pushed_R7_Stack_Offset (Long_Instruction);
+         Saved_LR_Stack_Offset :=
+            Get_Pushed_LR_Stack_Offset (Long_Instruction);
       else
          return False;
       end if;
 
-      if To_Integer (Stack_Pointer + Saved_R7_Stack_Offset) >= To_Integer (Stack_End) then
+      if To_Integer (Stack_Pointer + Saved_R7_Stack_Offset) >=
+         To_Integer (Stack_End)
+      then
          return False;
       end if;
 
@@ -273,19 +294,24 @@ separate(Stack_Trace_Capture)
          Address_To_Stack_Entry_Pointer.To_Pointer (
             Stack_Pointer + Saved_R7_Stack_Offset);
 
-      Prev_Frame_Pointer := To_Address (Integer_Address (Stack_Entry_Pointer.all));
-      if not Memory_Map.Valid_Ram_Pointer (Prev_Frame_Pointer, Stack_Entry_Alignment)
+      Prev_Frame_Pointer :=
+         To_Address (Integer_Address (Stack_Entry_Pointer.all));
+      if not Memory_Map.Valid_RAM_Pointer (Prev_Frame_Pointer,
+                                           Stack_Entry_Alignment)
          or else
          To_Integer (Prev_Frame_Pointer) <= To_Integer (Stack_Pointer)
          or else
-          To_Integer (Prev_Frame_Pointer) >= To_Integer (Stack_End) then
+         To_Integer (Prev_Frame_Pointer) >= To_Integer (Stack_End)
+      then
          return False;
       end if;
 
       Stack_Entry_Pointer :=
-        Address_To_Stack_Entry_Pointer.To_Pointer (Stack_Pointer + Saved_LR_Stack_Offset);
+        Address_To_Stack_Entry_Pointer.To_Pointer (Stack_Pointer +
+                                                   Saved_LR_Stack_Offset);
 
-      Prev_Return_Address := To_Address (Integer_Address (Stack_Entry_Pointer.all));
+      Prev_Return_Address :=
+         To_Address (Integer_Address (Stack_Entry_Pointer.all));
       if (To_Integer (Prev_Return_Address) and Arm_Thumb_Code_Flag) = 0 then
          return False;
       end if;
@@ -294,4 +320,3 @@ separate(Stack_Trace_Capture)
       return True;
 
    end Find_Previous_Stack_Frame;
-

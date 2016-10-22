@@ -49,25 +49,17 @@ package body Command_Line is
 
    -- ** --
 
-   function Initialized return Boolean is (Command_Line_Var.Initialized);
-
-   -- ** --
-
-   procedure Initialize (Prompt : not null access constant String) is
-   begin
-      pragma Assert (Command_Line_Var.State = Command_Line_Empty);
-      Command_Line_Var.Prompt := Prompt;
-      Command_Line_Var.Initialized := True;
-   end Initialize;
-
-   -- ** --
-
    function Get_Next_Token (Token : out Token_Type) return Boolean is
-
       procedure Read_Command_Line (
          Buffer : out String;
          Filled_Length : out Natural) with
-         Post => Filled_Length <= Buffer_Index_Type'Last
+         Post => Filled_Length <= Buffer_Index_Type'Last;
+
+      -- ** --
+
+      procedure Read_Command_Line (
+         Buffer : out String;
+         Filled_Length : out Natural)
       is
          Char_Read : Character;
          Cursor : Buffer_Index_Type := Buffer_Index_Type'First;
@@ -75,7 +67,7 @@ package body Command_Line is
          Print_Prompt;
          Serial_Console.Lock;
          loop
-            -- Wait for next character from the serial console:
+            --  Wait for next character from the serial console:
             Serial_Console.Unlock;
             Serial_Console.Get_Char (Char_Read);
             Serial_Console.Lock;
@@ -130,7 +122,7 @@ package body Command_Line is
             null;
       end case;
 
-      -- Skip spaces:
+      --  Skip spaces:
       Cursor := Command_Line_Var.Buffer_Cursor;
       while Command_Line_Var.Buffer (Cursor) = ' ' loop
          Cursor := Cursor + 1;
@@ -141,7 +133,7 @@ package body Command_Line is
 
       Token_Start_Index := Cursor;
 
-      -- Find next space or end of buffer:
+      --  Find next space or end of buffer:
       loop
          Cursor := Cursor + 1;
          exit when Cursor > Command_Line_Var.Buffer_Filled_Length or else
@@ -152,7 +144,7 @@ package body Command_Line is
       if Length <= Token_Length_Type'Last then
          Token.Length := Length;
       else
-         -- Truncate token:
+         --  Truncate token:
          Token.Length := Token_Length_Type'Last;
       end if;
 
@@ -172,6 +164,19 @@ package body Command_Line is
       Command_Line_Var.State := Command_Line_Empty;
       return False;
    end Get_Next_Token;
+
+   -- ** --
+
+   function Initialized return Boolean is (Command_Line_Var.Initialized);
+
+   -- ** --
+
+   procedure Initialize (Prompt : not null access constant String) is
+   begin
+      pragma Assert (Command_Line_Var.State = Command_Line_Empty);
+      Command_Line_Var.Prompt := Prompt;
+      Command_Line_Var.Initialized := True;
+   end Initialize;
 
    -- ** --
 

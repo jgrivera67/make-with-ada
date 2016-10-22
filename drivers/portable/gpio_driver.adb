@@ -36,33 +36,6 @@ package body Gpio_Driver is
    use Gpio_Driver.MCU_Specific_Private;
    use Devices.MCU_Specific;
 
-   -------------------
-   -- Configure_Pin --
-   -------------------
-
-   procedure Configure_Pin
-     (Gpio_Pin : Gpio_Pin_Type;
-      Drive_Strength_Enable : Boolean;
-      Pullup_Resistor : Boolean;
-      Is_Output_Pin : Boolean)
-   is
-      Old_Primask : Word;
-      Gpio_Registers : access GPIO.Registers_Type renames
-        Gpio_Ports (Gpio_Pin.Pin_Info.Pin_Port);
-      PDDR_Value : Pin_Array_Type;
-   begin
-      Old_Primask := Disable_Cpu_Interrupts;
-
-      Pin_Mux_Driver.Set_Pin_Function(Gpio_Pin.Pin_Info,
-                                      Drive_Strength_Enable, Pullup_Resistor);
-
-      PDDR_Value := Gpio_Registers.PDDR;
-      PDDR_Value (Gpio_Pin.Pin_Info.Pin_Index) := Boolean'Pos (Is_Output_Pin);
-      Gpio_Registers.PDDR := PDDR_Value;
-
-      Restore_Cpu_Interrupts (Old_Primask);
-   end Configure_Pin;
-
    -------------------------
    -- Activate_Output_Pin --
    -------------------------
@@ -84,6 +57,42 @@ package body Gpio_Driver is
          Gpio_Registers.PCOR := Pin_Array_Value;
       end if;
    end Activate_Output_Pin;
+
+   -------------------
+   -- Clear_Pin_Irq --
+   -------------------
+
+   procedure Clear_Pin_Irq (Gpio_Pin : Gpio_Pin_Type) is
+   begin
+      Pin_Mux_Driver.Clear_Pin_Irq (Gpio_Pin.Pin_Info);
+   end Clear_Pin_Irq;
+
+   -------------------
+   -- Configure_Pin --
+   -------------------
+
+   procedure Configure_Pin
+     (Gpio_Pin : Gpio_Pin_Type;
+      Drive_Strength_Enable : Boolean;
+      Pullup_Resistor : Boolean;
+      Is_Output_Pin : Boolean)
+   is
+      Old_Primask : Word;
+      Gpio_Registers : access GPIO.Registers_Type renames
+        Gpio_Ports (Gpio_Pin.Pin_Info.Pin_Port);
+      PDDR_Value : Pin_Array_Type;
+   begin
+      Old_Primask := Disable_Cpu_Interrupts;
+
+      Pin_Mux_Driver.Set_Pin_Function (Gpio_Pin.Pin_Info,
+                                       Drive_Strength_Enable, Pullup_Resistor);
+
+      PDDR_Value := Gpio_Registers.PDDR;
+      PDDR_Value (Gpio_Pin.Pin_Info.Pin_Index) := Boolean'Pos (Is_Output_Pin);
+      Gpio_Registers.PDDR := PDDR_Value;
+
+      Restore_Cpu_Interrupts (Old_Primask);
+   end Configure_Pin;
 
    ---------------------------
    -- Deactivate_Output_Pin --
@@ -107,6 +116,41 @@ package body Gpio_Driver is
       end if;
    end Deactivate_Output_Pin;
 
+   ---------------------
+   -- Disable_Pin_Irq --
+   ---------------------
+
+   procedure Disable_Pin_Irq (Gpio_Pin : Gpio_Pin_Type) is
+   begin
+      Pin_Mux_Driver.Disable_Pin_Irq (Gpio_Pin.Pin_Info);
+   end Disable_Pin_Irq;
+
+   --------------------
+   -- Enable_Pin_Irq --
+   --------------------
+
+   procedure Enable_Pin_Irq
+     (Gpio_Pin : Gpio_Pin_Type;
+      Pin_Irq_Mode : Pin_Irq_Mode_Type)
+   is
+   begin
+      Pin_Mux_Driver.Enable_Pin_Irq (Gpio_Pin.Pin_Info, Pin_Irq_Mode);
+   end Enable_Pin_Irq;
+
+   --------------------
+   -- Read_Input_Pin --
+   --------------------
+
+   function Read_Input_Pin (Gpio_Pin : Gpio_Pin_Type) return Boolean is
+      Gpio_Registers : access GPIO.Registers_Type renames
+        Gpio_Ports (Gpio_Pin.Pin_Info.Pin_Port);
+      Pin_Index : Pin_Index_Type renames Gpio_Pin.Pin_Info.Pin_Index;
+      PDIR_Value : Pin_Array_Type;
+   begin
+      PDIR_Value := Gpio_Registers.PDIR;
+      return PDIR_Value (Pin_Index) /= 0;
+   end Read_Input_Pin;
+
    -----------------------
    -- Toggle_Output_Pin --
    -----------------------
@@ -124,49 +168,5 @@ package body Gpio_Driver is
       Pin_Array_Value (Pin_Index) := 1;
       Gpio_Registers.PTOR := Pin_Array_Value;
    end Toggle_Output_Pin;
-
-   --------------------
-   -- Read_Input_Pin --
-   --------------------
-
-   function Read_Input_Pin (Gpio_Pin : Gpio_Pin_Type) return Boolean is
-      Gpio_Registers : access GPIO.Registers_Type renames
-        Gpio_Ports (Gpio_Pin.Pin_Info.Pin_Port);
-      Pin_Index : Pin_Index_Type renames Gpio_Pin.Pin_Info.Pin_Index;
-      PDIR_Value : Pin_Array_Type;
-   begin
-      PDIR_Value := Gpio_Registers.PDIR;
-      return PDIR_Value (Pin_Index) /= 0;
-   end Read_Input_Pin;
-
-   --------------------
-   -- Enable_Pin_Irq --
-   --------------------
-
-   procedure Enable_Pin_Irq
-     (Gpio_Pin : Gpio_Pin_Type;
-      Pin_Irq_Mode : Pin_Irq_Mode_Type)
-   is
-   begin
-       Pin_Mux_Driver.Enable_Pin_Irq (Gpio_Pin.Pin_Info, Pin_Irq_Mode);
-   end Enable_Pin_Irq;
-
-   ---------------------
-   -- Disable_Pin_Irq --
-   ---------------------
-
-   procedure Disable_Pin_Irq (Gpio_Pin : Gpio_Pin_Type) is
-   begin
-      Pin_Mux_Driver.Disable_Pin_Irq (Gpio_Pin.Pin_Info);
-   end Disable_Pin_Irq;
-
-   -------------------
-   -- Clear_Pin_Irq --
-   -------------------
-
-   procedure Clear_Pin_Irq (Gpio_Pin : Gpio_Pin_Type) is
-   begin
-      Pin_Mux_Driver.Clear_Pin_Irq (Gpio_Pin.Pin_Info);
-   end Clear_Pin_Irq;
 
 end Gpio_Driver;

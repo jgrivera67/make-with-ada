@@ -39,6 +39,7 @@ package body Networking.Layer3.IPv4 is
    -----------------------
    -- Build_Subnet_Mask --
    -----------------------
+
    procedure Build_Subnet_Mask (Subnet_Prefix : IPv4_Subnet_Prefix_Type;
                                 Subnet_Mask : out IPv4_Address_Type)
    is
@@ -73,29 +74,29 @@ package body Networking.Layer3.IPv4 is
       end loop;
    end Build_Subnet_Mask;
 
-   ------------------------
-   -- Receive_ARP_Packet --
-   ------------------------
+   ---------------------------------
+   -- Process_Incoming_ARP_Packet --
+   ---------------------------------
 
-   procedure Receive_ARP_Packet (Rx_Packet : Network_Packet_Type) is
+   procedure Process_Incoming_ARP_Packet (Rx_Packet : Network_Packet_Type) is
    begin
       --  Generated stub: replace with real body!
       pragma Compile_Time_Warning (Standard.True,
-                                   "Receive_ARP_Packet unimplemented");
-      Runtime_Logs.Debug_Print ("Release_Tx_Packet unimplemented");
-   end Receive_ARP_Packet;
+         "Process_Incoming_ARP_Packet unimplemented");
+      Runtime_Logs.Debug_Print ("Process_Incoming_ARP_Packet unimplemented");
+   end Process_Incoming_ARP_Packet;
 
-   -------------------------
-   -- Receive_IPv4_Packet --
-   -------------------------
+   ----------------------------------
+   -- Process_Incoming_IPv4_Packet --
+   ----------------------------------
 
-   procedure Receive_IPv4_Packet (Rx_Packet : Network_Packet_Type) is
+   procedure Process_Incoming_IPv4_Packet (Rx_Packet : Network_Packet_Type) is
    begin
       --  Generated stub: replace with real body!
       pragma Compile_Time_Warning (Standard.True,
-                                   "Receive_IPv4_Packet unimplemented");
-      Runtime_Logs.Debug_Print ("Receive_IPv4_Packet unimplemented");
-   end Receive_IPv4_Packet;
+         "Process_Incoming_IPv4_Packet unimplemented");
+      Runtime_Logs.Debug_Print ("Process_Incoming_IPv4_Packet unimplemented");
+   end Process_Incoming_IPv4_Packet;
 
    ----------------------------
    -- Set_Local_IPv4_Address --
