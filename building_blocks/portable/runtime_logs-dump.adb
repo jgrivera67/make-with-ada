@@ -28,6 +28,44 @@ with Serial_Console;
 
 package body Runtime_Logs.Dump is
 
+   procedure Dump_Log_Fragment (Runtime_Log : in Runtime_Log_Type;
+                                Dump_Start_Index : Positive;
+                                Dump_End_Index : Positive;
+                                Max_Screen_Lines : Max_Screen_Lines_Type)
+     with Pre => Dump_Start_Index <= Runtime_Log.Buffer'Last and
+                 Dump_End_Index <= Runtime_Log.Buffer'Last;
+
+   --------------
+   -- Dump_Log --
+   --------------
+
+   procedure Dump_Log
+     (Log : Log_Type;
+      Max_Screen_Lines : Max_Screen_Lines_Type)
+   is
+      Runtime_Log : Runtime_Log_Type renames Runtime_Logs (Log).all;
+      Wrap_Count : constant Unsigned_32 := Runtime_Log.Wrap_Count;
+      Dump_End_Index : constant Positive range Runtime_Log.Buffer'Range :=
+        Runtime_Log.Cursor;
+      Dump_Start_Index : Positive range Runtime_Log.Buffer'Range;
+   begin
+      if Wrap_Count = 0 then
+         Dump_Start_Index := Runtime_Log.Buffer'First;
+      else
+         Dump_Start_Index := Dump_End_Index;
+      end if;
+
+      Serial_Console.Print_String (
+         "Log wrap count:" & Wrap_Count'Image & ASCII.LF);
+
+      Serial_Console.Print_String (
+         "(sequence number:time stamp:task Id:[code addr]:message " &
+         "[stack trace])" & ASCII.LF);
+
+      Dump_Log_Fragment (Runtime_Log, Dump_Start_Index, Dump_End_Index,
+                         Max_Screen_Lines);
+   end Dump_Log;
+
    -----------------------
    -- Dump_Log_Fragment --
    -----------------------
@@ -36,9 +74,7 @@ package body Runtime_Logs.Dump is
                                 Dump_Start_Index : Positive;
                                 Dump_End_Index : Positive;
                                 Max_Screen_Lines : Max_Screen_Lines_Type)
-     with Pre => Dump_Start_Index <= Runtime_Log.Buffer'Last and
-     Dump_End_Index <= Runtime_Log.Buffer'Last is
-
+   is
       Screen_Lines_Count : Max_Screen_Lines_Type := Max_Screen_Lines;
       Dump_Cursor : Positive range Runtime_Log.Buffer'Range;
       Char_Value : Character;
@@ -48,7 +84,7 @@ package body Runtime_Logs.Dump is
             return;
          end if;
 
-         Serial_Console.Put_Char (Runtime_log.Buffer (Dump_Start_Index));
+         Serial_Console.Put_Char (Runtime_Log.Buffer (Dump_Start_Index));
          if Dump_Start_Index = Runtime_Log.Buffer'Last then
             Dump_Cursor := Runtime_Log.Buffer'First;
          else
@@ -72,16 +108,17 @@ package body Runtime_Logs.Dump is
          if  Char_Value = ASCII.LF then
             if Screen_Lines_Count = 1 then
                Serial_Console.Print_String (
-                  "<Enter> - next line, 'q' - quit, <any other key> - next page" &
+                  "<Enter> - next line, 'q' - quit, " &
+                  "<any other key> - next page" &
                   ASCII.CR);
 
-               -- Wait for next character from the serial console:
+               --  Wait for next character from the serial console:
                Serial_Console.Unlock;
                Serial_Console.Get_Char (Char_Value);
                Serial_Console.Lock;
                Serial_Console.Print_String (
-                  "                                                            " &
-                  ASCII.CR);
+                  "                                                         " &
+                  "   " & ASCII.CR);
 
                if Char_Value = ASCII.CR then
                   Screen_Lines_Count := 1;
@@ -97,37 +134,6 @@ package body Runtime_Logs.Dump is
       end loop;
 
    end Dump_Log_Fragment;
-
-   --------------
-   -- Dump_Log --
-   --------------
-
-   procedure Dump_Log
-     (Log : Log_Type;
-      Max_Screen_Lines : Max_Screen_Lines_Type)
-   is
-      Runtime_Log : Runtime_Log_Type renames Runtime_Logs (Log).all;
-      Wrap_Count : constant Unsigned_32 := Runtime_Log.Wrap_Count;
-      Dump_End_Index : constant Positive range Runtime_Log.Buffer'Range :=
-        Runtime_Log.Cursor;
-      Dump_Start_Index : Positive range Runtime_Log.Buffer'Range;
-   begin
-      if Wrap_Count = 0 then
-         Dump_Start_Index := Runtime_Log.Buffer'First;
-      else
-         Dump_Start_Index := Dump_End_Index;
-      end if;
-
-      Serial_Console.Print_String (
-                                   "Log wrap count:" & Wrap_Count'Image & ASCII.LF);
-
-      Serial_Console.Print_String (
-                                   "(sequence number:time stamp:task Id:[code addr]:message [stack trace])" &
-                                     ASCII.LF);
-
-      Dump_Log_Fragment(Runtime_Log, Dump_Start_Index, Dump_End_Index,
-                        Max_Screen_Lines);
-   end Dump_Log;
 
    -------------------
    -- Dump_Log_Tail --
@@ -183,19 +189,22 @@ package body Runtime_Logs.Dump is
          exit when Dump_Cursor = Dump_End_Index;
       end loop;
 
-      -- Dump_Start_Index indicates the beginning of the first line to print
-
-      Serial_Console.Print_String ("Last" &
-                                     Positive'Image (Num_Tail_Lines - Text_Lines_Left) &
-                                     " lines" & ASCII.LF);
-      Serial_Console.Print_String ("Log wrap count:" & Wrap_Count'Image & ASCII.LF);
+      --  Dump_Start_Index indicates the beginning of the first line to print
 
       Serial_Console.Print_String (
-         "(sequence number:time stamp:task Id:[code addr]:message [stack trace])" &
+         "Last" &
+         Positive'Image (Num_Tail_Lines - Text_Lines_Left) &
+         " lines" & ASCII.LF);
+      Serial_Console.Print_String (
+         "Log wrap count:" & Wrap_Count'Image & ASCII.LF);
+
+      Serial_Console.Print_String (
+         "(sequence number:time stamp:task Id:[code addr]:message " &
+         "[stack trace])" &
          ASCII.LF);
 
-      Dump_Log_Fragment(Runtime_Log, Dump_Start_Index, Dump_End_Index,
-                        Max_Screen_Lines);
+      Dump_Log_Fragment (Runtime_Log, Dump_Start_Index, Dump_End_Index,
+                         Max_Screen_Lines);
    end Dump_Log_Tail;
 
 end Runtime_Logs.Dump;

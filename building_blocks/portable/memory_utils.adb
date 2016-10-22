@@ -30,7 +30,7 @@ with System.Storage_Elements; use System.Storage_Elements;
 
 package body Memory_Utils is
    --
-   -- Constants
+   --  Constants
    --
 
    Flash_Used_End_Marker : constant Unsigned_32;
@@ -46,11 +46,11 @@ package body Memory_Utils is
    --  End address of the statically allocated portion of SRAM
 
    --
-   -- Subprograms
+   --  Subprograms
    --
 
    function Get_Flash_Used return Unsigned_32 is
-      (Unsigned_32 (To_Integer(Flash_Used_End_Marker'Address)));
+      (Unsigned_32 (To_Integer (Flash_Used_End_Marker'Address)));
 
    function Get_Sram_Used return Unsigned_32 is
      (Unsigned_32 (To_Integer (Statically_Allocated_Sram_End_Marker'Address) -
