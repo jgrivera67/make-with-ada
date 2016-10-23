@@ -242,6 +242,113 @@ package Networking.Packet_Layout is
 
       type ARP_Packet_Access_Type is access all ARP_Packet_Type;
 
+      --
+      --  ICMPv4 message types
+      --
+      type Type_of_ICMPv4_Message_Type is (Ping_Reply,
+                                           Ping_Request)
+      with Size => Byte'Size;
+
+      for Type_of_ICMPv4_Message_Type use (Ping_Reply => 0,
+                                           Ping_Request => 8);
+
+      --
+      --  ICMPv4 message codes
+      --
+      Ping_Reply_Code : constant Unsigned_8 := 0;
+      Ping_Request_Code : constant Unsigned_8 := 0;
+
+      --
+      --  ICMPv4 message layout in network byte order
+      --  (An ICMPv4 packet is encapsulated in an IPv4 packet)
+      --
+      --  @field msg_type Message type
+      --  @field Code Message code
+      --  @field Checksum Message checksum
+      --
+      --  Additional fields for the Echo (ping) request/reply messages:
+      --  @field Identifier
+      --  @field Sequence_Number
+      --
+      type ICMPv4_Message_Type
+         (Type_of_Message : Type_of_ICMPv4_Message_Type := Ping_Reply)
+      is record
+         Code : Unsigned_8;
+         Checksum : Unsigned_16;
+         case Type_of_Message is
+            when Ping_Reply | Ping_Request =>
+               --  Echo request/reply message
+               Identifier : Unsigned_16;
+               Sequence_Number : Unsigned_16;
+         end case;
+      end record with Size => 8 * Byte'Size;
+
+      for ICMPv4_Message_Type use record
+         Type_of_Message at 0 range 0 .. 7;
+         Code            at 1 range 0 .. 7;
+         Checksum        at 2 range 0 .. 15;
+         Identifier      at 4 range 0 .. 15;
+         Sequence_Number at 6 range 0 .. 15;
+      end record;
+
+      type ICMPv4_Message_Access_Type is access all ICMPv4_Message_Type;
+
+      --
+      --  IPv4 DHCP message layout
+      --
+      --  @field Operation
+      --  @field Hardware_Type
+      --  @field Hardware_Address_Length
+      --  @field Hops
+      --  @field Transaction_Id
+      --  @field Seconds
+      --  @field Flags
+      --  @field Client_IP_Address
+      --  @field Your_IP_Address
+      --  @field Next_Server_IP_Address
+      --  @field Relay_Agent_IP_Address
+      --  @field Client_MAC_Address
+      --  @field Magic_Cookie
+      --  @field First_Option_Byte first byte of options
+      --
+      type DHCPv4_Message_Type is record
+         Operation : Unsigned_8;
+         Hardware_Type : Unsigned_8;
+         Hardware_Address_Length : Unsigned_8;
+         Hops : Unsigned_8;
+         Transaction_Id : Unsigned_32;
+         Seconds : Unsigned_16;
+         Flags : Unsigned_16;
+         Client_IP_Address : IPv4_Address_Type;
+         Your_IP_Address : IPv4_Address_Type;
+         Next_Server_IP_Address : IPv4_Address_Type;
+         Relay_Agent_IP_Address : IPv4_Address_Type;
+         Client_MAC_Address : Ethernet_Mac_Address_Type;
+         Zero_Filled : Bytes_Array_Type (1 .. 10 + 192) := (others => 0);
+         Magic_Cookie : Unsigned_32;
+         First_Option_Byte : aliased Unsigned_8;
+      end record with Size => 241 * Byte'Size;
+
+      for DHCPv4_Message_Type use record
+         Operation at 0 range 0 .. 7;
+         Hardware_Type at 1 range 0 .. 7;
+         Hardware_Address_Length at 2 range 0 .. 7;
+         Hops at 3 range 0 .. 7;
+         Transaction_Id at 4 range 0 .. 31;
+         Seconds at 8 range 0 .. 15;
+         Flags at 10 range 0 .. 15;
+         Client_IP_Address at 12 range 0 .. 31;
+         Your_IP_Address at 16 range 0 .. 31;
+         Next_Server_IP_Address at 20 range 0 .. 31;
+         Relay_Agent_IP_Address at 24 range 0 .. 31;
+         Client_MAC_Address at 28 range 0 .. 47;
+         Zero_Filled at 34 range 0 .. 1615;
+         Magic_Cookie at 236 range 0 .. 31;
+         First_Option_Byte at 240 range 0 .. 7;
+      end record;
+
+      type DHCPv4_Message_Access_Type is access all DHCPv4_Message_Type;
+
       -- ** --
 
       function Unsigned_16_To_Type_of_Link_Address is
