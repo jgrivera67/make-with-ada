@@ -96,7 +96,12 @@ package Networking.Packet_Layout is
       end record;
 
       --
-      --  Header of an IPv4 packet in network byte order
+      --  IPv4 packet header minimum size in bytes
+      --
+      Packet_Header_Size : constant Positive := 20;
+
+      --
+      --  Layout of an IPv4 packet in network byte order
       --  (An IPv4 packet is encapsulated in an Ethernet frame)
       --
       --  @field Version_and_Header_Length IP version and header length
@@ -131,7 +136,9 @@ package Networking.Packet_Layout is
       --
       --  @field Destination_IPv4_Address Destination (receiver) IPv4 address
       --
-      type Packet_Header_Type is record
+      --  @field First_Data_Byte : First byte of the data payload
+      --
+      type Packet_Type is record
          Version_and_Header_Length : Version_and_Header_Length_Type;
          Type_of_Service : Type_of_Service_Type;
          Total_Length : Unsigned_16;
@@ -142,9 +149,10 @@ package Networking.Packet_Layout is
          Header_Checksum : Unsigned_16;
          Source_IPv4_Address : IPv4_Address_Type;
          Destination_IPv4_Address : IPv4_Address_Type;
-      end record with Size => 20 * Byte'Size;
+         First_Data_Byte : aliased Byte;
+      end record with Size => (Packet_Header_Size + 1) * Byte'Size;
 
-      for Packet_Header_Type use record
+      for Packet_Type use record
          Version_and_Header_Length at 0 range 0 .. 7;
          Type_of_Service           at 1 range 0 .. 7;
          Total_Length              at 2 range 0 .. 15;
@@ -155,7 +163,10 @@ package Networking.Packet_Layout is
          Header_Checksum           at 10 range 0 .. 15;
          Source_IPv4_Address       at 12 range 0 .. 31;
          Destination_IPv4_Address  at 16 range 0 .. 31;
+         First_Data_Byte           at 20 range 0 .. 7;
       end record;
+
+      type Packet_Access_Type is access all Packet_Type;
 
       type Type_of_Link_Address_Type is (Ethernet)
          with Size => Unsigned_16'Size;
@@ -229,6 +240,8 @@ package Networking.Packet_Layout is
          Destination_IP_Address at 24 range 0 .. 31;
       end record;
 
+      type ARP_Packet_Access_Type is access all ARP_Packet_Type;
+
       -- ** --
 
       function Unsigned_16_To_Type_of_Link_Address is
@@ -263,7 +276,12 @@ package Networking.Packet_Layout is
       end record;
 
       --
-      --  Header of an IPv6 packet in network byte order
+      --  IPv6 packet header size in bytes
+      --
+      Packet_Header_Size : constant Positive := 40;
+
+      --
+      --  Layout of an IPv6 packet in network byte order
       --  (An IPv6 packet is encapsulated in an Ethernet frame)
       --
       --  @field First_Word First 32-bit word. Top 4 bits of first byte is IP
@@ -282,24 +300,29 @@ package Networking.Packet_Layout is
       --
       --  @field Destination_IPv4_Address Destination (receiver) IPv6 address
       --
-      type Packet_Header_Type is record
+      --  @field First_Data_Byte : First byte of the data payload
+      --
+      type Packet_Type is record
          First_Word : First_Word_Type;
          Payload_Length : Unsigned_16;
          Next_Header : Layer4_Protocol_Type;
          Hop_Limit : Unsigned_8;
          Source_IPv6_Address : IPv6_Address_Type;
          Destination_IPv6_Address : IPv6_Address_Type;
-      end record with Size => 40 * Byte'Size;
+         First_Data_Byte : aliased Byte;
+      end record with Size => (Packet_Header_Size + 1) * Byte'Size;
 
-      for Packet_Header_Type use record
+      for Packet_Type use record
          First_Word                at 0 range 0 .. 31;
          Payload_Length            at 4 range 0 .. 15;
          Next_Header               at 6 range 0 .. 7;
          Hop_Limit                 at 7 range 0 .. 7;
          Source_IPv6_Address       at 8 range 0 .. 127;
          Destination_IPv6_Address  at 24 range 0 .. 127;
+         First_Data_Byte           at 40 range 0 .. 7;
       end record;
 
+      type Packet_Access_Type is access all Packet_Type;
    end IPv6;
 
    --
@@ -321,6 +344,11 @@ package Networking.Packet_Layout is
                                   IPv6_Packet => 16#86dd#);
 
       --
+      --  Ethernet frame header size in bytes
+      --
+      Frame_Header_Size : constant Positive := 16;
+
+      --
       --  Ethernet header in network byte order
       --
       --  @field Padding Alignment padding so that data payload of the Ethernet
@@ -335,45 +363,22 @@ package Networking.Packet_Layout is
       --   field. Network_To_Host_Byte_Order must be invoked after reading this
       --   field.)
       --
-      type Frame_Header_Type is record
+      --  @field First_Data_Byte : First byte of the data payload
+      --
+      type Frame_Type is record
          Alignment_Padding : Unsigned_16;
          Destination_Mac_Address : Ethernet_Mac_Address_Type;
          Source_Mac_Address : Ethernet_Mac_Address_Type;
          Type_of_Frame : Unsigned_16;
-      end record with Size => 16 * Byte'Size;
+         First_Data_Byte : aliased Byte;
+      end record with Size => (Frame_Header_Size + 1) * Byte'Size;
 
-      for Frame_Header_Type use record
+      for Frame_Type use record
          Alignment_Padding         at 0 range 0 .. 15;
          Destination_Mac_Address   at 2 range 0 .. 47;
          Source_Mac_Address        at 8 range 0 .. 47;
          Type_of_Frame             at 14 range 0 .. 15;
-      end record;
-
-      type VLAN_Tagged_Frame_Type is null record;
-
-      --
-      --  Ethernet frame layout
-      --
-      type Frame_Type (Type_of_Frame : Type_of_Frame_Type := IPv4_Packet)
-      is record
-         Ethernet_Header : Ethernet.Frame_Header_Type;
-         case Type_of_Frame is
-            when IPv4_Packet =>
-               IPv4_Header : IPv4.Packet_Header_Type;
-            when ARP_Packet =>
-               ARP_Packet : IPv4.ARP_Packet_Type;
-            when VLAN_Tagged_Frame =>
-               VLAN_Tagged_Frame : VLAN_Tagged_Frame_Type;
-            when IPv6_Packet =>
-               IPv6_Header : IPv6.Packet_Header_Type;
-         end case;
-      end record with Unchecked_Union;
-
-      for Frame_Type use record
-         Ethernet_Header   at 0 range 0 .. 127;
-         IPv4_Header       at 16 range 0 .. 159;
-         ARP_Packet        at 16 range 0 .. 223;
-         IPv6_Header       at 16 range 0 .. 319;
+         First_Data_Byte           at 16 range 0 .. 7;
       end record;
 
       type Frame_Access_Type is access all Frame_Type;
@@ -386,9 +391,10 @@ package Networking.Packet_Layout is
         --  trigger an exception for invalid representation values.
         --
 
-      function Net_Packet_Buffer_Ptr_To_Ethernet_Frame_Ptr is
-        new Ada.Unchecked_Conversion (Source => Net_Packet_Buffer_Access_Type,
-                                      Target => Ethernet.Frame_Access_Type);
+      function Net_Packet_Data_Buffer_Ptr_To_Ethernet_Frame_Ptr is
+        new Ada.Unchecked_Conversion (
+               Source => Net_Packet_Data_Buffer_Access_Type,
+               Target => Frame_Access_Type);
    end Ethernet;
 
 end Networking.Packet_Layout;

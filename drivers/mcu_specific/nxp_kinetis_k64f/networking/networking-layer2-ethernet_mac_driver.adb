@@ -95,8 +95,9 @@ package body Networking.Layer2.Ethernet_Mac_Driver is
    function Net_Packet_Buffer_Address_To_Net_Packet_Pointer
      (Buffer_Address : Address) return not null access Network_Packet_Type
      with Inline,
-     Pre => Memory_Map.Valid_RAM_Pointer (Buffer_Address,
-                                          Net_Packet_Buffer_Type'Alignment),
+     Pre =>
+        Memory_Map.Valid_RAM_Pointer (Buffer_Address,
+                                      Net_Packet_Data_Buffer_Type'Alignment),
      Post =>
        Net_Packet_Buffer_Address_To_Net_Packet_Pointer'Result.
           Traffic_Direction'Valid and then

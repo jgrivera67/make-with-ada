@@ -211,30 +211,22 @@ package Networking is
    type Network_Packet_Access_Type is access all Network_Packet_Type;
 
    --
-   --  Netowork packet queue type
+   --  Network packet queue type
    --
    type Network_Packet_Queue_Type (Use_Mutex : Boolean) is limited private;
 
    --
    --  Packet payload data buffer
    --
-   type Net_Packet_Buffer_Byte_Array_Type is
-     array (1 .. Net_Packet_Data_Buffer_Size) of Byte
-      with Alignment => Net_Packet_Data_Buffer_Alignment;
+   type Net_Packet_Data_Type is
+      array (1 .. Net_Packet_Data_Buffer_Size) of Byte;
 
-   type Net_Packet_Buffer_Type is limited record
-      Data : Net_Packet_Buffer_Byte_Array_Type;
+   type Net_Packet_Data_Buffer_Type is limited record
+      Data : aliased Net_Packet_Data_Type;
    end record with Alignment => Net_Packet_Data_Buffer_Alignment;
 
-   type Net_Packet_Buffer_Access_Type is access all Net_Packet_Buffer_Type;
-
-   type Net_Rx_Packet_Array_Type is
-     array (Net_Rx_Packet_Index_Type) of
-     aliased Network_Packet_Type (Traffic_Direction => Rx);
-
-   type Net_Tx_Packet_Array_Type is
-     array (Net_Tx_Packet_Index_Type) of
-     aliased Network_Packet_Type (Traffic_Direction => Tx);
+   type Net_Packet_Data_Buffer_Access_Type is
+      access all Net_Packet_Data_Buffer_Type;
 
    -- ** --
 
@@ -282,16 +274,7 @@ package Networking is
    --  @return pointer to packet removed from the queue, or null if timeout
    --
 
-   --
-   --  Pool of Tx packets
-   --
-   --  @field Free_List Free list of Tx packet objects
-   --  @field Tx_Packets Tx packet objects
-   --
-   type Net_Tx_Packet_Pool_Type is limited record
-      Free_List : aliased Network_Packet_Queue_Type (Use_Mutex => False);
-      Tx_Packets : Net_Tx_Packet_Array_Type;
-   end record;
+   type Net_Tx_Packet_Pool_Type is limited private;
 
    procedure Initialize_Tx_Packet_Pool
       (Tx_Packet_Pool : in out Net_Tx_Packet_Pool_Type);
@@ -372,7 +355,7 @@ private
       Total_Length : Unsigned_16 := 0;
       Queue_Ptr : access Network_Packet_Queue_Type := null;
       Next_Ptr : Network_Packet_Access_Type := null;
-      Data_Payload_Buffer : aliased Net_Packet_Buffer_Type;
+      Data_Payload_Buffer : aliased Net_Packet_Data_Buffer_Type;
       case Traffic_Direction is
          when Rx =>
             Rx_Buffer_Descriptor_Index : Net_Rx_Packet_Index_Type;
@@ -446,6 +429,25 @@ private
          when False =>
             null;
       end case;
+   end record;
+
+   type Net_Rx_Packet_Array_Type is
+     array (Net_Rx_Packet_Index_Type) of
+     aliased Network_Packet_Type (Traffic_Direction => Rx);
+
+   type Net_Tx_Packet_Array_Type is
+     array (Net_Tx_Packet_Index_Type) of
+     aliased Network_Packet_Type (Traffic_Direction => Tx);
+
+   --
+   --  Pool of Tx packets
+   --
+   --  @field Free_List Free list of Tx packet objects
+   --  @field Tx_Packets Tx packet objects
+   --
+   type Net_Tx_Packet_Pool_Type is limited record
+      Free_List : aliased Network_Packet_Queue_Type (Use_Mutex => False);
+      Tx_Packets : Net_Tx_Packet_Array_Type;
    end record;
 
    -- ** --

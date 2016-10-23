@@ -230,19 +230,19 @@ package body Networking.Layer2 is
       Drop_Frame : Boolean := False;
    begin
       Rx_Frame_Ptr :=
-         Ethernet.Net_Packet_Buffer_Ptr_To_Ethernet_Frame_Ptr (
+         Ethernet.Net_Packet_Data_Buffer_Ptr_To_Ethernet_Frame_Ptr (
             Rx_Packet.Data_Payload_Buffer'Unchecked_Access);
 
       Type_of_Frame :=
          Ethernet.Unsigned_16_To_Type_Of_Frame (
             Network_To_Host_Byte_Order (
-               Rx_Frame_Ptr.Ethernet_Header.Type_of_Frame));
+               Rx_Frame_Ptr.Type_of_Frame));
 
       if Type_of_Frame'Valid then
          if Layer2_Var.Tracing_On then
             Trace_Frame (Rx,
-                         Rx_Frame_Ptr.Ethernet_Header.Source_Mac_Address,
-                         Rx_Frame_Ptr.Ethernet_Header.Destination_Mac_Address,
+                         Rx_Frame_Ptr.Source_Mac_Address,
+                         Rx_Frame_Ptr.Destination_Mac_Address,
                          Type_of_Frame,
                          Rx_Packet.Total_Length);
          end if;
@@ -266,7 +266,7 @@ package body Networking.Layer2 is
          Runtime_Logs.Error_Print (
             "Received frame of unknown type: " &
             Network_To_Host_Byte_Order (
-               Rx_Frame_Ptr.Ethernet_Header.Type_of_Frame)'Image);
+               Rx_Frame_Ptr.Type_of_Frame)'Image);
 
          Drop_Frame := True;
       end if;
@@ -324,7 +324,7 @@ package body Networking.Layer2 is
       Data_Payload_Length : Natural)
    is
       Tx_Frame_Ptr : constant Ethernet.Frame_Access_Type :=
-         Ethernet.Net_Packet_Buffer_Ptr_To_Ethernet_Frame_Ptr (
+         Ethernet.Net_Packet_Data_Buffer_Ptr_To_Ethernet_Frame_Ptr (
             Tx_Packet.Data_Payload_Buffer'Unchecked_Access);
    begin
       --
@@ -333,17 +333,16 @@ package body Networking.Layer2 is
       --  NOTE: The Ethernet MAC hardware populates the source MAC address
       --  automatically in an outgoing frame
       --
-      Tx_Frame_Ptr.Ethernet_Header.Destination_Mac_Address := Dest_Mac_Address;
-      Tx_Frame_Ptr.Ethernet_Header.Type_of_Frame :=
+      Tx_Frame_Ptr.Destination_Mac_Address := Dest_Mac_Address;
+      Tx_Frame_Ptr.Type_of_Frame :=
          Host_To_Network_Byte_Order (Type_of_Frame'Enum_Rep);
       Tx_Packet.Total_Length :=
-         Unsigned_16 (Ethernet.Frame_Header_Type'Size * Byte'Size +
-                      Data_Payload_Length);
+         Unsigned_16 (Ethernet.Frame_Header_Size + Data_Payload_Length);
 
       if Layer2_Var.Tracing_On then
          Trace_Frame (Tx,
                       Layer2_End_Point.Mac_Address,
-                      Tx_Frame_Ptr.Ethernet_Header.Destination_Mac_Address,
+                      Tx_Frame_Ptr.Destination_Mac_Address,
                       Type_of_Frame,
                       Tx_Packet.Total_Length);
       end if;
