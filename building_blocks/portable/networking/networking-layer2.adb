@@ -27,14 +27,15 @@
 
 with Runtime_Logs;
 with Networking.Layer2.Ethernet_Mac_Driver;
-with Networking.Layer3.IPv4;
-with Networking.Layer3.IPv6;
+with Networking.Layer3_IPv4;
+with Networking.Layer3_IPv6;
 with Ethernet_Phy_Driver;
 
 package body Networking.Layer2 is
    use Runtime_Logs;
    use Networking.Layer2.Ethernet_Mac_Driver;
-   use Networking.Layer3;
+   use Networking.Layer3_IPv4;
+   use Networking.Layer3_IPv6;
 
    procedure Build_Local_Mac_Address (
       Mac_Address : out Ethernet_Mac_Address_Type);
@@ -46,8 +47,8 @@ package body Networking.Layer2 is
    procedure Initialize (
       Layer2_End_Point : aliased in out Layer2_End_Point_Type;
       Ethernet_Mac_Id : Ethernet_Mac_Id_Type;
-      IPv4_End_Point_Ptr : access Networking.Layer3.Layer3_End_Point_Type;
-      IPv6_End_Point_Ptr : access Networking.Layer3.Layer3_End_Point_Type)
+      IPv4_End_Point_Ptr : Networking.Layer3_IPv4.IPv4_End_Point_Access_Type;
+      IPv6_End_Point_Ptr : Networking.Layer3_IPv6.IPv6_End_Point_Access_Type)
      with Global => null,
           Pre => not Initialized (Layer2_End_Point);
    --  Initializes layer2 Ethernet end point
@@ -156,8 +157,8 @@ package body Networking.Layer2 is
    procedure Initialize (
       Layer2_End_Point : aliased in out Layer2_End_Point_Type;
       Ethernet_Mac_Id : Ethernet_Mac_Id_Type;
-      IPv4_End_Point_Ptr : access  Networking.Layer3.Layer3_End_Point_Type;
-      IPv6_End_Point_Ptr : access  Networking.Layer3.Layer3_End_Point_Type)
+      IPv4_End_Point_Ptr : IPv4_End_Point_Access_Type;
+      IPv6_End_Point_Ptr : IPv6_End_Point_Access_Type)
    is
       Mac_Address_Str : Ethernet_Mac_Address_String_Type;
    begin
@@ -249,13 +250,13 @@ package body Networking.Layer2 is
 
          case Type_of_Frame is
             when Ethernet.ARP_Packet =>
-               Networking.Layer3.IPv4.Process_Incoming_ARP_Packet (Rx_Packet);
+               Process_Incoming_ARP_Packet (Rx_Packet);
 
             when Ethernet.IPv4_Packet =>
-               Networking.Layer3.IPv4.Process_Incoming_IPv4_Packet (Rx_Packet);
+               Process_Incoming_IPv4_Packet (Rx_Packet);
 
             when Ethernet.IPv6_Packet =>
-               Networking.Layer3.IPv6.Process_Incoming_IPv6_Packet (Rx_Packet);
+               Process_Incoming_IPv6_Packet (Rx_Packet);
 
             when Ethernet.VLAN_Tagged_Frame =>
                Runtime_Logs.Error_Print (
@@ -479,7 +480,7 @@ package body Networking.Layer2 is
             Dequeue_Network_Packet (Layer2_End_Point_Ptr.Rx_Packet_Queue);
 
          pragma Assert (Rx_Packet_Ptr /= null and then
-                        Rx_Packet_Ptr.Traffic_Direction'Valid);
+                        Rx_Packet_Ptr.Traffic_Direction = Rx);
          pragma Assert (Rx_Packet_Ptr.Rx_State_Flags.Packet_In_Rx_Queue);
          pragma Assert (Rx_Packet_Ptr.Layer2_End_Point_Ptr =
                         Layer2_End_Point_Ptr);

@@ -28,6 +28,13 @@
 --
 --  @summary Networking layer 4: UDP transport-level protocol
 --
-package Networking.Layer4.UDP is
+package Networking.Layer4_UDP is
 
-end Networking.Layer4.UDP;
+   type UDP_End_Point_Type is limited private;
+
+private
+
+   type UDP_End_Point_Type is limited record
+      null;--???
+   end record;
+end Networking.Layer4_UDP;

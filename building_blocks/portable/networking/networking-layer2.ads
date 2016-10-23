@@ -29,8 +29,8 @@ with Devices.MCU_Specific;
 with Microcontroller.Arm_Cortex_M;
 with Networking.Packet_Layout;
 private with System;
-limited with Networking.Layer3;
-
+limited with Networking.Layer3_IPv4;
+limited with Networking.Layer3_IPv6;
 --
 --  @summary Networking layer 2 (data-link layer) services
 --
@@ -170,8 +170,8 @@ private
    record
       Initialized : Boolean := False;
       Initialized_Condvar : Suspension_Object;
-      IPv4_End_Point_Ptr : access Networking.Layer3.Layer3_End_Point_Type;
-      IPv6_End_Point_Ptr : access Networking.Layer3.Layer3_End_Point_Type;
+      IPv4_End_Point_Ptr : access Networking.Layer3_IPv4.IPv4_End_Point_Type;
+      IPv6_End_Point_Ptr : access Networking.Layer3_IPv6.IPv6_End_Point_Type;
       Rx_Packet_Queue : aliased Network_Packet_Queue_Type (Use_Mutex => False);
       Rx_Packets : Net_Rx_Packet_Array_Type;
       Packet_Receiver_Task :

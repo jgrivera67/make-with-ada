@@ -136,7 +136,7 @@ package Networking.Packet_Layout is
       --
       --  @field Destination_IPv4_Address Destination (receiver) IPv4 address
       --
-      --  @field First_Data_Byte : First byte of the data payload
+      --  @field First_Data_Word : First word of the data payload
       --
       type Packet_Type is record
          Version_and_Header_Length : Version_and_Header_Length_Type;
@@ -149,8 +149,8 @@ package Networking.Packet_Layout is
          Header_Checksum : Unsigned_16;
          Source_IPv4_Address : IPv4_Address_Type;
          Destination_IPv4_Address : IPv4_Address_Type;
-         First_Data_Byte : aliased Byte;
-      end record with Size => (Packet_Header_Size + 1) * Byte'Size;
+         First_Data_Word : aliased Unsigned_32;
+      end record with Size => (Packet_Header_Size + 4) * Byte'Size;
 
       for Packet_Type use record
          Version_and_Header_Length at 0 range 0 .. 7;
@@ -163,7 +163,7 @@ package Networking.Packet_Layout is
          Header_Checksum           at 10 range 0 .. 15;
          Source_IPv4_Address       at 12 range 0 .. 31;
          Destination_IPv4_Address  at 16 range 0 .. 31;
-         First_Data_Byte           at 20 range 0 .. 7;
+         First_Data_Word           at 20 range 0 .. 31;
       end record;
 
       type Packet_Access_Type is access all Packet_Type;
@@ -309,7 +309,7 @@ package Networking.Packet_Layout is
       --  @field Relay_Agent_IP_Address
       --  @field Client_MAC_Address
       --  @field Magic_Cookie
-      --  @field First_Option_Byte first byte of options
+      --  @field First_Option_Word first word of options
       --
       type DHCPv4_Message_Type is record
          Operation : Unsigned_8;
@@ -326,8 +326,8 @@ package Networking.Packet_Layout is
          Client_MAC_Address : Ethernet_Mac_Address_Type;
          Zero_Filled : Bytes_Array_Type (1 .. 10 + 192) := (others => 0);
          Magic_Cookie : Unsigned_32;
-         First_Option_Byte : aliased Unsigned_8;
-      end record with Size => 241 * Byte'Size;
+         First_Option_Word : aliased Unsigned_32;
+      end record with Size => 244 * Byte'Size;
 
       for DHCPv4_Message_Type use record
          Operation at 0 range 0 .. 7;
@@ -344,7 +344,7 @@ package Networking.Packet_Layout is
          Client_MAC_Address at 28 range 0 .. 47;
          Zero_Filled at 34 range 0 .. 1615;
          Magic_Cookie at 236 range 0 .. 31;
-         First_Option_Byte at 240 range 0 .. 7;
+         First_Option_Word at 240 range 0 .. 31;
       end record;
 
       type DHCPv4_Message_Access_Type is access all DHCPv4_Message_Type;
@@ -407,7 +407,7 @@ package Networking.Packet_Layout is
       --
       --  @field Destination_IPv4_Address Destination (receiver) IPv6 address
       --
-      --  @field First_Data_Byte : First byte of the data payload
+      --  @field First_Data_Word : First word of the data payload
       --
       type Packet_Type is record
          First_Word : First_Word_Type;
@@ -416,8 +416,8 @@ package Networking.Packet_Layout is
          Hop_Limit : Unsigned_8;
          Source_IPv6_Address : IPv6_Address_Type;
          Destination_IPv6_Address : IPv6_Address_Type;
-         First_Data_Byte : aliased Byte;
-      end record with Size => (Packet_Header_Size + 1) * Byte'Size;
+         First_Data_Word : aliased Unsigned_32;
+      end record with Size => (Packet_Header_Size + 4) * Byte'Size;
 
       for Packet_Type use record
          First_Word                at 0 range 0 .. 31;
@@ -426,7 +426,7 @@ package Networking.Packet_Layout is
          Hop_Limit                 at 7 range 0 .. 7;
          Source_IPv6_Address       at 8 range 0 .. 127;
          Destination_IPv6_Address  at 24 range 0 .. 127;
-         First_Data_Byte           at 40 range 0 .. 7;
+         First_Data_Word           at 40 range 0 .. 31;
       end record;
 
       type Packet_Access_Type is access all Packet_Type;
@@ -470,22 +470,22 @@ package Networking.Packet_Layout is
       --   field. Network_To_Host_Byte_Order must be invoked after reading this
       --   field.)
       --
-      --  @field First_Data_Byte : First byte of the data payload
+      --  @field First_Data_word : First word of the data payload
       --
       type Frame_Type is record
          Alignment_Padding : Unsigned_16;
          Destination_Mac_Address : Ethernet_Mac_Address_Type;
          Source_Mac_Address : Ethernet_Mac_Address_Type;
          Type_of_Frame : Unsigned_16;
-         First_Data_Byte : aliased Byte;
-      end record with Size => (Frame_Header_Size + 1) * Byte'Size;
+         First_Data_Word : aliased Unsigned_32;
+      end record with Size => (Frame_Header_Size + 4) * Byte'Size;
 
       for Frame_Type use record
          Alignment_Padding         at 0 range 0 .. 15;
          Destination_Mac_Address   at 2 range 0 .. 47;
          Source_Mac_Address        at 8 range 0 .. 47;
          Type_of_Frame             at 14 range 0 .. 15;
-         First_Data_Byte           at 16 range 0 .. 7;
+         First_Data_Word           at 16 range 0 .. 31;
       end record;
 
       type Frame_Access_Type is access all Frame_Type;

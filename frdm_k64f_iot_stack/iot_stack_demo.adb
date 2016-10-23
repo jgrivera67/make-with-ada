@@ -31,14 +31,14 @@ with Runtime_Logs;
 with Serial_Console;
 with Color_Led;
 with Networking.Layer2;
-with Networking.Layer3;
+with Networking.Layer3_IPv4;
 with Devices.MCU_Specific;
 
 package body IoT_Stack_Demo is
    use Ada.Real_Time;
    use Interfaces;
    use Networking.Layer2;
-   use Networking.Layer3;
+   use Networking.Layer3_IPv4;
 
    ----------------
    -- Initialize --
@@ -216,15 +216,15 @@ package body IoT_Stack_Demo is
       Networking.Layer2.Mac_Address_To_String (
          Local_Mac_Address, Local_Mac_Address_Str);
 
-      Networking.Layer3.Get_IPv4_Address (Devices.MCU_Specific.MAC0,
-                                          Local_IPv4_Address,
-                                          Local_IPv4_Subnet_Mask);
+      Networking.Layer3_IPv4.Get_IPv4_Address (Devices.MCU_Specific.MAC0,
+                                               Local_IPv4_Address,
+                                               Local_IPv4_Subnet_Mask);
 
-      Networking.Layer3.IPv4_Address_To_String (Local_IPv4_Address,
-                                                Local_IPv4_Address_Str);
+      Networking.Layer3_IPv4.IPv4_Address_To_String (Local_IPv4_Address,
+                                                     Local_IPv4_Address_Str);
 
-      Networking.Layer3.IPv4_Address_To_String (Local_IPv4_Subnet_Mask,
-                                                Local_IPv4_Subnet_Mask_Str);
+      Networking.Layer3_IPv4.IPv4_Address_To_String (
+         Local_IPv4_Subnet_Mask, Local_IPv4_Subnet_Mask_Str);
 
       Serial_Console.Lock;
       Init_Network_Stats_Display;

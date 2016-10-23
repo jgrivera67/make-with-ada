@@ -26,7 +26,8 @@
 --
 
 with Networking.Layer2;
-with Networking.Layer3;
+with Networking.Layer3_IPv4;
+with Networking.Layer3_IPv6;
 with Networking.Layer4;
 
 package body Networking.API is
@@ -41,11 +42,12 @@ package body Networking.API is
    is
    begin
       Networking.Layer2.Initialize;
-      Networking.Layer3.Initialize;
+      Networking.Layer3_IPv4.Initialize;
+      Networking.Layer3_IPv6.Initialize;
       Networking.Layer4.Initialize;
       Networking.Layer2.Start_Layer2_End_Points;
-      Networking.Layer3.Start_Layer3_Tasks;
-
+      Networking.Layer3_IPv4.Start_IPv4_End_Points;
+      Networking.Layer3_IPv6.Start_IPv6_End_Points;
       Networking_Stack_Initialized := True;
    end Initialize;
 

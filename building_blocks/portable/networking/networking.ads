@@ -293,8 +293,8 @@ private
       Packet_In_Rx_Use_By_App : Boolean := False;
       Packet_In_Rx_Queue : Boolean := False;
       Packet_Rx_Failed : Boolean := False;
-      Packet_In_Icmp_Queue : Boolean := False;
-      Packet_In_Icmpv6_Queue : Boolean := False;
+      Packet_In_ICMPv4_Queue : Boolean := False;
+      Packet_In_ICMPv6_Queue : Boolean := False;
    end record with Size => Unsigned_8'Size;
 
    for Rx_Packet_State_Flags_Type use record
@@ -303,8 +303,8 @@ private
       Packet_In_Rx_Use_By_App at 0 range 2 .. 2;
       Packet_In_Rx_Queue at 0 range 3 .. 3;
       Packet_Rx_Failed at 0 range 4 .. 4;
-      Packet_In_Icmp_Queue at 0 range 5 .. 5;
-      Packet_In_Icmpv6_Queue at 0 range 6 .. 6;
+      Packet_In_ICMPv4_Queue at 0 range 5 .. 5;
+      Packet_In_ICMPv6_Queue at 0 range 6 .. 6;
    end record;
 
    --

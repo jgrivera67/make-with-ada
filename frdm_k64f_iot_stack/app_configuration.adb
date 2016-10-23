@@ -28,7 +28,7 @@
 with Generic_App_Config;
 with Runtime_Logs;
 with Devices.MCU_Specific;
-with Networking.Layer3.IPv4;
+with Networking.Layer3_IPv4;
 
 package body App_Configuration is
 
@@ -55,7 +55,7 @@ package body App_Configuration is
       Config_Parameters.IPv4_Subnet_Prefix := 24;
       --  ???
 
-      Networking.Layer3.IPv4.Set_Local_IPv4_Address (
+      Networking.Layer3_IPv4.Set_Local_IPv4_Address (
          Devices.MCU_Specific.MAC0,
          Config_Parameters.Local_IPv4_Address,
          Config_Parameters.IPv4_Subnet_Prefix);
