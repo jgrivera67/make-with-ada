@@ -27,6 +27,7 @@
 
 with Devices.MCU_Specific;
 private with Networking.Layer4_UDP;
+private with Ada.Real_Time;
 
 --
 --  @summary Networking layer 3 (network layer): IPv4
@@ -117,9 +118,9 @@ private
       Destination_IP_Address : IPv4_Address_Type;
       Destination_Mac_Address : Ethernet_Mac_Address_Type;
       State : ARP_Cache_Entry_State_Type := Entry_Invalid;
-      ARP_Request_Time_Stamp : Unsigned_32;
-      Entry_Filled_Time_Stamp : Unsigned_32;
-      Last_Lookup_Time_Stamp : Unsigned_32;
+      ARP_Request_Time_Stamp : Ada.Real_Time.Time;
+      Entry_Filled_Time_Stamp : Ada.Real_Time.Time;
+      Last_Lookup_Time_Stamp : Ada.Real_Time.Time;
    end record;
 
    type ARP_Cache_Entry_Access_Type is access all ARP_Cache_Entry_Type;

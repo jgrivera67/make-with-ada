@@ -71,29 +71,90 @@ package body Networking.Layer3_IPv4 is
    ------------------------------
 
    protected body ARP_Cache_Protected_Type is
+      ------------------------
+      -- Lookup_or_Allocate --
+      ------------------------
+
       procedure Lookup_or_Allocate (
          Destination_IP_Address : IPv4_Address_Type;
          Found_Entry_Ptr : out ARP_Cache_Entry_Access_Type;
          Free_Entry_Ptr : out ARP_Cache_Entry_Access_Type)
       is
+         use Ada.Real_Time;
+         Current_Time : Time;
+         First_Free_Entry_Ptr : ARP_Cache_Entry_Access_Type := null;
+         Least_Recently_Used_Entry_Ptr : ARP_Cache_Entry_Access_Type := null;
+         Least_Recently_Used_Time_Delta : Time_Span := Time_Span_Zero;
+         Matching_Entry_Ptr : ARP_Cache_Entry_Access_Type := null;
       begin
-         --  Generated stub: replace with real body!
-         pragma Compile_Time_Warning (True,
-            "Lookup_or_Allocate unimplemented");
-         Runtime_Logs.Debug_Print (
-            "Lookup_or_Allocate Initialize unimplemented");
+         Free_Entry_Ptr := null;
+         for I in Entries'Range loop
+            Current_Time := Ada.Real_Time.Clock;
+            if Entries (I).State = Entry_Invalid then
+               if First_Free_Entry_Ptr = null then
+                  First_Free_Entry_Ptr := Entries (I)'Unchecked_Access;
+               end if;
+            else
+               pragma Assert (Entries (I).State = Entry_Filled or else
+                              Entries (I).State = Entry_Half_Filled);
+
+               if Entries (I).Destination_IP_Address = Destination_IP_Address
+               then
+                  Matching_Entry_Ptr := Entries (I)'Unchecked_Access;
+                  exit;
+               end if;
+
+               if Least_Recently_Used_Entry_Ptr = null or else
+                  Entries (I).Last_Lookup_Time_Stamp - Current_Time >
+                     Least_Recently_Used_Time_Delta
+               then
+                  Least_Recently_Used_Entry_Ptr :=
+                     Entries (I)'Unchecked_Access;
+                  Least_Recently_Used_Time_Delta :=
+                     Entries (I).Last_Lookup_Time_Stamp - Current_Time;
+               end if;
+            end if;
+         end loop;
+
+         if Matching_Entry_Ptr = null then
+            if First_Free_Entry_Ptr /= null then
+               Free_Entry_Ptr := First_Free_Entry_Ptr;
+            else
+               --
+               --  Overwrite the least recently used entry:
+               --
+               pragma Assert (Least_Recently_Used_Entry_Ptr /= null);
+               Least_Recently_Used_Entry_Ptr.State := Entry_Invalid;
+               Free_Entry_Ptr := Least_Recently_Used_Entry_Ptr;
+            end if;
+         end if;
       end Lookup_or_Allocate;
+
+      ------------
+      -- Update --
+      ------------
 
       procedure Update (
          Destination_IP_Address : IPv4_Address_Type;
          Destination_MAC_Address : Ethernet_Mac_Address_Type)
       is
+         Chosen_Entry_Ptr : ARP_Cache_Entry_Access_Type := null;
+         Free_Entry_Ptr : ARP_Cache_Entry_Access_Type := null;
       begin
-         --  Generated stub: replace with real body!
-         pragma Compile_Time_Warning (True,
-            "Update unimplemented");
-         Runtime_Logs.Debug_Print (
-            "Update Initialize unimplemented");
+         Lookup_or_Allocate (Destination_IP_Address,
+                             Chosen_Entry_Ptr,
+                             Free_Entry_Ptr);
+
+         if Chosen_Entry_Ptr = null then
+            pragma Assert (Free_Entry_Ptr /= null);
+            Chosen_Entry_Ptr := Free_Entry_Ptr;
+            Chosen_Entry_Ptr.Destination_IP_Address := Destination_IP_Address;
+         end if;
+
+         Chosen_Entry_Ptr.Destination_MAC_Address := Destination_MAC_Address;
+         Chosen_Entry_Ptr.State := Entry_Filled;
+         Chosen_Entry_Ptr.Entry_Filled_Time_Stamp := Ada.Real_Time.Clock;
+         Set_True (Cache_Updated_Condvar);
       end Update;
    end ARP_Cache_Protected_Type;
 
