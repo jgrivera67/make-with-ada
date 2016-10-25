@@ -54,12 +54,7 @@ package body Networking is
       --
       Suspend_Until_True (Packet_Queue.Not_Empty_Condvar);
 
-      if Packet_Queue.Use_Mutex then
-         Suspend_Until_True (Packet_Queue.Mutex);
-      else
-         Old_Interrupt_Mask := Disable_Cpu_Interrupts;
-      end if;
-
+      Old_Interrupt_Mask := Disable_Cpu_Interrupts;
       Old_Head_Packet_Ptr := Packet_Queue.Head_Ptr;
 
       --
@@ -79,12 +74,7 @@ package body Networking is
          Packet_Queue.Timer_Started := False;
       end if;
 
-      if Packet_Queue.Use_Mutex then
-         Set_True (Packet_Queue.Mutex);
-      else
-         Restore_Cpu_Interrupts (Old_Interrupt_Mask);
-      end if;
-
+      Restore_Cpu_Interrupts (Old_Interrupt_Mask);
       return Old_Head_Packet_Ptr;
    end Dequeue_Network_Packet;
 
@@ -99,11 +89,7 @@ package body Networking is
       Old_Interrupt_Mask : Word := 0;
       Old_Tail_Packet_Ptr : access Network_Packet_Type;
    begin
-      if Packet_Queue.Use_Mutex then
-         Suspend_Until_True (Packet_Queue.Mutex);
-      else
-         Old_Interrupt_Mask := Disable_Cpu_Interrupts;
-      end if;
+      Old_Interrupt_Mask := Disable_Cpu_Interrupts;
 
       Old_Tail_Packet_Ptr := Packet_Queue.Tail_Ptr;
       Packet_Queue.Tail_Ptr := Packet_Ptr;
@@ -119,30 +105,9 @@ package body Networking is
          Packet_Queue.Length_High_Water_Mark := Packet_Queue.Length;
       end if;
 
-      if Packet_Queue.Use_Mutex then
-         Set_True (Packet_Queue.Mutex);
-      else
-         Restore_Cpu_Interrupts (Old_Interrupt_Mask);
-      end if;
-
+      Restore_Cpu_Interrupts (Old_Interrupt_Mask);
       Set_True (Packet_Queue.Not_Empty_Condvar);
    end Enqueue_Network_Packet;
-
-   -------------------------------------
-   -- Initialize_Network_Packet_Queue --
-   -------------------------------------
-
-   procedure Initialize_Network_Packet_Queue
-      (Packet_Queue : in out Network_Packet_Queue_Type)
-   is
-   begin
-      Set_False (Packet_Queue.Not_Empty_Condvar);
-      if Packet_Queue.Use_Mutex then
-         Set_True (Packet_Queue.Mutex);
-      end if;
-
-      Packet_Queue.Initialized := True;
-   end Initialize_Network_Packet_Queue;
 
    -------------------------------
    -- Initialize_Tx_Packet_Pool --
@@ -154,7 +119,6 @@ package body Networking is
       Tx_Packet_Initial_State_Flags : constant Tx_Packet_State_Flags_Type :=
         (Packet_In_Tx_Pool => True, others => False);
    begin
-      Initialize_Network_Packet_Queue (Tx_Packet_Pool.Free_List);
       for Tx_Packet of Tx_Packet_Pool.Tx_Packets loop
          pragma Assert (Tx_Packet.Traffic_Direction = Tx);
          pragma Assert (Tx_Packet.Tx_State_Flags =
@@ -177,22 +141,14 @@ package body Networking is
          Timeout_Delay := Milliseconds (Packet_Queue_Ptr.Timeout_Ms);
          delay until Clock + Timeout_Delay;
 
-         if Packet_Queue_Ptr.Use_Mutex then
-            Suspend_Until_True (Packet_Queue_Ptr.Mutex);
-         else
-            Old_Interrupt_Mask := Disable_Cpu_Interrupts;
-         end if;
+         Old_Interrupt_Mask := Disable_Cpu_Interrupts;
 
          if Packet_Queue_Ptr.Timer_Started then
             Packet_Queue_Ptr.Timer_Started := False;
             Set_True (Packet_Queue_Ptr.Not_Empty_Condvar);
          end if;
 
-         if Packet_Queue_Ptr.Use_Mutex then
-            Set_True (Packet_Queue_Ptr.Mutex);
-         else
-            Restore_Cpu_Interrupts (Old_Interrupt_Mask);
-         end if;
+         Restore_Cpu_Interrupts (Old_Interrupt_Mask);
       end loop;
    end Packet_Queue_Timer_Task_Type;
 

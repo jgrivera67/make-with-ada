@@ -123,11 +123,10 @@ package body Networking.Layer2 is
    ---------------------
 
    procedure Get_Mac_Address (
-      Ethernet_Mac_Id : Ethernet_Mac_Id_Type;
+      Layer2_End_Point : Layer2_End_Point_Type;
       Mac_Address : out Ethernet_Mac_Address_Type) is
    begin
-      Mac_Address := Layer2_Var.Local_Ethernet_Layer2_End_Points
-                        (Ethernet_Mac_Id).Mac_Address;
+      Mac_Address := Layer2_End_Point.Mac_Address;
    end Get_Mac_Address;
 
    ----------------
@@ -167,8 +166,6 @@ package body Networking.Layer2 is
       Runtime_Logs.Info_Print (
          "Net layer2: Generated MAC address " & Mac_Address_Str &
          " for MAC " & Layer2_End_Point.Ethernet_Mac_Id'Image);
-
-      Initialize_Network_Packet_Queue (Layer2_End_Point.Rx_Packet_Queue);
 
       --
       --  Initialize Rx packets:

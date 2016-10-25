@@ -92,9 +92,7 @@ package body Runtime_Logs is
 
       Old_Interrupt_Mask : Word;
       Time_Stamp : constant Ada.Real_Time.Time := Ada.Real_Time.Clock;
-      Calling_Task_Id : constant Ada.Task_Identification.Task_Id :=
-        Ada.Task_Identification.Current_Task;
-
+      Calling_Task_Id : Ada.Task_Identification.Task_Id;
    begin
       Old_Interrupt_Mask := Disable_Cpu_Interrupts;
 
@@ -104,8 +102,11 @@ package body Runtime_Logs is
       Log_Print_Uint64_Decimal (
          Runtime_Log, Time_To_Unsigned_64 (Time_Stamp));
       Log_Put_Char (Runtime_Log, ':');
-      Log_Print_Uint32_Hexadecimal (
-         Runtime_Log, Task_Id_To_Unsigned_32 (Calling_Task_Id));
+      if not Is_Caller_An_Interrupt_Handler then
+         Calling_Task_Id := Ada.Task_Identification.Current_Task;
+         Log_Print_Uint32_Hexadecimal (
+            Runtime_Log, Task_Id_To_Unsigned_32 (Calling_Task_Id));
+      end if;
 
       Log_Put_Char (Runtime_Log, ':');
 

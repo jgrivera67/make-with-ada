@@ -26,6 +26,7 @@
 --
 
 with Runtime_Logs;
+with Networking.Layer2;
 
 package body Networking.Layer3_IPv4 is
    use Runtime_Logs;
@@ -196,21 +197,19 @@ package body Networking.Layer3_IPv4 is
       end loop;
    end Build_Subnet_Mask;
 
-   ----------------------
-   -- Get_IPv4_Address --
-   ----------------------
+   ----------------------------
+   -- Get_Local_IPv4_Address --
+   ----------------------------
 
-   procedure Get_IPv4_Address (
-      Ethernet_Mac_Id : Ethernet_Mac_Id_Type;
+   procedure Get_Local_IPv4_Address (
+      IPv4_End_Point : IPv4_End_Point_Type;
       IPv4_Address : out IPv4_Address_Type;
       IPv4_Subnet_Mask : out IPv4_Address_Type)
    is
-      IPv4_End_Point : IPv4_End_Point_Type renames
-        Layer3_IPv4_Var.Local_IPv4_End_Points (Ethernet_Mac_Id);
    begin
       IPv4_Address := IPv4_End_Point.IPv4_Address;
       IPv4_Subnet_Mask := IPv4_End_Point.IPv4_Subnet_Mask;
-   end Get_IPv4_Address;
+   end Get_Local_IPv4_Address;
 
    ----------------
    -- Initialize --
@@ -219,10 +218,13 @@ package body Networking.Layer3_IPv4 is
    procedure Initialize
    is
    begin
-      --  Generated stub: replace with real body!
-      pragma Compile_Time_Warning (Standard.True, "Initialize unimplemented");
-      Runtime_Logs.Debug_Print ("Layer3 Initialize unimplemented");
+      for IPv4_End_Point of Layer3_IPv4_Var.Local_IPv4_End_Points loop
+         Initialize (IPv4_End_Point);
+      end loop;
+
       Layer3_IPv4_Var.Initialized := True;
+      Runtime_Logs.Debug_Print ("Networking layer 3 - IPv4 initialized");
+
    end Initialize;
 
    ----------------
@@ -232,8 +234,7 @@ package body Networking.Layer3_IPv4 is
    procedure Initialize (IPv4_End_Point : in out IPv4_End_Point_Type)
    is
    begin
-      pragma Compile_Time_Warning (Standard.True, "Initialize unimplemented");
-      Runtime_Logs.Debug_Print ("IPv4 end-point Initialize unimplemented");
+      --  TODO: This procedure is not really necessary
       IPv4_End_Point.Initialized := True;
    end Initialize;
 
@@ -263,6 +264,36 @@ package body Networking.Layer3_IPv4 is
       end loop;
    end IPv4_Address_To_String;
 
+   -------------------------------
+   -- Join_IPv4_Multicast_Group --
+   -------------------------------
+
+   procedure Join_IPv4_Multicast_Group (
+      IPv4_End_Point : in out IPv4_End_Point_Type;
+      Multicast_Address : IPv4_Address_Type)
+   is
+   begin
+      pragma Compile_Time_Warning (Standard.True,
+         "Join_IPv4_Multicast_Group unimplemented");
+      Runtime_Logs.Debug_Print ("Join_IPv4_Multicast_Group unimplemented");
+   end Join_IPv4_Multicast_Group;
+
+   ------------------------
+   -- Parse_IPv4_Address --
+   ------------------------
+
+   function Parse_IPv4_Address (IPv4_Address_String : IPv4_Address_String_Type;
+                                IPv4_Address : out IPv4_Address_Type;
+                                Subnet_Prefix : out Unsigned_8)
+                                return Boolean
+   is
+   begin
+      pragma Compile_Time_Warning (Standard.True,
+         "Parse_IPv4_Address unimplemented");
+      Runtime_Logs.Debug_Print ("Parse_IPv4_Address unimplemented");
+      return False;
+   end Parse_IPv4_Address;
+
    ---------------------------------
    -- Process_Incoming_ARP_Packet --
    ---------------------------------
@@ -287,17 +318,84 @@ package body Networking.Layer3_IPv4 is
       Runtime_Logs.Debug_Print ("Process_Incoming_IPv4_Packet unimplemented");
    end Process_Incoming_IPv4_Packet;
 
+   -----------------------------
+   -- Receive_IPv4_Ping_Reply --
+   -----------------------------
+
+   function Receive_IPv4_Ping_Reply (
+      Timeout_Ms : Natural;
+      Remote_IPv4_Address : out IPv4_Address_Type;
+      Identifier : out Unsigned_16;
+      Sequence_Number : out Unsigned_16)
+      return Boolean
+   is
+   begin
+      pragma Compile_Time_Warning (Standard.True,
+         "Receive_IPv4_Ping_Reply unimplemented");
+      Runtime_Logs.Debug_Print ("Receive_IPv4_Ping_Reply unimplemented");
+      return False;
+   end Receive_IPv4_Ping_Reply;
+
+   ----------------------------
+   -- Send_IPv4_ICMP_Message --
+   ----------------------------
+
+   procedure Send_IPv4_ICMP_Message (
+      IPv4_End_Point : in out IPv4_End_Point_Type;
+      Destination_IP_Address : IPv4_Address_Type;
+      Tx_Packet_Ptr : in out Network_Packet_Type;
+      Type_of_Message : IPv4.Type_of_ICMPv4_Message_Type;
+      Message_Code : Unsigned_8;
+      Data_Payload_Length : Unsigned_16)
+   is
+   begin
+      pragma Compile_Time_Warning (Standard.True,
+         "Send_IPv4_ICMP_Message unimplemented");
+      Runtime_Logs.Debug_Print ("JSend_IPv4_ICMP_Message unimplemented");
+   end Send_IPv4_ICMP_Message;
+
+   ----------------------
+   -- Send_IPv4_Packet --
+   ----------------------
+
+   procedure Send_IPv4_Packet (
+      IPv4_End_Point : in out IPv4_End_Point_Type;
+      Destination_IP_Address : IPv4_Address_Type;
+      Tx_Packet : in out Network_Packet_Type;
+      Data_Payload_Length : Unsigned_16;
+      Type_of_IPv4_Packet : Unsigned_8)
+   is
+   begin
+      pragma Compile_Time_Warning (Standard.True,
+         "Send_IPv4_Packet unimplemented");
+      Runtime_Logs.Debug_Print ("Send_IPv4_Packet unimplemented");
+   end Send_IPv4_Packet;
+
+   ----------------------------
+   -- Send_IPv4_Ping_Request --
+   ----------------------------
+
+   procedure Send_IPv4_Ping_Request (
+      IPv4_End_Point : in out IPv4_End_Point_Type;
+      Destination_IP_Address : IPv4_Address_Type;
+      Identifier : Unsigned_16;
+      Sequence_Number : Unsigned_16)
+   is
+   begin
+      pragma Compile_Time_Warning (Standard.True,
+         "Send_IPv4_Ping_Request unimplemented");
+      Runtime_Logs.Debug_Print ("Send_IPv4_Ping_Request unimplemented");
+   end Send_IPv4_Ping_Request;
+
    ----------------------------
    -- Set_Local_IPv4_Address --
    ----------------------------
 
    procedure Set_Local_IPv4_Address (
-      Ethernet_Mac_Id : Ethernet_Mac_Id_Type;
+      IPv4_End_Point : in out IPv4_End_Point_Type;
       IPv4_Address : IPv4_Address_Type;
       Subnet_Prefix : IPv4_Subnet_Prefix_Type)
    is
-      IPv4_End_Point : IPv4_End_Point_Type renames
-        Layer3_IPv4_Var.Local_IPv4_End_Points (Ethernet_Mac_Id);
       IPv4_Address_Str : IPv4_Address_String_Type;
       Subnet_Mask_Str : IPv4_Address_String_Type;
    begin
@@ -314,7 +412,8 @@ package body Networking.Layer3_IPv4 is
       Runtime_Logs.Info_Print (
          "Net layer3: Set local IPv4 address to " &
          IPv4_Address_Str & " (subnet mask: " & Subnet_Mask_Str & ") for MAC" &
-         Ethernet_Mac_Id'Image);
+         Networking.Layer2.Get_Ethernet_Port_Id
+            (IPv4_End_Point.Layer2_End_Point_Ptr.all)'Image);
    end Set_Local_IPv4_Address;
 
    --------------------------

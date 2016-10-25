@@ -26,6 +26,7 @@
 --
 
 with Devices.MCU_Specific;
+with Networking.Packet_Layout;
 private with Networking.Layer4_UDP;
 private with Ada.Real_Time;
 
@@ -34,6 +35,7 @@ private with Ada.Real_Time;
 --
 package Networking.Layer3_IPv4 is
    use Devices.MCU_Specific;
+   use Networking.Packet_Layout;
 
    type IPv4_End_Point_Type is limited private;
 
@@ -52,27 +54,65 @@ package Networking.Layer3_IPv4 is
      with Pre => Initialized;
    --  Start all local IPv4 end points
 
-   procedure Get_IPv4_Address (Ethernet_Mac_Id : Ethernet_Mac_Id_Type;
-                               IPv4_Address : out IPv4_Address_Type;
-                               IPv4_Subnet_Mask : out IPv4_Address_Type);
+   procedure Get_Local_IPv4_Address (IPv4_End_Point : IPv4_End_Point_Type;
+                                     IPv4_Address : out IPv4_Address_Type;
+                                     IPv4_Subnet_Mask : out IPv4_Address_Type)
+                                     with Inline;
    --
    --  Retrieve the local IPv4 address and subnet mask for the given
    --  layer-3 IPV4 end point.
    --
 
+   function Get_IPv4_End_Point (Ethernet_Mac_Id : Ethernet_Mac_Id_Type)
+      return IPv4_End_Point_Access_Type;
+
    procedure IPv4_Address_To_String (
       IPv4_Address : IPv4_Address_Type;
       IPv4_Address_Str : out IPv4_Address_String_Type);
 
-   function Get_IPv4_End_Point (Ethernet_Mac_Id : Ethernet_Mac_Id_Type)
-      return IPv4_End_Point_Access_Type;
+   procedure Join_IPv4_Multicast_Group (
+      IPv4_End_Point : in out IPv4_End_Point_Type;
+      Multicast_Address : IPv4_Address_Type);
+
+   function Parse_IPv4_Address (IPv4_Address_String : IPv4_Address_String_Type;
+                                IPv4_Address : out IPv4_Address_Type;
+                                Subnet_Prefix : out Unsigned_8)
+                                return Boolean;
 
    procedure Process_Incoming_ARP_Packet (Rx_Packet : Network_Packet_Type);
 
    procedure Process_Incoming_IPv4_Packet (Rx_Packet : Network_Packet_Type);
 
+   function Receive_IPv4_Ping_Reply (
+      Timeout_Ms : Natural;
+      Remote_IPv4_Address : out IPv4_Address_Type;
+      Identifier : out Unsigned_16;
+      Sequence_Number : out Unsigned_16)
+      return Boolean;
+
+   procedure Send_IPv4_ICMP_Message (
+      IPv4_End_Point : in out IPv4_End_Point_Type;
+      Destination_IP_Address : IPv4_Address_Type;
+      Tx_Packet_Ptr : in out Network_Packet_Type;
+      Type_of_Message : IPv4.Type_of_ICMPv4_Message_Type;
+      Message_Code : Unsigned_8;
+      Data_Payload_Length : Unsigned_16);
+
+   procedure Send_IPv4_Packet (
+      IPv4_End_Point : in out IPv4_End_Point_Type;
+      Destination_IP_Address : IPv4_Address_Type;
+      Tx_Packet : in out Network_Packet_Type;
+      Data_Payload_Length : Unsigned_16;
+      Type_of_IPv4_Packet : Unsigned_8);
+
+   procedure Send_IPv4_Ping_Request (
+      IPv4_End_Point : in out IPv4_End_Point_Type;
+      Destination_IP_Address : IPv4_Address_Type;
+      Identifier : Unsigned_16;
+      Sequence_Number : Unsigned_16);
+
    procedure Set_Local_IPv4_Address (
-      Ethernet_Mac_Id : Ethernet_Mac_Id_Type;
+      IPv4_End_Point : in out IPv4_End_Point_Type;
       IPv4_Address : IPv4_Address_Type;
       Subnet_Prefix : IPv4_Subnet_Prefix_Type);
 
@@ -116,7 +156,7 @@ private
    --
    type ARP_Cache_Entry_Type is record
       Destination_IP_Address : IPv4_Address_Type;
-      Destination_Mac_Address : Ethernet_Mac_Address_Type;
+      Destination_MAC_Address : Ethernet_Mac_Address_Type;
       State : ARP_Cache_Entry_State_Type := Entry_Invalid;
       ARP_Request_Time_Stamp : Ada.Real_Time.Time;
       Entry_Filled_Time_Stamp : Ada.Real_Time.Time;
@@ -201,14 +241,13 @@ private
    type IPv4_End_Point_Type is limited record
       Initialized : Boolean := False;
       Layer2_End_Point_Ptr :
-            access Networking.Layer2.Layer2_End_Point_Type := null;
-      IPv4_Address : IPv4_Address_Type;
-      IPv4_Subnet_Mask : IPv4_Address_Type;
-      Default_Gateway_IPv4_Address : IPv4_Address_Type;
+         access Networking.Layer2.Layer2_End_Point_Type := null;
+      IPv4_Address : IPv4_Address_Type := IPv4_Null_Address;
+      IPv4_Subnet_Mask : IPv4_Address_Type := IPv4_Null_Address;
+      Default_Gateway_IPv4_Address : IPv4_Address_Type := IPv4_Null_Address;
       DHCP_Lease_Seconds : Natural;
-      Next_Tx_Ip_Packet_Seq_Num : Unsigned_16;
-      Rx_ICMPv4_Packet_Queue :
-         aliased Network_Packet_Queue_Type (Use_Mutex => True);
+      Next_Tx_Ip_Packet_Seq_Num : Unsigned_16 := 0;
+      Rx_ICMPv4_Packet_Queue : aliased Network_Packet_Queue_Type;
       ARP_Cache : ARP_Cache_Protected_Type;
       DHCPv4_Client_End_Point : Networking.Layer4_UDP.UDP_End_Point_Type;
       ICMPv4_Message_Receiver_Task :
@@ -226,13 +265,37 @@ private
    --  Networking layer-3 IPv4 global state variables
    --
    --  @field Initialized Flag indicating if this layer has been initialized
+   --
    --  @field Tracing_On Flag indicating if tracing is currently enabled for
    --  this layer
-   --  @field local_layer3_end_points Local layer-3 end points
+   --
+   --  @field Expecting_Ping_Reply Flag indicating if there is an outstanding
+   --  IPv4 ping request for which no reply has been received yet.
+   --
+   --  @field Rx_Packets_Accepted_Count Number of received IPv4 packets
+   --  accepted
+   --
+   --  @field Rx_Packets_Dropped_Count Number of received IPv4 packets dropped
+   --
+   --  @field Sent_Packets_Count Number of IPv4 packets sent
+   --
+   --  @field Rx_Ipv4_Ping_Reply_Packet_Queue Queue of received IPPv4 ping
+   --  replies
+   --
+   --  @field Ping_Reply_Received_Suspension_Obj Suspension object to be signal
+   --  when the ping reply for an outstanding ping request has been received.
+   --
+   --  @field Local_IPv4_End_Points Local layer-3 IPv4 end points
    --
    type Layer3_IPv4_Type is limited record
       Initialized : Boolean := False;
       Tracing_On : Boolean := False;
+      Expecting_Ping_Reply : Boolean := False with Atomic;
+      Rx_Packets_Accepted_Count : Unsigned_32 := 0 with Atomic;
+      Rx_Packets_Dropped_Count : Unsigned_32 := 0 with Atomic;
+      Sent_Packets_Count : Unsigned_32 := 0 with Atomic;
+      Rx_IPv4_Ping_Reply_Packet_Queue : Network_Packet_Queue_Type;
+      Ping_Reply_Received_Suspension_Obj : Suspension_Object;
       Local_IPv4_End_Points : IPv4_End_Point_Array_Type;
    end record with Alignment => Mpu_Region_Alignment;
 

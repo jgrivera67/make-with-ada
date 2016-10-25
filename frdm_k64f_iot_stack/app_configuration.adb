@@ -42,6 +42,9 @@ package body App_Configuration is
    --------------------------------------
 
    procedure Load_And_Apply_Config_Parameters is
+      IPv4_End_Point_Ptr :
+         constant Networking.Layer3_IPv4.IPv4_End_Point_Access_Type :=
+         Networking.Layer3_IPv4.Get_IPv4_End_Point (Devices.MCU_Specific.MAC0);
    begin
       App_Config.Load_Config (Config_Parameters);
 
@@ -56,7 +59,7 @@ package body App_Configuration is
       --  ???
 
       Networking.Layer3_IPv4.Set_Local_IPv4_Address (
-         Devices.MCU_Specific.MAC0,
+         IPv4_End_Point_Ptr.all,
          Config_Parameters.Local_IPv4_Address,
          Config_Parameters.IPv4_Subnet_Prefix);
 

@@ -197,6 +197,12 @@ package body IoT_Stack_Demo is
       Local_Mac_Address : Networking.Ethernet_Mac_Address_Type;
       Local_Mac_Address_Str :
           Networking.Ethernet_Mac_Address_String_Type;
+      Layer2_End_Point_Ptr :
+         constant Networking.Layer2.Layer2_End_Point_Access_Type :=
+         Networking.Layer2.Get_Layer2_End_Point (Devices.MCU_Specific.MAC0);
+      IPv4_End_Point_Ptr :
+         constant Networking.Layer3_IPv4.IPv4_End_Point_Access_Type :=
+         Networking.Layer3_IPv4.Get_IPv4_End_Point (Devices.MCU_Specific.MAC0);
       Local_IPv4_Address : Networking.IPv4_Address_Type;
       Local_IPv4_Subnet_Mask : Networking.IPv4_Address_Type;
       Local_IPv4_Address_Str :
@@ -210,15 +216,15 @@ package body IoT_Stack_Demo is
       Suspend_Until_True (IoT_Stack_Demo.Network_Stats_Task_Suspension_Obj);
       Runtime_Logs.Info_Print ("Network stats display task started");
 
-      Networking.Layer2.Get_Mac_Address (Devices.MCU_Specific.MAC0,
+      Networking.Layer2.Get_Mac_Address (Layer2_End_Point_Ptr.all,
                                          Local_Mac_Address);
 
       Networking.Layer2.Mac_Address_To_String (
          Local_Mac_Address, Local_Mac_Address_Str);
 
-      Networking.Layer3_IPv4.Get_IPv4_Address (Devices.MCU_Specific.MAC0,
-                                               Local_IPv4_Address,
-                                               Local_IPv4_Subnet_Mask);
+      Networking.Layer3_IPv4.Get_Local_IPv4_Address (IPv4_End_Point_Ptr.all,
+                                                     Local_IPv4_Address,
+                                                     Local_IPv4_Subnet_Mask);
 
       Networking.Layer3_IPv4.IPv4_Address_To_String (Local_IPv4_Address,
                                                      Local_IPv4_Address_Str);

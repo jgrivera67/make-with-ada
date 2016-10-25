@@ -213,7 +213,7 @@ package Networking is
    --
    --  Network packet queue type
    --
-   type Network_Packet_Queue_Type (Use_Mutex : Boolean) is limited private;
+   type Network_Packet_Queue_Type is limited private;
 
    --
    --  Packet payload data buffer
@@ -230,14 +230,6 @@ package Networking is
 
    -- ** --
 
-   function Initialized (Packet_Queue : Network_Packet_Queue_Type)
-                         return Boolean;
-   --  @private (Used only in contracts)
-
-   procedure Initialize_Network_Packet_Queue
-      (Packet_Queue : in out Network_Packet_Queue_Type)
-      with Pre => not Initialized (Packet_Queue);
-
    function Network_Packet_In_Queue (Packet : Network_Packet_Type)
                                      return Boolean;
    --  @private (Used only in contracts)
@@ -245,8 +237,7 @@ package Networking is
    procedure Enqueue_Network_Packet
       (Packet_Queue : aliased in out Network_Packet_Queue_Type;
        Packet_Ptr : Network_Packet_Access_Type)
-     with Pre => Initialized (Packet_Queue) and then
-                 Packet_Ptr /= null and then
+     with Pre => Packet_Ptr /= null and then
                  not Network_Packet_In_Queue (Packet_Ptr.all);
    --
    --  Adds an element at the end of a network packet queue
@@ -258,8 +249,7 @@ package Networking is
    function Dequeue_Network_Packet
       (Packet_Queue : aliased in out Network_Packet_Queue_Type;
        Timeout_Ms : Natural := 0) return Network_Packet_Access_Type
-       with Pre => Initialized (Packet_Queue),
-            Post => (if Timeout_Ms = 0 then
+       with Post => (if Timeout_Ms = 0 then
                         Dequeue_Network_Packet'Result /= null);
    --
    --  Removes the packet from the head of a network packet queue, if the queue
@@ -378,27 +368,18 @@ private
    --
    --  Network packet queue object type
    --
-   --  @field Use_Mutex (record discriminant) Flag inidcating if serialization
-   --  for concurrent accesses to queueue is to be done with a mutex (true) or
-   --  by disabling CPU interrupts (false)
-   --
-   --  @field Initialized Flag indicating if the Initialize has been called
    --  @field Length Number of elements in the queue
    --  @field Length_High_Water_Mark largest length that the queue has ever had
    --  @field Head_Ptr Pointer to the first packet in the queue or null if the
    --  queue is empty
    --  @field Tail_Ptr Pointer to the last packet in the queue or null if the
    --  queue is empty
-   --  @field Mutex Mutex to serialize access to the queue. It is only
-   --  meaningful if 'Use_Mutex' is true.
    --  @field Not_Empty_Condvar Condition variable to be signaled when a packet
    --  is added to the queue or the queue's timer expires.
    --
    --  NOTE: We cannot use Ada.Execution_Time.Timers as they are not available
    --  in the Ravenscar small-foot-print runtime library.
    --
-   --  @field Timeout_Condvar_Ptr Pointer to suspension object to be signaled
-   --         when the timer expires.
    --  @field Timeout_Ms Timeout value in milliseconds, after which the timer
    --         fires if it was started (by callinng Start_Timer).
    --  @field Timer_Started Flag indicating if the timer count down has been
@@ -410,8 +391,7 @@ private
    --  NOTE: We cannot use Ada.Execution_Time.Timers as they are not available
    --  in the Ravenscar small-foot-print runtime library.
    --
-   type Network_Packet_Queue_Type (Use_Mutex : Boolean) is limited record
-      Initialized : Boolean := False;
+   type Network_Packet_Queue_Type is limited record
       Length : Unsigned_16 := 0;
       Length_High_Water_Mark : Unsigned_16 := 0;
       Head_Ptr : Network_Packet_Access_Type := null;
@@ -422,13 +402,6 @@ private
       Timer_Started_Condvar : Suspension_Object;
       Timer_Task :
          Packet_Queue_Timer_Task_Type (Network_Packet_Queue_Type'Access);
-
-      case Use_Mutex is
-         when True =>
-            Mutex : Suspension_Object;
-         when False =>
-            null;
-      end case;
    end record;
 
    type Net_Rx_Packet_Array_Type is
@@ -446,15 +419,11 @@ private
    --  @field Tx_Packets Tx packet objects
    --
    type Net_Tx_Packet_Pool_Type is limited record
-      Free_List : aliased Network_Packet_Queue_Type (Use_Mutex => False);
+      Free_List : aliased Network_Packet_Queue_Type;
       Tx_Packets : Net_Tx_Packet_Array_Type;
    end record;
 
    -- ** --
-
-   function Initialized (Packet_Queue : Network_Packet_Queue_Type)
-                         return Boolean is
-      (Packet_Queue.Initialized);
 
    function Network_Packet_In_Queue (Packet : Network_Packet_Type)
                                      return Boolean is

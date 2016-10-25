@@ -47,6 +47,8 @@ package Networking.Layer2 is
    type Layer2_End_Point_Type (Layer2_Kind : Layer2_Kind_Type) is
       limited private;
 
+   type Layer2_End_Point_Access_Type is access all Layer2_End_Point_Type;
+
    -- ** --
 
    function Allocate_Tx_Packet (Free_After_Tx_Complete : Boolean)
@@ -75,10 +77,17 @@ package Networking.Layer2 is
      with Pre => Initialized (Layer2_End_Point) and then
                  Rx_Packet.Traffic_Direction = Rx;
 
+   function Get_Layer2_End_Point (Ethernet_Mac_Id : Ethernet_Mac_Id_Type)
+                                  return Layer2_End_Point_Access_Type;
+
    procedure Get_Mac_Address (
-      Ethernet_Mac_Id : Ethernet_Mac_Id_Type;
+      Layer2_End_Point : Layer2_End_Point_Type;
       Mac_Address : out Ethernet_Mac_Address_Type)
-      with Global => null;
+      with Inline, Global => null;
+
+   function Get_Ethernet_Port_Id (Layer2_End_Point : Layer2_End_Point_Type)
+                                  return Ethernet_Mac_Id_Type
+      with Pre => Initialized (Layer2_End_Point);
 
    function Link_Is_Up (Layer2_End_Point : Layer2_End_Point_Type)
                         return Boolean
@@ -172,7 +181,7 @@ private
       Initialized_Condvar : Suspension_Object;
       IPv4_End_Point_Ptr : access Networking.Layer3_IPv4.IPv4_End_Point_Type;
       IPv6_End_Point_Ptr : access Networking.Layer3_IPv6.IPv6_End_Point_Type;
-      Rx_Packet_Queue : aliased Network_Packet_Queue_Type (Use_Mutex => False);
+      Rx_Packet_Queue : aliased Network_Packet_Queue_Type;
       Rx_Packets : Net_Rx_Packet_Array_Type;
       Packet_Receiver_Task :
          Packet_Receiver_Task_Type (Layer2_End_Point_Type'Access);
@@ -221,6 +230,14 @@ private
    Layer2_Var : Layer2_Type;
 
    -- ** --
+
+   function Get_Layer2_End_Point (Ethernet_Mac_Id : Ethernet_Mac_Id_Type)
+                                  return Layer2_End_Point_Access_Type is
+      (Layer2_Var.Local_Ethernet_Layer2_End_Points (Ethernet_Mac_Id)'Access);
+
+   function Get_Ethernet_Port_Id (Layer2_End_Point : Layer2_End_Point_Type)
+                                  return Ethernet_Mac_Id_Type is
+      (Layer2_End_Point.Ethernet_Mac_Id);
 
    function Initialized return Boolean is
      (Layer2_Var.Initialized);
