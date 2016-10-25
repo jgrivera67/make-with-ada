@@ -46,9 +46,7 @@ package body Networking.Layer2 is
 
    procedure Initialize (
       Layer2_End_Point : aliased in out Layer2_End_Point_Type;
-      Ethernet_Mac_Id : Ethernet_Mac_Id_Type;
-      IPv4_End_Point_Ptr : Networking.Layer3_IPv4.IPv4_End_Point_Access_Type;
-      IPv6_End_Point_Ptr : Networking.Layer3_IPv6.IPv6_End_Point_Access_Type)
+      Ethernet_Mac_Id : Ethernet_Mac_Id_Type)
      with Global => null,
           Pre => not Initialized (Layer2_End_Point);
    --  Initializes layer2 Ethernet end point
@@ -140,9 +138,7 @@ package body Networking.Layer2 is
 
       for I in Ethernet_Mac_Id_Type loop
          Initialize (Layer2_Var.Local_Ethernet_Layer2_End_Points (I),
-                     Ethernet_Mac_Id => I,
-                     IPv4_End_Point_Ptr => Get_IPv4_End_Point (I),
-                     IPv6_End_Point_Ptr => Get_IPv6_End_Point (I));
+                     Ethernet_Mac_Id => I);
       end loop;
 
       Runtime_Logs.Debug_Print ("Networking layer 2 initialized");
@@ -155,9 +151,7 @@ package body Networking.Layer2 is
 
    procedure Initialize (
       Layer2_End_Point : aliased in out Layer2_End_Point_Type;
-      Ethernet_Mac_Id : Ethernet_Mac_Id_Type;
-      IPv4_End_Point_Ptr : IPv4_End_Point_Access_Type;
-      IPv6_End_Point_Ptr : IPv6_End_Point_Access_Type)
+      Ethernet_Mac_Id : Ethernet_Mac_Id_Type)
    is
       Mac_Address_Str : Ethernet_Mac_Address_String_Type;
    begin
@@ -175,8 +169,6 @@ package body Networking.Layer2 is
       end loop;
 
       Layer2_End_Point.Ethernet_Mac_Id := Ethernet_Mac_Id;
-      Layer2_End_Point.IPv4_End_Point_Ptr := IPv4_End_Point_Ptr;
-      Layer2_End_Point.IPv6_End_Point_Ptr := IPv6_End_Point_Ptr;
       Layer2_End_Point.Initialized := True;
 
       Ethernet_Mac_Driver.Initialize (Layer2_End_Point.Ethernet_Mac_Id,

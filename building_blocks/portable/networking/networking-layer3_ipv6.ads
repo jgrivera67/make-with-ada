@@ -67,13 +67,12 @@ private
    --  Networking layer-3 (network layer) local IPv6 end point object type
    --
    --  @field Initialized Flag indicating if Initialize has been called
-   --
-   --  @field Layer2_End_Point_Ptr Pointer to the associated Layer-2 end point
+   --  @field Ethernet_Mac_Id Ethernet MAc device associated with this
+   --  layer-2 end point.
    --
    type IPv6_End_Point_Type is limited record
       Initialized : Boolean := False;
-      Layer2_End_Point_Ptr :
-         access Networking.Layer2.Layer2_End_Point_Type := null;
+      Ethernet_Mac_Id : Ethernet_Mac_Id_Type;
    end record with Alignment => Mpu_Region_Alignment;
 
    type IPv6_End_Point_Array_Type is array (Ethernet_Mac_Id_Type) of

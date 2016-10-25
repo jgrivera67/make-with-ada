@@ -29,6 +29,13 @@ with Runtime_Logs;
 
 package body Networking.Layer3_IPv6 is
 
+   procedure Initialize (IPv6_End_Point : in out IPv6_End_Point_Type;
+                         Ethernet_Mac_Id : Ethernet_Mac_Id_Type)
+      with Pre => not Initialized (IPv6_End_Point);
+   --
+   --  Initializes a Layer3 IPv6 end point
+   --
+
    procedure Start_IPv6_End_Point (
       IPv6_End_Point : in out IPv6_End_Point_Type);
 
@@ -39,9 +46,26 @@ package body Networking.Layer3_IPv6 is
    procedure Initialize
    is
    begin
-      --  Generated stub: replace with real body!
-      pragma Compile_Time_Warning (True, "Initialize unimplemented");
-      Runtime_Logs.Debug_Print ("Initialize unimplemented");
+      for I in Ethernet_Mac_Id_Type loop
+         Initialize (Layer3_IPv6_Var.Local_IPv6_End_Points (I),
+                     Ethernet_Mac_Id => I);
+      end loop;
+
+      Layer3_IPv6_Var.Initialized := True;
+      Runtime_Logs.Debug_Print ("Networking layer 3 - IPv6 initialized");
+
+   end Initialize;
+
+   ----------------
+   -- Initialize --
+   ----------------
+
+   procedure Initialize (IPv6_End_Point : in out IPv6_End_Point_Type;
+                         Ethernet_Mac_Id : Ethernet_Mac_Id_Type)
+   is
+   begin
+      IPv6_End_Point.Ethernet_Mac_Id := Ethernet_Mac_Id;
+      IPv6_End_Point.Initialized := True;
    end Initialize;
 
    ----------------------------------

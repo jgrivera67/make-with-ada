@@ -158,10 +158,6 @@ private
    --  @field Initialized Flag indicating if Initialize has been called
    --  @field Initialized_Condvar Condvar on which Packet_Receiver_Task
    --  waits until Initialize is called for this layer-2 end-point.
-   --  @field IPv4_End_Point_Ptr Pointer to the Layer-3 IPv4 end point
-   --  associated to this layer-2 end point.
-   --  @field IPv6_End_Point_Ptr  Pointer to the Layer-3 IPv6 end point
-   --  associated to this layer-2 end point.
    --  @field Ethernet_Mac_Id Ethernet MAc device associated with this
    --  layer-2 end point.
    --  @field Mac_Address Ethernet MAC address of this layer-2 end-point.
@@ -174,8 +170,6 @@ private
    record
       Initialized : Boolean := False;
       Initialized_Condvar : Suspension_Object;
-      IPv4_End_Point_Ptr : access Networking.Layer3_IPv4.IPv4_End_Point_Type;
-      IPv6_End_Point_Ptr : access Networking.Layer3_IPv6.IPv6_End_Point_Type;
       Rx_Packet_Queue : aliased Network_Packet_Queue_Type;
       Rx_Packets : Net_Rx_Packet_Array_Type;
       Packet_Receiver_Task :

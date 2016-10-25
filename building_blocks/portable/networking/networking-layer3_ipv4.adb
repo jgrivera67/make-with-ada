@@ -38,7 +38,8 @@ package body Networking.Layer3_IPv4 is
    --  assuming that the target CPU runs in little endian.
    --
 
-   procedure Initialize (IPv4_End_Point : in out IPv4_End_Point_Type)
+   procedure Initialize (IPv4_End_Point : in out IPv4_End_Point_Type;
+                         Ethernet_Mac_Id : Ethernet_Mac_Id_Type)
       with Pre => not Initialized (IPv4_End_Point);
    --
    --  Initializes a Layer3 IPv4 end point
@@ -218,8 +219,9 @@ package body Networking.Layer3_IPv4 is
    procedure Initialize
    is
    begin
-      for IPv4_End_Point of Layer3_IPv4_Var.Local_IPv4_End_Points loop
-         Initialize (IPv4_End_Point);
+      for I in Ethernet_Mac_Id_Type loop
+         Initialize (Layer3_IPv4_Var.Local_IPv4_End_Points (I),
+                     Ethernet_Mac_Id => I);
       end loop;
 
       Layer3_IPv4_Var.Initialized := True;
@@ -231,10 +233,11 @@ package body Networking.Layer3_IPv4 is
    -- Initialize --
    ----------------
 
-   procedure Initialize (IPv4_End_Point : in out IPv4_End_Point_Type)
+   procedure Initialize (IPv4_End_Point : in out IPv4_End_Point_Type;
+                         Ethernet_Mac_Id : Ethernet_Mac_Id_Type)
    is
    begin
-      --  TODO: This procedure is not really necessary
+      IPv4_End_Point.Ethernet_Mac_Id := Ethernet_Mac_Id;
       IPv4_End_Point.Initialized := True;
    end Initialize;
 
@@ -412,8 +415,7 @@ package body Networking.Layer3_IPv4 is
       Runtime_Logs.Info_Print (
          "Net layer3: Set local IPv4 address to " &
          IPv4_Address_Str & " (subnet mask: " & Subnet_Mask_Str & ") for MAC" &
-         Networking.Layer2.Get_Ethernet_Port_Id
-            (IPv4_End_Point.Layer2_End_Point_Ptr.all)'Image);
+         IPv4_End_Point.Ethernet_Mac_Id'Image);
    end Set_Local_IPv4_Address;
 
    --------------------------

@@ -208,7 +208,8 @@ private
    --
    --  @field Initialized Flag indicating if Initialize has been called
    --
-   --  @field Layer2_End_Point_Ptr Pointer to the associated Layer-2 end point
+   --  @field Ethernet_Mac_Id Ethernet MAc device associated with this
+   --  layer-3 end point.
    --
    --  @field IPv4_Address Local IPv4 address
    --
@@ -240,8 +241,7 @@ private
    --
    type IPv4_End_Point_Type is limited record
       Initialized : Boolean := False;
-      Layer2_End_Point_Ptr :
-         access Networking.Layer2.Layer2_End_Point_Type := null;
+      Ethernet_Mac_Id : Ethernet_Mac_Id_Type;
       IPv4_Address : IPv4_Address_Type := IPv4_Null_Address;
       IPv4_Subnet_Mask : IPv4_Address_Type := IPv4_Null_Address;
       Default_Gateway_IPv4_Address : IPv4_Address_Type := IPv4_Null_Address;
