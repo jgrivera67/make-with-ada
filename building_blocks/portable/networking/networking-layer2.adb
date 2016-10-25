@@ -288,7 +288,6 @@ package body Networking.Layer2 is
       Layer2_End_Point_Ptr : constant not null access Layer2_End_Point_Type :=
          Rx_Packet.Layer2_End_Point_Ptr;
    begin
-      pragma Assert (Layer2_End_Point_Ptr.Layer2_Kind'Valid);
       pragma Assert (Rx_Packet.Rx_State_Flags.Packet_In_Rx_Use_By_App);
 
       Networking.Layer2.Ethernet_Mac_Driver.Repost_Rx_Packet (

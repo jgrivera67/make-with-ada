@@ -39,12 +39,7 @@ package Networking.Layer2 is
    use Microcontroller.Arm_Cortex_M;
    use Networking.Packet_Layout;
 
-   --
-   --  Kinds of Layer-2 end points supported
-   --
-   type Layer2_Kind_Type is (Layer2_Ethernet);
-
-   type Layer2_End_Point_Type (Layer2_Kind : Layer2_Kind_Type) is
+   type Layer2_End_Point_Type is
       limited private;
 
    type Layer2_End_Point_Access_Type is access all Layer2_End_Point_Type;
@@ -175,7 +170,7 @@ private
    --  @field Rx_Packets Rx packet buffer pool for this layer-2 end point
    --  @field Packet_Receiver_Task Layer-2 packet receiving task
    --
-   type Layer2_End_Point_Type (Layer2_Kind : Layer2_Kind_Type) is limited
+   type Layer2_End_Point_Type is limited
    record
       Initialized : Boolean := False;
       Initialized_Condvar : Suspension_Object;
@@ -185,17 +180,13 @@ private
       Rx_Packets : Net_Rx_Packet_Array_Type;
       Packet_Receiver_Task :
          Packet_Receiver_Task_Type (Layer2_End_Point_Type'Access);
-
-      case Layer2_Kind is
-         when Layer2_Ethernet =>
-            Ethernet_Mac_Id : Ethernet_Mac_Id_Type;
-            Mac_Address : Ethernet_Mac_Address_Type;
-      end case;
+      Ethernet_Mac_Id : Ethernet_Mac_Id_Type;
+      Mac_Address : Ethernet_Mac_Address_Type;
    end record
      with Alignment => Mpu_Region_Alignment;
 
-   type Ethernet_Layer2_End_Point_Array_Type is array (Ethernet_Mac_Id_Type) of
-        aliased Layer2_End_Point_Type (Layer2_Ethernet);
+   type Layer2_End_Point_Array_Type is array (Ethernet_Mac_Id_Type) of
+        aliased Layer2_End_Point_Type;
 
    --
    --  Networking layer-2 global state variables
@@ -221,7 +212,7 @@ private
       Rx_Packets_Dropped_Count : Unsigned_32 := 0 with Atomic;
       Sent_Packets_Count : Unsigned_32 := 0 with Atomic;
       Tx_Packet_Pool : Net_Tx_Packet_Pool_Type;
-      Local_Ethernet_Layer2_End_Points : Ethernet_Layer2_End_Point_Array_Type;
+      Local_Ethernet_Layer2_End_Points : Layer2_End_Point_Array_Type;
    end record with Alignment => Mpu_Region_Alignment;
 
    --
