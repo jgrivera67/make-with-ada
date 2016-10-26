@@ -70,12 +70,6 @@ package Runtime_Logs is
    procedure Info_Print (Msg : String)
      with Pre => Initialized;
 
-   function Unsigned_To_Decimal (Value : Unsigned_32;
-                                 Buffer : out String) return Natural;
-
-   procedure Unsigned_To_Hexadecimal (Value : Unsigned_32;
-                                      Buffer : out String);
-
 private
    --
    --  State variables of runtime log

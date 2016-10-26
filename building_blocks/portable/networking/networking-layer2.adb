@@ -25,17 +25,18 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with Runtime_Logs;
 with Networking.Layer2.Ethernet_Mac_Driver;
 with Networking.Layer3_IPv4;
 with Networking.Layer3_IPv6;
 with Ethernet_Phy_Driver;
+with Runtime_Logs;
+with Number_Conversion_Utils;
 
 package body Networking.Layer2 is
-   use Runtime_Logs;
    use Networking.Layer2.Ethernet_Mac_Driver;
    use Networking.Layer3_IPv4;
    use Networking.Layer3_IPv6;
+   use Number_Conversion_Utils;
 
    procedure Build_Local_Mac_Address (
       Mac_Address : out Ethernet_Mac_Address_Type);
@@ -197,7 +198,7 @@ package body Networking.Layer2 is
          Mac_Address_Str'First;
    begin
       for I in Mac_Address'Range loop
-         Unsigned_To_Hexadecimal (
+         Unsigned_To_Hexadecimal_String (
             Unsigned_32 (Mac_Address (I)),
             Mac_Address_Str (Str_Cursor .. Str_Cursor + 1));
 

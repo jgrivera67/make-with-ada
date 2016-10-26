@@ -27,6 +27,7 @@
 with Devices.MCU_Specific;
 with Uart_Driver;
 with Generic_Ring_Buffers;
+with Number_Conversion_Utils;
 with Runtime_Logs;
 with Ada.Synchronous_Task_Control;
 with System;
@@ -34,7 +35,7 @@ with System;
 package body Serial_Console is
    use Devices.MCU_Specific;
    use Ada.Synchronous_Task_Control;
-   use Runtime_Logs;
+   use Number_Conversion_Utils;
 
    --
    --  Baud rate for the console UART
@@ -323,9 +324,11 @@ package body Serial_Console is
          Save_Cursor_and_Attributes;
       end if;
 
-      Line_Str_Length := Unsigned_To_Decimal (Unsigned_32 (Line), Line_Str);
+      Unsigned_To_Decimal_String (Unsigned_32 (Line), Line_Str,
+                                  Line_Str_Length);
       pragma Assert (Line_Str_Length > 0);
-      Col_Str_Length := Unsigned_To_Decimal (Unsigned_32 (Column), Col_Str);
+      Unsigned_To_Decimal_String (Unsigned_32 (Column), Col_Str,
+                                  Col_Str_Length);
       pragma Assert (Col_Str_Length > 0);
 
       --  Send VT100 control sequence to position cursor:
@@ -370,11 +373,11 @@ package body Serial_Console is
       --
       --  Send VT100 control sequence to set scroll region:
       --
-      Top_Line_Str_Length := Unsigned_To_Decimal (Unsigned_32 (Top_Line),
-                                                  Top_Line_Str);
+      Unsigned_To_Decimal_String (Unsigned_32 (Top_Line), Top_Line_Str,
+                                  Top_Line_Str_Length);
       pragma Assert (Top_Line_Str_Length > 0);
-      Bottom_Line_Str_Length := Unsigned_To_Decimal (Unsigned_32 (Bottom_Line),
-                                                     Bottom_Line_Str);
+      Unsigned_To_Decimal_String (Unsigned_32 (Bottom_Line), Bottom_Line_Str,
+                                  Bottom_Line_Str_Length);
       pragma Assert (Bottom_Line_Str_Length > 0);
       Print_String (ASCII.ESC & "[" & Top_Line_Str (1 .. Top_Line_Str_Length) &
                     ";" & Bottom_Line_Str (1 .. Bottom_Line_Str_Length) & "r");
@@ -389,7 +392,8 @@ package body Serial_Console is
       --
       --  Send VT100 control sequence to set scroll region:
       --
-      Length := Unsigned_To_Decimal (Unsigned_32 (Top_Line), Top_Line_Str);
+      Unsigned_To_Decimal_String (Unsigned_32 (Top_Line), Top_Line_Str,
+                                  Length);
       pragma Assert (Length > 0);
       Print_String (ASCII.ESC & "[" & Top_Line_Str (1 .. Length) & ";0r");
    end Set_Scroll_Region_To_Screen_Bottom;

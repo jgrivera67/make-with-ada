@@ -32,6 +32,7 @@ with Ada.Text_IO;
 with Interfaces.Bit_Types;
 with System.Storage_Elements;
 with Stack_Trace_Capture;
+with Number_Conversion_Utils;
 
 package body Last_Chance_Handler is
    use Microcontroller.Arm_Cortex_M;
@@ -129,7 +130,7 @@ package body Last_Chance_Handler is
       for Stack_Trace_Entry of
         Stack_Trace (1 + Num_Entries_To_Skip .. Num_Entries_Captured) loop
          Ada.Text_IO.Put (ASCII.HT & "0x");
-         Runtime_Logs.Unsigned_To_Hexadecimal (
+         Number_Conversion_Utils.Unsigned_To_Hexadecimal_String (
             Unsigned_32 (To_Integer (Stack_Trace_Entry)), Hex_Num_Str);
          Ada.Text_IO.Put_Line (Hex_Num_Str);
       end loop;

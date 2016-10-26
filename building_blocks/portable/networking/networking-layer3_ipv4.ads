@@ -70,14 +70,30 @@ package Networking.Layer3_IPv4 is
       IPv4_Address : IPv4_Address_Type;
       IPv4_Address_Str : out IPv4_Address_String_Type);
 
+   function IPv4_Address_Is_Multicast (
+      IPv4_Address : IPv4_Address_Type) return Boolean;
+
    procedure Join_IPv4_Multicast_Group (
       IPv4_End_Point : in out IPv4_End_Point_Type;
-      Multicast_Address : IPv4_Address_Type);
+      Multicast_Address : IPv4_Address_Type)
+      with Pre => IPv4_Address_Is_Multicast (Multicast_Address);
 
    function Parse_IPv4_Address (IPv4_Address_String : IPv4_Address_String_Type;
+                                With_Subnet_Prefix : Boolean;
                                 IPv4_Address : out IPv4_Address_Type;
                                 Subnet_Prefix : out Unsigned_8)
                                 return Boolean;
+   --
+   --  Parses an IPv4 address string of the form:
+   --  <ddd>.<ddd>.<ddd>.<ddd>[/<subnet prefix>]
+   --
+   --  @param IPv4_Address_String
+   --  @param IPv4_Address  obtained IPv4 address
+   --  @param Subnet_Prefix obtained subnet prefix
+   --
+   --  @return True, if parsing successful
+   --  @return False, if parsing unsuccessful
+   --
 
    procedure Process_Incoming_ARP_Packet (Rx_Packet : Network_Packet_Type);
 
@@ -313,6 +329,11 @@ private
                             return Boolean is
      (IPv4_End_Point.Initialized);
    --  @private (Used only in contracts)
+
+   function IPv4_Address_Is_Multicast (
+      IPv4_Address : IPv4_Address_Type) return Boolean is
+      ((IPv4_Address (1) and IPv4_Multicast_Address_Mask) =
+       IPv4_Multicast_Address_Mask);
 
    function Get_IPv4_End_Point (Ethernet_Mac_Id : Ethernet_Mac_Id_Type)
       return IPv4_End_Point_Access_Type is

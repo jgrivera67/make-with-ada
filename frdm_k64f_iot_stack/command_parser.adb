@@ -115,6 +115,7 @@ package body Command_Parser is
       -- ** --
 
       function Parse_Set_Command (Set_Command : String) return Boolean is
+      pragma Unreferenced (Set_Command);
       begin
          Serial_Console.Print_String ("set command not implemented yet" &
                                         ASCII.LF);

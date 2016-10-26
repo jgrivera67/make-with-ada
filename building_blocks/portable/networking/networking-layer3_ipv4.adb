@@ -25,11 +25,12 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
+with Networking.Layer2.Ethernet_Mac_Driver;
 with Runtime_Logs;
-with Networking.Layer2;
+with Number_Conversion_Utils;
 
 package body Networking.Layer3_IPv4 is
-   use Runtime_Logs;
+   use Number_Conversion_Utils;
 
    procedure Build_Subnet_Mask (Subnet_Prefix : IPv4_Subnet_Prefix_Type;
                                 Subnet_Mask : out IPv4_Address_Type);
@@ -49,6 +50,13 @@ package body Networking.Layer3_IPv4 is
       IPv4_End_Point : in out IPv4_End_Point_Type);
    --
    --  Wake up tasks associated with the given IPv4 end point
+   --
+
+   procedure Map_IPv4_Multicast_Addr_To_Ethernet_Multicast_Addr  (
+      IPv4_Multicast_Address : IPv4_Address_Type;
+      Ethernet_Multicast_Address : out Ethernet_Mac_Address_Type);
+   --
+   --  Maps multicast IPv4 address to multicast Ethernet MAC address
    --
 
    --
@@ -255,9 +263,10 @@ package body Networking.Layer3_IPv4 is
    begin
       IPv4_Address_Str := (others => ASCII.NUL);
       for I in IPv4_Address'Range loop
-         Length := Unsigned_To_Decimal (
-                      Unsigned_32 (IPv4_Address (I)),
-                      IPv4_Address_Str (Str_Cursor .. Str_Cursor + 2));
+         Unsigned_To_Decimal_String (
+            Unsigned_32 (IPv4_Address (I)),
+            IPv4_Address_Str (Str_Cursor .. Str_Cursor + 2),
+            Length);
 
          Str_Cursor := Str_Cursor + Length;
          if I < IPv4_Address'Last then
@@ -275,26 +284,112 @@ package body Networking.Layer3_IPv4 is
       IPv4_End_Point : in out IPv4_End_Point_Type;
       Multicast_Address : IPv4_Address_Type)
    is
+      Ethernet_Multicast_Address : Ethernet_Mac_Address_Type;
    begin
-      pragma Compile_Time_Warning (Standard.True,
-         "Join_IPv4_Multicast_Group unimplemented");
-      Runtime_Logs.Debug_Print ("Join_IPv4_Multicast_Group unimplemented");
+      Map_IPv4_Multicast_Addr_To_Ethernet_Multicast_Addr (
+         Multicast_Address, Ethernet_Multicast_Address);
+
+      Networking.Layer2.Ethernet_Mac_Driver.Add_Multicast_Addr (
+         IPv4_End_Point.Ethernet_Mac_Id, Ethernet_Multicast_Address);
    end Join_IPv4_Multicast_Group;
+
+   --------------------------------------------------------
+   -- Map_IPv4_Multicast_Addr_To_Ethernet_Multicast_Addr --
+   --------------------------------------------------------
+
+   procedure Map_IPv4_Multicast_Addr_To_Ethernet_Multicast_Addr  (
+      IPv4_Multicast_Address : IPv4_Address_Type;
+      Ethernet_Multicast_Address : out Ethernet_Mac_Address_Type)
+   is
+   begin
+      Ethernet_Multicast_Address := (16#01#,
+                                     16#00#,
+                                     16#5e#,
+                                     IPv4_Multicast_Address (2) and 16#7f#,
+                                     IPv4_Multicast_Address (3),
+                                     IPv4_Multicast_Address (4));
+   end Map_IPv4_Multicast_Addr_To_Ethernet_Multicast_Addr;
 
    ------------------------
    -- Parse_IPv4_Address --
    ------------------------
 
    function Parse_IPv4_Address (IPv4_Address_String : IPv4_Address_String_Type;
+                                With_Subnet_Prefix : Boolean;
                                 IPv4_Address : out IPv4_Address_Type;
                                 Subnet_Prefix : out Unsigned_8)
                                 return Boolean
    is
-   begin
-      pragma Compile_Time_Warning (Standard.True,
-         "Parse_IPv4_Address unimplemented");
-      Runtime_Logs.Debug_Print ("Parse_IPv4_Address unimplemented");
-      return False;
+      function Find_Char (S : String; C : Character) return Natural;
+
+      Token_Index : Positive := 1;  -- Start index of current token
+      Token_End_Index : Positive;   -- One past the last index of current token
+      Index : Natural;
+      Separator : Character;
+      Byte_Value : Unsigned_8;
+      Conversion_Ok : Boolean;
+
+      function Find_Char (S : String; C : Character) return Natural is
+      begin
+         for I in S'Range loop
+            if S (I) = C then
+               return I;
+            end if;
+         end loop;
+
+         return 0;
+      end Find_Char;
+
+   begin -- Parse_IPv4_Address
+      for I in IPv4_Address'Range loop
+         pragma Loop_Invariant
+            (Token_Index in IPv4_Address_String'Range);
+
+         if I = 4 then
+            Separator := '/';
+         else
+            Separator := '.';
+         end if;
+
+         Index := Find_Char (IPv4_Address_String (Token_Index ..
+                                                  IPv4_Address_String'Last),
+                             Separator);
+         if Index <= 1 then
+            if I = 4 and then With_Subnet_Prefix then
+               return False;
+            else
+               Token_End_Index := IPv4_Address_String'Last + 1;
+            end if;
+         else
+            Token_End_Index := Index;
+         end if;
+
+         pragma Assert (Token_End_Index > Token_Index);
+         Decimal_String_To_Unsigned (
+             IPv4_Address_String (Token_Index .. Token_End_Index - 1),
+             Byte_Value, Conversion_Ok);
+         if not Conversion_Ok then
+            return False;
+         end if;
+
+         IPv4_Address (I) := Byte_Value;
+
+         Token_Index := Token_End_Index + 1;
+      end loop;
+
+      if With_Subnet_Prefix then
+         Decimal_String_To_Unsigned (
+            IPv4_Address_String (Token_Index .. IPv4_Address_String'Last),
+            Byte_Value, Conversion_Ok);
+         if not Conversion_Ok then
+            return False;
+         end if;
+         Subnet_Prefix := Byte_Value;
+      else
+         Subnet_Prefix := 0;
+      end if;
+
+      return True;
    end Parse_IPv4_Address;
 
    ---------------------------------

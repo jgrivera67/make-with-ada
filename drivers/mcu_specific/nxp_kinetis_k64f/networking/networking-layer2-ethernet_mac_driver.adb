@@ -32,6 +32,7 @@ with MK64F12.ENET;
 with Pin_Mux_Driver;
 with Ethernet_Phy_Driver;
 with Runtime_Logs;
+with Number_Conversion_Utils;
 with Crc_32_Accelerator_Driver;
 with System.Storage_Elements;
 with Ada.Interrupts;
@@ -47,7 +48,7 @@ package body Networking.Layer2.Ethernet_Mac_Driver is
    use MK64F12.ENET;
    use MK64F12;
    use Pin_Mux_Driver;
-   use Runtime_Logs;
+   use Number_Conversion_Utils;
    use System.Storage_Elements;
    use Crc_32_Accelerator_Driver;
    use Ada.Interrupts;
@@ -93,12 +94,14 @@ package body Networking.Layer2.Ethernet_Mac_Driver is
                               Mac_Address : Ethernet_Mac_Address_Type);
 
    function Net_Packet_Buffer_Address_To_Net_Packet_Pointer
-     (Buffer_Address : Address) return not null access Network_Packet_Type
+     (Buffer_Address : Address) return access Network_Packet_Type
      with Inline,
      Pre =>
+        Buffer_Address /= Null_Address and then
         Memory_Map.Valid_RAM_Pointer (Buffer_Address,
                                       Net_Packet_Data_Buffer_Type'Alignment),
      Post =>
+       Net_Packet_Buffer_Address_To_Net_Packet_Pointer'Result /= null and then
        Net_Packet_Buffer_Address_To_Net_Packet_Pointer'Result.
           Traffic_Direction'Valid and then
        Net_Packet_Buffer_Address_To_Net_Packet_Pointer'Result.
@@ -349,13 +352,14 @@ package body Networking.Layer2.Ethernet_Mac_Driver is
       is
          Buffer_Desc_Address_Str : String (1 .. 8);
       begin
-         Unsigned_To_Hexadecimal (
+         Unsigned_To_Hexadecimal_String (
             Unsigned_32 (To_Integer (Buffer_Desc_Address)),
-                                    Buffer_Desc_Address_Str);
+            Buffer_Desc_Address_Str);
 
-         Error_Print ("Received bad frame: " & Error_Str &
-                      " (buffer desc address: 16#" &
-                      Buffer_Desc_Address_Str & "#" & ASCII.LF);
+         Runtime_Logs.Error_Print (
+            "Received bad frame: " & Error_Str &
+            " (buffer desc address: 16#" &
+            Buffer_Desc_Address_Str & "#" & ASCII.LF);
       end Log_Error_Bad_Rx_Frame;
 
       -- ** --
@@ -494,13 +498,14 @@ package body Networking.Layer2.Ethernet_Mac_Driver is
       is
          Buffer_Desc_Address_Str : String (1 .. 8);
       begin
-         Unsigned_To_Hexadecimal (
+         Unsigned_To_Hexadecimal_String (
             Unsigned_32 (To_Integer (Buffer_Desc_Address)),
-                                    Buffer_Desc_Address_Str);
+            Buffer_Desc_Address_Str);
 
-         Error_Print ("Ethernet transmission failed: " & Error_Str &
-                      " (buffer desc address: 16#" &
-                      Buffer_Desc_Address_Str & "#" & ASCII.LF);
+         Runtime_Logs.Error_Print (
+            "Ethernet transmission failed: " & Error_Str &
+            " (buffer desc address: 16#" &
+            Buffer_Desc_Address_Str & "#" & ASCII.LF);
       end Log_Error_Bad_Tx_Frame;
 
       -- ** --
@@ -985,7 +990,7 @@ package body Networking.Layer2.Ethernet_Mac_Driver is
    ------------------------------------------------------
 
    function Net_Packet_Buffer_Address_To_Net_Packet_Pointer
-     (Buffer_Address : Address) return not null access Network_Packet_Type
+     (Buffer_Address : Address) return access Network_Packet_Type
    is
       Net_Packet_Address : Address;
       Net_Packet_Pointer : access Network_Packet_Type;
@@ -1411,36 +1416,41 @@ package body Networking.Layer2.Ethernet_Mac_Driver is
       begin
          if EIR_Value.BABR = 1 then
             Clear_Interrupts_Mask.BABR := 1;
-            Error_Print ("Babbling Receive Error on Ethernet device " &
-                         Ethernet_Mac_Id'Image);
+            Runtime_Logs.Error_Print (
+               "Babbling Receive Error on Ethernet device " &
+               Ethernet_Mac_Id'Image);
             Error_Count := Error_Count + 1;
          end if;
 
          if EIR_Value.BABT = 1 then
             Clear_Interrupts_Mask.BABT := 1;
-            Error_Print ("Babbling Transmit Error on Ethernet device " &
-                         Ethernet_Mac_Id'Image);
+            Runtime_Logs.Error_Print (
+               "Babbling Transmit Error on Ethernet device " &
+               Ethernet_Mac_Id'Image);
             Error_Count := Error_Count + 1;
          end if;
 
          if EIR_Value.EBERR = 1 then
             Clear_Interrupts_Mask.EBERR := 1;
-            Error_Print ("Ethernet Bus Error on Ethernet device " &
-                         Ethernet_Mac_Id'Image);
+            Runtime_Logs.Error_Print (
+               "Ethernet Bus Error on Ethernet device " &
+               Ethernet_Mac_Id'Image);
             Error_Count := Error_Count + 1;
          end if;
 
          if EIR_Value.UN = 1 then
             Clear_Interrupts_Mask.UN := 1;
-            Error_Print ("Ethernet Bus Error on Ethernet device " &
-                         Ethernet_Mac_Id'Image);
+            Runtime_Logs.Error_Print (
+               "Ethernet Bus Error on Ethernet device " &
+               Ethernet_Mac_Id'Image);
             Error_Count := Error_Count + 1;
          end if;
 
          if EIR_Value.PLR = 1 then
             Clear_Interrupts_Mask.PLR := 1;
-            Error_Print ("Payload Receive Error on Ethernet device " &
-                         Ethernet_Mac_Id'Image);
+            Runtime_Logs.Error_Print (
+               "Payload Receive Error on Ethernet device " &
+               Ethernet_Mac_Id'Image);
             Error_Count := Error_Count + 1;
          end if;
 

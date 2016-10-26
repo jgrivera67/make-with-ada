@@ -80,10 +80,6 @@ package Networking.Layer2 is
       Mac_Address : out Ethernet_Mac_Address_Type)
       with Inline, Global => null;
 
-   function Get_Ethernet_Port_Id (Layer2_End_Point : Layer2_End_Point_Type)
-                                  return Ethernet_Mac_Id_Type
-      with Pre => Initialized (Layer2_End_Point);
-
    function Link_Is_Up (Layer2_End_Point : Layer2_End_Point_Type)
                         return Boolean
       with Pre => Initialized (Layer2_End_Point);
@@ -219,10 +215,6 @@ private
    function Get_Layer2_End_Point (Ethernet_Mac_Id : Ethernet_Mac_Id_Type)
                                   return Layer2_End_Point_Access_Type is
       (Layer2_Var.Local_Ethernet_Layer2_End_Points (Ethernet_Mac_Id)'Access);
-
-   function Get_Ethernet_Port_Id (Layer2_End_Point : Layer2_End_Point_Type)
-                                  return Ethernet_Mac_Id_Type is
-      (Layer2_End_Point.Ethernet_Mac_Id);
 
    function Initialized return Boolean is
      (Layer2_Var.Initialized);
