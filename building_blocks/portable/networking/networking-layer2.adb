@@ -166,7 +166,7 @@ package body Networking.Layer2 is
       --  Initialize Rx packets:
       --
       for Rx_Packet of Layer2_End_Point.Rx_Packets loop
-         Rx_Packet.Layer2_End_Point_Ptr := Layer2_End_Point'Unchecked_Access;
+         Rx_Packet.Ethernet_Mac_Id := Ethernet_Mac_Id;
       end loop;
 
       Layer2_End_Point.Ethernet_Mac_Id := Ethernet_Mac_Id;
@@ -221,7 +221,7 @@ package body Networking.Layer2 is
       Drop_Frame : Boolean := False;
    begin
       Rx_Frame_Ptr :=
-         Ethernet.Net_Packet_Data_Buffer_Ptr_To_Ethernet_Frame_Ptr (
+         Ethernet.Net_Packet_Data_Buffer_Ptr_To_Frame_Ptr (
             Rx_Packet.Data_Payload_Buffer'Unchecked_Access);
 
       Type_of_Frame :=
@@ -239,16 +239,16 @@ package body Networking.Layer2 is
          end if;
 
          case Type_of_Frame is
-            when Ethernet.ARP_Packet =>
+            when Ethernet.Frame_ARP_Packet =>
                Process_Incoming_ARP_Packet (Rx_Packet);
 
-            when Ethernet.IPv4_Packet =>
+            when Ethernet.Frame_IPv4_Packet =>
                Process_Incoming_IPv4_Packet (Rx_Packet);
 
-            when Ethernet.IPv6_Packet =>
+            when Ethernet.Frame_IPv6_Packet =>
                Process_Incoming_IPv6_Packet (Rx_Packet);
 
-            when Ethernet.VLAN_Tagged_Frame =>
+            when Ethernet.Frame_VLAN_Tagged_Frame =>
                Runtime_Logs.Error_Print (
                   "VLAN tagged frames not supported yet");
                Drop_Frame := True;
@@ -279,7 +279,7 @@ package body Networking.Layer2 is
    procedure Recycle_Rx_Packet (Rx_Packet : in out Network_Packet_Type)
    is
       Layer2_End_Point_Ptr : constant not null access Layer2_End_Point_Type :=
-         Rx_Packet.Layer2_End_Point_Ptr;
+         Get_Layer2_End_Point (Rx_Packet.Ethernet_Mac_Id);
    begin
       pragma Assert (Rx_Packet.Rx_State_Flags.Packet_In_Rx_Use_By_App);
 
@@ -307,14 +307,14 @@ package body Networking.Layer2 is
    -------------------------
 
    procedure Send_Ethernet_Frame
-     (Layer2_End_Point : in out Layer2_End_Point_Type;
+     (Layer2_End_Point : Layer2_End_Point_Type;
       Dest_Mac_Address : Ethernet_Mac_Address_Type;
       Tx_Packet : in out Network_Packet_Type;
       Type_of_Frame : Ethernet.Type_of_Frame_Type;
       Data_Payload_Length : Natural)
    is
       Tx_Frame_Ptr : constant Ethernet.Frame_Access_Type :=
-         Ethernet.Net_Packet_Data_Buffer_Ptr_To_Ethernet_Frame_Ptr (
+         Ethernet.Net_Packet_Data_Buffer_Ptr_To_Frame_Ptr (
             Tx_Packet.Data_Payload_Buffer'Unchecked_Access);
    begin
       --
@@ -471,7 +471,7 @@ package body Networking.Layer2 is
          pragma Assert (Rx_Packet_Ptr /= null and then
                         Rx_Packet_Ptr.Traffic_Direction = Rx);
          pragma Assert (Rx_Packet_Ptr.Rx_State_Flags.Packet_In_Rx_Queue);
-         pragma Assert (Rx_Packet_Ptr.Layer2_End_Point_Ptr =
+         pragma Assert (Get_Layer2_End_Point (Rx_Packet_Ptr.Ethernet_Mac_Id) =
                         Layer2_End_Point_Ptr);
 
          Rx_Packet_Ptr.Rx_State_Flags.Packet_In_Rx_Queue := False;

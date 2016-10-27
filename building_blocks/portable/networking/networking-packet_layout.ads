@@ -48,6 +48,10 @@ package Networking.Packet_Layout is
                                  UDP => 16#11#,
                                  ICMPv6 => 16#3a#);
 
+   type First_Data_Word_Access_Type is access all Unsigned_32;
+
+   type First_Data_Word_Read_Only_Access_Type is access constant Unsigned_32;
+
    --
    --  IPv4 packet layout
    --
@@ -98,7 +102,7 @@ package Networking.Packet_Layout is
       --
       --  IPv4 packet header minimum size in bytes
       --
-      Packet_Header_Size : constant Positive := 20;
+      IPv4_Packet_Header_Size : constant Positive := 20;
 
       --
       --  Layout of an IPv4 packet in network byte order
@@ -138,7 +142,7 @@ package Networking.Packet_Layout is
       --
       --  @field First_Data_Word : First word of the data payload
       --
-      type Packet_Type is record
+      type IPv4_Packet_Type is record
          Version_and_Header_Length : Version_and_Header_Length_Type;
          Type_of_Service : Type_of_Service_Type;
          Total_Length : Unsigned_16;
@@ -150,9 +154,9 @@ package Networking.Packet_Layout is
          Source_IPv4_Address : IPv4_Address_Type;
          Destination_IPv4_Address : IPv4_Address_Type;
          First_Data_Word : aliased Unsigned_32;
-      end record with Size => (Packet_Header_Size + 4) * Byte'Size;
+      end record with Size => (IPv4_Packet_Header_Size + 4) * Byte'Size;
 
-      for Packet_Type use record
+      for IPv4_Packet_Type use record
          Version_and_Header_Length at 0 range 0 .. 7;
          Type_of_Service           at 1 range 0 .. 7;
          Total_Length              at 2 range 0 .. 15;
@@ -166,17 +170,20 @@ package Networking.Packet_Layout is
          First_Data_Word           at 20 range 0 .. 31;
       end record;
 
-      type Packet_Access_Type is access all Packet_Type;
+      type IPv4_Packet_Access_Type is access all IPv4_Packet_Type;
 
-      type Type_of_Link_Address_Type is (Ethernet)
+      type IPv4_Packet_Read_Only_Access_Type is
+         access constant IPv4_Packet_Type;
+
+      type Type_of_Link_Address_Type is (Link_Address_Ethernet)
          with Size => Unsigned_16'Size;
 
-      for Type_of_Link_Address_Type use (Ethernet => 16#1#);
+      for Type_of_Link_Address_Type use (Link_Address_Ethernet => 16#1#);
 
-      type Type_of_Network_Address_Type is (IPv4)
+      type Type_of_Network_Address_Type is (Network_Address_IPv4)
          with Size => Unsigned_16'Size;
 
-      for Type_of_Network_Address_Type use (IPv4 => 16#800#);
+      for Type_of_Network_Address_Type use (Network_Address_IPv4 => 16#800#);
 
       type ARP_Operation_Type is (ARP_Request,
                                   ARP_Reply)
@@ -186,15 +193,22 @@ package Networking.Packet_Layout is
                                   ARP_Reply => 16#2#);
 
       --
+      --  ARP packet size in bytes
+      --
+      ARP_Packet_Size : constant Positive := 28;
+
+      --
       --  ARP packet layout in network byte order
       --  (An ARP packet is encapsulated in an Ethernet frame)
       --
-      --  @field Type_of_Link_Address Link-layer address type
+      --  @field Type_of_Link_Address Link-layer address type (value from
+      --  Type_of_Network_Address_Type)
       --  (Host_To_Network_Byte_Order must be invoked before writing this
       --   field. Network_to_Host_Byte_Order must be invoked after reading this
       --   field)
       --
-      --  @field Type_of_Network_Address Network address type
+      --  @field Type_of_Network_Address Network address type (value from
+      --  Type_Of_Network_Address_Type)
       --  (Host_To_Network_Byte_Order must be invoked before writing this
       --   field. Network_to_Host_Byte_Order must be invoked after reading this
       --   field)
@@ -219,14 +233,14 @@ package Networking.Packet_Layout is
       type ARP_Packet_Type is record
          Type_of_Link_Address : Unsigned_16;
          Type_of_Network_Address : Unsigned_16;
-         Link_Address_Size : Byte := 6;
-         Network_Address_Size : Byte := 4;
+         Link_Address_Size : Byte := Ethernet_Mac_Address_Size;
+         Network_Address_Size : Byte := IPv4_Address_Size;
          Operation : Unsigned_16;
          Source_Mac_Address : Ethernet_Mac_Address_Type;
          Source_IP_Address : IPv4_Address_Type;
          Destination_Mac_Address : Ethernet_Mac_Address_Type;
          Destination_IP_Address : IPv4_Address_Type;
-      end record with Size => 28 * Byte'Size;
+      end record with Size => ARP_Packet_Size * Byte'Size;
 
       for ARP_Packet_Type use record
          Type_of_Link_Address at 0 range 0 .. 15;
@@ -242,6 +256,8 @@ package Networking.Packet_Layout is
 
       type ARP_Packet_Access_Type is access all ARP_Packet_Type;
 
+      type ARP_Packet_Read_Only_Access_Type is access constant ARP_Packet_Type;
+
       --
       --  ICMPv4 message types
       --
@@ -251,6 +267,11 @@ package Networking.Packet_Layout is
 
       for Type_of_ICMPv4_Message_Type use (Ping_Reply => 0,
                                            Ping_Request => 8);
+
+      --
+      --  ICMPv4  size in bytes
+      --
+      ICMPv4_Message_Size : constant Positive := 8;
 
       --
       --  ICMPv4 message codes
@@ -281,7 +302,7 @@ package Networking.Packet_Layout is
                Identifier : Unsigned_16;
                Sequence_Number : Unsigned_16;
          end case;
-      end record with Size => 8 * Byte'Size;
+      end record with Size => ICMPv4_Message_Size * Byte'Size;
 
       for ICMPv4_Message_Type use record
          Type_of_Message at 0 range 0 .. 7;
@@ -292,6 +313,9 @@ package Networking.Packet_Layout is
       end record;
 
       type ICMPv4_Message_Access_Type is access all ICMPv4_Message_Type;
+
+      type ICMPv4_Message_Read_Only_Access_Type is
+         access constant ICMPv4_Message_Type;
 
       --
       --  IPv4 DHCP message layout
@@ -349,6 +373,9 @@ package Networking.Packet_Layout is
 
       type DHCPv4_Message_Access_Type is access all DHCPv4_Message_Type;
 
+      type DHCPv4_Message_Read_Only_Access_Type is
+         access constant DHCPv4_Message_Type;
+
       -- ** --
 
       function Unsigned_16_To_Type_of_Link_Address is
@@ -361,6 +388,46 @@ package Networking.Packet_Layout is
       function Unsigned_16_To_ARP_Operation is
         new Ada.Unchecked_Conversion (Source => Unsigned_16,
                                       Target => ARP_Operation_Type);
+
+      function Data_Payload_Ptr_To_IPv4_Packet_Ptr is
+        new Ada.Unchecked_Conversion (
+               Source => First_Data_Word_Access_Type,
+               Target => IPv4_Packet_Access_Type);
+
+      function Data_Payload_Ptr_To_IPv4_Packet_Read_Only_Ptr is
+        new Ada.Unchecked_Conversion (
+               Source => First_Data_Word_Read_Only_Access_Type,
+               Target => IPv4_Packet_Read_Only_Access_Type);
+
+      function Data_Payload_Ptr_To_ARP_Packet_Ptr is
+        new Ada.Unchecked_Conversion (
+               Source => First_Data_Word_Access_Type,
+               Target => ARP_Packet_Access_Type);
+
+      function Data_Payload_Ptr_To_ARP_Packet_Read_Only_Ptr is
+        new Ada.Unchecked_Conversion (
+               Source => First_Data_Word_Read_Only_Access_Type,
+               Target => ARP_Packet_Read_Only_Access_Type);
+
+      function Data_Payload_Ptr_To_ICMPv4_Message_Ptr is
+        new Ada.Unchecked_Conversion (
+               Source => First_Data_Word_Access_Type,
+               Target => ICMPv4_Message_Access_Type);
+
+      function Data_Payload_Ptr_To_ICMPv4_Message_Read_Only_Ptr is
+        new Ada.Unchecked_Conversion (
+               Source => First_Data_Word_Read_Only_Access_Type,
+               Target => ICMPv4_Message_Read_Only_Access_Type);
+
+      function Data_Payload_Ptr_To_DHCPv4_Message_Ptr is
+        new Ada.Unchecked_Conversion (
+               Source => First_Data_Word_Access_Type,
+               Target => DHCPv4_Message_Access_Type);
+
+      function Data_Payload_Ptr_To_DHCPv4_Message_Read_Only_Ptr is
+        new Ada.Unchecked_Conversion (
+               Source => First_Data_Word_Read_Only_Access_Type,
+               Target => DHCPv4_Message_Read_Only_Access_Type);
    end IPv4;
 
    --
@@ -385,7 +452,7 @@ package Networking.Packet_Layout is
       --
       --  IPv6 packet header size in bytes
       --
-      Packet_Header_Size : constant Positive := 40;
+      IPv6_Packet_Header_Size : constant Positive := 40;
 
       --
       --  Layout of an IPv6 packet in network byte order
@@ -409,7 +476,7 @@ package Networking.Packet_Layout is
       --
       --  @field First_Data_Word : First word of the data payload
       --
-      type Packet_Type is record
+      type IPv6_Packet_Type is record
          First_Word : First_Word_Type;
          Payload_Length : Unsigned_16;
          Next_Header : Layer4_Protocol_Type;
@@ -417,9 +484,9 @@ package Networking.Packet_Layout is
          Source_IPv6_Address : IPv6_Address_Type;
          Destination_IPv6_Address : IPv6_Address_Type;
          First_Data_Word : aliased Unsigned_32;
-      end record with Size => (Packet_Header_Size + 4) * Byte'Size;
+      end record with Size => (IPv6_Packet_Header_Size + 4) * Byte'Size;
 
-      for Packet_Type use record
+      for IPv6_Packet_Type use record
          First_Word                at 0 range 0 .. 31;
          Payload_Length            at 4 range 0 .. 15;
          Next_Header               at 6 range 0 .. 7;
@@ -429,7 +496,20 @@ package Networking.Packet_Layout is
          First_Data_Word           at 40 range 0 .. 31;
       end record;
 
-      type Packet_Access_Type is access all Packet_Type;
+      type IPv6_Packet_Access_Type is access all IPv6_Packet_Type;
+
+      type IPv6_Packet_Read_Only_Access_Type is
+         access constant IPv6_Packet_Type;
+
+      function Data_Payload_Ptr_To_IPv6_Packet_Ptr is
+        new Ada.Unchecked_Conversion (
+               Source => First_Data_Word_Access_Type,
+               Target => IPv6_Packet_Access_Type);
+
+      function Data_Payload_Ptr_To_IPv6_Packet_Read_Only_Ptr is
+        new Ada.Unchecked_Conversion (
+               Source => First_Data_Word_Read_Only_Access_Type,
+               Target => IPv6_Packet_Read_Only_Access_Type);
    end IPv6;
 
    --
@@ -439,16 +519,16 @@ package Networking.Packet_Layout is
       --
       --  Ethernet frame types in host byte order
       --
-      type Type_of_Frame_Type is (IPv4_Packet,
-                                  ARP_Packet,
-                                  VLAN_Tagged_Frame,
-                                  IPv6_Packet)
+      type Type_of_Frame_Type is (Frame_IPv4_Packet,
+                                  Frame_ARP_Packet,
+                                  Frame_VLAN_Tagged_Frame,
+                                  Frame_IPv6_Packet)
          with Size => Unsigned_16'Size;
 
-      for Type_of_Frame_Type use (IPv4_Packet => 16#800#,
-                                  ARP_Packet => 16#806#,
-                                  VLAN_Tagged_Frame => 16#8100#,
-                                  IPv6_Packet => 16#86dd#);
+      for Type_of_Frame_Type use (Frame_IPv4_Packet => 16#800#,
+                                  Frame_ARP_Packet => 16#806#,
+                                  Frame_VLAN_Tagged_Frame => 16#8100#,
+                                  Frame_IPv6_Packet => 16#86dd#);
 
       --
       --  Ethernet frame header size in bytes
@@ -490,6 +570,8 @@ package Networking.Packet_Layout is
 
       type Frame_Access_Type is access all Frame_Type;
 
+      type Frame_Read_Only_Access_Type is access constant Frame_Type;
+
       function Unsigned_16_To_Type_Of_Frame is
         new Ada.Unchecked_Conversion (Source => Unsigned_16,
                                       Target => Type_of_Frame_Type);
@@ -498,10 +580,15 @@ package Networking.Packet_Layout is
         --  trigger an exception for invalid representation values.
         --
 
-      function Net_Packet_Data_Buffer_Ptr_To_Ethernet_Frame_Ptr is
+      function Net_Packet_Data_Buffer_Ptr_To_Frame_Ptr is
         new Ada.Unchecked_Conversion (
                Source => Net_Packet_Data_Buffer_Access_Type,
                Target => Frame_Access_Type);
+
+      function Net_Packet_Data_Buffer_Ptr_To_Frame_Read_Only_Ptr is
+        new Ada.Unchecked_Conversion (
+               Source => Net_Packet_Data_Buffer_Read_Only_Access_Type,
+               Target => Frame_Read_Only_Access_Type);
    end Ethernet;
 
 end Networking.Packet_Layout;

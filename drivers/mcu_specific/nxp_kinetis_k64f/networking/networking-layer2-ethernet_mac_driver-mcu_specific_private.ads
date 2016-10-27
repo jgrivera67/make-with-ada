@@ -370,8 +370,7 @@ private package Networking.Layer2.Ethernet_Mac_Driver.MCU_Specific_Private is
    --  @field Initialized Flag indicating if Initialize has been called
    --  for this object
    --  @field Tx_Rx_Error_Count Total number of Tx/Rx errors
-   --  @field Layer2_End_Point_Ptr Pointer to the local layer-2 end point
-   --  associated with this MAC
+   --  @field Ethernet_Mac_Id Ethernet MAC device Id
    --  @field Tx_Ring_Entries_Filled Number of Tx buffer descriptors currently
    --  filled in ths MAC's Tx ring
    --  @field Rx_Ring_Entries_Filled Number of Rx buffer descriptors currently
@@ -394,8 +393,7 @@ private package Networking.Layer2.Ethernet_Mac_Driver.MCU_Specific_Private is
    type Ethernet_Mac_Var_Type is limited record
       Initialized : Boolean := False;
       Tx_Rx_Error_Count : Natural := 0;
-      Layer2_End_Point_Ptr :
-         access Networking.Layer2.Layer2_End_Point_Type := null;
+      Ethernet_Mac_Id : Ethernet_Mac_Id_Type;
       Tx_Ring_Entries_Filled : Net_Tx_Packets_Count_Type := 0;
       Rx_Ring_Entries_Filled : Net_Rx_Packets_Count_Type := 0;
       Tx_Ring_Write_Cursor : Net_Tx_Packet_Index_Type :=

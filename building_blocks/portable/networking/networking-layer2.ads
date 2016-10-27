@@ -25,17 +25,14 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with Devices.MCU_Specific;
 with Microcontroller.Arm_Cortex_M;
 with Networking.Packet_Layout;
 private with System;
-limited with Networking.Layer3_IPv4;
-limited with Networking.Layer3_IPv6;
+
 --
 --  @summary Networking layer 2 (data-link layer) services
 --
 package Networking.Layer2 is
-   use Devices.MCU_Specific;
    use Microcontroller.Arm_Cortex_M;
    use Networking.Packet_Layout;
 
@@ -79,6 +76,9 @@ package Networking.Layer2 is
       Layer2_End_Point : Layer2_End_Point_Type;
       Mac_Address : out Ethernet_Mac_Address_Type)
       with Inline, Global => null;
+   --
+   --  Get the MAC address of a given Layer-2 Ethernet end point
+   --
 
    function Link_Is_Up (Layer2_End_Point : Layer2_End_Point_Type)
                         return Boolean
@@ -107,8 +107,7 @@ package Networking.Layer2 is
    --  Release a Tx packet back to the global Tx packet pool free list
    --
 
-   procedure Send_Ethernet_Frame (Layer2_End_Point :
-                                  in out Layer2_End_Point_Type;
+   procedure Send_Ethernet_Frame (Layer2_End_Point : Layer2_End_Point_Type;
                                   Dest_Mac_Address : Ethernet_Mac_Address_Type;
                                   Tx_Packet : in out Network_Packet_Type;
                                   Type_of_Frame : Ethernet.Type_of_Frame_Type;

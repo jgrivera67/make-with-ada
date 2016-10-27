@@ -94,7 +94,7 @@ package body Networking.Layer2.Ethernet_Mac_Driver is
                               Mac_Address : Ethernet_Mac_Address_Type);
 
    function Net_Packet_Buffer_Address_To_Net_Packet_Pointer
-     (Buffer_Address : Address) return access Network_Packet_Type
+     (Buffer_Address : Address) return Network_Packet_Access_Type
      with Inline,
      Pre =>
         Buffer_Address /= Null_Address and then
@@ -148,14 +148,6 @@ package body Networking.Layer2.Ethernet_Mac_Driver is
    --
    Ethernet_Mac_Var_Devices :
      array (Ethernet_Mac_Id_Type) of Ethernet_Mac_Var_Type;
-
-   Buffer_Desc_Rx_Errors_Mask : constant Rx_Control_Type :=
-     (RX_BD_LENGTH_VIOLATION => 1,
-      RX_BD_NON_OCTET_ALIGNED_FRAME => 1,
-      RX_BD_CRC_ERROR => 1,
-      RX_BD_FIFO_OVERRRUN => 1,
-      RX_BD_FRAME_TRUNCATED => 1,
-      others => 0);
 
    -- ** --
 
@@ -298,6 +290,8 @@ package body Networking.Layer2.Ethernet_Mac_Driver is
             Ethernet_Mac_Var.Rx_Ring_Read_Cursor;
          Buffer_Desc : Ethernet_Rx_Buffer_Descriptor_Type renames
             Ethernet_Mac_Var.Rx_Buffer_Descriptors (Ring_Index);
+         Layer2_End_Point_Ptr : constant Layer2_End_Point_Access_Type :=
+            Get_Layer2_End_Point (Ethernet_Mac_Var.Ethernet_Mac_Id);
       begin
          if Buffer_Desc.Control.RX_BD_EMPTY = 1 then
             return False;
@@ -329,7 +323,7 @@ package body Networking.Layer2.Ethernet_Mac_Driver is
          --
          --  Enqueue received packet at the corresponding layer-2 end point:
          --
-         Enqueue_Rx_Packet (Ethernet_Mac_Var.Layer2_End_Point_Ptr.all,
+         Enqueue_Rx_Packet (Layer2_End_Point_Ptr.all,
                             Rx_Packet_Ptr.all);
 
          if Buffer_Desc.Control.RX_BD_WRAP = 1 then
@@ -558,7 +552,7 @@ package body Networking.Layer2.Ethernet_Mac_Driver is
       MIBC_Value : ENET_MIBC_Register;
       Zeroed_Word : constant MK64F12.Word := 0;
    begin
-      Ethernet_Mac_Var.Layer2_End_Point_Ptr := Layer2_End_Point_Ptr;
+      Ethernet_Mac_Var.Ethernet_Mac_Id := Ethernet_Mac_Id;
       Enable_Clock (Ethernet_Mac_Id);
 
       --
@@ -642,7 +636,7 @@ package body Networking.Layer2.Ethernet_Mac_Driver is
    function Initialized (Ethernet_Mac_Id : Ethernet_Mac_Id_Type)
                          return Boolean is
      (Ethernet_Mac_Var_Devices (Ethernet_Mac_Id).Initialized and then
-      Ethernet_Mac_Var_Devices (Ethernet_Mac_Id).Layer2_End_Point_Ptr /= null);
+      Ethernet_Mac_Var_Devices (Ethernet_Mac_Id).Ethernet_Mac_Id'Valid);
 
    --------------------------------
    -- Initialize_Ethernet_Mac_Rx --
@@ -845,6 +839,8 @@ package body Networking.Layer2.Ethernet_Mac_Driver is
       Ethernet_Mac_Var : in out Ethernet_Mac_Var_Type)
    is
       RDSR_Value : ENET_RDSR_Register;
+      Layer2_End_Point_Ptr : constant Layer2_End_Point_Access_Type :=
+         Get_Layer2_End_Point (Ethernet_Mac_Var.Ethernet_Mac_Id);
    begin
       --
       --  Configure Rx buffer descriptor ring:
@@ -873,14 +869,12 @@ package body Networking.Layer2.Ethernet_Mac_Driver is
              MCU_Specific_Private.Ethernet_Rx_Buffer_Descriptor_Type renames
               Ethernet_Mac_Var.Rx_Buffer_Descriptors (I);
             Rx_Packet : Network_Packet_Type renames
-              Ethernet_Mac_Var.Layer2_End_Point_Ptr.Rx_Packets (I);
+              Layer2_End_Point_Ptr.Rx_Packets (I);
          begin
             Rx_Packet.Rx_Buffer_Descriptor_Index := I;
             Rx_Packet.Rx_State_Flags.Packet_In_Rx_Transit := True;
 
-            pragma Assert (
-              Rx_Packet.Layer2_End_Point_Ptr =
-                Ethernet_Mac_Var.Layer2_End_Point_Ptr);
+            pragma Assert (Rx_Packet.Ethernet_Mac_Id'Valid);
 
             pragma Assert (
                Positive (
@@ -990,18 +984,19 @@ package body Networking.Layer2.Ethernet_Mac_Driver is
    ------------------------------------------------------
 
    function Net_Packet_Buffer_Address_To_Net_Packet_Pointer
-     (Buffer_Address : Address) return access Network_Packet_Type
+     (Buffer_Address : Address) return Network_Packet_Access_Type
    is
       Net_Packet_Address : Address;
-      Net_Packet_Pointer : access Network_Packet_Type;
+      Dummy_Packet : Network_Packet_Type (Rx);
+      Net_Packet_Pointer : Network_Packet_Access_Type;
    begin
 
       Net_Packet_Address :=
         To_Address (To_Integer (Buffer_Address) -
-                    Net_Packet_Pointer.Data_Payload_Buffer'Position);
+                    Dummy_Packet.Data_Payload_Buffer'Position);
 
-      Net_Packet_Pointer :=
-        Address_To_Network_Packet_Pointer.To_Pointer (Net_Packet_Address);
+      Net_Packet_Pointer := Network_Packet_Access_Type (
+        Address_To_Network_Packet_Pointer.To_Pointer (Net_Packet_Address));
 
       return Net_Packet_Pointer;
    end Net_Packet_Buffer_Address_To_Net_Packet_Pointer;
@@ -1070,7 +1065,6 @@ package body Networking.Layer2.Ethernet_Mac_Driver is
    is
       procedure Atomic_Repost_Rx_Packet (
          Ethernet_Mac_Var : in out Ethernet_Mac_Var_Type;
-         Mac_Registers_Ptr : access ENET_Peripheral;
          Rx_Packet : in out Network_Packet_Type);
 
       Ethernet_Mac_Const : Ethernet_Mac_Const_Type renames
@@ -1088,7 +1082,6 @@ package body Networking.Layer2.Ethernet_Mac_Driver is
 
       procedure Atomic_Repost_Rx_Packet (
          Ethernet_Mac_Var : in out Ethernet_Mac_Var_Type;
-         Mac_Registers_Ptr : access ENET_Peripheral;
          Rx_Packet : in out Network_Packet_Type)
       is
          Rx_Buffer_Desc : Ethernet_Rx_Buffer_Descriptor_Type renames
@@ -1134,7 +1127,7 @@ package body Networking.Layer2.Ethernet_Mac_Driver is
    begin --  Repost_Rx_Packet
       Old_Interrupt_Mask := Disable_Cpu_Interrupts;
 
-      Atomic_Repost_Rx_Packet (Ethernet_Mac_Var, Mac_Registers_Ptr, Rx_Packet);
+      Atomic_Repost_Rx_Packet (Ethernet_Mac_Var, Rx_Packet);
 
       Restore_Cpu_Interrupts (Old_Interrupt_Mask);
 
@@ -1220,6 +1213,11 @@ package body Networking.Layer2.Ethernet_Mac_Driver is
       RDAR_Value : ENET_RDAR_Register;
    begin
       --
+      --  Disable MPU
+      --
+      Runtime_Logs.Error_Print ("**** Need to disable MPU here");--???
+
+      --
       --  Initialize Tx buffer descriptor ring:
       --
       Initialize_Tx_Buffer_Descriptor_Ring (Mac_Registers_Ptr,
@@ -1270,7 +1268,7 @@ package body Networking.Layer2.Ethernet_Mac_Driver is
       Restore_Cpu_Interrupts (Old_Primask);
 
       Runtime_Logs.Debug_Print ("Ethernet MAC: Started MAC " &
-                                Ethernet_Mac_Id'Image & ASCII.LF);
+                                Ethernet_Mac_Id'Image);
 
    end Start_Mac_Device;
 
@@ -1284,7 +1282,6 @@ package body Networking.Layer2.Ethernet_Mac_Driver is
    is
       procedure Atomic_Start_Tx_Packet_Transmit (
          Ethernet_Mac_Var : in out Ethernet_Mac_Var_Type;
-         Mac_Registers_Ptr : access ENET_Peripheral;
          Tx_Packet : in out Network_Packet_Type);
 
       Ethernet_Mac_Const : Ethernet_Mac_Const_Type renames
@@ -1303,7 +1300,6 @@ package body Networking.Layer2.Ethernet_Mac_Driver is
 
       procedure Atomic_Start_Tx_Packet_Transmit (
          Ethernet_Mac_Var : in out Ethernet_Mac_Var_Type;
-         Mac_Registers_Ptr : access ENET_Peripheral;
          Tx_Packet : in out Network_Packet_Type)
       is
          Tx_Buffer_Desc : Ethernet_Tx_Buffer_Descriptor_Type renames
@@ -1354,7 +1350,7 @@ package body Networking.Layer2.Ethernet_Mac_Driver is
    begin --  Start_Tx_Packet_Transmit
       Old_Interrupt_Mask := Disable_Cpu_Interrupts;
 
-      Atomic_Start_Tx_Packet_Transmit (Ethernet_Mac_Var, Mac_Registers_Ptr,
+      Atomic_Start_Tx_Packet_Transmit (Ethernet_Mac_Var,
                                        Tx_Packet);
 
       Restore_Cpu_Interrupts (Old_Interrupt_Mask);

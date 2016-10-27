@@ -27,11 +27,10 @@
 
 with Interfaces.Bit_Types;
 with Microcontroller;
-with Devices;
+with Devices.MCU_Specific;
 private with Microcontroller.Arm_Cortex_M;
 private with Ada.Synchronous_Task_Control;
 private with System;
-limited private with Networking.Layer2;
 
 --
 --  @summary Root package of a zero-copy Networking stack for Microcontrollers
@@ -41,6 +40,7 @@ package Networking is
    use Interfaces;
    use Microcontroller;
    use Devices;
+   use Devices.MCU_Specific;
 
    --
    --  Cortex-M cores run in little-endian byte-order mode
@@ -106,6 +106,11 @@ package Networking is
    type Net_Rx_Packet_Index_Type is range 1 .. Net_Max_Rx_Packets;
 
    --
+   --  Ethern MAC address size in bytes
+   --
+   Ethernet_Mac_Address_Size : constant := 6;
+
+   --
    --  Ethernet MAC address in network byte order:
    --  Ethernet_Mac_Address_Type (1) is most significant byte of the MAC
    --  address
@@ -113,7 +118,7 @@ package Networking is
    --  address
    --
    type Ethernet_Mac_Address_Type is new Bytes_Array_Type (1 .. 6)
-     with Alignment => 2, Size => 6 * Byte'Size;
+     with Alignment => 2, Size => Ethernet_Mac_Address_Size * Byte'Size;
 
    subtype Ethernet_Mac_Address_String_Type is String (1 .. 17);
 
@@ -124,12 +129,17 @@ package Networking is
    Ethernet_Mac_Private_Address_Mask : constant Byte := 16#02#;
 
    --
+   --  IPv4 address size in bytes
+   --
+   IPv4_Address_Size : constant := 4;
+
+   --
    --  IPv4 address in network byte order:
    --  IPv4_Address_Type (1) is most significant byte of the IPv4 address
    --  IPv4_Address_Type (4) is least significant byte of the IPv4 address
    --
    type IPv4_Address_Type is  array (1 .. 4) of Byte
-     with Alignment => 4, Size => 4 * Byte'Size;
+     with Alignment => 4, Size => IPv4_Address_Size * Byte'Size;
 
    subtype IPv4_Address_String_Type is String (1 .. 15);
 
@@ -155,12 +165,17 @@ package Networking is
    IPv4_Multicast_Address_Mask : constant Byte := 16#e0#;
 
    --
+   --  IPv6 address size in bytes
+   --
+   IPv6_Address_Size : constant := 16;
+
+   --
    --  IPv6 address in network byte order:
    --  IPv6_Address_Type (1) is most significant byte of the IPv4 address
    --  IPv6_Address_Type (8) is least significant byte of the IPv4 address
    --
    type IPv6_Address_Type is  array (1 .. 8) of Unsigned_16
-     with Alignment => 8, Size => 8 * Unsigned_16'Size;
+     with Alignment => 8, Size => IPv6_Address_Size * Byte'Size;
 
    subtype IPv6_Address_String_Type is String (1 .. 39);
 
@@ -227,6 +242,9 @@ package Networking is
 
    type Net_Packet_Data_Buffer_Access_Type is
       access all Net_Packet_Data_Buffer_Type;
+
+   type Net_Packet_Data_Buffer_Read_Only_Access_Type is
+      access constant Net_Packet_Data_Buffer_Type;
 
    -- ** --
 
@@ -322,8 +340,8 @@ private
    --  @field Rx_Buffer_Descriptor_Ptr Pointer to the Ethernet MAC Rx buffer
    --  descriptor associated with the packet
    --  @field Rx_State Current state the Rx packet
-   --  @field Layer2_End_Point_Ptr Pointer to the local layer-2 end point that
-   --  owns this network packet
+   --  @field Ethernet_Mac_Id Ethernet MAC device that owns this Rx packet
+   --  object.
    --
    --  Fields for Tx packets only:
    --  @field Tx_Buffer_Descriptor_Ptr Pointer to the Ethernet MAC Tx buffer
@@ -350,8 +368,7 @@ private
          when Rx =>
             Rx_Buffer_Descriptor_Index : Net_Rx_Packet_Index_Type;
             Rx_State_Flags : Rx_Packet_State_Flags_Type;
-            Layer2_End_Point_Ptr :
-               access Networking.Layer2.Layer2_End_Point_Type;
+            Ethernet_Mac_Id : Ethernet_Mac_Id_Type;
          when Tx =>
             Tx_Buffer_Descriptor_Index : Net_Tx_Packet_Index_Type;
             Tx_State_Flags : Tx_Packet_State_Flags_Type;

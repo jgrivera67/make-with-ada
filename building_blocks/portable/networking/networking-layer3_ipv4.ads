@@ -95,7 +95,8 @@ package Networking.Layer3_IPv4 is
    --  @return False, if parsing unsuccessful
    --
 
-   procedure Process_Incoming_ARP_Packet (Rx_Packet : Network_Packet_Type);
+   procedure Process_Incoming_ARP_Packet (
+      Rx_Packet : in out Network_Packet_Type);
 
    procedure Process_Incoming_IPv4_Packet (Rx_Packet : Network_Packet_Type);
 

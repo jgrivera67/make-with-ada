@@ -31,6 +31,7 @@ with Number_Conversion_Utils;
 
 package body Networking.Layer3_IPv4 is
    use Number_Conversion_Utils;
+   use Networking.Layer2;
 
    procedure Build_Subnet_Mask (Subnet_Prefix : IPv4_Subnet_Prefix_Type;
                                 Subnet_Mask : out IPv4_Address_Type);
@@ -341,6 +342,8 @@ package body Networking.Layer3_IPv4 is
       end Find_Char;
 
    begin -- Parse_IPv4_Address
+      IPv4_Address := IPv4_Null_Address;
+      Subnet_Prefix := 0;
       for I in IPv4_Address'Range loop
          pragma Loop_Invariant
             (Token_Index in IPv4_Address_String'Range);
@@ -385,8 +388,6 @@ package body Networking.Layer3_IPv4 is
             return False;
          end if;
          Subnet_Prefix := Byte_Value;
-      else
-         Subnet_Prefix := 0;
       end if;
 
       return True;
@@ -396,12 +397,295 @@ package body Networking.Layer3_IPv4 is
    -- Process_Incoming_ARP_Packet --
    ---------------------------------
 
-   procedure Process_Incoming_ARP_Packet (Rx_Packet : Network_Packet_Type) is
-   begin
-      --  Generated stub: replace with real body!
-      pragma Compile_Time_Warning (Standard.True,
-         "Process_Incoming_ARP_Packet unimplemented");
-      Runtime_Logs.Debug_Print ("Process_Incoming_ARP_Packet unimplemented");
+   procedure Process_Incoming_ARP_Packet (
+      Rx_Packet : in out Network_Packet_Type)
+   is
+      use Networking.Packet_Layout.IPv4;
+      use Networking.Packet_Layout.Ethernet;
+
+      procedure Process_ARP_Reply (
+         ARP_Packet : ARP_Packet_Type;
+         Local_IPv4_End_Point : in out IPv4_End_Point_Type);
+
+      procedure Process_ARP_Request (
+         ARP_Packet : ARP_Packet_Type;
+         Local_IPv4_End_Point : in out IPv4_End_Point_Type);
+
+      procedure Send_ARP_Reply (
+         Layer2_End_Point : Layer2_End_Point_Type;
+         Source_IPv4_Address : IPv4_Address_Type;
+         Destination_Mac_Address : Ethernet_Mac_Address_Type;
+         Destination_IPv4_Address : IPv4_Address_Type);
+
+      procedure Trace_Received_ARP_Packet (ARP_Packet : ARP_Packet_Type);
+
+      Ethernet_Frame_Ptr : constant Frame_Read_Only_Access_Type :=
+         Net_Packet_Data_Buffer_Ptr_To_Frame_Read_Only_Ptr (
+            Rx_Packet.Data_Payload_Buffer'Unchecked_Access);
+
+      ARP_Packet_Ptr : constant ARP_Packet_Read_Only_Access_Type :=
+         Data_Payload_Ptr_To_ARP_Packet_Read_Only_Ptr (
+            Ethernet_Frame_Ptr.First_Data_Word'Access);
+
+      ARP_Operation : constant ARP_Operation_Type :=
+            Unsigned_16_To_ARP_Operation (
+               Network_To_Host_Byte_Order (ARP_Packet_Ptr.Operation));
+
+      Local_IPv4_End_Point_Ptr : constant IPv4_End_Point_Access_Type :=
+           Get_IPv4_End_Point (Rx_Packet.Ethernet_Mac_Id);
+
+      -----------------------
+      -- Process_ARP_Reply --
+      -----------------------
+
+      procedure Process_ARP_Reply (
+         ARP_Packet : ARP_Packet_Type;
+         Local_IPv4_End_Point : in out IPv4_End_Point_Type)
+      is
+         Local_Mac_Address : Ethernet_Mac_Address_Type;
+         Source_Mac_Address_Str : Ethernet_Mac_Address_String_Type;
+         Source_IPv4_Address_Str : IPv4_Address_String_Type;
+         Local_Layer2_End_Point_Ptr : constant Layer2_End_Point_Access_Type :=
+            Get_Layer2_End_Point (Local_IPv4_End_Point.Ethernet_Mac_Id);
+      begin
+         pragma Assert (ARP_Packet.Destination_IP_Address =
+                        Local_IPv4_End_Point.IPv4_Address);
+
+         Get_Mac_Address (Local_Layer2_End_Point_Ptr.all, Local_Mac_Address);
+
+         pragma Assert (
+            ARP_Packet.Destination_Mac_Address = Local_Mac_Address);
+
+         if ARP_Packet.Source_IP_Address = Local_IPv4_End_Point.IPv4_Address
+         then
+            --
+            --  Duplicate IPv4 address detected:
+            --  Received ARP reply from a remote layer-3
+            --  end-point that already has the same IP address as us.
+            --
+            Networking.Layer2.Mac_Address_To_String (
+               ARP_Packet.Source_Mac_Address, Source_Mac_Address_Str);
+            IPv4_Address_To_String (ARP_Packet.Source_IP_Address,
+                                    Source_IPv4_Address_Str);
+            Runtime_Logs.Error_Print (
+               "Duplicated IP address " & Source_IPv4_Address_Str &
+               " detected. Remote node with MAC address " &
+               Source_Mac_Address_Str & " already has the same IP address.");
+         else
+            --
+            --  Update ARP cache with (source IP addr, source MAC addr)
+            --
+            Local_IPv4_End_Point.ARP_Cache.Update (
+               ARP_Packet.Source_IP_Address,
+               ARP_Packet.Source_Mac_Address);
+         end if;
+      end Process_ARP_Reply;
+
+      -------------------------
+      -- Process_ARP_Request --
+      -------------------------
+
+      procedure Process_ARP_Request (
+         ARP_Packet : ARP_Packet_Type;
+         Local_IPv4_End_Point : in out IPv4_End_Point_Type)
+      is
+         Duplicate_IPv4_Addr_Detected : Boolean := False;
+         Source_Mac_Address_Str : Ethernet_Mac_Address_String_Type;
+         Source_IPv4_Address_Str : IPv4_Address_String_Type;
+      begin
+         if ARP_Packet.Destination_IP_Address =
+               Local_IPv4_End_Point.IPv4_Address
+         then
+            if ARP_Packet.Source_IP_Address = ARP_Packet.Destination_IP_Address
+            then
+               --
+               --  Duplicate IPv4 address detected:
+               --  Received gratuitous ARP request from  a remote layer-3
+               --  end-point that wants to have the same IP address as us.
+               --
+               Duplicate_IPv4_Addr_Detected := True;
+               Networking.Layer2.Mac_Address_To_String (
+                  ARP_Packet.Source_Mac_Address, Source_Mac_Address_Str);
+               IPv4_Address_To_String (ARP_Packet.Source_IP_Address,
+                                       Source_IPv4_Address_Str);
+               Runtime_Logs.Error_Print (
+                  "Duplicated IP address " &  Source_IPv4_Address_Str &
+                  " detected. Remote node with MAC address " &
+                  Source_Mac_Address_Str &
+                  " wants to have the same IP address");
+            end if;
+
+            --
+            --  Send ARP reply
+            --
+            Send_ARP_Reply (
+               Get_Layer2_End_Point (Local_IPv4_End_Point.Ethernet_Mac_Id).all,
+               Local_IPv4_End_Point.IPv4_Address,
+               ARP_Packet.Source_Mac_Address,
+               ARP_Packet.Source_IP_Address);
+         end if;
+
+         if ARP_Packet.Source_IP_Address /= IPv4_Null_Address and then
+            not Duplicate_IPv4_Addr_Detected
+         then
+            --
+            --   Update ARP cache with (source IP addr, source MAC addr)
+            --
+            Local_IPv4_End_Point.ARP_Cache.Update (
+               ARP_Packet.Source_IP_Address,
+               ARP_Packet.Source_Mac_Address);
+         end if;
+      end Process_ARP_Request;
+
+      --------------------
+      -- Send_ARP_Reply --
+      --------------------
+
+      procedure Send_ARP_Reply (
+         Layer2_End_Point : Layer2_End_Point_Type;
+         Source_IPv4_Address : IPv4_Address_Type;
+         Destination_Mac_Address : Ethernet_Mac_Address_Type;
+         Destination_IPv4_Address : IPv4_Address_Type)
+      is
+         Tx_Packet_Ptr : constant Network_Packet_Access_Type :=
+            Allocate_Tx_Packet (Free_After_Tx_Complete => True);
+
+         Tx_Ethernet_Frame_Ptr : constant Frame_Access_Type :=
+            Net_Packet_Data_Buffer_Ptr_To_Frame_Ptr (
+               Tx_Packet_Ptr.Data_Payload_Buffer'Unchecked_Access);
+
+         Tx_ARP_Packet_Ptr : constant ARP_Packet_Access_Type :=
+            Data_Payload_Ptr_To_ARP_Packet_Ptr (
+               Tx_Ethernet_Frame_Ptr.First_Data_Word'Access);
+
+         Source_IPv4_Address_Str : IPv4_Address_String_Type;
+
+         Destination_IPv4_Address_Str : IPv4_Address_String_Type;
+      begin
+         --
+         --  NOTE: The Ethernet MAC hardware populates the source MAC address
+         --  automatically in an outgoing frame
+         --
+
+         Tx_ARP_Packet_Ptr.Type_of_Link_Address :=
+            Host_To_Network_Byte_Order (Unsigned_16 (
+               Link_Address_Ethernet'Enum_Rep));
+         Tx_ARP_Packet_Ptr.Type_of_Network_Address :=
+            Host_To_Network_Byte_Order (Unsigned_16 (
+               Network_Address_IPv4'Enum_Rep));
+
+         pragma Assert (Tx_ARP_Packet_Ptr.Link_Address_Size =
+                        Ethernet_Mac_Address_Size);
+         pragma Assert (Tx_ARP_Packet_Ptr.Network_Address_Size =
+                        IPv4_Address_Size);
+
+         Tx_ARP_Packet_Ptr.Operation :=
+            Host_To_Network_Byte_Order (Unsigned_16 (ARP_Reply'Enum_Rep));
+
+         Get_Mac_Address (Layer2_End_Point,
+                          Tx_ARP_Packet_Ptr.Source_Mac_Address);
+         Tx_ARP_Packet_Ptr.Source_IP_Address := Source_IPv4_Address;
+         Tx_ARP_Packet_Ptr.Destination_Mac_Address := Destination_Mac_Address;
+         Tx_ARP_Packet_Ptr.Destination_IP_Address := Destination_IPv4_Address;
+
+         if Layer3_IPv4_Var.Tracing_On then
+            IPv4_Address_To_String (ARP_Packet_Ptr.Source_IP_Address,
+                                    Source_IPv4_Address_Str);
+            IPv4_Address_To_String (ARP_Packet_Ptr.Destination_IP_Address,
+                                    Destination_IPv4_Address_Str);
+            Runtime_Logs.Debug_Print (
+               "Net layer3: ARP reply sent: " &
+               "source IPv4 address " & Source_IPv4_Address_Str &
+               ", destination IPv4 address " & Destination_IPv4_Address_Str);
+         end if;
+
+         Send_Ethernet_Frame (Layer2_End_Point,
+                              Destination_Mac_Address,
+                              Tx_Packet_Ptr.all,
+                              Frame_ARP_Packet,
+                              ARP_Packet_Size);
+      end Send_ARP_Reply;
+
+      -------------------------------
+      -- Trace_Received_ARP_Packet --
+      -------------------------------
+
+      procedure Trace_Received_ARP_Packet (ARP_Packet : ARP_Packet_Type)
+      is
+         ARP_Operation : constant ARP_Operation_Type :=
+            Unsigned_16_To_ARP_Operation (
+               Network_To_Host_Byte_Order (ARP_Packet.Operation));
+         Source_Mac_Address_Str : Ethernet_Mac_Address_String_Type;
+         Source_IPv4_Address_Str : IPv4_Address_String_Type;
+         Destination_Mac_Address_Str : Ethernet_Mac_Address_String_Type;
+         Destination_IPv4_Address_Str : IPv4_Address_String_Type;
+      begin
+         Networking.Layer2.Mac_Address_To_String (
+            ARP_Packet.Source_Mac_Address, Source_Mac_Address_Str);
+         IPv4_Address_To_String (ARP_Packet.Source_IP_Address,
+                                 Source_IPv4_Address_Str);
+         Networking.Layer2.Mac_Address_To_String (
+            ARP_Packet.Destination_Mac_Address, Destination_Mac_Address_Str);
+         IPv4_Address_To_String (ARP_Packet.Destination_IP_Address,
+                                 Destination_IPv4_Address_Str);
+
+         Runtime_Logs.Debug_Print (
+            "Net layer3: Received ARP packet: operation " &
+            (if ARP_Operation = ARP_Request then "ARP request"
+                                                 else "ARP reply") &
+            "(" & ARP_Operation'Image & "), Source MAC address " &
+            Source_Mac_Address_Str & ", Source IPv4 address " &
+            Source_IPv4_Address_Str & ", Destination MAC address " &
+            Destination_Mac_Address_Str & ", Destination IPv4 address " &
+            Destination_IPv4_Address_Str);
+      end Trace_Received_ARP_Packet;
+
+   begin -- Process_Incoming_ARP_Packet
+      pragma Assert (
+         Rx_Packet.Total_Length >=
+         Unsigned_16 (Ethernet.Frame_Header_Size + ARP_Packet_Size));
+
+      if Layer3_IPv4_Var.Tracing_On then
+         Trace_Received_ARP_Packet (ARP_Packet_Ptr.all);
+      end if;
+
+      if ARP_Operation'Valid then
+         pragma Assert (
+            Network_To_Host_Byte_Order (
+               ARP_Packet_Ptr.Type_of_Link_Address) =
+            Link_Address_Ethernet'Enum_Rep);
+
+         pragma Assert (
+            Network_To_Host_Byte_Order (
+               ARP_Packet_Ptr.Type_of_Network_Address) =
+            Network_Address_IPv4'Enum_Rep);
+
+         pragma Assert (
+            ARP_Packet_Ptr.Link_Address_Size =
+               Ethernet_Mac_Address_Type'Size / Byte'Size);
+
+         pragma Assert (
+            ARP_Packet_Ptr.Network_Address_Size =
+               IPv4_Address_Type'Size / Byte'Size);
+
+         --
+         --  Process received ARP packet
+         --
+         case ARP_Operation is
+            when IPv4.ARP_Request =>
+               Process_ARP_Request (ARP_Packet_Ptr.all,
+                                    Local_IPv4_End_Point_Ptr.all);
+            when IPv4.ARP_Reply =>
+               Process_ARP_Reply (ARP_Packet_Ptr.all,
+                                  Local_IPv4_End_Point_Ptr.all);
+         end case;
+      else
+         Runtime_Logs.Error_Print (
+            "Received ARP packet with unsupported operation: " &
+            ARP_Operation'Image);
+      end if;
+
+      Networking.Layer2.Recycle_Rx_Packet (Rx_Packet);
    end Process_Incoming_ARP_Packet;
 
    ----------------------------------
