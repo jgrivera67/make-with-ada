@@ -25,43 +25,53 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
---
---  @summary Networking layer 4 (transport layer) services
---
-package Networking.Layer4 is
+with Runtime_Logs;
 
-   type Layer4_Kind_Type is (Layer4_UDP, Layer4_TCP);
+package body Networking.Layer4_UDP is
 
-   type Layer4_End_Point_Type (Layer4_Kind : Layer4_Kind_Type) is
-   limited private;
-
-   -- ** --
-
-   function Initialized return Boolean;
-   --  @private (Used only in contracts)
+   ----------------
+   -- Initialize --
+   ----------------
 
    procedure Initialize
-     with Pre => not Initialized;
-   --  Initializes layer4
+   is
+   begin
+      --  Generated stub: replace with real body!
+      pragma Compile_Time_Warning (Standard.True, "Initialize unimplemented");
+      Runtime_Logs.Debug_Print ("Unimplemented procedure Initialize");
+      Layer4_UDP_Var.Initialized := True;
+   end Initialize;
 
-private
+   -----------------------------------
+   -- Process_Incoming_UDP_Datagram --
+   -----------------------------------
 
-   type Layer4_End_Point_Type (Layer4_Kind : Layer4_Kind_Type) is limited
-      record
-         Initialized : Boolean := False;
-         case Layer4_Kind is
-            when Layer4_UDP =>
-               null;--???
-            when Layer4_TCP =>
-               null;
-         end case;
-      end record;
+   procedure Process_Incoming_UDP_Datagram
+     (Rx_Packet : aliased in out Network_Packet_Type)
+   is
+   begin
+      --  Generated stub: replace with real body!
+      pragma Compile_Time_Warning (Standard.True, "Process_Incoming_UDP_Datagram unimplemented");
+      Runtime_Logs.Debug_Print ("Unimplemented procedure Process_Incoming_UDP_Datagram");
+   end Process_Incoming_UDP_Datagram;
 
-   Layer4_Initialized : Boolean := False;
+   -------------------
+   -- Start_Tracing --
+   -------------------
 
-   -- ** --
+   procedure Start_Tracing is
+   begin
+      Layer4_UDP_Var.Tracing_On := True;
+   end Start_Tracing;
 
-   function Initialized return Boolean is
-     (Layer4_Initialized);
+   ------------------
+   -- Stop_Tracing --
+   ------------------
 
-end Networking.Layer4;
+   procedure Stop_Tracing is
+   begin
+      Layer4_UDP_Var.Tracing_On := False;
+   end Stop_Tracing;
+
+
+end Networking.Layer4_UDP;

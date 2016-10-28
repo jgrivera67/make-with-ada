@@ -32,9 +32,64 @@ package Networking.Layer4_UDP is
 
    type UDP_End_Point_Type is limited private;
 
+   function Initialized return Boolean;
+   --  @private (Used only in contracts)
+
+   function Initialized (UDP_End_Point : UDP_End_Point_Type)
+                            return Boolean;
+   --  @private (Used only in contracts)
+
+   procedure Initialize
+     with Pre => not Initialized;
+   --  Initializes layer4
+
+   procedure Process_Incoming_UDP_Datagram (
+      Rx_Packet : aliased in out Network_Packet_Type)
+      with Pre => Initialized;
+   --  Process an incoming UDP datagram
+
+   procedure Start_Tracing
+     with Pre => Initialized;
+
+   procedure Stop_Tracing
+     with Pre => Initialized;
+
 private
 
+   --
+   --  Networking layer-4 (transport layer) local UDP end point object type
+   --
+   --  @field Initialized Flag indicating if this layer has been initialized
+   --
    type UDP_End_Point_Type is limited record
-      null;--???
+      Initialized : Boolean := False;
    end record;
+
+   --
+   --  Networking layer-4 - UDP global state variables
+   --
+   --  @field Initialized Flag indicating if this layer has been initialized
+   --
+   --  @field Tracing_On Flag indicating if tracing is currently enabled for
+   --  this layer
+   --
+   type Layer4_UDP_Type is limited record
+      Initialized : Boolean := False;
+      Tracing_On : Boolean := False;
+   end record with Alignment => Mpu_Region_Alignment;
+
+   --
+   --  UDP layer singleton object
+   --
+   Layer4_UDP_Var : Layer4_UDP_Type;
+
+   -- ** --
+
+   function Initialized return Boolean is
+     (Layer4_UDP_Var.Initialized);
+
+   function Initialized (UDP_End_Point : UDP_End_Point_Type)
+                            return Boolean is
+     (UDP_End_Point.Initialized);
+
 end Networking.Layer4_UDP;

@@ -74,6 +74,7 @@ package body Networking is
          Packet_Queue.Timer_Started := False;
       end if;
 
+      pragma Assert (Old_Head_Packet_Ptr.Next_Ptr = null);
       Restore_Cpu_Interrupts (Old_Interrupt_Mask);
       return Old_Head_Packet_Ptr;
    end Dequeue_Network_Packet;
@@ -91,6 +92,7 @@ package body Networking is
    begin
       Old_Interrupt_Mask := Disable_Cpu_Interrupts;
 
+      pragma Assert (Packet_Ptr.Next_Ptr = null);
       Old_Tail_Packet_Ptr := Packet_Queue.Tail_Ptr;
       Packet_Queue.Tail_Ptr := Packet_Ptr;
       if Old_Tail_Packet_Ptr = null then

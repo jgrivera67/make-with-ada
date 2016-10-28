@@ -53,7 +53,7 @@ package body Networking.Layer2 is
    --  Initializes layer2 Ethernet end point
 
    procedure Process_Incoming_Ethernet_Frame
-      (Rx_Packet : in out Network_Packet_Type);
+      (Rx_Packet : aliased in out Network_Packet_Type);
 
    procedure Start_Ethernet_End_Point_Reception (
       Layer2_End_Point : in out Layer2_End_Point_Type)
@@ -214,7 +214,7 @@ package body Networking.Layer2 is
    -------------------------------------
 
    procedure Process_Incoming_Ethernet_Frame
-      (Rx_Packet : in out Network_Packet_Type)
+      (Rx_Packet : aliased in out Network_Packet_Type)
    is
       Rx_Frame_Ptr : access Ethernet.Frame_Type;
       Type_of_Frame : Ethernet.Type_of_Frame_Type;

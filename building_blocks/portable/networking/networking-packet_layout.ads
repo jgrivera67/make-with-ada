@@ -37,13 +37,13 @@ package Networking.Packet_Layout is
    --
    --  Layer-4 protocols
    --
-   type Layer4_Protocol_Type is (ICMP,
+   type Layer4_Protocol_Type is (ICMPv4,
                                  TCP,
                                  UDP,
                                  ICMPv6)
       with Size => Byte'Size;
 
-   for Layer4_Protocol_Type use (ICMP => 16#1#,
+   for Layer4_Protocol_Type use (ICMPv4 => 16#1#,
                                  TCP => 16#6#,
                                  UDP => 16#11#,
                                  ICMPv6 => 16#3a#);

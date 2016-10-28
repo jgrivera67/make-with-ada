@@ -26,6 +26,7 @@
 --
 
 with Networking.Packet_Layout;
+with Microcontroller.Arm_Cortex_M;
 private with Networking.Layer4_UDP;
 private with Ada.Real_Time;
 
@@ -34,6 +35,7 @@ private with Ada.Real_Time;
 --
 package Networking.Layer3_IPv4 is
    use Networking.Packet_Layout;
+   use Microcontroller.Arm_Cortex_M;
 
    type IPv4_End_Point_Type is limited private;
 
@@ -96,7 +98,9 @@ package Networking.Layer3_IPv4 is
    procedure Process_Incoming_ARP_Packet (
       Rx_Packet : in out Network_Packet_Type);
 
-   procedure Process_Incoming_IPv4_Packet (Rx_Packet : Network_Packet_Type);
+   procedure Process_Incoming_IPv4_Packet (
+      Rx_Packet : aliased in out Network_Packet_Type)
+      with Pre => not Is_Caller_An_Interrupt_Handler;
 
    function Receive_IPv4_Ping_Reply (
       Timeout_Ms : Natural;
@@ -327,7 +331,6 @@ private
    function Initialized (IPv4_End_Point : IPv4_End_Point_Type)
                             return Boolean is
      (IPv4_End_Point.Initialized);
-   --  @private (Used only in contracts)
 
    function IPv4_Address_Is_Multicast (
       IPv4_Address : IPv4_Address_Type) return Boolean is

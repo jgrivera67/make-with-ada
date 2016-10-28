@@ -28,6 +28,7 @@
 with Networking.Layer2.Ethernet_Mac_Driver;
 with Runtime_Logs;
 with Number_Conversion_Utils;
+with Networking.Layer4_UDP;
 
 package body Networking.Layer3_IPv4 is
    use Number_Conversion_Utils;
@@ -700,12 +701,76 @@ package body Networking.Layer3_IPv4 is
    -- Process_Incoming_IPv4_Packet --
    ----------------------------------
 
-   procedure Process_Incoming_IPv4_Packet (Rx_Packet : Network_Packet_Type) is
-   begin
-      --  Generated stub: replace with real body!
-      pragma Compile_Time_Warning (Standard.True,
-         "Process_Incoming_IPv4_Packet unimplemented");
-      Runtime_Logs.Debug_Print ("Process_Incoming_IPv4_Packet unimplemented");
+   procedure Process_Incoming_IPv4_Packet (
+      Rx_Packet : aliased in out Network_Packet_Type)
+   is
+      use Networking.Packet_Layout.IPv4;
+      use Networking.Packet_Layout.Ethernet;
+
+      Ethernet_Frame_Ptr : constant Frame_Read_Only_Access_Type :=
+         Net_Packet_Data_Buffer_Ptr_To_Frame_Read_Only_Ptr (
+            Rx_Packet.Data_Payload_Buffer'Unchecked_Access);
+
+      IPv4_Packet_Ptr : constant IPv4_Packet_Read_Only_Access_Type :=
+         Data_Payload_Ptr_To_IPv4_Packet_Read_Only_Ptr (
+            Ethernet_Frame_Ptr.First_Data_Word'Access);
+
+      Local_IPv4_End_Point_Ptr : constant IPv4_End_Point_Access_Type :=
+         Get_IPv4_End_Point (Rx_Packet.Ethernet_Mac_Id);
+
+      Source_IPv4_Address_Str : IPv4_Address_String_Type;
+      Destination_IPv4_Address_Str : IPv4_Address_String_Type;
+      Drop_Packet : Boolean := False;
+
+   begin -- Process_Incoming_IPv4_Packet
+      pragma Assert (
+         Rx_Packet.Total_Length >=
+         Unsigned_16 (Ethernet.Frame_Header_Size + IPv4_Packet_Header_Size));
+
+      if Layer3_IPv4_Var.Tracing_On then
+         IPv4_Address_To_String (IPv4_Packet_Ptr.Source_IPv4_Address,
+                                 Source_IPv4_Address_Str);
+         IPv4_Address_To_String (IPv4_Packet_Ptr.Destination_IPv4_Address,
+                                 Destination_IPv4_Address_Str);
+         Runtime_Logs.Debug_Print (
+            "Net layer3: IPv4 packet received: source IPv4 address " &
+            Source_IPv4_Address_Str &
+            ", destination IPv4 address " & Destination_IPv4_Address_Str &
+            ", packet type " &  IPv4_Packet_Ptr.Protocol'Image &
+            ", total length " & IPv4_Packet_Ptr.Total_Length'Image);
+      end if;
+
+      if IPv4_Packet_Ptr.Protocol'Valid then
+         case IPv4_Packet_Ptr.Protocol is
+            when ICMPv4 =>
+               Rx_Packet.Rx_State_Flags.Packet_In_ICMPv4_Queue := True;
+               Enqueue_Network_Packet (
+                  Local_IPv4_End_Point_Ptr.Rx_ICMPv4_Packet_Queue,
+                  Rx_Packet'Unchecked_Access);
+            when UDP =>
+               Networking.Layer4_UDP.Process_Incoming_UDP_Datagram (Rx_Packet);
+
+            when others =>
+               Drop_Packet := True;
+               Runtime_Logs.Error_Print (
+                  "Received IPv4 packet with unsupported protocol type: " &
+                  IPv4_Packet_Ptr.Protocol'Image);
+         end case;
+      else
+         Drop_Packet := True;
+         Runtime_Logs.Error_Print (
+            "Received IPv4 packet with an invalid protocol type: " &
+            IPv4_Packet_Ptr.Protocol'Image);
+      end if;
+
+      if Drop_Packet then
+         Recycle_Rx_Packet (Rx_Packet);
+         Layer3_IPv4_Var.Rx_Packets_Dropped_Count :=
+            Layer3_IPv4_Var.Rx_Packets_Dropped_Count + 1;
+      else
+         Layer3_IPv4_Var.Rx_Packets_Accepted_Count :=
+            Layer3_IPv4_Var.Rx_Packets_Accepted_Count + 1;
+      end if;
    end Process_Incoming_IPv4_Packet;
 
    -----------------------------
