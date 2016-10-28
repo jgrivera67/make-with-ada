@@ -25,7 +25,6 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with Devices.MCU_Specific;
 with Networking.Packet_Layout;
 private with Networking.Layer4_UDP;
 private with Ada.Real_Time;
@@ -34,7 +33,6 @@ private with Ada.Real_Time;
 --  @summary Networking layer 3 (network layer): IPv4
 --
 package Networking.Layer3_IPv4 is
-   use Devices.MCU_Specific;
    use Networking.Packet_Layout;
 
    type IPv4_End_Point_Type is limited private;

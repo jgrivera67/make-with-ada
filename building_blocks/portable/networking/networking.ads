@@ -123,6 +123,18 @@ package Networking is
    subtype Ethernet_Mac_Address_String_Type is String (1 .. 17);
 
    --
+   --  Null Ethernet MAC address
+   --
+   Ethernet_Null_Mac_Address :
+      constant Ethernet_Mac_Address_Type := (others => 16#00#);
+
+   --
+   --  Broadcast Ethernet MAC address (ff:ff:ff:ff:ff:ff)
+   --
+   Ethernet_Broadcast_Mac_Address :
+      constant Ethernet_Mac_Address_Type := (others => 16#ff#);
+
+   --
    --  Bit masks for first byte (most significant byte) of a MAC address
    --
    Ethernet_Mac_Multicast_Address_Mask : constant Byte := 16#01#;

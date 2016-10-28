@@ -47,6 +47,14 @@ package body Networking.Layer3_IPv4 is
    --  Initializes a Layer3 IPv4 end point
    --
 
+   procedure Send_ARP_Request (
+      Layer2_End_Point : Layer2_End_Point_Type;
+      Source_IPv4_Address : IPv4_Address_Type;
+      Destination_IPv4_Address : IPv4_Address_Type);
+   --
+   --  Send an ARP request message
+   --
+
    procedure Start_IPv4_End_Point (
       IPv4_End_Point : in out IPv4_End_Point_Type);
    --
@@ -717,6 +725,70 @@ package body Networking.Layer3_IPv4 is
       Runtime_Logs.Debug_Print ("Receive_IPv4_Ping_Reply unimplemented");
       return False;
    end Receive_IPv4_Ping_Reply;
+
+   ----------------------
+   -- Send_ARP_Request --
+   ----------------------
+
+   procedure Send_ARP_Request (
+      Layer2_End_Point : Layer2_End_Point_Type;
+      Source_IPv4_Address : IPv4_Address_Type;
+      Destination_IPv4_Address : IPv4_Address_Type)
+   is
+      use Networking.Packet_Layout.IPv4;
+      use Networking.Packet_Layout.Ethernet;
+
+      Tx_Packet_Ptr : constant Network_Packet_Access_Type :=
+         Allocate_Tx_Packet (Free_After_Tx_Complete => True);
+
+      Tx_Ethernet_Frame_Ptr : constant Frame_Access_Type :=
+         Net_Packet_Data_Buffer_Ptr_To_Frame_Ptr (
+            Tx_Packet_Ptr.Data_Payload_Buffer'Unchecked_Access);
+
+      Tx_ARP_Packet_Ptr : constant ARP_Packet_Access_Type :=
+         Data_Payload_Ptr_To_ARP_Packet_Ptr (
+            Tx_Ethernet_Frame_Ptr.First_Data_Word'Access);
+
+      Destination_IPv4_Address_Str : IPv4_Address_String_Type;
+   begin
+      Tx_ARP_Packet_Ptr.Type_of_Link_Address :=
+         Host_To_Network_Byte_Order (Unsigned_16 (
+            Link_Address_Ethernet'Enum_Rep));
+      Tx_ARP_Packet_Ptr.Type_of_Network_Address :=
+         Host_To_Network_Byte_Order (Unsigned_16 (
+            Network_Address_IPv4'Enum_Rep));
+
+      pragma Assert (Tx_ARP_Packet_Ptr.Link_Address_Size =
+                     Ethernet_Mac_Address_Size);
+      pragma Assert (Tx_ARP_Packet_Ptr.Network_Address_Size =
+                     IPv4_Address_Size);
+
+      Tx_ARP_Packet_Ptr.Operation :=
+         Host_To_Network_Byte_Order (Unsigned_16 (ARP_Request'Enum_Rep));
+
+      Get_Mac_Address (Layer2_End_Point,
+                       Tx_ARP_Packet_Ptr.Source_Mac_Address);
+      Tx_ARP_Packet_Ptr.Source_IP_Address := Source_IPv4_Address;
+      Tx_ARP_Packet_Ptr.Destination_Mac_Address := Ethernet_Null_Mac_Address;
+      Tx_ARP_Packet_Ptr.Destination_IP_Address := Destination_IPv4_Address;
+
+      if Layer3_IPv4_Var.Tracing_On then
+         IPv4_Address_To_String (Destination_IPv4_Address,
+                                 Destination_IPv4_Address_Str);
+         Runtime_Logs.Debug_Print (
+            "Net layer3: " &
+            (if Destination_IPv4_Address = Source_IPv4_Address
+             then "gratuitous " else "") &
+            "ARP request sent: destination IPv4 address " &
+            Destination_IPv4_Address_Str);
+      end if;
+
+      Send_Ethernet_Frame (Layer2_End_Point,
+                           Ethernet_Broadcast_Mac_Address,
+                           Tx_Packet_Ptr.all,
+                           Frame_ARP_Packet,
+                           ARP_Packet_Size);
+   end Send_ARP_Request;
 
    ----------------------------
    -- Send_IPv4_ICMP_Message --

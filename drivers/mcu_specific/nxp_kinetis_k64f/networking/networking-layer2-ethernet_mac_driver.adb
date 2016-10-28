@@ -40,6 +40,7 @@ with Ada.Interrupts.Names;
 with System.Address_To_Access_Conversions;
 with Microcontroller.MCU_Specific;
 with System;
+with MPU_Driver;
 
 package body Networking.Layer2.Ethernet_Mac_Driver is
    use Networking.Layer2.Ethernet_Mac_Driver.MCU_Specific_Private;
@@ -1213,9 +1214,10 @@ package body Networking.Layer2.Ethernet_Mac_Driver is
       RDAR_Value : ENET_RDAR_Register;
    begin
       --
-      --  Disable MPU
+      --  TODO: When the MPU is enabled, replace this with code to enable
+      --  access to the Rx/Tx rings memory from the ENET DMA engine
       --
-      Runtime_Logs.Error_Print ("**** Need to disable MPU here");--???
+      MPU_Driver.Disable_MPU;
 
       --
       --  Initialize Tx buffer descriptor ring:
