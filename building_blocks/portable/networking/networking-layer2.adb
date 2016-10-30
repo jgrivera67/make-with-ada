@@ -31,12 +31,14 @@ with Networking.Layer3_IPv6;
 with Ethernet_Phy_Driver;
 with Runtime_Logs;
 with Number_Conversion_Utils;
+with Atomic_Utils;
 
 package body Networking.Layer2 is
    use Networking.Layer2.Ethernet_Mac_Driver;
    use Networking.Layer3_IPv4;
    use Networking.Layer3_IPv6;
    use Number_Conversion_Utils;
+   use Atomic_Utils;
 
    procedure Build_Local_Mac_Address (
       Mac_Address : out Ethernet_Mac_Address_Type);
@@ -264,11 +266,9 @@ package body Networking.Layer2 is
 
       if Drop_Frame then
          Recycle_Rx_Packet (Rx_Packet);
-         Layer2_Var.Rx_Packets_Dropped_Count :=
-           Layer2_Var.Rx_Packets_Dropped_Count + 1;
+         Atomic_Increment (Layer2_Var.Rx_Packets_Dropped_Count);
       else
-         Layer2_Var.Rx_Packets_Accepted_Count :=
-           Layer2_Var.Rx_Packets_Accepted_Count + 1;
+         Atomic_Increment (Layer2_Var.Rx_Packets_Accepted_Count);
       end if;
    end Process_Incoming_Ethernet_Frame;
 
@@ -342,7 +342,7 @@ package body Networking.Layer2 is
       --
       Start_Tx_Packet_Transmit (Layer2_End_Point.Ethernet_Mac_Id,
                                 Tx_Packet);
-      Layer2_Var.Sent_Packets_Count := Layer2_Var.Sent_Packets_Count + 1;
+      Atomic_Increment (Layer2_Var.Sent_Packets_Count);
    end Send_Ethernet_Frame;
 
    -----------------------

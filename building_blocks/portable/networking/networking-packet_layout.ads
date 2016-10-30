@@ -269,9 +269,9 @@ package Networking.Packet_Layout is
                                            Ping_Request => 8);
 
       --
-      --  ICMPv4  size in bytes
+      --  ICMPv4 header size in bytes
       --
-      ICMPv4_Message_Size : constant Positive := 8;
+      ICMPv4_Message_Header_Size : constant Positive := 4;
 
       --
       --  ICMPv4 message codes
@@ -283,39 +283,60 @@ package Networking.Packet_Layout is
       --  ICMPv4 message layout in network byte order
       --  (An ICMPv4 packet is encapsulated in an IPv4 packet)
       --
-      --  @field msg_type Message type
+      --  @field Type_of_Message Message type
       --  @field Code Message code
       --  @field Checksum Message checksum
-      --
+      --  @field First_Data_Word first data word of the message
       --  Additional fields for the Echo (ping) request/reply messages:
       --  @field Identifier
       --  @field Sequence_Number
       --
-      type ICMPv4_Message_Type
-         (Type_of_Message : Type_of_ICMPv4_Message_Type := Ping_Reply)
-      is record
+      type ICMPv4_Message_Type is record
+         Type_of_Message : Type_of_ICMPv4_Message_Type;
          Code : Unsigned_8;
          Checksum : Unsigned_16;
-         case Type_of_Message is
-            when Ping_Reply | Ping_Request =>
-               --  Echo request/reply message
-               Identifier : Unsigned_16;
-               Sequence_Number : Unsigned_16;
-         end case;
-      end record with Size => ICMPv4_Message_Size * Byte'Size;
+         First_Data_Word : aliased Unsigned_32;
+      end record with Size => (ICMPv4_Message_Header_Size + 4) * Byte'Size;
 
       for ICMPv4_Message_Type use record
          Type_of_Message at 0 range 0 .. 7;
          Code            at 1 range 0 .. 7;
          Checksum        at 2 range 0 .. 15;
-         Identifier      at 4 range 0 .. 15;
-         Sequence_Number at 6 range 0 .. 15;
+         First_Data_Word at 4 range 0 .. 31;
       end record;
 
       type ICMPv4_Message_Access_Type is access all ICMPv4_Message_Type;
 
       type ICMPv4_Message_Read_Only_Access_Type is
          access constant ICMPv4_Message_Type;
+
+      --
+      --  ICMPv4 Echo message data size in bytes
+      --
+      ICMPv4_Echo_Message_Data_Size : constant := 4;
+
+      --
+      --  ICMPv4 Echo (ping request/reply) message data layout in network byte
+      --  order
+      --
+      --  @field Identifier
+      --  @field Sequence_Number
+      --
+      type ICMPv4_Echo_Message_Data_Type is record
+         Identifier : Unsigned_16;
+         Sequence_Number : Unsigned_16;
+      end record with Size => ICMPv4_Echo_Message_Data_Size * Byte'Size;
+
+      for ICMPv4_Echo_Message_Data_Type use record
+         Identifier      at 0 range 0 .. 15;
+         Sequence_Number at 2 range 0 .. 15;
+      end record;
+
+      type ICMPv4_Echo_Message_Data_Access_Type is
+         access all ICMPv4_Echo_Message_Data_Type;
+
+      type ICMPv4_Echo_Message_Data_Read_Only_Access_Type is
+         access constant ICMPv4_Echo_Message_Data_Type;
 
       --
       --  IPv4 DHCP message layout
@@ -418,6 +439,16 @@ package Networking.Packet_Layout is
         new Ada.Unchecked_Conversion (
                Source => First_Data_Word_Read_Only_Access_Type,
                Target => ICMPv4_Message_Read_Only_Access_Type);
+
+      function Data_Payload_Ptr_To_ICMPv4_Echo_Message_Data_Ptr is
+        new Ada.Unchecked_Conversion (
+               Source => First_Data_Word_Access_Type,
+               Target => ICMPv4_Echo_Message_Data_Access_Type);
+
+      function Data_Payload_Ptr_To_ICMPv4_Echo_Message_Data_Read_Only_Ptr is
+        new Ada.Unchecked_Conversion (
+               Source => First_Data_Word_Read_Only_Access_Type,
+               Target => ICMPv4_Echo_Message_Data_Read_Only_Access_Type);
 
       function Data_Payload_Ptr_To_DHCPv4_Message_Ptr is
         new Ada.Unchecked_Conversion (
@@ -590,5 +621,101 @@ package Networking.Packet_Layout is
                Source => Net_Packet_Data_Buffer_Read_Only_Access_Type,
                Target => Frame_Read_Only_Access_Type);
    end Ethernet;
+
+   function Get_ARP_Packet (Tx_Packet : in out Network_Packet_Type)
+                            return IPv4.ARP_Packet_Access_Type;
+
+   function Get_ARP_Packet_Read_Only (Rx_Packet : Network_Packet_Type)
+      return IPv4.ARP_Packet_Read_Only_Access_Type;
+
+   function Get_IPv4_Packet (Tx_Packet : in out Network_Packet_Type)
+                             return IPv4.IPv4_Packet_Access_Type;
+
+   function Get_IPv4_Packet_Read_Only (Rx_Packet : Network_Packet_Type)
+      return IPv4.IPv4_Packet_Read_Only_Access_Type;
+
+   function Get_ICMPv4_Message (IPv4_Packet_Ptr : IPv4.IPv4_Packet_Access_Type)
+      return IPv4.ICMPv4_Message_Access_Type;
+
+   function Get_ICMPv4_Message_Read_Only (
+      IPv4_Packet_Ptr : IPv4.IPv4_Packet_Read_Only_Access_Type)
+      return IPv4.ICMPv4_Message_Read_Only_Access_Type;
+
+   function Get_ICMPv4_Message (Tx_Packet : in out Network_Packet_Type)
+      return IPv4.ICMPv4_Message_Access_Type;
+
+   function Get_ICMPv4_Message_Read_Only (Rx_Packet : Network_Packet_Type)
+      return IPv4.ICMPv4_Message_Read_Only_Access_Type;
+
+   function Get_ICMPv4_Echo_Message_Data (
+      ICMPv4_Message_Ptr : IPv4.ICMPv4_Message_Access_Type)
+      return IPv4.ICMPv4_Echo_Message_Data_Access_Type;
+
+   function Get_ICMPv4_Echo_Message_Data_Read_Only (
+      ICMPv4_Message_Ptr : IPv4.ICMPv4_Message_Read_Only_Access_Type)
+      return IPv4.ICMPv4_Echo_Message_Data_Read_Only_Access_Type;
+
+private
+
+   function Get_ARP_Packet (Tx_Packet : in out Network_Packet_Type)
+                            return IPv4.ARP_Packet_Access_Type is
+      (IPv4.Data_Payload_Ptr_To_ARP_Packet_Ptr (
+         Ethernet.Net_Packet_Data_Buffer_Ptr_To_Frame_Ptr (
+            Tx_Packet.Data_Payload_Buffer'Unchecked_Access).
+               First_Data_Word'Access));
+
+   function Get_ARP_Packet_Read_Only (Rx_Packet : Network_Packet_Type)
+      return IPv4.ARP_Packet_Read_Only_Access_Type is
+      (IPv4.Data_Payload_Ptr_To_ARP_Packet_Read_Only_Ptr (
+         Ethernet.Net_Packet_Data_Buffer_Ptr_To_Frame_Read_Only_Ptr (
+            Rx_Packet.Data_Payload_Buffer'Unchecked_Access).
+               First_Data_Word'Access));
+
+   function Get_IPv4_Packet (Tx_Packet : in out Network_Packet_Type)
+                             return IPv4.IPv4_Packet_Access_Type is
+     (IPv4.Data_Payload_Ptr_To_IPv4_Packet_Ptr (
+         Ethernet.Net_Packet_Data_Buffer_Ptr_To_Frame_Ptr (
+            Tx_Packet.Data_Payload_Buffer'Unchecked_Access).
+               First_Data_Word'Access));
+
+   function Get_IPv4_Packet_Read_Only (Rx_Packet : Network_Packet_Type)
+      return IPv4.IPv4_Packet_Read_Only_Access_Type is
+      (IPv4.Data_Payload_Ptr_To_IPv4_Packet_Read_Only_Ptr (
+         Ethernet.Net_Packet_Data_Buffer_Ptr_To_Frame_Read_Only_Ptr (
+            Rx_Packet.Data_Payload_Buffer'Unchecked_Access).
+               First_Data_Word'Access));
+
+   function Get_ICMPv4_Message (IPv4_Packet_Ptr : IPv4.IPv4_Packet_Access_Type)
+      return IPv4.ICMPv4_Message_Access_Type is
+      (IPv4.Data_Payload_Ptr_To_ICMPv4_Message_Ptr (
+          IPv4_Packet_Ptr.First_Data_Word'Access));
+
+   function Get_ICMPv4_Message_Read_Only (
+      IPv4_Packet_Ptr : IPv4.IPv4_Packet_Read_Only_Access_Type)
+      return IPv4.ICMPv4_Message_Read_Only_Access_Type is
+      (IPv4.Data_Payload_Ptr_To_ICMPv4_Message_Read_Only_Ptr (
+          IPv4_Packet_Ptr.First_Data_Word'Access));
+
+   function Get_ICMPv4_Message (Tx_Packet : in out Network_Packet_Type)
+      return IPv4.ICMPv4_Message_Access_Type is
+      (IPv4.Data_Payload_Ptr_To_ICMPv4_Message_Ptr (
+          Get_IPv4_Packet (Tx_Packet).First_Data_Word'Access));
+
+   function Get_ICMPv4_Message_Read_Only (Rx_Packet : Network_Packet_Type)
+      return IPv4.ICMPv4_Message_Read_Only_Access_Type is
+      (IPv4.Data_Payload_Ptr_To_ICMPv4_Message_Read_Only_Ptr (
+          Get_IPv4_Packet_Read_Only (Rx_Packet).First_Data_Word'Access));
+
+   function Get_ICMPv4_Echo_Message_Data (
+      ICMPv4_Message_Ptr : IPv4.ICMPv4_Message_Access_Type)
+      return IPv4.ICMPv4_Echo_Message_Data_Access_Type is
+      (IPv4.Data_Payload_Ptr_To_ICMPv4_Echo_Message_Data_Ptr (
+          ICMPv4_Message_Ptr.First_Data_Word'Access));
+
+   function Get_ICMPv4_Echo_Message_Data_Read_Only (
+      ICMPv4_Message_Ptr : IPv4.ICMPv4_Message_Read_Only_Access_Type)
+      return IPv4.ICMPv4_Echo_Message_Data_Read_Only_Access_Type is
+      (IPv4.Data_Payload_Ptr_To_ICMPv4_Echo_Message_Data_Read_Only_Ptr (
+          ICMPv4_Message_Ptr.First_Data_Word'Access));
 
 end Networking.Packet_Layout;

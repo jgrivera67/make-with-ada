@@ -273,8 +273,9 @@ package body Microcontroller.Arm_Cortex_M is
    begin
       if (Old_Primask and 16#1#) = 0 then
          Asm ("isb" & ASCII.LF &
-                "cpsie i" & ASCII.LF,
-              Volatile => True, Clobber => "memory");
+              "cpsie i" & ASCII.LF,
+              Clobber => "memory",
+              Volatile => True);
       end if;
    end Restore_Cpu_Interrupts;
 

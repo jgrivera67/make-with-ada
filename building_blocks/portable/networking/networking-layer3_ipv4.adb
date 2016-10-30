@@ -28,11 +28,12 @@
 with Networking.Layer2.Ethernet_Mac_Driver;
 with Runtime_Logs;
 with Number_Conversion_Utils;
-with Networking.Layer4_UDP;
+with Atomic_Utils;
 
 package body Networking.Layer3_IPv4 is
    use Number_Conversion_Utils;
    use Networking.Layer2;
+   use Atomic_Utils;
 
    procedure Build_Subnet_Mask (Subnet_Prefix : IPv4_Subnet_Prefix_Type;
                                 Subnet_Mask : out IPv4_Address_Type);
@@ -428,13 +429,8 @@ package body Networking.Layer3_IPv4 is
 
       procedure Trace_Received_ARP_Packet (ARP_Packet : ARP_Packet_Type);
 
-      Ethernet_Frame_Ptr : constant Frame_Read_Only_Access_Type :=
-         Net_Packet_Data_Buffer_Ptr_To_Frame_Read_Only_Ptr (
-            Rx_Packet.Data_Payload_Buffer'Unchecked_Access);
-
       ARP_Packet_Ptr : constant ARP_Packet_Read_Only_Access_Type :=
-         Data_Payload_Ptr_To_ARP_Packet_Read_Only_Ptr (
-            Ethernet_Frame_Ptr.First_Data_Word'Access);
+         Get_ARP_Packet_Read_Only (Rx_Packet);
 
       ARP_Operation : constant ARP_Operation_Type :=
             Unsigned_16_To_ARP_Operation (
@@ -707,13 +703,8 @@ package body Networking.Layer3_IPv4 is
       use Networking.Packet_Layout.IPv4;
       use Networking.Packet_Layout.Ethernet;
 
-      Ethernet_Frame_Ptr : constant Frame_Read_Only_Access_Type :=
-         Net_Packet_Data_Buffer_Ptr_To_Frame_Read_Only_Ptr (
-            Rx_Packet.Data_Payload_Buffer'Unchecked_Access);
-
       IPv4_Packet_Ptr : constant IPv4_Packet_Read_Only_Access_Type :=
-         Data_Payload_Ptr_To_IPv4_Packet_Read_Only_Ptr (
-            Ethernet_Frame_Ptr.First_Data_Word'Access);
+         Get_IPv4_Packet_Read_Only (Rx_Packet);
 
       Local_IPv4_End_Point_Ptr : constant IPv4_End_Point_Access_Type :=
          Get_IPv4_End_Point (Rx_Packet.Ethernet_Mac_Id);
@@ -765,31 +756,62 @@ package body Networking.Layer3_IPv4 is
 
       if Drop_Packet then
          Recycle_Rx_Packet (Rx_Packet);
-         Layer3_IPv4_Var.Rx_Packets_Dropped_Count :=
-            Layer3_IPv4_Var.Rx_Packets_Dropped_Count + 1;
+         Atomic_Increment (Layer3_IPv4_Var.Rx_Packets_Dropped_Count);
       else
-         Layer3_IPv4_Var.Rx_Packets_Accepted_Count :=
-            Layer3_IPv4_Var.Rx_Packets_Accepted_Count + 1;
+         Atomic_Increment (Layer3_IPv4_Var.Rx_Packets_Accepted_Count);
       end if;
    end Process_Incoming_IPv4_Packet;
 
-   -----------------------------
-   -- Receive_IPv4_Ping_Reply --
-   -----------------------------
+   ------------------------
+   -- Receive_Ping_Reply --
+   ------------------------
 
-   function Receive_IPv4_Ping_Reply (
+   function Receive_Ping_Reply (
       Timeout_Ms : Natural;
       Remote_IPv4_Address : out IPv4_Address_Type;
       Identifier : out Unsigned_16;
       Sequence_Number : out Unsigned_16)
       return Boolean
    is
+      use Networking.Packet_Layout.IPv4;
+      Rx_Packet_Ptr : constant Network_Packet_Access_Type :=
+         Dequeue_Network_Packet (Layer3_IPv4_Var.Rx_Ping_Reply_Packet_Queue,
+                                 Timeout_Ms);
+      IPv4_Packet_Ptr : IPv4.IPv4_Packet_Read_Only_Access_Type;
+      ICMPv4_Message_Ptr : IPv4.ICMPv4_Message_Read_Only_Access_Type;
+      Echo_Message_Data_Ptr :
+         IPv4.ICMPv4_Echo_Message_Data_Read_Only_Access_Type;
    begin
-      pragma Compile_Time_Warning (Standard.True,
-         "Receive_IPv4_Ping_Reply unimplemented");
-      Runtime_Logs.Debug_Print ("Receive_IPv4_Ping_Reply unimplemented");
-      return False;
-   end Receive_IPv4_Ping_Reply;
+      Identifier := 0;
+      Sequence_Number := 0;
+      if Rx_Packet_Ptr = null then
+         Runtime_Logs.Error_Print ("No Ping reply received after " &
+                                   Timeout_Ms'Image & "ms");
+         return False;
+      end if;
+
+      pragma Assert (Rx_Packet_Ptr.Traffic_Direction = Rx);
+      IPv4_Packet_Ptr := Get_IPv4_Packet_Read_Only (Rx_Packet_Ptr.all);
+      ICMPv4_Message_Ptr := Get_ICMPv4_Message_Read_Only (IPv4_Packet_Ptr);
+
+      if not ICMPv4_Message_Ptr.Type_of_Message'Valid or else
+         ICMPv4_Message_Ptr.Type_of_Message /= Ping_Reply
+      then
+         Runtime_Logs.Error_Print (
+            "Unexpected ICMPv4 message type received: " &
+            ICMPv4_Message_Ptr.Type_of_Message'Image);
+         return False;
+      end if;
+
+      Echo_Message_Data_Ptr :=
+         Get_ICMPv4_Echo_Message_Data_Read_Only (ICMPv4_Message_Ptr);
+
+      Remote_IPv4_Address := IPv4_Packet_Ptr.Source_IPv4_Address;
+      Identifier := Echo_Message_Data_Ptr.Identifier;
+      Sequence_Number := Echo_Message_Data_Ptr.Sequence_Number;
+      Recycle_Rx_Packet (Rx_Packet_Ptr.all);
+      return True;
+   end Receive_Ping_Reply;
 
    ----------------------
    -- Send_ARP_Request --
@@ -855,12 +877,11 @@ package body Networking.Layer3_IPv4 is
                            ARP_Packet_Size);
    end Send_ARP_Request;
 
-   ----------------------------
-   -- Send_IPv4_ICMP_Message --
-   ----------------------------
+   -------------------------
+   -- Send_ICMPv4_Message --
+   -------------------------
 
-   procedure Send_IPv4_ICMP_Message (
-      IPv4_End_Point : in out IPv4_End_Point_Type;
+   procedure Send_ICMPv4_Message (
       Destination_IP_Address : IPv4_Address_Type;
       Tx_Packet_Ptr : in out Network_Packet_Type;
       Type_of_Message : IPv4.Type_of_ICMPv4_Message_Type;
@@ -869,42 +890,62 @@ package body Networking.Layer3_IPv4 is
    is
    begin
       pragma Compile_Time_Warning (Standard.True,
-         "Send_IPv4_ICMP_Message unimplemented");
-      Runtime_Logs.Debug_Print ("JSend_IPv4_ICMP_Message unimplemented");
-   end Send_IPv4_ICMP_Message;
+         "Send_ICMPv4_Message unimplemented");
+      Runtime_Logs.Debug_Print ("Send_ICMPv4_Message unimplemented");
+   end Send_ICMPv4_Message;
 
    ----------------------
    -- Send_IPv4_Packet --
    ----------------------
 
    procedure Send_IPv4_Packet (
-      IPv4_End_Point : in out IPv4_End_Point_Type;
       Destination_IP_Address : IPv4_Address_Type;
       Tx_Packet : in out Network_Packet_Type;
       Data_Payload_Length : Unsigned_16;
       Type_of_IPv4_Packet : Unsigned_8)
    is
+      IPv4_End_Point_Ptr : IPv4_End_Point_Access_Type;
    begin
       pragma Compile_Time_Warning (Standard.True,
          "Send_IPv4_Packet unimplemented");
       Runtime_Logs.Debug_Print ("Send_IPv4_Packet unimplemented");
    end Send_IPv4_Packet;
 
-   ----------------------------
-   -- Send_IPv4_Ping_Request --
-   ----------------------------
+   -----------------------
+   -- Send_Ping_Request --
+   -----------------------
 
-   procedure Send_IPv4_Ping_Request (
-      IPv4_End_Point : in out IPv4_End_Point_Type;
-      Destination_IP_Address : IPv4_Address_Type;
+   function Send_Ping_Request (
+      Destination_IPv4_Address : IPv4_Address_Type;
       Identifier : Unsigned_16;
-      Sequence_Number : Unsigned_16)
+      Sequence_Number : Unsigned_16) return Boolean
    is
+      Start_Ping_Ok : Boolean;
+      Tx_Packet_Ptr : Network_Packet_Access_Type;
+      Tx_Echo_Message_Data_Ptr : IPv4.ICMPv4_Echo_Message_Data_Access_Type;
    begin
-      pragma Compile_Time_Warning (Standard.True,
-         "Send_IPv4_Ping_Request unimplemented");
-      Runtime_Logs.Debug_Print ("Send_IPv4_Ping_Request unimplemented");
-   end Send_IPv4_Ping_Request;
+      Layer3_IPv4_Var.Ping_Serializer.Start_Ping (Start_Ping_Ok);
+      if not Start_Ping_Ok then
+         Runtime_Logs.Error_Print (
+            "Outstanding ping request not replied yet");
+         return False;
+      end if;
+
+      Tx_Packet_Ptr := Allocate_Tx_Packet (Free_After_Tx_Complete => True);
+      Tx_Echo_Message_Data_Ptr :=
+         Get_ICMPv4_Echo_Message_Data (
+            Get_ICMPv4_Message (Tx_Packet_Ptr.all));
+
+      Tx_Echo_Message_Data_Ptr.Identifier := Identifier;
+      Tx_Echo_Message_Data_Ptr.Sequence_Number := Sequence_Number;
+
+      Send_ICMPv4_Message (Destination_IPv4_Address,
+                           Tx_Packet_Ptr.all,
+                           IPv4.Ping_Request,
+                           IPv4.Ping_Request_Code,
+                           IPv4.ICMPv4_Echo_Message_Data_Size);
+      return True;
+   end Send_Ping_Request;
 
    ----------------------------
    -- Set_Local_IPv4_Address --
@@ -980,8 +1021,14 @@ package body Networking.Layer3_IPv4 is
    ---------------------------------------
 
    task body ICMPv4_Message_Receiver_Task_Type is
+      use Networking.Packet_Layout.IPv4;
+
       procedure Process_Incoming_ICMPv4_Message
-         (Rx_Packet : in out Network_Packet_Type);
+         (Rx_Packet : aliased in out Network_Packet_Type);
+
+      procedure Send_Ping_Reply (
+         Destination_IPv4_Address : IPv4_Address_Type;
+         ICMPv4_Message_Ptr : ICMPv4_Message_Read_Only_Access_Type);
 
       Rx_Packet_Ptr : Network_Packet_Access_Type := null;
 
@@ -990,14 +1037,91 @@ package body Networking.Layer3_IPv4 is
       -------------------------------------
 
       procedure Process_Incoming_ICMPv4_Message
-         (Rx_Packet : in out Network_Packet_Type)
+         (Rx_Packet : aliased in out Network_Packet_Type)
       is
+         End_Ping_Ok : Boolean;
+         Signal_Ping_Reply_Received : Boolean := False;
+         IPv4_Packet_Ptr : constant IPv4_Packet_Read_Only_Access_Type :=
+            Get_IPv4_Packet_Read_Only (Rx_Packet);
+         ICMPv4_Message_Ptr :
+            constant ICMPv4_Message_Read_Only_Access_Type :=
+               Get_ICMPv4_Message_Read_Only (IPv4_Packet_Ptr);
       begin
-         pragma Compile_Time_Warning (True,
-            "Process_Incoming_ICMPv4_Message unimplemented");
-         Runtime_Logs.Debug_Print (
-            "Process_Incoming_ICMPv4_Message Initialize unimplemented");
+         pragma Assert (
+            Rx_Packet.Total_Length >=
+            Unsigned_16 (Ethernet.Frame_Header_Size +
+                         IPv4_Packet_Header_Size +
+                         ICMPv4_Message_Header_Size));
+
+         if ICMPv4_Message_Ptr.Type_of_Message'Valid then
+            case ICMPv4_Message_Ptr.Type_of_Message is
+               when Ping_Reply =>
+                  pragma Assert (ICMPv4_Message_Ptr.Code =
+                                 Ping_Reply_Code);
+                  Layer3_IPv4_Var.Ping_Serializer.End_Ping (End_Ping_Ok);
+                  if End_Ping_Ok then
+                     Enqueue_Network_Packet (
+                        Layer3_IPv4_Var.Rx_Ping_Reply_Packet_Queue,
+                        Rx_Packet'Unchecked_Access);
+                  else
+                     --
+                     --  Drop unmatched ping reply
+                     --
+                     Runtime_Logs.Error_Print (
+                        "Unexpected ping reply received");
+
+                     Recycle_Rx_Packet (Rx_Packet);
+                  end if;
+
+               when Ping_Request =>
+                  pragma Assert (ICMPv4_Message_Ptr.Code =
+                                 Ping_Request_Code);
+                  Send_Ping_Reply (
+                     IPv4_Packet_Ptr.Source_IPv4_Address,
+                     ICMPv4_Message_Ptr);
+
+                  Recycle_Rx_Packet (Rx_Packet);
+            end case;
+         else
+            Runtime_Logs.Error_Print (
+               "Received ICMPv4 message with invalid type: " &
+               ICMPv4_Message_Ptr.Type_of_Message'Image);
+
+            Recycle_Rx_Packet (Rx_Packet);
+         end if;
       end Process_Incoming_ICMPv4_Message;
+
+      ---------------------
+      -- Send_Ping_Reply --
+      ---------------------
+
+      procedure Send_Ping_Reply (
+         Destination_IPv4_Address : IPv4_Address_Type;
+         ICMPv4_Message_Ptr : ICMPv4_Message_Read_Only_Access_Type)
+      is
+         Rx_Echo_Message_Data_Ptr :
+            constant ICMPv4_Echo_Message_Data_Read_Only_Access_Type :=
+               Get_ICMPv4_Echo_Message_Data_Read_Only (ICMPv4_Message_Ptr);
+
+         Tx_Packet_Ptr : constant Network_Packet_Access_Type :=
+            Allocate_Tx_Packet (Free_After_Tx_Complete => True);
+
+         Tx_Echo_Message_Data_Ptr :
+            constant ICMPv4_Echo_Message_Data_Access_Type :=
+               Get_ICMPv4_Echo_Message_Data (
+                  Get_ICMPv4_Message (Tx_Packet_Ptr.all));
+      begin
+         Tx_Echo_Message_Data_Ptr.Identifier :=
+            Rx_Echo_Message_Data_Ptr.Identifier;
+         Tx_Echo_Message_Data_Ptr.Sequence_Number :=
+            Rx_Echo_Message_Data_Ptr.Sequence_Number;
+
+         Send_ICMPv4_Message (Destination_IPv4_Address,
+                              Tx_Packet_Ptr.all,
+                              Ping_Reply,
+                              Ping_Reply_Code,
+                              ICMPv4_Echo_Message_Data_Size);
+      end Send_Ping_Reply;
 
    begin -- ICMPv4_Message_Receiver_Task_Type
       Suspend_Until_True (
@@ -1014,7 +1138,6 @@ package body Networking.Layer3_IPv4 is
          pragma Assert (Rx_Packet_Ptr.Rx_State_Flags.Packet_In_ICMPv4_Queue);
 
          Rx_Packet_Ptr.Rx_State_Flags.Packet_In_ICMPv4_Queue := False;
-
          Process_Incoming_ICMPv4_Message (Rx_Packet_Ptr.all);
       end loop;
 
@@ -1040,5 +1163,40 @@ package body Networking.Layer3_IPv4 is
       end loop;
 
    end DHCPv4_Client_Task_Type;
+
+   ------------------------------------
+   -- Ping_Serializer_Protected_Type --
+   ------------------------------------
+
+   protected body Ping_Serializer_Protected_Type is
+
+      --------------
+      -- End_Ping --
+      --------------
+
+      procedure End_Ping (Success : out Boolean) is
+      begin
+         if Outstanding_Ping_Request then
+            Outstanding_Ping_Request := False;
+            Success := True;
+         else
+            Success := False;
+         end if;
+      end End_Ping;
+
+      ----------------
+      -- Start_Ping --
+      ----------------
+
+      procedure Start_Ping (Success : out Boolean) is
+      begin
+         if Outstanding_Ping_Request then
+            Success := False;
+         end if;
+
+         Outstanding_Ping_Request := True;
+         Success := True;
+      end Start_Ping;
+   end Ping_Serializer_Protected_Type;
 
 end Networking.Layer3_IPv4;

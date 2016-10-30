@@ -197,9 +197,9 @@ private
    type Layer2_Type is limited record
       Initialized : Boolean := False;
       Tracing_On : Boolean := False;
-      Rx_Packets_Accepted_Count : Unsigned_32 := 0 with Atomic;
-      Rx_Packets_Dropped_Count : Unsigned_32 := 0 with Atomic;
-      Sent_Packets_Count : Unsigned_32 := 0 with Atomic;
+      Rx_Packets_Accepted_Count : aliased Unsigned_32 := 0 with Atomic;
+      Rx_Packets_Dropped_Count : aliased Unsigned_32 := 0 with Atomic;
+      Sent_Packets_Count : aliased Unsigned_32 := 0 with Atomic;
       Tx_Packet_Pool : Net_Tx_Packet_Pool_Type;
       Local_Ethernet_Layer2_End_Points : Layer2_End_Point_Array_Type;
    end record with Alignment => Mpu_Region_Alignment;

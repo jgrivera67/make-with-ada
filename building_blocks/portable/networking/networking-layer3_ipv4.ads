@@ -102,15 +102,14 @@ package Networking.Layer3_IPv4 is
       Rx_Packet : aliased in out Network_Packet_Type)
       with Pre => not Is_Caller_An_Interrupt_Handler;
 
-   function Receive_IPv4_Ping_Reply (
+   function Receive_Ping_Reply (
       Timeout_Ms : Natural;
       Remote_IPv4_Address : out IPv4_Address_Type;
       Identifier : out Unsigned_16;
       Sequence_Number : out Unsigned_16)
       return Boolean;
 
-   procedure Send_IPv4_ICMP_Message (
-      IPv4_End_Point : in out IPv4_End_Point_Type;
+   procedure Send_ICMPv4_Message (
       Destination_IP_Address : IPv4_Address_Type;
       Tx_Packet_Ptr : in out Network_Packet_Type;
       Type_of_Message : IPv4.Type_of_ICMPv4_Message_Type;
@@ -118,17 +117,15 @@ package Networking.Layer3_IPv4 is
       Data_Payload_Length : Unsigned_16);
 
    procedure Send_IPv4_Packet (
-      IPv4_End_Point : in out IPv4_End_Point_Type;
       Destination_IP_Address : IPv4_Address_Type;
       Tx_Packet : in out Network_Packet_Type;
       Data_Payload_Length : Unsigned_16;
       Type_of_IPv4_Packet : Unsigned_8);
 
-   procedure Send_IPv4_Ping_Request (
-      IPv4_End_Point : in out IPv4_End_Point_Type;
-      Destination_IP_Address : IPv4_Address_Type;
+   function Send_Ping_Request (
+      Destination_IPv4_Address : IPv4_Address_Type;
       Identifier : Unsigned_16;
-      Sequence_Number : Unsigned_16);
+      Sequence_Number : Unsigned_16) return Boolean;
 
    procedure Set_Local_IPv4_Address (
       IPv4_End_Point : in out IPv4_End_Point_Type;
@@ -280,6 +277,13 @@ private
    type IPv4_End_Point_Array_Type is array (Ethernet_Mac_Id_Type) of
      aliased IPv4_End_Point_Type;
 
+   protected type Ping_Serializer_Protected_Type is
+      procedure End_Ping (Success : out Boolean);
+      procedure Start_Ping (Success : out Boolean);
+   private
+      Outstanding_Ping_Request : Boolean := False;
+   end Ping_Serializer_Protected_Type;
+
    --
    --  Networking layer-3 IPv4 global state variables
    --
@@ -288,8 +292,10 @@ private
    --  @field Tracing_On Flag indicating if tracing is currently enabled for
    --  this layer
    --
-   --  @field Expecting_Ping_Reply Flag indicating if there is an outstanding
-   --  IPv4 ping request for which no reply has been received yet.
+   --  @field Ping_Request_Serializer Protected object that serializes
+   --  outgoing ping requests.
+   --
+   --  @field Rx_Ping_Reply_Packet_Queue Queue of received ping replies
    --
    --  @field Rx_Packets_Accepted_Count Number of received IPv4 packets
    --  accepted
@@ -301,20 +307,16 @@ private
    --  @field Rx_Ipv4_Ping_Reply_Packet_Queue Queue of received IPPv4 ping
    --  replies
    --
-   --  @field Ping_Reply_Received_Suspension_Obj Suspension object to be signal
-   --  when the ping reply for an outstanding ping request has been received.
-   --
    --  @field Local_IPv4_End_Points Local layer-3 IPv4 end points
    --
    type Layer3_IPv4_Type is limited record
       Initialized : Boolean := False;
       Tracing_On : Boolean := False;
-      Expecting_Ping_Reply : Boolean := False with Atomic;
-      Rx_Packets_Accepted_Count : Unsigned_32 := 0 with Atomic;
-      Rx_Packets_Dropped_Count : Unsigned_32 := 0 with Atomic;
-      Sent_Packets_Count : Unsigned_32 := 0 with Atomic;
-      Rx_IPv4_Ping_Reply_Packet_Queue : Network_Packet_Queue_Type;
-      Ping_Reply_Received_Suspension_Obj : Suspension_Object;
+      Ping_Serializer : Ping_Serializer_Protected_Type;
+      Rx_Ping_Reply_Packet_Queue : aliased Network_Packet_Queue_Type;
+      Rx_Packets_Accepted_Count : aliased Unsigned_32 := 0 with Atomic;
+      Rx_Packets_Dropped_Count : aliased Unsigned_32 := 0 with Atomic;
+      Sent_Packets_Count : aliased Unsigned_32 := 0 with Atomic;
       Local_IPv4_End_Points : IPv4_End_Point_Array_Type;
    end record with Alignment => Mpu_Region_Alignment;
 
