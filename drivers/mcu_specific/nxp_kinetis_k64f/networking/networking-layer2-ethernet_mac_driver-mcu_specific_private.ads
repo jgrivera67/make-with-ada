@@ -29,6 +29,7 @@ with Pin_Mux_Driver;
 with System;
 
 private package Networking.Layer2.Ethernet_Mac_Driver.MCU_Specific_Private is
+   pragma SPARK_Mode (Off);
    use Pin_Mux_Driver;
    use System;
 

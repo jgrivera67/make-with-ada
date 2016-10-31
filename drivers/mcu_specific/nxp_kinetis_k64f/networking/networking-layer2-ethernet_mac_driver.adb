@@ -43,6 +43,7 @@ with System;
 with MPU_Driver;
 
 package body Networking.Layer2.Ethernet_Mac_Driver is
+   pragma SPARK_Mode (Off);
    use Networking.Layer2.Ethernet_Mac_Driver.MCU_Specific_Private;
    use Networking.Layer2.Ethernet_Mac_Driver.Board_Specific_Private;
    use MK64F12.SIM;

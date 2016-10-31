@@ -35,6 +35,7 @@ with Networking.Layer3_IPv4;
 with Devices.MCU_Specific;
 
 package body IoT_Stack_Demo is
+   pragma SPARK_Mode (Off);
    use Ada.Real_Time;
    use Interfaces;
    use Networking.Layer2;

@@ -83,6 +83,7 @@ package Color_Led is
    --
 
 private
+   pragma SPARK_Mode (Off);
    use Gpio_Driver;
    use Ada.Synchronous_Task_Control;
 

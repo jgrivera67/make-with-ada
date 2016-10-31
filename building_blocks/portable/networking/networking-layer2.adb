@@ -34,6 +34,7 @@ with Number_Conversion_Utils;
 with Atomic_Utils;
 
 package body Networking.Layer2 is
+   pragma SPARK_Mode (Off);
    use Networking.Layer2.Ethernet_Mac_Driver;
    use Networking.Layer3_IPv4;
    use Networking.Layer3_IPv6;

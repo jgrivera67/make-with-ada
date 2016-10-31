@@ -39,6 +39,7 @@ package IoT_Stack_Demo is
      with Pre => not Initialized;
 
 private
+   pragma SPARK_Mode (Off);
    use Ada.Synchronous_Task_Control;
 
    type IoT_Stack_Demo_Type is limited record

@@ -32,6 +32,7 @@ with Devices.MCU_Specific;
 --
 private package Gpio_Driver.MCU_Specific_Private is
    pragma Preelaborate;
+   pragma SPARK_Mode (Off);
    use Devices.MCU_Specific;
 
    --

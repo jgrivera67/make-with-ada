@@ -96,6 +96,7 @@ package Ethernet_Phy_Mdio_Driver is
    --
 
 private
+   pragma SPARK_Mode (Off);
    use Pin_Mux_Driver;
    use Ada.Synchronous_Task_Control;
 

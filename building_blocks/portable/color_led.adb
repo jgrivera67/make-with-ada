@@ -29,6 +29,7 @@ with Color_Led.Board_Specific_Private;
 with Runtime_Logs;
 
 package body Color_Led is
+   pragma SPARK_Mode (Off);
    use Color_Led.Board_Specific_Private;
 
    type Rgb_Color_Type is record

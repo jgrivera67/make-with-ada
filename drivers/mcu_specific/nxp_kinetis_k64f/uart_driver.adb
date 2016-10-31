@@ -31,6 +31,7 @@ with Uart_Driver.Board_Specific_Private;
 with Microcontroller.Arm_Cortex_M;
 
 package body Uart_Driver is
+   pragma SPARK_Mode (Off);
    use Ada.Interrupts;
    use Uart_Driver.Board_Specific_Private;
    use Microcontroller.Arm_Cortex_M;

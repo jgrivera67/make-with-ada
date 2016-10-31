@@ -35,6 +35,7 @@ with Runtime_Logs;
 --           K64F MCU
 --
 package body Ethernet_Phy_Mdio_Driver is
+   pragma SPARK_Mode (Off);
    use Ethernet_Phy_Mdio_Driver.Board_Specific_Private;
    use Microcontroller;
    use MK64F12;

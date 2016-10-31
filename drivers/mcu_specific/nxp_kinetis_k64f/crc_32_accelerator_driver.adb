@@ -30,6 +30,7 @@ with Kinetis_K64F.CRC;
 with Interfaces.Bit_Types;
 
 package body Crc_32_Accelerator_Driver is
+   pragma SPARK_Mode (Off);
    use MK64F12.SIM;
    use Kinetis_K64F;
    use Interfaces.Bit_Types;

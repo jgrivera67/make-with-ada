@@ -139,6 +139,7 @@ package Networking.Layer3_IPv4 is
      with Pre => Initialized;
 
 private
+   pragma SPARK_Mode (Off);
 
    --
    --  Number of entries for the IPv4 ARP cache table

@@ -31,6 +31,7 @@ with Number_Conversion_Utils;
 with Atomic_Utils;
 
 package body Networking.Layer3_IPv4 is
+   pragma SPARK_Mode (Off);
    use Number_Conversion_Utils;
    use Networking.Layer2;
    use Atomic_Utils;

@@ -97,6 +97,7 @@ package Uart_Driver is
    --
 
 private
+   pragma SPARK_Mode (Off);
    use Interfaces.Bit_Types;
    use Microcontroller_Clocks;
    use Pin_Mux_Driver;

@@ -29,6 +29,8 @@
 --  @summary Board-specific Ethernet PHY MDIO driver private declarations
 --
 private package Ethernet_Phy_Mdio_Driver.Board_Specific_Private is
+   pragma SPARK_Mode (Off);
+
    --
    --  Array of Ethernet PHY MDIO device constant objects to be placed on
    --  flash:

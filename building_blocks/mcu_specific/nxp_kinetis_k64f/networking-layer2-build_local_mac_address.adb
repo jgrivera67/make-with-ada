@@ -30,6 +30,7 @@ with Kinetis_K64F.SIM;
 separate (Networking.Layer2)
 procedure Build_Local_Mac_Address (
    Mac_Address : out Ethernet_Mac_Address_Type) is
+   pragma SPARK_Mode (Off);
    Reg_Value : Word;
 begin
    --

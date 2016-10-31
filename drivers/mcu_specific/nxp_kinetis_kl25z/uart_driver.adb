@@ -31,6 +31,7 @@ with System;
 with Uart_Driver.Board_Specific_Private;
 
 package body Uart_Driver is
+   pragma SPARK_Mode (Off);
    use Ada.Interrupts;
    use Uart_Driver.Board_Specific_Private;
 

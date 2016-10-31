@@ -109,7 +109,7 @@ package Microcontroller.CPU_Specific is
       SCR : Word;
       CCR : Word;
       Reserved1 : Word;
-      SHP : Words_Array (1 .. 2);
+      SHP : Words_Array_Type (1 .. 2);
       SHCSR : Word;
    end record with Volatile, Size => 16#28# * Byte'Size;
 

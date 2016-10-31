@@ -33,6 +33,7 @@ with Ada.Synchronous_Task_Control;
 with System;
 
 package body Serial_Console is
+   pragma SPARK_Mode (Off);
    use Devices.MCU_Specific;
    use Ada.Synchronous_Task_Control;
    use Number_Conversion_Utils;

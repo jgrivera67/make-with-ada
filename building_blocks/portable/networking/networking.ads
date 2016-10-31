@@ -300,7 +300,7 @@ package Networking is
       (Tx_Packet_Pool : in out Net_Tx_Packet_Pool_Type);
 
 private
-
+   pragma SPARK_Mode (Off);
    use Microcontroller.Arm_Cortex_M;
    use Ada.Synchronous_Task_Control;
 

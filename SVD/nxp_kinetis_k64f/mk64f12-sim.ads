@@ -29,6 +29,7 @@ with System;
 --  System Integration Module
 package MK64F12.SIM is
    pragma Preelaborate;
+   pragma SPARK_Mode (Off);
 
    ---------------
    -- Registers --

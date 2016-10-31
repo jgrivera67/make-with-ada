@@ -28,6 +28,7 @@
 with Ada.Real_Time;
 
 package body Networking is
+   pragma SPARK_Mode (Off);
 
    ----------------------------
    -- Dequeue_Network_Packet --

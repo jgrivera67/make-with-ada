@@ -139,6 +139,7 @@ package Networking.Layer2 is
    -- ** --
 
 private
+   pragma SPARK_Mode (Off);
 
    --
    --  Network packet receiver task type
