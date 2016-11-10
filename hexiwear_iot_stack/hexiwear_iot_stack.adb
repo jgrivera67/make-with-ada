@@ -33,6 +33,7 @@ with Microcontroller.MCU_Specific;
 with Pin_Mux_Driver;
 with Color_Led;
 with Serial_Console;
+with Bluetooth;
 with Command_Parser;
 with GNAT.Source_Info;
 with Ada.Real_Time;
@@ -84,6 +85,7 @@ begin -- Hexiwear_Iot_Stack
    Pin_Mux_Driver.Initialize;
    Color_Led.Initialize;
    Serial_Console.Initialize;
+   Bluetooth.Initialize;
 
    Old_Color := Color_Led.Set_Color (Color_Led.Blue);
    Color_Led.Turn_On_Blinker (Heartbeat_Period_Ms);

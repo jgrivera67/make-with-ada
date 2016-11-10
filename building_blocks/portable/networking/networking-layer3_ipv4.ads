@@ -78,7 +78,7 @@ package Networking.Layer3_IPv4 is
       Multicast_Address : IPv4_Address_Type)
       with Pre => IPv4_Address_Is_Multicast (Multicast_Address);
 
-   function Parse_IPv4_Address (IPv4_Address_String : IPv4_Address_String_Type;
+   function Parse_IPv4_Address (IPv4_Address_String : String;
                                 With_Subnet_Prefix : Boolean;
                                 IPv4_Address : out IPv4_Address_Type;
                                 Subnet_Prefix : out Unsigned_8)
@@ -110,17 +110,17 @@ package Networking.Layer3_IPv4 is
       return Boolean;
 
    procedure Send_ICMPv4_Message (
-      Destination_IP_Address : IPv4_Address_Type;
-      Tx_Packet_Ptr : in out Network_Packet_Type;
+      Destination_IPv4_Address : IPv4_Address_Type;
+      Tx_Packet : aliased in out Network_Packet_Type;
       Type_of_Message : IPv4.Type_of_ICMPv4_Message_Type;
       Message_Code : Unsigned_8;
       Data_Payload_Length : Unsigned_16);
 
    procedure Send_IPv4_Packet (
-      Destination_IP_Address : IPv4_Address_Type;
-      Tx_Packet : in out Network_Packet_Type;
+      Destination_IPv4_Address : IPv4_Address_Type;
+      Tx_Packet : aliased in out Network_Packet_Type;
       Data_Payload_Length : Unsigned_16;
-      Type_of_IPv4_Packet : Unsigned_8);
+      Layer4_Protocol : Layer4_Protocol_Type);
 
    function Send_Ping_Request (
       Destination_IPv4_Address : IPv4_Address_Type;
@@ -137,6 +137,11 @@ package Networking.Layer3_IPv4 is
 
    procedure Stop_Tracing
      with Pre => Initialized;
+
+   function Same_IPv4_Subnet (Local_IPv4_Address : IPv4_Address_Type;
+                              Destination_IPv4_Address : IPv4_Address_Type;
+                              Subnet_Mask : IPv4_Address_Type) return Boolean
+      with Inline;
 
 private
    pragma SPARK_Mode (Off);
@@ -157,7 +162,7 @@ private
    --
    --  IPv4 ARP cache entry
    --
-   --  @field Destination_IP_Address
+   --  @field Destination_IPv4_Address
    --  @field Destination_Mac_Address
    --  @field State State of the ARP_Cache_Entry_State_Type
    --  @field ARP_Request_Time_Stamp  Timestamp in ticks when
@@ -172,7 +177,7 @@ private
    --  recently used entry, for cache entry replacement.
    --
    type ARP_Cache_Entry_Type is record
-      Destination_IP_Address : IPv4_Address_Type;
+      Destination_IPv4_Address : IPv4_Address_Type;
       Destination_MAC_Address : Ethernet_Mac_Address_Type;
       State : ARP_Cache_Entry_State_Type := Entry_Invalid;
       ARP_Request_Time_Stamp : Ada.Real_Time.Time;
@@ -189,20 +194,19 @@ private
    --  ARP cache protected type
    --
    protected type ARP_Cache_Protected_Type is
+
+      entry Wait_Until_Cache_Updated (Timeout_Ms : Natural := 0);
+
       procedure Lookup_or_Allocate (
-         Destination_IP_Address : IPv4_Address_Type;
+         Destination_IPv4_Address : IPv4_Address_Type;
          Found_Entry_Ptr : out ARP_Cache_Entry_Access_Type;
          Free_Entry_Ptr : out ARP_Cache_Entry_Access_Type);
 
       procedure Update (
-         Destination_IP_Address : IPv4_Address_Type;
+         Destination_IPv4_Address : IPv4_Address_Type;
          Destination_MAC_Address : Ethernet_Mac_Address_Type);
    private
-      Cache_Updated_Condvar : Suspension_Object;
-      --
-      --  Suspension object signaled when the ARP cache is updated
-      --
-
+      Cache_Updated : Boolean := False;
       Entries : ARP_Cache_Entry_Array_Type;
    end ARP_Cache_Protected_Type;
 
@@ -263,7 +267,7 @@ private
       IPv4_Subnet_Mask : IPv4_Address_Type := IPv4_Null_Address;
       Default_Gateway_IPv4_Address : IPv4_Address_Type := IPv4_Null_Address;
       DHCP_Lease_Seconds : Natural;
-      Next_Tx_Ip_Packet_Seq_Num : Unsigned_16 := 0;
+      Next_Tx_Ip_Packet_Seq_Num : aliased Unsigned_16 := 0 with Atomic;
       Rx_ICMPv4_Packet_Queue : aliased Network_Packet_Queue_Type;
       ARP_Cache : ARP_Cache_Protected_Type;
       DHCPv4_Client_End_Point : Networking.Layer4_UDP.UDP_End_Point_Type;
@@ -318,6 +322,7 @@ private
       Rx_Packets_Accepted_Count : aliased Unsigned_32 := 0 with Atomic;
       Rx_Packets_Dropped_Count : aliased Unsigned_32 := 0 with Atomic;
       Sent_Packets_Count : aliased Unsigned_32 := 0 with Atomic;
+      Sent_Packets_Dropped_Count : aliased Unsigned_32 := 0 with Atomic;
       Local_IPv4_End_Points : IPv4_End_Point_Array_Type;
    end record with Alignment => Mpu_Region_Alignment;
 

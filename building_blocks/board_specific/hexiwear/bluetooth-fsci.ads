@@ -27,6 +27,8 @@
 
 with Interfaces.Bit_Types;
 with System;
+with Devices;
+with Ada.Unchecked_Conversion;
 
 --
 --  @summary FSCI interface to KW40 BLE host stack
@@ -36,35 +38,70 @@ package Bluetooth.FSCI is
    use Interfaces;
 
    --
-   --  FSCI protocol packet header
+   --  Header of an FSCI packet in bytes
+   --
+   FSCI_Packet_Header_Size : constant := 5;
+
+   --
+   --  FSCI protocol packet
    --
    --  @field STX Used for synchronization over the serial interface.
    --  The value is always 0x02.
    --  @field Opcode_Group Distinguishes between different layers (e.g., GAP,
    --                      GATT, GATTDB).
-   --  @field Message_Type Specifies the exact message opcode that is
+   --  @field Opcode       Specifies the message opcode that is
    --                      contained in the packet.
    --  @field Length       The length of the packet payload, excluding the
    --                      header and the checksum. The length field content
    --                      shall be provided in little endian format.
    --
-   --  An FSCI format has the following layout:
+   --  An FSCI packet has the following layout:
    --  header (5 bytes), payload ('length' bytes), Checksum (1 byte)
    --
-   type FSCI_Packet_Header_Type is record
+   type FSCI_Packet_Type is limited record
       STX : Byte := 16#02#;
       Opcode_Group : Byte;
-      Message_Type : Byte;
+      Opcode : Byte;
       Length : Unsigned_16;
+      First_Payload_Byte : aliased Byte;
    end record
-     with Size => 5 * Byte'Size,
+     with Size => (FSCI_Packet_Header_Size + 1) * Byte'Size,
           Bit_Order => System.Low_Order_First;
 
-   for FSCI_Packet_Header_Type use record
+   for FSCI_Packet_Type use record
       STX          at 0 range 0 .. 7;
       Opcode_Group at 1 range 0 .. 7;
-      Message_Type at 2 range 0 .. 7;
+      Opcode       at 2 range 0 .. 7;
       Length       at 3 range 0 .. 15;
+      First_Payload_Byte at 5 range 0 .. 7;
    end record;
+
+   type Opcode_Group_Type is (GATT,    --  Generic Attribute Profile
+                              GATT_DB, --  GATT Data Base
+                              GAP      --  Generic Access Profile
+                             );
+
+   for Opcode_Group_Type use (GATT => 16#44#,
+                              GATT_DB => 16#45#,
+                              GAP => 16#47#);
+
+   type GAP_Message_Opcode_Type is (GAP_BLE_Host_Initialize_Request,
+                                    GAP_Accept_Pairing_Request,
+                                    GAP_Add_Device_To_White_List_Request,
+                                    GAP_Confirm);
+
+   for GAP_Message_Opcode_Type use
+     (GAP_BLE_Host_Initialize_Request => 16#01#,
+      GAP_Accept_Pairing_Request => 16#0f#,
+      GAP_Add_Device_To_White_List_Request => 16#23#,
+      GAP_Confirm => 16#80#
+     );
+
+   subtype FSCI_Packets_Bytes_Type is
+       Devices.Bytes_Array_Type (1 .. FSCI_Packet_Type'Size / Byte'Size);
+
+   function FSCI_Packet_To_Bytes_Array is
+        new Ada.Unchecked_Conversion (Source => FSCI_Packet_Type,
+                                      Target => FSCI_Packets_Bytes_Type);
 
 end Bluetooth.FSCI;

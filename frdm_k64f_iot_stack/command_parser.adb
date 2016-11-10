@@ -30,12 +30,21 @@ with Serial_Console;
 with Command_Parser_Common;
 with Microcontroller.Arm_Cortex_M;
 with Interfaces.Bit_Types;
+with Networking.Layer3_IPv4;
+with Ada.Real_Time;
+
 --
 --  Application-specific command parser implementation
 --
 package body Command_Parser is
    use Microcontroller.Arm_Cortex_M;
    use Interfaces.Bit_Types;
+   use Networking;
+   use Networking.Layer3_IPv4;
+   use Interfaces;
+   use Ada.Real_Time;
+
+   procedure Cmd_Ping;
 
    procedure Cmd_Print_Config_Params;
 
@@ -85,6 +94,99 @@ package body Command_Parser is
    end record;
 
    Command_Parser_Var : Command_Parser_Type;
+
+   -- ** --
+
+   procedure Cmd_Ping is
+      function Parse_Ping_Argument (Arg : String;
+                                    IPv4_Address : out IPv4_Address_Type)
+                                    return Boolean;
+
+      Token : Command_Line.Token_Type;
+      Token_Found : Boolean;
+      Parsing_Ok : Boolean;
+      Destination_IPv4_Address : IPv4_Address_Type;
+      Destination_IPv4_Address_Str : IPv4_Address_String_Type;
+      Subnet_Prefix : Unsigned_8;
+      Ping_Request_Sent_Ok : Boolean;
+      Ping_Reply_Received_Ok : Boolean;
+      Request_Sequence_Number : Unsigned_16 := 0;
+      Request_Identifier : Unsigned_16 := 88;
+      Reply_Sequence_Number : Unsigned_16;
+      Reply_Identifier : Unsigned_16;
+      Remote_IPv4_Address : IPv4_Address_Type;
+      Ping_Period_Ms : constant Time_Span := Milliseconds (500);
+
+      -- ** --
+
+      function Parse_Ping_Argument (Arg : String;
+                                    IPv4_Address : out IPv4_Address_Type)
+                                    return Boolean is
+      begin
+         return Parse_IPv4_Address (Arg,
+                                    False,
+                                    IPv4_Address,
+                                    Subnet_Prefix);
+      end Parse_Ping_Argument;
+
+   begin --  Cmd_Ping
+      Token_Found := Command_Line.Get_Next_Token (Token);
+      if not Token_Found then
+         goto Parsing_Error;
+      end if;
+
+      Parsing_Ok :=
+        Parse_Ping_Argument (Token.String_Value (1 .. Token.Length),
+                             Destination_IPv4_Address);
+      if not Parsing_Ok then
+         goto Parsing_Error;
+      end if;
+
+      IPv4_Address_To_String (Destination_IPv4_Address,
+                              Destination_IPv4_Address_Str);
+
+      for I in 1 .. 8 loop
+         Ping_Request_Sent_Ok := Send_Ping_Request (Destination_IPv4_Address,
+                                                    Request_Identifier,
+                                                    Request_Sequence_Number);
+         if not Ping_Request_Sent_Ok then
+            Serial_Console.Print_String (
+               "Sending ping request to " &
+               Destination_IPv4_Address_Str & "failed" & ASCII.LF);
+
+            return;
+         end if;
+
+         Ping_Reply_Received_Ok := Receive_Ping_Reply (3000,
+                                                       Remote_IPv4_Address,
+                                                       Reply_Identifier,
+                                                       Reply_Sequence_Number);
+         if not Ping_Reply_Received_Ok then
+            Serial_Console.Print_String (
+               "Ping " & Request_Sequence_Number'Image & " for " &
+               Destination_IPv4_Address_Str & " timed-out" & ASCII.LF);
+
+            return;
+         end if;
+
+         pragma Assert (Remote_IPv4_Address = Destination_IPv4_Address);
+         pragma Assert (Reply_Identifier = Request_Identifier);
+         pragma Assert (Reply_Sequence_Number = Request_Sequence_Number);
+
+         Serial_Console.Print_String (
+            "Ping" & Reply_Sequence_Number'Image & " replied by " &
+            Destination_IPv4_Address_Str & ASCII.LF);
+
+         Request_Sequence_Number := Request_Sequence_Number + 1;
+         delay until Clock + Ping_Period_Ms;
+      end loop;
+
+      return;
+
+   <<Parsing_Error>>
+      Serial_Console.Print_String ("Error: Invalid syntax for command 'ping'" &
+                                   ASCII.LF);
+   end Cmd_Ping;
 
    -- ** --
 
@@ -235,6 +337,8 @@ package body Command_Parser is
             Command_Parser_Common.Cmd_Dump_Log_Tail;
          elsif Command = "set" then
             Cmd_Set;
+         elsif Command = "ping" then
+            Cmd_Ping;
          elsif Command = "print-config"  or else Command = "pc" then
             Cmd_Print_Config_Params;
          elsif Command = "save-config"  or else Command = "sc" then

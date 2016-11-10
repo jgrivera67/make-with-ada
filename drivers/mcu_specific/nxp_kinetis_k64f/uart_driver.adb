@@ -81,15 +81,20 @@ package body Uart_Driver is
 
    -- ** --
 
-   function Get_Char (Uart_Device_Id : Uart_Device_Id_Type) return Character is
+   function Get_Byte (Uart_Device_Id : Uart_Device_Id_Type) return Byte is
       Uart_Device_Var : Uart_Device_Var_Type renames
         Uart_Devices_Var (Uart_Device_Id);
       Byte_Read : Byte;
-      Char : Character;
    begin
       Byte_Ring_Buffers.Read (Uart_Device_Var.Receive_Queue, Byte_Read);
-      Char := Character'Val (Byte_Read);
-      return Char;
+      return Byte_Read;
+   end Get_Byte;
+
+   -- ** --
+
+   function Get_Char (Uart_Device_Id : Uart_Device_Id_Type) return Character is
+   begin
+      return Character'Val (Get_Byte (Uart_Device_Id));
    end Get_Char;
 
    -- ** --
@@ -228,8 +233,8 @@ package body Uart_Driver is
 
    -- ** --
 
-   procedure Put_Char (Uart_Device_Id : Uart_Device_Id_Type;
-                       Char : Character) is
+   procedure Put_Byte (Uart_Device_Id : Uart_Device_Id_Type;
+                       Data : Byte) is
       Uart_Registers_Ptr : access UART.Registers_Type renames
         Uart_Devices (Uart_Device_Id).Registers_Ptr;
    begin
@@ -237,7 +242,25 @@ package body Uart_Driver is
          exit when Uart_Registers_Ptr.all.S1.TDRE = 1;
       end loop;
 
-      Uart_Registers_Ptr.all.D := Byte (Character'Pos (Char));
+      Uart_Registers_Ptr.all.D := Data;
+   end Put_Byte;
+
+   -- ** --
+
+   procedure Put_Bytes (Uart_Device_Id : Uart_Device_Id_Type;
+                       Data : Bytes_Array_Type) is
+   begin
+      for Data_Byte of Data loop
+         Put_Byte (Uart_Device_Id, Data_Byte);
+      end loop;
+   end Put_Bytes;
+
+   -- ** --
+
+   procedure Put_Char (Uart_Device_Id : Uart_Device_Id_Type;
+                       Char : Character) is
+   begin
+      Put_Byte (Uart_Device_Id, Byte (Character'Pos (Char)));
    end Put_Char;
 
    -- ** --

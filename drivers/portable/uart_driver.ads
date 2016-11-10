@@ -26,8 +26,8 @@
 --
 
 with Devices.MCU_Specific;
+with Interfaces.Bit_Types;
 private with Generic_Ring_Buffers;
-private with Interfaces.Bit_Types;
 private with Pin_Mux_Driver;
 private with Microcontroller_Clocks;
 
@@ -36,6 +36,8 @@ private with Microcontroller_Clocks;
 --
 package Uart_Driver is
    use Devices.MCU_Specific;
+   use Devices;
+   use Interfaces.Bit_Types;
 
    subtype Baud_Rate_Type is Positive range 110 .. 921600;
 
@@ -64,6 +66,26 @@ package Uart_Driver is
    --  @return True, if yes, False, otherwise
    --
 
+   procedure Put_Byte (Uart_Device_Id : Uart_Device_Id_Type;
+                       Data : Byte)
+     with Inline, Pre => Initialized (Uart_Device_Id);
+   --
+   --  Transmits a byte of data on the given UART
+   --
+   --  @param Uart_Device_Id UART Id
+   --  @param Data           data byte
+   --
+
+   procedure Put_Bytes (Uart_Device_Id : Uart_Device_Id_Type;
+                       Data : Bytes_Array_Type)
+     with Inline, Pre => Initialized (Uart_Device_Id);
+   --
+   --  Transmits an array of data bytes on the given UART
+   --
+   --  @param Uart_Device_Id UART Id
+   --  @param Data           data byte
+   --
+
    procedure Put_Char (Uart_Device_Id : Uart_Device_Id_Type;
                        Char : Character)
      with Pre => Initialized (Uart_Device_Id);
@@ -85,6 +107,17 @@ package Uart_Driver is
    --  @return True, if yes, False, otherwise
    --
 
+   function Get_Byte
+      (Uart_Device_Id : Uart_Device_Id_Type) return Byte
+      with Inline, Pre => Initialized (Uart_Device_Id);
+   --
+   --  Receives a byte of data on the given UART
+   --
+   --  @param Uart_Device_Id UART Id
+   --
+   --  @return Data byte received
+   --
+
    function Get_Char
       (Uart_Device_Id : Uart_Device_Id_Type) return Character
       with Pre => Initialized (Uart_Device_Id);
@@ -98,7 +131,6 @@ package Uart_Driver is
 
 private
    pragma SPARK_Mode (Off);
-   use Interfaces.Bit_Types;
    use Microcontroller_Clocks;
    use Pin_Mux_Driver;
 

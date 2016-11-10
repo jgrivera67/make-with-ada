@@ -29,6 +29,8 @@
 -- @summary Board-specific UART driver private declarations
 --
 private package Uart_Driver.Board_Specific_Private is
+   pragma SPARK_Mode (Off);
+
    --
    --  Array of UART device objects to be placed on flash:
    --
@@ -99,7 +101,7 @@ private package Uart_Driver.Board_Specific_Private is
            (Pin_Port => PIN_PORT_E,
             Pin_Index => 25,
             Pin_Function => PIN_FUNCTION_ALT3),
-         Rx_Pin_Pullup_Resistor_Enabled => True,
+         Rx_Pin_Pullup_Resistor_Enabled => False,
          Source_Clock_Freq_In_Hz => Bus_Clock_Frequency --  see table 5-2
         ),
 

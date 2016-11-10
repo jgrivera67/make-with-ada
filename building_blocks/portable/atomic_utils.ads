@@ -31,25 +31,45 @@ with Interfaces;
 --  @summary Atomic Utilities
 --
 package Atomic_Utils is
+   pragma SPARK_Mode (Off);
    use Interfaces;
 
    function Atomic_Fetch_Add (Counter : aliased in out Unsigned_32;
                               Value : Unsigned_32) return Unsigned_32
       with Inline;
 
+   function Atomic_Fetch_Add (Counter : aliased in out Unsigned_16;
+                              Value : Unsigned_16) return Unsigned_16
+      with Inline;
+
    function Atomic_Fetch_Sub (Counter : aliased in out Unsigned_32;
                               Value : Unsigned_32) return Unsigned_32
       with Inline;
 
+   function Atomic_Fetch_Sub (Counter : aliased in out Unsigned_16;
+                              Value : Unsigned_16) return Unsigned_16
+      with Inline;
+
    procedure Atomic_Increment (Counter : aliased in out Unsigned_32)
+      with Inline;
+
+   procedure Atomic_Increment (Counter : aliased in out Unsigned_16)
       with Inline;
 
    function Atomic_Post_Increment (Counter : aliased in out Unsigned_32)
                                    return Unsigned_32 is
       (Atomic_Fetch_Add (Counter, 1));
 
+   function Atomic_Post_Increment (Counter : aliased in out Unsigned_16)
+                                   return Unsigned_16 is
+      (Atomic_Fetch_Add (Counter, 1));
+
    function Atomic_Post_Decrement (Counter : aliased in out Unsigned_32)
                                    return Unsigned_32 is
+      (Atomic_Fetch_Sub (Counter, 1));
+
+   function Atomic_Post_Decrement (Counter : aliased in out Unsigned_16)
+                                   return Unsigned_16 is
       (Atomic_Fetch_Sub (Counter, 1));
 
 end Atomic_Utils;

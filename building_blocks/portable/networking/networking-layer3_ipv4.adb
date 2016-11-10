@@ -29,18 +29,28 @@ with Networking.Layer2.Ethernet_Mac_Driver;
 with Runtime_Logs;
 with Number_Conversion_Utils;
 with Atomic_Utils;
+with Ada.Unchecked_Conversion;
 
 package body Networking.Layer3_IPv4 is
    pragma SPARK_Mode (Off);
    use Number_Conversion_Utils;
    use Networking.Layer2;
    use Atomic_Utils;
+   use Ada.Real_Time;
 
    procedure Build_Subnet_Mask (Subnet_Prefix : IPv4_Subnet_Prefix_Type;
                                 Subnet_Mask : out IPv4_Address_Type);
    --
    --  Build an IPv4 subnet mask in network byte order (big endian),
    --  assuming that the target CPU runs in little endian.
+   --
+
+   function Choose_Local_IPv4_End_Point (
+      Destination_IPv4_Address : IPv4_Address_Type)
+      return IPv4_End_Point_Access_Type;
+   --
+   --  Chooses the local network end-point to be used for sending a packet,
+   --  based on the destination IPv4 address
    --
 
    procedure Initialize (IPv4_End_Point : in out IPv4_End_Point_Type;
@@ -93,16 +103,29 @@ package body Networking.Layer3_IPv4 is
    ------------------------------
 
    protected body ARP_Cache_Protected_Type is
+
+      ------------------------------
+      -- Wait_Until_Cache_Updated --
+      ------------------------------
+
+      entry Wait_Until_Cache_Updated (Timeout_Ms : Natural := 0)
+         when Cache_Updated
+      is
+      begin
+         Cache_Updated := False;
+         -- TODO:
+         -- Start_Timer (Timeout_Ms);
+      end Wait_Until_Cache_Updated;
+
       ------------------------
       -- Lookup_or_Allocate --
       ------------------------
 
       procedure Lookup_or_Allocate (
-         Destination_IP_Address : IPv4_Address_Type;
+         Destination_IPv4_Address : IPv4_Address_Type;
          Found_Entry_Ptr : out ARP_Cache_Entry_Access_Type;
          Free_Entry_Ptr : out ARP_Cache_Entry_Access_Type)
       is
-         use Ada.Real_Time;
          Current_Time : Time;
          First_Free_Entry_Ptr : ARP_Cache_Entry_Access_Type := null;
          Least_Recently_Used_Entry_Ptr : ARP_Cache_Entry_Access_Type := null;
@@ -120,7 +143,8 @@ package body Networking.Layer3_IPv4 is
                pragma Assert (Entries (I).State = Entry_Filled or else
                               Entries (I).State = Entry_Half_Filled);
 
-               if Entries (I).Destination_IP_Address = Destination_IP_Address
+               if Entries (I).Destination_IPv4_Address =
+                  Destination_IPv4_Address
                then
                   Matching_Entry_Ptr := Entries (I)'Unchecked_Access;
                   exit;
@@ -157,26 +181,27 @@ package body Networking.Layer3_IPv4 is
       ------------
 
       procedure Update (
-         Destination_IP_Address : IPv4_Address_Type;
+         Destination_IPv4_Address : IPv4_Address_Type;
          Destination_MAC_Address : Ethernet_Mac_Address_Type)
       is
          Chosen_Entry_Ptr : ARP_Cache_Entry_Access_Type := null;
          Free_Entry_Ptr : ARP_Cache_Entry_Access_Type := null;
       begin
-         Lookup_or_Allocate (Destination_IP_Address,
+         Lookup_or_Allocate (Destination_IPv4_Address,
                              Chosen_Entry_Ptr,
                              Free_Entry_Ptr);
 
          if Chosen_Entry_Ptr = null then
             pragma Assert (Free_Entry_Ptr /= null);
             Chosen_Entry_Ptr := Free_Entry_Ptr;
-            Chosen_Entry_Ptr.Destination_IP_Address := Destination_IP_Address;
+            Chosen_Entry_Ptr.Destination_IPv4_Address :=
+               Destination_IPv4_Address;
          end if;
 
          Chosen_Entry_Ptr.Destination_MAC_Address := Destination_MAC_Address;
          Chosen_Entry_Ptr.State := Entry_Filled;
          Chosen_Entry_Ptr.Entry_Filled_Time_Stamp := Ada.Real_Time.Clock;
-         Set_True (Cache_Updated_Condvar);
+         Cache_Updated := True;
       end Update;
    end ARP_Cache_Protected_Type;
 
@@ -217,6 +242,23 @@ package body Networking.Layer3_IPv4 is
          Subnet_Mask (I) := 0;
       end loop;
    end Build_Subnet_Mask;
+
+   ---------------------------------
+   -- Choose_Local_IPv4_End_Point --
+   ---------------------------------
+
+   function Choose_Local_IPv4_End_Point (
+      Destination_IPv4_Address : IPv4_Address_Type)
+      return IPv4_End_Point_Access_Type is
+   begin
+      pragma Unreferenced (Destination_IPv4_Address);
+
+      --
+      --  There is only one local Ethernet port, so there is only one layer-3
+      --  IPv4 end-point
+      --
+      return Layer3_IPv4_Var.Local_IPv4_End_Points (MAC0)'Access;
+   end Choose_Local_IPv4_End_Point;
 
    ----------------------------
    -- Get_Local_IPv4_Address --
@@ -326,7 +368,7 @@ package body Networking.Layer3_IPv4 is
    -- Parse_IPv4_Address --
    ------------------------
 
-   function Parse_IPv4_Address (IPv4_Address_String : IPv4_Address_String_Type;
+   function Parse_IPv4_Address (IPv4_Address_String : String;
                                 With_Subnet_Prefix : Boolean;
                                 IPv4_Address : out IPv4_Address_Type;
                                 Subnet_Prefix : out Unsigned_8)
@@ -729,7 +771,8 @@ package body Networking.Layer3_IPv4 is
             Source_IPv4_Address_Str &
             ", destination IPv4 address " & Destination_IPv4_Address_Str &
             ", packet type " &  IPv4_Packet_Ptr.Protocol'Image &
-            ", total length " & IPv4_Packet_Ptr.Total_Length'Image);
+            ", total length " &
+            Network_To_Host_Byte_Order (IPv4_Packet_Ptr.Total_Length)'Image);
       end if;
 
       if IPv4_Packet_Ptr.Protocol'Valid then
@@ -815,6 +858,24 @@ package body Networking.Layer3_IPv4 is
    end Receive_Ping_Reply;
 
    ----------------------
+   -- Same_IPv4_Subnet --
+   ----------------------
+
+   function Same_IPv4_Subnet (Local_IPv4_Address : IPv4_Address_Type;
+                              Destination_IPv4_Address : IPv4_Address_Type;
+                              Subnet_Mask : IPv4_Address_Type) return Boolean
+   is
+      function IPv4_Address_to_Value is
+        new Ada.Unchecked_Conversion (Source => IPv4_Address_Type,
+                                      Target => Unsigned_32);
+   begin
+      return (IPv4_Address_to_Value (Local_IPv4_Address) and
+              IPv4_Address_to_Value (Subnet_Mask)) =
+             (IPv4_Address_to_Value (Destination_IPv4_Address) and
+              IPv4_Address_to_Value (Subnet_Mask));
+   end Same_IPv4_Subnet;
+
+   ----------------------
    -- Send_ARP_Request --
    ----------------------
 
@@ -883,16 +944,34 @@ package body Networking.Layer3_IPv4 is
    -------------------------
 
    procedure Send_ICMPv4_Message (
-      Destination_IP_Address : IPv4_Address_Type;
-      Tx_Packet_Ptr : in out Network_Packet_Type;
+      Destination_IPv4_Address : IPv4_Address_Type;
+      Tx_Packet : aliased in out Network_Packet_Type;
       Type_of_Message : IPv4.Type_of_ICMPv4_Message_Type;
       Message_Code : Unsigned_8;
       Data_Payload_Length : Unsigned_16)
    is
+      ICMPv4_Message_Ptr : constant IPv4.ICMPv4_Message_Access_Type :=
+      Get_ICMPv4_Message (Tx_Packet);
    begin
-      pragma Compile_Time_Warning (Standard.True,
-         "Send_ICMPv4_Message unimplemented");
-      Runtime_Logs.Debug_Print ("Send_ICMPv4_Message unimplemented");
+      --
+      --  Populate ICMP header:
+      --
+      ICMPv4_Message_Ptr.Type_of_Message := Type_of_Message;
+      ICMPv4_Message_Ptr.Code := Message_Code;
+
+      --
+      --  NOTE: ICMPv4_Message_Ptr.Checksum is computed by hardware.
+      --  We just need to initialize the checksum field to 0
+      --
+      ICMPv4_Message_Ptr.Checksum := 0;
+
+      --
+      --  Send IP packet:
+      --
+      Send_IPv4_Packet (Destination_IPv4_Address,
+                        Tx_Packet,
+                        IPv4.ICMPv4_Message_Header_Size + Data_Payload_Length,
+                        ICMPv4);
    end Send_ICMPv4_Message;
 
    ----------------------
@@ -900,16 +979,260 @@ package body Networking.Layer3_IPv4 is
    ----------------------
 
    procedure Send_IPv4_Packet (
-      Destination_IP_Address : IPv4_Address_Type;
-      Tx_Packet : in out Network_Packet_Type;
+      Destination_IPv4_Address : IPv4_Address_Type;
+      Tx_Packet : aliased in out Network_Packet_Type;
       Data_Payload_Length : Unsigned_16;
-      Type_of_IPv4_Packet : Unsigned_8)
+      Layer4_Protocol : Layer4_Protocol_Type)
    is
-      IPv4_End_Point_Ptr : IPv4_End_Point_Access_Type;
-   begin
-      pragma Compile_Time_Warning (Standard.True,
-         "Send_IPv4_Packet unimplemented");
-      Runtime_Logs.Debug_Print ("Send_IPv4_Packet unimplemented");
+      function Resolve_Destination_IPv4_Address (
+         Local_IPv4_End_Point : in out IPv4_End_Point_Type;
+         Destination_IPv4_Address : IPv4_Address_Type;
+         Destination_Mac_Address : out Ethernet_Mac_Address_Type)
+         return Boolean;
+
+      IPv4_Packet_Ptr : constant IPv4.IPv4_Packet_Access_Type :=
+         Get_IPv4_Packet (Tx_Packet);
+
+      Local_IPv4_End_Point_Ptr : constant IPv4_End_Point_Access_Type :=
+         Choose_Local_IPv4_End_Point (Destination_IPv4_Address);
+
+      Local_Layer2_End_Point_Ptr : constant Layer2_End_Point_Access_Type :=
+         Layer2.Get_Layer2_End_Point (
+            Local_IPv4_End_Point_Ptr.Ethernet_Mac_Id);
+
+      Packet_Sequence_Number : constant Unsigned_16 :=
+         Atomic_Post_Increment (
+            Local_IPv4_End_Point_Ptr.Next_Tx_Ip_Packet_Seq_Num);
+
+      Flags_and_Fragment_Offset :
+         constant IPv4.Flags_and_Fragment_Offset_Type :=
+            (Dont_Fragment => 1, others => <>);
+
+      Invalid_Destination : Boolean := False;
+      Destination_Mac_Address : Ethernet_Mac_Address_Type;
+      Source_IPv4_Address_Str : IPv4_Address_String_Type;
+      Destination_IPv4_Address_Str : IPv4_Address_String_Type;
+
+      --------------------------------------
+      -- Resolve_Destination_IPv4_Address --
+      --------------------------------------
+
+      function Resolve_Destination_IPv4_Address (
+         Local_IPv4_End_Point : in out IPv4_End_Point_Type;
+         Destination_IPv4_Address : IPv4_Address_Type;
+         Destination_Mac_Address : out Ethernet_Mac_Address_Type)
+         return Boolean
+      is
+         ARP_Request_Retries : Natural := 0;
+         Matching_Entry_Ptr : ARP_Cache_Entry_Access_Type := null;
+         Free_Entry_Ptr : ARP_Cache_Entry_Access_Type := null;
+         ARP_Cache : ARP_Cache_Protected_Type renames
+            Local_IPv4_End_Point.ARP_Cache;
+         Send_ARP_Request_Flag : Boolean;
+         Current_Time : Time;
+         Destination_IPv4_Address_Str : IPv4_Address_String_Type;
+         Layer2_End_Point_Ptr : constant Layer2_End_Point_Access_Type :=
+            Get_Layer2_End_Point (Local_IPv4_End_Point.Ethernet_Mac_Id);
+      begin
+         loop
+            Send_ARP_Request_Flag := False;
+            ARP_Cache.Lookup_or_Allocate (Destination_IPv4_Address,
+                                          Matching_Entry_Ptr,
+                                          Free_Entry_Ptr);
+
+            Current_Time := Clock;
+            if Matching_Entry_Ptr = null then
+               Send_ARP_Request_Flag := True;
+            elsif Matching_Entry_Ptr.State = Entry_Filled then
+               if Current_Time - Matching_Entry_Ptr.Entry_Filled_Time_Stamp <
+                  Milliseconds (ARP_Cache_Entry_Lifetime_Ms)
+               then
+                  --
+                  --  ARP cache hit
+                  --
+                  Destination_Mac_Address :=
+                     Matching_Entry_Ptr.Destination_MAC_Address;
+                  exit;
+               else
+                  --
+                  --  ARP entry expired, send a new ARP request:
+                  --
+                  if Layer3_IPv4_Var.Tracing_On then
+                     IPv4_Address_To_String (Destination_IPv4_Address,
+                                             Destination_IPv4_Address_Str);
+                     Runtime_Logs.Debug_Print (
+                        "Net layer3: Expired ARP cache entry for IP address " &
+                        Destination_IPv4_Address_Str);
+                  end if;
+
+                  Matching_Entry_Ptr.State := Entry_Invalid;
+                  Send_ARP_Request_Flag := True;
+               end if;
+            else
+               pragma Assert (Matching_Entry_Ptr.State = Entry_Half_Filled);
+
+               if Current_Time - Matching_Entry_Ptr.ARP_Request_Time_Stamp >=
+                  Milliseconds (ARP_Reply_Wait_Timeout_Ms)
+               then
+                  --
+                  --  Re-send ARP request:
+                  --
+                  IPv4_Address_To_String (Destination_IPv4_Address,
+                                          Destination_IPv4_Address_Str);
+                  Runtime_Logs.Error_Print (
+                     "Outstanding ARP request re-sent for IP address: " &
+                     Destination_IPv4_Address_Str);
+
+                  Send_ARP_Request_Flag := True;
+               end if;
+            end if;
+
+            --
+            --  Send ARP request if necessary:
+            --
+            if Send_ARP_Request_Flag then
+               if ARP_Request_Retries = ARP_Request_Max_Retries then
+                  IPv4_Address_To_String (Destination_IPv4_Address,
+                                          Destination_IPv4_Address_Str);
+                  Runtime_Logs.Error_Print (
+                     "Unreachable IP address: " &
+                     Destination_IPv4_Address_Str);
+
+                  return False;
+               end if;
+
+               ARP_Request_Retries := ARP_Request_Retries + 1;
+               if Matching_Entry_Ptr /= null then
+                  Matching_Entry_Ptr.ARP_Request_Time_Stamp := Clock;
+                  Matching_Entry_Ptr.State := Entry_Half_Filled;
+               else
+                  pragma Assert (Free_Entry_Ptr /= null);
+                  Free_Entry_Ptr.Destination_IPv4_Address :=
+                     Destination_IPv4_Address;
+                  Free_Entry_Ptr.ARP_Request_Time_Stamp := Clock;
+                  Free_Entry_Ptr.State := Entry_Half_Filled;
+               end if;
+
+               Send_ARP_Request (Layer2_End_Point_Ptr.all,
+                                 Local_IPv4_End_Point.IPv4_Address,
+                                 Destination_IPv4_Address);
+            end if;
+
+            --
+            --  Wait for ARP cache to be updated:
+            --
+            --  TODO: Need to wait on a per-task suspension object
+            --
+            ARP_Cache.Wait_Until_Cache_Updated (ARP_Reply_Wait_Timeout_Ms);
+         end loop;
+
+         return True;
+      end Resolve_Destination_IPv4_Address;
+
+   begin  -- Send_IPv4_Packet
+      pragma Assert (Tx_Packet.Traffic_Direction = Tx);
+      pragma Assert (Data_Payload_Length <= Max_IPv4_Packet_Payload_Size);
+
+      --
+      --  Populate IP header
+      --
+      IPv4_Packet_Ptr.Version_and_Header_Length.Version := 4;
+      IPv4_Packet_Ptr.Version_and_Header_Length.Length :=
+         UInt4 (IPv4.IPv4_Packet_Header_Size / 4);
+      IPv4_Packet_Ptr.Type_of_Service := (others => <>); -- Normal service
+      IPv4_Packet_Ptr.Total_Length :=
+         Host_To_Network_Byte_Order (IPv4.IPv4_Packet_Header_Size +
+                                     Data_Payload_Length);
+      IPv4_Packet_Ptr.Identification :=
+         Host_To_Network_Byte_Order (Packet_Sequence_Number);
+
+      --
+      --  No IP packet fragmentation is supported:
+      --
+      IPv4_Packet_Ptr.Flags_and_Fragment_Offset.Value :=
+         Host_To_Network_Byte_Order (Flags_and_Fragment_Offset.Value);
+
+      IPv4_Packet_Ptr.Time_to_Live := 64; --  max routing hops
+      IPv4_Packet_Ptr.Protocol := Layer4_Protocol;
+      IPv4_Packet_Ptr.Source_IPv4_Address :=
+         Local_IPv4_End_Point_Ptr.IPv4_Address;
+      IPv4_Packet_Ptr.Destination_IPv4_Address := Destination_IPv4_Address;
+
+      --
+      --  NOTE: IPv4_Packet_Ptr.Header_Checksum is computed by hardware.
+      --  We just need to initialize the checksum field to 0
+      --
+      IPv4_Packet_Ptr.Header_Checksum := 0;
+
+      if Layer3_IPv4_Var.Tracing_On then
+         IPv4_Address_To_String (IPv4_Packet_Ptr.Source_IPv4_Address,
+                                 Source_IPv4_Address_Str);
+         IPv4_Address_To_String (IPv4_Packet_Ptr.Destination_IPv4_Address,
+                                 Destination_IPv4_Address_Str);
+         Runtime_Logs.Debug_Print (
+            "Net layer3: IPv4 packet sent: source IPv4 address " &
+            Source_IPv4_Address_Str &
+            ", destination IPv4 address " & Destination_IPv4_Address_Str &
+            ", packet type " &  IPv4_Packet_Ptr.Protocol'Image &
+            ", total length " &
+            Network_To_Host_Byte_Order (IPv4_Packet_Ptr.Total_Length)'Image);
+      end if;
+
+      Atomic_Increment (Layer3_IPv4_Var.Sent_Packets_Count);
+
+      --
+      --  Get destination MAC address:
+      --
+      if Local_IPv4_End_Point_Ptr.IPv4_Address = Destination_IPv4_Address then
+         Runtime_Logs.Error_Print ("IPv4 Loopback not supported");
+         Invalid_Destination := True;
+      elsif Destination_IPv4_Address = IPv4_Broadcast_Address then
+         Destination_Mac_Address := Ethernet_Broadcast_Mac_Address;
+      elsif IPv4_Address_Is_Multicast (Destination_IPv4_Address) then
+         Map_IPv4_Multicast_Addr_To_Ethernet_Multicast_Addr (
+            Destination_IPv4_Address, Destination_Mac_Address);
+      elsif Same_IPv4_Subnet (Local_IPv4_End_Point_Ptr.IPv4_Address,
+                              Destination_IPv4_Address,
+                              Local_IPv4_End_Point_Ptr.IPv4_Subnet_Mask)
+      then
+         Invalid_Destination := not Resolve_Destination_IPv4_Address (
+                                       Local_IPv4_End_Point_Ptr.all,
+                                       Destination_IPv4_Address,
+                                       Destination_Mac_Address);
+
+      elsif Local_IPv4_End_Point_Ptr.Default_Gateway_IPv4_Address =
+            IPv4_Null_Address
+      then
+         Runtime_Logs.Error_Print ("No default IPv4 gateway defined");
+         Invalid_Destination := True;
+      else
+         Invalid_Destination :=
+            not Resolve_Destination_IPv4_Address (
+                   Local_IPv4_End_Point_Ptr.all,
+                   Local_IPv4_End_Point_Ptr.Default_Gateway_IPv4_Address,
+                   Destination_Mac_Address);
+      end if;
+
+      if Invalid_Destination then
+         Atomic_Increment (Layer3_IPv4_Var.Sent_Packets_Dropped_Count);
+         if Tx_Packet.Tx_State_Flags.Packet_Free_After_Tx_Complete then
+            --
+            --  Return Tx packet to the Tx packet pool:
+            --
+            Tx_Packet.Tx_State_Flags.Packet_Free_After_Tx_Complete := False;
+
+            Layer2.Release_Tx_Packet (Tx_Packet);
+         end if;
+
+         return;
+      end if;
+
+      Send_Ethernet_Frame (Local_Layer2_End_Point_Ptr.all,
+                           Destination_Mac_Address,
+                           Tx_Packet,
+                           Ethernet.Frame_IPv4_Packet,
+                           Natural (IPv4.IPv4_Packet_Header_Size +
+                                    Data_Payload_Length));
    end Send_IPv4_Packet;
 
    -----------------------
@@ -1041,7 +1364,6 @@ package body Networking.Layer3_IPv4 is
          (Rx_Packet : aliased in out Network_Packet_Type)
       is
          End_Ping_Ok : Boolean;
-         Signal_Ping_Reply_Received : Boolean := False;
          IPv4_Packet_Ptr : constant IPv4_Packet_Read_Only_Access_Type :=
             Get_IPv4_Packet_Read_Only (Rx_Packet);
          ICMPv4_Message_Ptr :
@@ -1160,7 +1482,7 @@ package body Networking.Layer3_IPv4 is
 
       loop
          Suspend_Until_True (
-         IPv4_End_Point_Ptr.DHCPv4_Client_Task_Suspension_Obj);--???
+            IPv4_End_Point_Ptr.DHCPv4_Client_Task_Suspension_Obj);--???
       end loop;
 
    end DHCPv4_Client_Task_Type;

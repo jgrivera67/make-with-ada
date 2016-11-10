@@ -132,7 +132,7 @@ package Networking is
    --  Broadcast Ethernet MAC address (ff:ff:ff:ff:ff:ff)
    --
    Ethernet_Broadcast_Mac_Address :
-      constant Ethernet_Mac_Address_Type := (others => 16#ff#);
+      aliased constant Ethernet_Mac_Address_Type := (others => 16#ff#);
 
    --
    --  Bit masks for first byte (most significant byte) of a MAC address
@@ -150,7 +150,7 @@ package Networking is
    --  IPv4_Address_Type (1) is most significant byte of the IPv4 address
    --  IPv4_Address_Type (4) is least significant byte of the IPv4 address
    --
-   type IPv4_Address_Type is  array (1 .. 4) of Byte
+   type IPv4_Address_Type is new Bytes_Array_Type (1 .. IPv4_Address_Size)
      with Alignment => 4, Size => IPv4_Address_Size * Byte'Size;
 
    subtype IPv4_Address_String_Type is String (1 .. 15);
@@ -278,9 +278,10 @@ package Networking is
 
    function Dequeue_Network_Packet
       (Packet_Queue : aliased in out Network_Packet_Queue_Type;
-       Timeout_Ms : Natural := 0) return Network_Packet_Access_Type
-       with Post => (if Timeout_Ms = 0 then
-                        Dequeue_Network_Packet'Result /= null);
+       Timeout_Ms : Natural := 0)
+      return Network_Packet_Access_Type
+      with Post => (if Timeout_Ms = 0 then
+                       Dequeue_Network_Packet'Result /= null);
    --
    --  Removes the packet from the head of a network packet queue, if the queue
    --  is not empty. Otherwise, it waits until the queue becomes non-empty.

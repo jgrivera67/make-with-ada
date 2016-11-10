@@ -68,11 +68,11 @@ package Networking.Packet_Layout is
       end record;
 
       type Type_of_Service_Type is record
-         Minimize_Monetary_Cost : Bit;
-         Maximize_Reliability : Bit;
-         Maximize_Throughput : Bit;
-         Minimize_Delay : Bit;
-         Precedence : UInt3;
+         Minimize_Monetary_Cost : Bit := 0;
+         Maximize_Reliability : Bit := 0;
+         Maximize_Throughput : Bit := 0;
+         Minimize_Delay : Bit := 0;
+         Precedence : UInt3 := 0;
       end record with Size => Byte'Size,
                       Bit_Order => System.Low_Order_First;
 
@@ -84,12 +84,19 @@ package Networking.Packet_Layout is
          Precedence             at 0 range 5 .. 7;
       end record;
 
-      type Flags_and_Fragment_Offset_Type is record
-         Fragment_Offset : UInt13;
-         More_Fragments : Bit;
-         Dont_Fragment : Bit;
-         Reserved : Bit;
-      end record with Size => Unsigned_16'Size,
+      type Flags_and_Fragment_Offset_Type (Record_View : Boolean := True) is
+      record
+         case Record_View is
+            when True =>
+               Fragment_Offset : UInt13 := 0;
+               More_Fragments : Bit := 0;
+               Dont_Fragment : Bit := 0;
+               Reserved : Bit := 0;
+           when False =>
+               Value : Unsigned_16;
+         end case;
+      end record with Unchecked_Union,
+                      Size => Unsigned_16'Size,
                       Bit_Order => System.Low_Order_First;
 
       for Flags_and_Fragment_Offset_Type use record
@@ -97,12 +104,13 @@ package Networking.Packet_Layout is
          More_Fragments  at 0 range 13 .. 13;
          Dont_Fragment   at 0 range 14 .. 14;
          Reserved        at 0 range 15 .. 15;
+         Value           at 0 range 0 .. 15;
       end record;
 
       --
       --  IPv4 packet header minimum size in bytes
       --
-      IPv4_Packet_Header_Size : constant Positive := 20;
+      IPv4_Packet_Header_Size : constant := 20;
 
       --
       --  Layout of an IPv4 packet in network byte order
@@ -271,7 +279,7 @@ package Networking.Packet_Layout is
       --
       --  ICMPv4 header size in bytes
       --
-      ICMPv4_Message_Header_Size : constant Positive := 4;
+      ICMPv4_Message_Header_Size : constant := 4;
 
       --
       --  ICMPv4 message codes
@@ -621,6 +629,10 @@ package Networking.Packet_Layout is
                Source => Net_Packet_Data_Buffer_Read_Only_Access_Type,
                Target => Frame_Read_Only_Access_Type);
    end Ethernet;
+
+   Max_IPv4_Packet_Payload_Size : constant :=
+      Net_Packet_Data_Buffer_Size - Ethernet.Frame_Header_Size -
+      IPv4.IPv4_Packet_Header_Size;
 
    function Get_ARP_Packet (Tx_Packet : in out Network_Packet_Type)
                             return IPv4.ARP_Packet_Access_Type;
