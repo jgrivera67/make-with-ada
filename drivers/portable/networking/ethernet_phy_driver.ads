@@ -26,7 +26,6 @@
 --
 
 with Devices.MCU_Specific;
-private with Ethernet_Phy_Mdio_Driver;
 
 --
 --  @summary Ethernet PHY driver
@@ -68,16 +67,6 @@ package Ethernet_Phy_Driver is
    --
 
 private
-   use Ethernet_Phy_Mdio_Driver;
-
-   --
-   --  Type for the constant portion of an Ethernet PHY device object
-   --
-   --  @field Phy_Mdio_Address Address of this PHY device on the MDIO bus
-   --
-   type Ethernet_Phy_Const_Type is limited record
-      Phy_Mdio_Address : Phy_Mdio_Address_Type;
-   end record;
 
    --
    --  State variables of an Ethernet PHY device object

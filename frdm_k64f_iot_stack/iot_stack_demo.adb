@@ -33,6 +33,7 @@ with Color_Led;
 with Networking.Layer2;
 with Networking.Layer3_IPv4;
 with Devices.MCU_Specific;
+with Ada.Text_IO;--???
 
 package body IoT_Stack_Demo is
    pragma SPARK_Mode (Off);
@@ -67,7 +68,35 @@ package body IoT_Stack_Demo is
       procedure Stats_Update_Layer3_Ipv4_Packet_Count;
       procedure Stats_Update_Layer4_Udp_Packet_Count;
 
-      -- ** --
+      Network_Stats_Polling_Period_Ms : constant Time_Span :=
+         Milliseconds (500);
+
+      Layer2_Rx_Packet_Accepted_Count : Unsigned_32 := 0;
+      Layer2_Rx_Packet_Dropped_Count : Unsigned_32 := 0;
+      Layer2_Tx_Packet_Count : Unsigned_32 := 0;
+      Ipv4_Rx_Packet_Accepted_Count : Unsigned_32 := 0;
+      Ipv4_Rx_Packet_Dropped_Count : Unsigned_32 := 0;
+      Ipv4_Tx_Packet_Count : Unsigned_32 := 0;
+      Udp_Rx_Packet_Accepted_Count : Unsigned_32 := 0;
+      Udp_Rx_Packet_Dropped_Count : Unsigned_32 := 0;
+      Udp_Tx_Packet_Count : Unsigned_32 := 0;
+      Local_Mac_Address : Networking.Ethernet_Mac_Address_Type;
+      Local_Mac_Address_Str :
+          Networking.Ethernet_Mac_Address_String_Type;
+      Layer2_End_Point_Ptr :
+         constant Networking.Layer2.Layer2_End_Point_Access_Type :=
+         Networking.Layer2.Get_Layer2_End_Point (Devices.MCU_Specific.MAC0);
+      IPv4_End_Point_Ptr :
+         constant Networking.Layer3_IPv4.IPv4_End_Point_Access_Type :=
+         Networking.Layer3_IPv4.Get_IPv4_End_Point (Devices.MCU_Specific.MAC0);
+      Local_IPv4_Address : Networking.IPv4_Address_Type;
+      Local_IPv4_Subnet_Mask : Networking.IPv4_Address_Type;
+      Local_IPv4_Address_Str :
+         Networking.IPv4_Address_String_Type;
+      Local_IPv4_Subnet_Mask_Str :
+        Networking.IPv4_Address_String_Type;
+      Link_Is_Up : Boolean := False;
+      Old_Color : Color_Led.Led_Color_Type with Unreferenced;
 
       --------------------------------
       -- Init_Network_Stats_Display --
@@ -177,41 +206,27 @@ package body IoT_Stack_Demo is
       -----------------------------
 
       procedure Stats_Update_Link_State is
+         New_Link_Is_Up : Boolean;
+         Link_State_Str : String (1 .. 4);
+         Led_Color : Color_Led.Led_Color_Type;
+         Old_Led_Color : Color_Led.Led_Color_Type with Unreferenced;
       begin
-         pragma Compile_Time_Warning (Standard.True, "unimplemented");
+         New_Link_Is_Up :=
+            Networking.Layer2.Link_Is_Up (Layer2_End_Point_Ptr.all);
+         if Link_Is_Up /= New_Link_Is_Up then
+            Link_Is_Up := New_Link_Is_Up;
+            if Link_Is_Up then
+               Link_State_Str := "up  ";
+               Led_Color := Color_Led.Green;
+            else
+               Link_State_Str := "down";
+               Led_Color := Color_Led.Red;
+            end if;
+
+            Serial_Console.Print_Pos_String (5, 16, Link_State_Str);
+            Old_Color := Color_Led.Set_Color (Led_Color);
+         end if;
       end Stats_Update_Link_State;
-
-      -- ** --
-
-      Network_Stats_Polling_Period_Ms : constant Time_Span :=
-         Milliseconds (500);
-
-      Layer2_Rx_Packet_Accepted_Count : Unsigned_32 := 0;
-      Layer2_Rx_Packet_Dropped_Count : Unsigned_32 := 0;
-      Layer2_Tx_Packet_Count : Unsigned_32 := 0;
-      Ipv4_Rx_Packet_Accepted_Count : Unsigned_32 := 0;
-      Ipv4_Rx_Packet_Dropped_Count : Unsigned_32 := 0;
-      Ipv4_Tx_Packet_Count : Unsigned_32 := 0;
-      Udp_Rx_Packet_Accepted_Count : Unsigned_32 := 0;
-      Udp_Rx_Packet_Dropped_Count : Unsigned_32 := 0;
-      Udp_Tx_Packet_Count : Unsigned_32 := 0;
-      Local_Mac_Address : Networking.Ethernet_Mac_Address_Type;
-      Local_Mac_Address_Str :
-          Networking.Ethernet_Mac_Address_String_Type;
-      Layer2_End_Point_Ptr :
-         constant Networking.Layer2.Layer2_End_Point_Access_Type :=
-         Networking.Layer2.Get_Layer2_End_Point (Devices.MCU_Specific.MAC0);
-      IPv4_End_Point_Ptr :
-         constant Networking.Layer3_IPv4.IPv4_End_Point_Access_Type :=
-         Networking.Layer3_IPv4.Get_IPv4_End_Point (Devices.MCU_Specific.MAC0);
-      Local_IPv4_Address : Networking.IPv4_Address_Type;
-      Local_IPv4_Subnet_Mask : Networking.IPv4_Address_Type;
-      Local_IPv4_Address_Str :
-         Networking.IPv4_Address_String_Type;
-      Local_IPv4_Subnet_Mask_Str :
-        Networking.IPv4_Address_String_Type;
-      Link_Is_Up : Boolean := False;
-      Old_Color : Color_Led.Led_Color_Type with Unreferenced;
 
    begin --  Network_Stats_Task
       Suspend_Until_True (IoT_Stack_Demo.Network_Stats_Task_Suspension_Obj);

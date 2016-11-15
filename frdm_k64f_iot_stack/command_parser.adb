@@ -31,6 +31,7 @@ with Command_Parser_Common;
 with Microcontroller.Arm_Cortex_M;
 with Interfaces.Bit_Types;
 with Networking.Layer3_IPv4;
+with Networking.Layer2;
 with Ada.Real_Time;
 
 --
@@ -145,6 +146,10 @@ package body Command_Parser is
       IPv4_Address_To_String (Destination_IPv4_Address,
                               Destination_IPv4_Address_Str);
 
+      --???
+      Networking.Layer2.Start_Tracing;
+      Networking.Layer3_IPv4.Start_Tracing;
+      --???
       for I in 1 .. 8 loop
          Ping_Request_Sent_Ok := Send_Ping_Request (Destination_IPv4_Address,
                                                     Request_Identifier,

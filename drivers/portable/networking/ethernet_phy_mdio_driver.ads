@@ -104,22 +104,6 @@ private
    --  Type for the constant portion of an Ethernet PHY MDIO device object
    --
    --  @field Registers_Ptr Pointer to the Ethernet PHY MDIO I/O registers
-   --  @field Rmii_Rxd0_Pin MCU pin used as the RXD0 pin of the RMII
-   --  interface to the PHY
-   --  @field Rmii_Rxd1_Pin MCU pin used as the RXD1 pin of the RMII
-   --  interface to the PHY
-   --  @field Rmii_Crs_Dv_Pin MCU pin used as the CRS_DV pin of the RMII
-   --  interface to the PHY
-   --  @field Rmii_Rxer_Pin MCU pin used as the RXER pin of the RMII
-   --  interface to the PHY
-   --  @field Rmii_Txen_Pin MCU pin used as the TXEN pin of the RMII
-   --  interface to the PHY
-   --  @field Rmii_Txd0_Pin MCU pin used as the TXD0 pin of the RMII
-   --  interface to the PHY
-   --  @field Rmii_Txd1_Pin MCU pin used as the TXD1 pin of the RMII
-   --  interface to the PHY
-   --  @field Mii_Txer_Pin MCU pin used as the TXER pin of the RMII
-   --  interface to the PHY
    --  @field Rmii_Mdio_Pin MCU pin used as the MDIO pin of the RMII
    --  management interface to the PHY
    --  @field Rmii_Mdc_Pin MCU pin used as the MDC pin of the RMII
@@ -127,19 +111,6 @@ private
    --
    type Ethernet_Phy_Mdio_Const_Type is limited record
       Registers_Ptr : not null access ENET.ENET_Peripheral;
-
-      --
-      --  RMII interface pins used to connect the MCU's Ethernet MAC to
-      --  this PHY chip
-      --
-      Rmii_Rxd0_Pin : Pin_Info_Type;
-      Rmii_Rxd1_Pin : Pin_Info_Type;
-      Rmii_Crs_Dv_Pin : Pin_Info_Type;
-      Rmii_Rxer_Pin : Pin_Info_Type;
-      Rmii_Txen_Pin : Pin_Info_Type;
-      Rmii_Txd0_Pin : Pin_Info_Type;
-      Rmii_Txd1_Pin : Pin_Info_Type;
-      Mii_Txer_Pin : Pin_Info_Type;
 
       --
       --  RMII management interface pins used to connect the MCU's Ethernet

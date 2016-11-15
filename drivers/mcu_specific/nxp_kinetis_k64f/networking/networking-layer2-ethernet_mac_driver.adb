@@ -305,10 +305,11 @@ package body Networking.Layer2.Ethernet_Mac_Driver is
                Buffer_Desc.Data_Buffer_Address);
 
          pragma Assert (Rx_Packet_Ptr.Traffic_Direction = Rx);
-         pragma Assert (Rx_Packet_Ptr.Rx_State_Flags.Packet_In_Rx_Transit);
-         pragma Assert (
-            not Rx_Packet_Ptr.Rx_State_Flags.Packet_In_Rx_Use_By_App);
+         pragma Assert (Rx_Packet_Ptr.Rx_State_Flags =
+                        (Packet_In_Rx_Pool | Packet_In_Rx_Transit => True,
+                         others => False));
 
+         Rx_Packet_Ptr.Rx_State_Flags.Packet_In_Rx_Pool := False;
          Rx_Packet_Ptr.Rx_State_Flags.Packet_In_Rx_Transit := False;
          Buffer_Desc.Data_Buffer_Address := Null_Address;
          Buffer_Desc.Control_Extend1.RX_BD_GENERATE_INTERRUPT := 0;
@@ -873,6 +874,7 @@ package body Networking.Layer2.Ethernet_Mac_Driver is
             Rx_Packet : Network_Packet_Type renames
               Layer2_End_Point_Ptr.Rx_Packets (I);
          begin
+            pragma Assert (Rx_Packet.Rx_State_Flags.Packet_In_Rx_Pool);
             Rx_Packet.Rx_Buffer_Descriptor_Index := I;
             Rx_Packet.Rx_State_Flags.Packet_In_Rx_Transit := True;
 
@@ -1103,8 +1105,9 @@ package body Networking.Layer2.Ethernet_Mac_Driver is
            Rx_Packet.Data_Payload_Buffer'Address;
          Rx_Buffer_Desc.Control_Extend1.RX_BD_GENERATE_INTERRUPT := 1;
 
-         Rx_Packet.Rx_State_Flags := (Packet_In_Rx_Transit => True,
-                                      others => False);
+         Rx_Packet.Rx_State_Flags :=
+            (Packet_In_Rx_Pool | Packet_In_Rx_Transit => True,
+             others => False);
 
          --
          --  Mark buffer descriptor as "ready for reception":

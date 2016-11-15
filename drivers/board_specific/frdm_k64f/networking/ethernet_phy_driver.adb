@@ -28,6 +28,8 @@
 with Interfaces.Bit_Types;
 with System;
 with Runtime_Logs;
+with Ethernet_Phy_Mdio_Driver;
+with Pin_Mux_Driver;
 
 --
 --  Implementation for the Micrel KSZ8081RNA Ethernet PHY
@@ -36,6 +38,46 @@ package body Ethernet_Phy_Driver is
    use Interfaces.Bit_Types;
    use Interfaces;
    use Devices;
+   use Ethernet_Phy_Mdio_Driver;
+   use Pin_Mux_Driver;
+
+   --
+   --  Type for the constant portion of an Ethernet PHY device object
+   --
+   --  @field Phy_Mdio_Address Address of this PHY device on the MDIO bus
+   --  @field Rmii_Rxd0_Pin MCU pin used as the RXD0 pin of the RMII
+   --  interface to the PHY
+   --  @field Rmii_Rxd1_Pin MCU pin used as the RXD1 pin of the RMII
+   --  interface to the PHY
+   --  @field Rmii_Crs_Dv_Pin MCU pin used as the CRS_DV pin of the RMII
+   --  interface to the PHY
+   --  @field Rmii_Rxer_Pin MCU pin used as the RXER pin of the RMII
+   --  interface to the PHY
+   --  @field Rmii_Txen_Pin MCU pin used as the TXEN pin of the RMII
+   --  interface to the PHY
+   --  @field Rmii_Txd0_Pin MCU pin used as the TXD0 pin of the RMII
+   --  interface to the PHY
+   --  @field Rmii_Txd1_Pin MCU pin used as the TXD1 pin of the RMII
+   --  interface to the PHY
+   --  @field Mii_Txer_Pin MCU pin used as the TXER pin of the RMII
+   --  interface to the PHY
+   --
+   type Ethernet_Phy_Const_Type is limited record
+      Phy_Mdio_Address : Phy_Mdio_Address_Type;
+
+      --
+      --  RMII interface pins used to connect the MCU's Ethernet MAC to
+      --  this PHY chip
+      --
+      Rmii_Rxd0_Pin : Pin_Info_Type;
+      Rmii_Rxd1_Pin : Pin_Info_Type;
+      Rmii_Crs_Dv_Pin : Pin_Info_Type;
+      Rmii_Rxer_Pin : Pin_Info_Type;
+      Rmii_Txen_Pin : Pin_Info_Type;
+      Rmii_Txd0_Pin : Pin_Info_Type;
+      Rmii_Txd1_Pin : Pin_Info_Type;
+      Mii_Txer_Pin : Pin_Info_Type;
+   end record;
 
    --
    --  PHY Registers
@@ -180,7 +222,48 @@ package body Ethernet_Phy_Driver is
    --
    Ethernet_Phy_Const_Devices :
      constant array (Ethernet_Mac_Id_Type) of Ethernet_Phy_Const_Type :=
-     (MAC0 => (Phy_Mdio_Address => 16#0#));
+     (MAC0 => (Phy_Mdio_Address => 16#0#,
+               Rmii_Rxd0_Pin =>
+                 (Pin_Port => PIN_PORT_A,
+                  Pin_Index => 13,
+                  Pin_Function => PIN_FUNCTION_ALT4),
+
+              Rmii_Rxd1_Pin =>
+                (Pin_Port => PIN_PORT_A,
+                 Pin_Index => 12,
+                 Pin_Function => PIN_FUNCTION_ALT4),
+
+              Rmii_Crs_Dv_Pin =>
+                (Pin_Port => PIN_PORT_A,
+                 Pin_Index => 14,
+                 Pin_Function => PIN_FUNCTION_ALT4),
+
+              Rmii_Rxer_Pin =>
+                (Pin_Port => PIN_PORT_A,
+                 Pin_Index => 5,
+                 Pin_Function => PIN_FUNCTION_ALT4),
+
+              Rmii_Txen_Pin =>
+                (Pin_Port => PIN_PORT_A,
+                 Pin_Index => 15,
+                 Pin_Function => PIN_FUNCTION_ALT4),
+
+              Rmii_Txd0_Pin =>
+                (Pin_Port => PIN_PORT_A,
+                 Pin_Index => 16,
+                 Pin_Function => PIN_FUNCTION_ALT4),
+
+              Rmii_Txd1_Pin =>
+                (Pin_Port => PIN_PORT_A,
+                 Pin_Index => 17,
+                 Pin_Function => PIN_FUNCTION_ALT4),
+
+              Mii_Txer_Pin =>
+                (Pin_Port => PIN_PORT_A,
+                 Pin_Index => 28,
+                 Pin_Function => PIN_FUNCTION_ALT4)
+              )
+     );
 
    ----------------
    -- Initialize --
@@ -199,6 +282,18 @@ package body Ethernet_Phy_Driver is
       Ethernet_Phy_Mdio_Driver.Initialize (
          Ethernet_Mac_Id,
          Ethernet_Phy_Const.Phy_Mdio_Address);
+
+      --
+      --  Set GPIO pins for Ethernet PHY RMII functions:
+      --
+      Set_Pin_Function (Ethernet_Phy_Const.Rmii_Rxd0_Pin);
+      Set_Pin_Function (Ethernet_Phy_Const.Rmii_Rxd1_Pin);
+      Set_Pin_Function (Ethernet_Phy_Const.Rmii_Crs_Dv_Pin);
+      Set_Pin_Function (Ethernet_Phy_Const.Rmii_Rxer_Pin);
+      Set_Pin_Function (Ethernet_Phy_Const.Rmii_Txd0_Pin);
+      Set_Pin_Function (Ethernet_Phy_Const.Rmii_Txd1_Pin);
+      Set_Pin_Function (Ethernet_Phy_Const.Rmii_Txen_Pin);
+      Set_Pin_Function (Ethernet_Phy_Const.Mii_Txer_Pin);
 
       --
       --  Reset Phy chip

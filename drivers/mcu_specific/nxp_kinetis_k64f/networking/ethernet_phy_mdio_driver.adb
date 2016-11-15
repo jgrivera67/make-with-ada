@@ -95,7 +95,7 @@ package body Ethernet_Phy_Mdio_Driver is
       Set_Pin_Function (Ethernet_Phy_Mdio_Const.Rmii_Mdio_Pin,
                         Open_Drain_Enable => True);
 
-      Set_True (Ethernet_Phy_Mdio_Var.Mutex);
+      Set_True (Ethernet_Phy_Mdio_Var.Mutex); --???
       Ethernet_Phy_Mdio_Var.Phy_Mdio_Address := Phy_Mdio_Address;
       Ethernet_Phy_Mdio_Var.Initialized := True;
    end Initialize;
@@ -157,7 +157,6 @@ package body Ethernet_Phy_Mdio_Driver is
       Ethernet_Phy_Mdio_Const.Registers_Ptr.EIR := EIR_Value;
 
       Set_True (Ethernet_Phy_Mdio_Var.Mutex);
-
       return Phy_Register_Value_Type (MMFR_Value.DATA);
    end Read_Phy_Register;
 

@@ -39,45 +39,6 @@ private package Ethernet_Phy_Mdio_Driver.Board_Specific_Private is
      constant array (Ethernet_Mac_Id_Type) of Ethernet_Phy_Mdio_Const_Type :=
      (MAC0 =>
         (Registers_Ptr => ENET.ENET_Periph'Access,
-         Rmii_Rxd0_Pin =>
-            (Pin_Port => PIN_PORT_A,
-             Pin_Index => 13,
-             Pin_Function => PIN_FUNCTION_ALT4),
-
-         Rmii_Rxd1_Pin =>
-           (Pin_Port => PIN_PORT_A,
-            Pin_Index => 12,
-            Pin_Function => PIN_FUNCTION_ALT4),
-
-         Rmii_Crs_Dv_Pin =>
-           (Pin_Port => PIN_PORT_A,
-            Pin_Index => 14,
-            Pin_Function => PIN_FUNCTION_ALT4),
-
-         Rmii_Rxer_Pin =>
-           (Pin_Port => PIN_PORT_A,
-            Pin_Index => 5,
-            Pin_Function => PIN_FUNCTION_ALT4),
-
-         Rmii_Txen_Pin =>
-           (Pin_Port => PIN_PORT_A,
-            Pin_Index => 15,
-            Pin_Function => PIN_FUNCTION_ALT4),
-
-         Rmii_Txd0_Pin =>
-           (Pin_Port => PIN_PORT_A,
-            Pin_Index => 16,
-            Pin_Function => PIN_FUNCTION_ALT4),
-
-         Rmii_Txd1_Pin =>
-           (Pin_Port => PIN_PORT_A,
-            Pin_Index => 17,
-            Pin_Function => PIN_FUNCTION_ALT4),
-
-         Mii_Txer_Pin =>
-           (Pin_Port => PIN_PORT_A,
-            Pin_Index => 28,
-            Pin_Function => PIN_FUNCTION_ALT4),
 
          Rmii_Mdio_Pin =>
            (Pin_Port => PIN_PORT_B,

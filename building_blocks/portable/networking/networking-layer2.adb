@@ -283,6 +283,9 @@ package body Networking.Layer2 is
          Get_Layer2_End_Point (Rx_Packet.Ethernet_Mac_Id);
    begin
       pragma Assert (Rx_Packet.Rx_State_Flags.Packet_In_Rx_Use_By_App);
+      pragma Assert (not Rx_Packet.Rx_State_Flags.Packet_In_Rx_Pool);
+      pragma Assert (not Rx_Packet.Rx_State_Flags.Packet_In_Rx_Transit);
+      pragma Assert (not Rx_Packet.Rx_State_Flags.Packet_In_Rx_Queue);
 
       Networking.Layer2.Ethernet_Mac_Driver.Repost_Rx_Packet (
          Layer2_End_Point_Ptr.Ethernet_Mac_Id, Rx_Packet);
