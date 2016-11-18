@@ -223,7 +223,7 @@ package body IoT_Stack_Demo is
                Led_Color := Color_Led.Red;
             end if;
 
-            Serial_Console.Print_Pos_String (5, 16, Link_State_Str);
+            Serial_Console.Print_Pos_String (5, 15, Link_State_Str);
             Old_Color := Color_Led.Set_Color (Led_Color);
          end if;
       end Stats_Update_Link_State;

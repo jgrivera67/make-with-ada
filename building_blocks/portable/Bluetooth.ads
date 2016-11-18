@@ -38,6 +38,4 @@ package Bluetooth is
 
 private
 
-
-
 end Bluetooth;

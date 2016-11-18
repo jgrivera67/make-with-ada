@@ -57,7 +57,7 @@ package Devices is
    --  Counter type for iterations of a polling loop
    --  waiting for response from the Ethernet PHY
    --
-   type Polling_Count_Type is range 1 .. 50_000;
+   type Polling_Count_Type is range 1 .. Unsigned_16'Last;
 
    function Bit_Mask (Bit_Index : UInt5) return Unsigned_32 is
      (Shift_Left (Unsigned_32 (1), Natural (Bit_Index)));

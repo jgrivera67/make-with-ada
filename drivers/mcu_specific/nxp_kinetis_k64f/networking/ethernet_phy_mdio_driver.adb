@@ -29,6 +29,7 @@ with Ethernet_Phy_Mdio_Driver.Board_Specific_Private;
 with Microcontroller;
 with MK64F12;
 with Runtime_Logs;
+with System.Machine_Code;
 
 --
 --  @summary Implementation of the Ethernet PHY MDIO driver for the Kinetis
@@ -93,9 +94,10 @@ package body Ethernet_Phy_Mdio_Driver is
       --  is required when port configuration for MDIO signal is enabled.
       --
       Set_Pin_Function (Ethernet_Phy_Mdio_Const.Rmii_Mdio_Pin,
-                        Open_Drain_Enable => True);
+                        Open_Drain_Enable => True,
+                        Pullup_Resistor => True);
 
-      Set_True (Ethernet_Phy_Mdio_Var.Mutex); --???
+      --Set_True (Ethernet_Phy_Mdio_Var.Mutex); --???
       Ethernet_Phy_Mdio_Var.Phy_Mdio_Address := Phy_Mdio_Address;
       Ethernet_Phy_Mdio_Var.Initialized := True;
    end Initialize;
@@ -115,7 +117,8 @@ package body Ethernet_Phy_Mdio_Driver is
       EIR_Value : ENET.ENET_EIR_Register;
       MMFR_Value : ENET.ENET_MMFR_Register;
    begin
-      Suspend_Until_True (Ethernet_Phy_Mdio_Var.Mutex);
+      --Runtime_Logs.Debug_Print ("Read_Phy register: " & Phy_Register_Id'Image);--???
+      --Suspend_Until_True (Ethernet_Phy_Mdio_Var.Mutex);
 
       MSCR_Value := Ethernet_Phy_Mdio_Const.Registers_Ptr.MSCR;
       pragma Assert (MSCR_Value.MII_SPEED /= 0);
@@ -131,9 +134,10 @@ package body Ethernet_Phy_Mdio_Driver is
       MMFR_Value.RA := UInt5 (Phy_Register_Id);
       MMFR_Value.TA := 16#2#;
       Ethernet_Phy_Mdio_Const.Registers_Ptr.MMFR := MMFR_Value;
+      Data_Synchronization_Barrier;
 
       --
-      --  Wait for SMI write to complete
+      --  Wait for SMI read to complete
       --  (the MMI interrupt event bit is set in the EIR, when
       --   an SMI data transfer is completed)
       --
@@ -148,15 +152,17 @@ package body Ethernet_Phy_Mdio_Driver is
          raise Program_Error;
       end if;
 
+      Data_Synchronization_Barrier;
       MMFR_Value := Ethernet_Phy_Mdio_Const.Registers_Ptr.MMFR;
 
       --
       --  Clear the MII interrupt event in the EIR register
       --  (EIR is a w1c register)
       --
+      EIR_Value := (MII => 1, others => <>);
       Ethernet_Phy_Mdio_Const.Registers_Ptr.EIR := EIR_Value;
 
-      Set_True (Ethernet_Phy_Mdio_Var.Mutex);
+      --Set_True (Ethernet_Phy_Mdio_Var.Mutex);
       return Phy_Register_Value_Type (MMFR_Value.DATA);
    end Read_Phy_Register;
 
@@ -176,7 +182,8 @@ package body Ethernet_Phy_Mdio_Driver is
       EIR_Value : ENET.ENET_EIR_Register;
       MMFR_Value : ENET.ENET_MMFR_Register;
    begin
-      Suspend_Until_True (Ethernet_Phy_Mdio_Var.Mutex);
+      --Runtime_Logs.Debug_Print ("Write_Phy register: " & Phy_Register_Id'Image);--???
+      --Suspend_Until_True (Ethernet_Phy_Mdio_Var.Mutex);
 
       MSCR_Value := Ethernet_Phy_Mdio_Const.Registers_Ptr.MSCR;
       pragma Assert (MSCR_Value.MII_SPEED /= 0);
@@ -193,6 +200,7 @@ package body Ethernet_Phy_Mdio_Driver is
       MMFR_Value.TA := 16#2#;
       MMFR_Value.DATA := Short (Phy_Register_Value);
       Ethernet_Phy_Mdio_Const.Registers_Ptr.MMFR := MMFR_Value;
+      Data_Synchronization_Barrier;
 
       --
       --  Wait for SMI write to complete
@@ -214,9 +222,10 @@ package body Ethernet_Phy_Mdio_Driver is
       --  Clear the MII interrupt event in the EIR register
       --  (EIR is a w1c register)
       --
+      EIR_Value := (MII => 1, others => <>);
       Ethernet_Phy_Mdio_Const.Registers_Ptr.EIR := EIR_Value;
 
-      Set_True (Ethernet_Phy_Mdio_Var.Mutex);
+      --Set_True (Ethernet_Phy_Mdio_Var.Mutex);
    end Write_Phy_Register;
 
 end Ethernet_Phy_Mdio_Driver;

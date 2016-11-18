@@ -86,7 +86,7 @@ package body Bluetooth is
                               Bluetooth_Uart_Baud_Rate);
 
       Bluetooth_Serial_Interface_Var.Initialized := True;
-       Set_True (Bluetooth_Serial_Interface_Var.Initialized_Condvar);
+      Set_True (Bluetooth_Serial_Interface_Var.Initialized_Condvar);
    end Initialize;
 
    ------------------------------------------------
@@ -107,12 +107,13 @@ package body Bluetooth is
       FSCI_Packet.Length := 0;
       FSCI_Packet_Size :=
         Positive (FSCI_Packet_Header_Size + FSCI_Packet.Length);
-      Uart_Driver.Put_Bytes (
-         Bluetooth_Serial_Interface_Ptr.Uart,
-         FSCI_Packet_To_Bytes_Array (FSCI_Packet) (1 .. FSCI_Packet_Size));
-      --???
-
       loop
+         Uart_Driver.Put_Bytes (
+            Bluetooth_Serial_Interface_Ptr.Uart,
+         FSCI_Packet_To_Bytes_Array (FSCI_Packet) (1 .. FSCI_Packet_Size));
+         --???
+
+         Ada.Text_IO.Put_Line ("Waiting for KW40 ...");--???
          Data := Uart_Driver.Get_Byte (Bluetooth_Serial_Interface_Ptr.Uart);
 
          Ada.Text_IO.Put (Data'Image & " ");

@@ -130,8 +130,8 @@ package body Networking.Layer3_IPv4 is
          First_Free_Entry_Ptr : ARP_Cache_Entry_Access_Type := null;
          Least_Recently_Used_Entry_Ptr : ARP_Cache_Entry_Access_Type := null;
          Least_Recently_Used_Time_Delta : Time_Span := Time_Span_Zero;
-         Matching_Entry_Ptr : ARP_Cache_Entry_Access_Type := null;
       begin
+         Found_Entry_Ptr := null;
          Free_Entry_Ptr := null;
          for I in Entries'Range loop
             Current_Time := Ada.Real_Time.Clock;
@@ -146,7 +146,7 @@ package body Networking.Layer3_IPv4 is
                if Entries (I).Destination_IPv4_Address =
                   Destination_IPv4_Address
                then
-                  Matching_Entry_Ptr := Entries (I)'Unchecked_Access;
+                  Found_Entry_Ptr := Entries (I)'Unchecked_Access;
                   exit;
                end if;
 
@@ -162,7 +162,7 @@ package body Networking.Layer3_IPv4 is
             end if;
          end loop;
 
-         if Matching_Entry_Ptr = null then
+         if Found_Entry_Ptr = null then
             if First_Free_Entry_Ptr /= null then
                Free_Entry_Ptr := First_Free_Entry_Ptr;
             else
@@ -472,16 +472,6 @@ package body Networking.Layer3_IPv4 is
 
       procedure Trace_Received_ARP_Packet (ARP_Packet : ARP_Packet_Type);
 
-      ARP_Packet_Ptr : constant ARP_Packet_Read_Only_Access_Type :=
-         Get_ARP_Packet_Read_Only (Rx_Packet);
-
-      ARP_Operation : constant ARP_Operation_Type :=
-            Unsigned_16_To_ARP_Operation (
-               Network_To_Host_Byte_Order (ARP_Packet_Ptr.Operation));
-
-      Local_IPv4_End_Point_Ptr : constant IPv4_End_Point_Access_Type :=
-           Get_IPv4_End_Point (Rx_Packet.Ethernet_Mac_Id);
-
       -----------------------
       -- Process_ARP_Reply --
       -----------------------
@@ -618,14 +608,15 @@ package body Networking.Layer3_IPv4 is
          Tx_ARP_Packet_Ptr.Type_of_Link_Address :=
             Host_To_Network_Byte_Order (Unsigned_16 (
                Link_Address_Ethernet'Enum_Rep));
+
          Tx_ARP_Packet_Ptr.Type_of_Network_Address :=
             Host_To_Network_Byte_Order (Unsigned_16 (
                Network_Address_IPv4'Enum_Rep));
 
-         pragma Assert (Tx_ARP_Packet_Ptr.Link_Address_Size =
-                        Ethernet_Mac_Address_Size);
-         pragma Assert (Tx_ARP_Packet_Ptr.Network_Address_Size =
-                        IPv4_Address_Size);
+         Tx_ARP_Packet_Ptr.Link_Address_Size :=
+            Ethernet_Mac_Address_Size;
+         Tx_ARP_Packet_Ptr.Network_Address_Size :=
+            IPv4_Address_Size;
 
          Tx_ARP_Packet_Ptr.Operation :=
             Host_To_Network_Byte_Order (Unsigned_16 (ARP_Reply'Enum_Rep));
@@ -637,9 +628,9 @@ package body Networking.Layer3_IPv4 is
          Tx_ARP_Packet_Ptr.Destination_IP_Address := Destination_IPv4_Address;
 
          if Layer3_IPv4_Var.Tracing_On then
-            IPv4_Address_To_String (ARP_Packet_Ptr.Source_IP_Address,
+            IPv4_Address_To_String (Source_IPv4_Address,
                                     Source_IPv4_Address_Str);
-            IPv4_Address_To_String (ARP_Packet_Ptr.Destination_IP_Address,
+            IPv4_Address_To_String (Destination_IPv4_Address,
                                     Destination_IPv4_Address_Str);
             Runtime_Logs.Debug_Print (
                "Net layer3: ARP reply sent: " &
@@ -687,6 +678,18 @@ package body Networking.Layer3_IPv4 is
             Destination_Mac_Address_Str & ", Destination IPv4 address " &
             Destination_IPv4_Address_Str);
       end Trace_Received_ARP_Packet;
+
+      -- ** --
+
+      ARP_Packet_Ptr : constant ARP_Packet_Read_Only_Access_Type :=
+         Get_ARP_Packet_Read_Only (Rx_Packet);
+
+      ARP_Operation : constant ARP_Operation_Type :=
+            Unsigned_16_To_ARP_Operation (
+               Network_To_Host_Byte_Order (ARP_Packet_Ptr.Operation));
+
+      Local_IPv4_End_Point_Ptr : constant IPv4_End_Point_Access_Type :=
+           Get_IPv4_End_Point (Rx_Packet.Ethernet_Mac_Id);
 
    begin -- Process_Incoming_ARP_Packet
       pragma Assert (
@@ -754,6 +757,8 @@ package body Networking.Layer3_IPv4 is
 
       Source_IPv4_Address_Str : IPv4_Address_String_Type;
       Destination_IPv4_Address_Str : IPv4_Address_String_Type;
+      Protocol : Layer4_Protocol_Type;
+      Protocol_Str : String (1 .. 2);
       Drop_Packet : Boolean := False;
 
    begin -- Process_Incoming_IPv4_Packet
@@ -766,12 +771,15 @@ package body Networking.Layer3_IPv4 is
                                  Source_IPv4_Address_Str);
          IPv4_Address_To_String (IPv4_Packet_Ptr.Destination_IPv4_Address,
                                  Destination_IPv4_Address_Str);
+         Protocol := IPv4_Packet_Ptr.Protocol;
+         Unsigned_To_Hexadecimal_String (
+            Unsigned_8 (Protocol'Enum_Rep), Protocol_Str);
          Runtime_Logs.Debug_Print (
             "Net layer3: IPv4 packet received: source IPv4 address " &
             Source_IPv4_Address_Str &
             ", destination IPv4 address " & Destination_IPv4_Address_Str &
-            ", packet type " &  IPv4_Packet_Ptr.Protocol'Image &
-            ", total length " &
+            ", packet type 16#" &  Protocol_Str &
+            "#, total length " &
             Network_To_Host_Byte_Order (IPv4_Packet_Ptr.Total_Length)'Image);
       end if;
 
@@ -907,11 +915,8 @@ package body Networking.Layer3_IPv4 is
          Host_To_Network_Byte_Order (Unsigned_16 (
             Network_Address_IPv4'Enum_Rep));
 
-      pragma Assert (Tx_ARP_Packet_Ptr.Link_Address_Size =
-                     Ethernet_Mac_Address_Size);
-      pragma Assert (Tx_ARP_Packet_Ptr.Network_Address_Size =
-                     IPv4_Address_Size);
-
+      Tx_ARP_Packet_Ptr.Link_Address_Size := Ethernet_Mac_Address_Size;
+      Tx_ARP_Packet_Ptr.Network_Address_Size := IPv4_Address_Size;
       Tx_ARP_Packet_Ptr.Operation :=
          Host_To_Network_Byte_Order (Unsigned_16 (ARP_Request'Enum_Rep));
 
@@ -1012,6 +1017,8 @@ package body Networking.Layer3_IPv4 is
       Destination_Mac_Address : Ethernet_Mac_Address_Type;
       Source_IPv4_Address_Str : IPv4_Address_String_Type;
       Destination_IPv4_Address_Str : IPv4_Address_String_Type;
+      Protocol : Layer4_Protocol_Type;
+      Protocol_Str : String (1 .. 2);
 
       --------------------------------------
       -- Resolve_Destination_IPv4_Address --
@@ -1042,6 +1049,7 @@ package body Networking.Layer3_IPv4 is
 
             Current_Time := Clock;
             if Matching_Entry_Ptr = null then
+               pragma Assert (Free_Entry_Ptr /= null);
                Send_ARP_Request_Flag := True;
             elsif Matching_Entry_Ptr.State = Entry_Filled then
                if Current_Time - Matching_Entry_Ptr.Entry_Filled_Time_Stamp <
@@ -1169,12 +1177,15 @@ package body Networking.Layer3_IPv4 is
                                  Source_IPv4_Address_Str);
          IPv4_Address_To_String (IPv4_Packet_Ptr.Destination_IPv4_Address,
                                  Destination_IPv4_Address_Str);
+         Protocol := IPv4_Packet_Ptr.Protocol;
+         Unsigned_To_Hexadecimal_String (
+            Unsigned_8 (Protocol'Enum_Rep), Protocol_Str);
          Runtime_Logs.Debug_Print (
             "Net layer3: IPv4 packet sent: source IPv4 address " &
             Source_IPv4_Address_Str &
             ", destination IPv4 address " & Destination_IPv4_Address_Str &
-            ", packet type " &  IPv4_Packet_Ptr.Protocol'Image &
-            ", total length " &
+            ", packet type 16#" &  Protocol_Str &
+            "#, total length " &
             Network_To_Host_Byte_Order (IPv4_Packet_Ptr.Total_Length)'Image);
       end if;
 
@@ -1282,6 +1293,8 @@ package body Networking.Layer3_IPv4 is
    is
       IPv4_Address_Str : IPv4_Address_String_Type;
       Subnet_Mask_Str : IPv4_Address_String_Type;
+      Layer2_End_Point_Ptr : constant Layer2_End_Point_Access_Type :=
+         Get_Layer2_End_Point (IPv4_End_Point.Ethernet_Mac_Id);
    begin
       IPv4_End_Point.IPv4_Address := IPv4_Address;
       Build_Subnet_Mask (Subnet_Prefix,
@@ -1297,6 +1310,12 @@ package body Networking.Layer3_IPv4 is
          "Net layer3: Set local IPv4 address to " &
          IPv4_Address_Str & " (subnet mask: " & Subnet_Mask_Str & ") for MAC" &
          IPv4_End_Point.Ethernet_Mac_Id'Image);
+
+      --
+      --  Send gratuitous ARP request (to catch if someone else is using the
+      --  same IP address):
+      --
+      Send_ARP_Request (Layer2_End_Point_Ptr.all, IPv4_Address, IPv4_Address);
    end Set_Local_IPv4_Address;
 
    --------------------------

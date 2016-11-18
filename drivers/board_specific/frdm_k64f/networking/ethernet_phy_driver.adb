@@ -30,6 +30,7 @@ with System;
 with Runtime_Logs;
 with Ethernet_Phy_Mdio_Driver;
 with Pin_Mux_Driver;
+with Ada.Real_Time;
 
 --
 --  Implementation for the Micrel KSZ8081RNA Ethernet PHY
@@ -40,6 +41,7 @@ package body Ethernet_Phy_Driver is
    use Devices;
    use Ethernet_Phy_Mdio_Driver;
    use Pin_Mux_Driver;
+   use Ada.Real_Time;
 
    --
    --  Type for the constant portion of an Ethernet PHY device object
@@ -82,7 +84,7 @@ package body Ethernet_Phy_Driver is
    --
    --  PHY Registers
    --
-   type Phy_Registers is (
+   type Phy_Registers_Type is (
       Phy_Control_Reg,              --  basic control register
       Phy_Status_Reg,               --  basic status register
       Phy_Id1_Reg,                  --  identification register 1
@@ -92,7 +94,7 @@ package body Ethernet_Phy_Driver is
       Phy_Control2_Reg              --  control register 2
    ) with Size => Byte'Size;
 
-   for Phy_Registers use (
+   for Phy_Registers_Type use (
       Phy_Control_Reg =>             16#0#,
       Phy_Status_Reg =>              16#1#,
       Phy_Id1_Reg =>                 16#2#,
@@ -312,6 +314,7 @@ package body Ethernet_Phy_Driver is
            Read_Phy_Register (Ethernet_Mac_Id, Phy_Control_Reg'Enum_Rep);
 
          exit when Phy_Control_Register.Reset = 0;
+         delay until Clock + Microseconds (10);
       end loop;
 
       if Phy_Control_Register.Reset /= 0 then
@@ -342,8 +345,8 @@ package body Ethernet_Phy_Driver is
          for Polling_Count in Polling_Count_Type loop
             Phy_Status_Register.Whole_Value :=
                Read_Phy_Register (Ethernet_Mac_Id, Phy_Status_Reg'Enum_Rep);
-
             exit when Phy_Status_Register.Auto_Neg_Complete = 1;
+            delay until Clock + Microseconds (10);
          end loop;
 
          if Phy_Status_Register.Auto_Neg_Complete = 0 then

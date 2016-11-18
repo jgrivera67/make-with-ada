@@ -248,4 +248,56 @@ package body Number_Conversion_Utils is
 
    end Unsigned_To_Hexadecimal_String;
 
+   ------------------------------------
+   -- Unsigned_To_Hexadecimal_String --
+   ------------------------------------
+
+   procedure Unsigned_To_Hexadecimal_String (Value : Unsigned_16;
+                                             Buffer : out String)
+   is
+      Hex_Digit : Unsigned_16 range 16#0# .. 16#f#;
+      Value_Left : Unsigned_16 := Value;
+   begin
+      for I in reverse Buffer'Range loop
+         Hex_Digit := Value_Left and 16#f#;
+         if Hex_Digit < 16#a# then
+            Buffer (I) := Character'Val (Hex_Digit + Character'Pos ('0'));
+         else
+            Buffer (I) := Character'Val ((Hex_Digit - 16#a#) +
+                                           Character'Pos ('A'));
+         end if;
+
+         Value_Left := Shift_Right (Value_Left, 4);
+      end loop;
+
+      pragma Assert (Value_Left = 0);
+
+   end Unsigned_To_Hexadecimal_String;
+
+   ------------------------------------
+   -- Unsigned_To_Hexadecimal_String --
+   ------------------------------------
+
+   procedure Unsigned_To_Hexadecimal_String (Value : Unsigned_8;
+                                             Buffer : out String)
+   is
+      Hex_Digit : Unsigned_8 range 16#0# .. 16#f#;
+      Value_Left : Unsigned_8 := Value;
+   begin
+      for I in reverse Buffer'Range loop
+         Hex_Digit := Value_Left and 16#f#;
+         if Hex_Digit < 16#a# then
+            Buffer (I) := Character'Val (Hex_Digit + Character'Pos ('0'));
+         else
+            Buffer (I) := Character'Val ((Hex_Digit - 16#a#) +
+                                           Character'Pos ('A'));
+         end if;
+
+         Value_Left := Shift_Right (Value_Left, 4);
+      end loop;
+
+      pragma Assert (Value_Left = 0);
+
+   end Unsigned_To_Hexadecimal_String;
+
 end Number_Conversion_Utils;

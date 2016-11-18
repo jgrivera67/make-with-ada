@@ -26,8 +26,10 @@
 --
 
 with Runtime_Logs;
+with Networking.Layer2;
 
 package body Networking.Layer4_UDP is
+   use Networking.Layer2;
 
    ----------------
    -- Initialize --
@@ -53,6 +55,8 @@ package body Networking.Layer4_UDP is
       --  Generated stub: replace with real body!
       pragma Compile_Time_Warning (Standard.True, "Process_Incoming_UDP_Datagram unimplemented");
       Runtime_Logs.Debug_Print ("Unimplemented procedure Process_Incoming_UDP_Datagram");
+      Recycle_Rx_Packet (Rx_Packet);--???
+
    end Process_Incoming_UDP_Datagram;
 
    -------------------

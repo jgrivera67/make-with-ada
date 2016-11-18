@@ -29,7 +29,7 @@
 --  @summary Pin MUX driver private declarations
 --
 private package Pin_Mux_Driver.MCU_Specific_Private is
-   pragma Preelaborate;
+   --pragma Preelaborate;
    pragma SPARK_Mode (Off);
 
    --

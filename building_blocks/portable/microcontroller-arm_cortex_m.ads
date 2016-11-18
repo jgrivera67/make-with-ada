@@ -150,7 +150,7 @@ package Microcontroller.Arm_Cortex_M is
    function Are_Cpu_Interrupts_Disabled return Boolean with Inline;
    --  Tell if interrupts are disabled in the CPU
 
-   procedure Data_Synchronization_Barrier;
+   procedure Data_Synchronization_Barrier with Inline;
    --  Data memory barrier
 
    function Return_Address_To_Call_Address (Return_Address : Address)

@@ -90,7 +90,8 @@ package body Networking.Layer2 is
       pragma Assert (Tx_Packet_Ptr.Tx_State_Flags =
                      (Packet_In_Tx_Pool => True, others => False));
 
-      Tx_Packet_Ptr.Tx_State_Flags.Packet_In_Tx_Use_By_App := True;
+      Tx_Packet_Ptr.Tx_State_Flags := (Packet_In_Tx_Use_By_App => True,
+                                       others => False);
       if Free_After_Tx_Complete then
          Tx_Packet_Ptr.Tx_State_Flags.Packet_Free_After_Tx_Complete := True;
       end if;
@@ -228,7 +229,7 @@ package body Networking.Layer2 is
             Rx_Packet.Data_Payload_Buffer'Unchecked_Access);
 
       Type_of_Frame :=
-         Ethernet.Unsigned_16_To_Type_Of_Frame (
+         Ethernet.Unsigned_16_To_Type_of_Frame (
             Network_To_Host_Byte_Order (
                Rx_Frame_Ptr.Type_of_Frame));
 
@@ -439,6 +440,7 @@ package body Networking.Layer2 is
    is
       Source_Mac_Address_Str : Ethernet_Mac_Address_String_Type;
       Destination_Mac_Address_Str : Ethernet_Mac_Address_String_Type;
+      Type_of_Frame_Str : String (1 .. 4);
    begin
       Mac_Address_To_String (Source_Mac_Address,
                              Source_Mac_Address_Str);
@@ -446,13 +448,16 @@ package body Networking.Layer2 is
       Mac_Address_To_String (Destination_Mac_Address,
                              Destination_Mac_Address_Str);
 
+      Unsigned_To_Hexadecimal_String (Unsigned_16 (Type_of_Frame'Enum_Rep),
+                                      Type_of_Frame_Str);
+
       Runtime_Logs.Debug_Print (
          "Net layer2: Ethernet frame " &
          (if Traffic_Direction = Rx then "received" else "sent") &
          ": Source MAC address " & Source_Mac_Address_Str &
          ", Destination MAC address " & Destination_Mac_Address_Str &
-         ", Frame type " & Type_of_Frame'Image &
-         ", Total length " & Total_Length'Image & " bytes");
+         ", Frame type 16#" & Type_of_Frame_Str &
+         "#, Total length " & Total_Length'Image & " bytes");
    end Trace_Frame;
 
    -- ** --

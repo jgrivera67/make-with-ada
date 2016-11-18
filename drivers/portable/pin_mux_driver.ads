@@ -31,7 +31,7 @@ with Devices.MCU_Specific;
 --  @summary Pin MUX driver
 --
 package Pin_Mux_Driver is
-   pragma Preelaborate;
+   --pragma Preelaborate;
    use Devices.MCU_Specific;
    use Devices;
 

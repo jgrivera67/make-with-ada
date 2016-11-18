@@ -61,4 +61,10 @@ package Number_Conversion_Utils is
    procedure Unsigned_To_Hexadecimal_String (Value : Unsigned_32;
                                              Buffer : out String);
 
+   procedure Unsigned_To_Hexadecimal_String (Value : Unsigned_16;
+                                             Buffer : out String);
+
+   procedure Unsigned_To_Hexadecimal_String (Value : Unsigned_8;
+                                             Buffer : out String);
+
 end Number_Conversion_Utils;

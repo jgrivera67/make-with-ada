@@ -126,7 +126,7 @@ private
    type Ethernet_Phy_Mdio_Var_Type is limited record
       Initialized : Boolean := False;
       Phy_Mdio_Address : Phy_Mdio_Address_Type;
-      Mutex : Suspension_Object;
+      --Mutex : Suspension_Object;
    end record;
 
    --

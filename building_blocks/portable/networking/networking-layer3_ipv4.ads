@@ -200,7 +200,8 @@ private
       procedure Lookup_or_Allocate (
          Destination_IPv4_Address : IPv4_Address_Type;
          Found_Entry_Ptr : out ARP_Cache_Entry_Access_Type;
-         Free_Entry_Ptr : out ARP_Cache_Entry_Access_Type);
+         Free_Entry_Ptr : out ARP_Cache_Entry_Access_Type)
+         with Post => (if Found_Entry_Ptr = null then Free_Entry_Ptr /= null);
 
       procedure Update (
          Destination_IPv4_Address : IPv4_Address_Type;

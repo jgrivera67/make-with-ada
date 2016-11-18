@@ -28,7 +28,9 @@
 with Generic_App_Config;
 with Runtime_Logs;
 with Devices.MCU_Specific;
+with Networking.Layer2;
 with Networking.Layer3_IPv4;
+with Networking.Layer4_UDP;
 
 package body App_Configuration is
 
@@ -56,7 +58,22 @@ package body App_Configuration is
       --  ???
       Config_Parameters.Local_IPv4_Address := (192, 168, 8, 2);
       Config_Parameters.IPv4_Subnet_Prefix := 24;
+      Config_Parameters.Net_Tracing_Layer2_On := True;
+      Config_Parameters.Net_Tracing_Layer3_On := True;
+      Config_Parameters.Net_Tracing_Layer4_On := True;
       --  ???
+
+      if Config_Parameters.Net_Tracing_Layer2_On then
+         Networking.Layer2.Start_Tracing;
+      end if;
+
+      if Config_Parameters.Net_Tracing_Layer3_On then
+         Networking.Layer3_IPv4.Start_Tracing;
+      end if;
+
+      if Config_Parameters.Net_Tracing_Layer4_On then
+         Networking.Layer4_UDP.Start_Tracing;
+      end if;
 
       Networking.Layer3_IPv4.Set_Local_IPv4_Address (
          IPv4_End_Point_Ptr.all,

@@ -150,7 +150,7 @@ package Networking.Packet_Layout is
       --
       --  @field First_Data_Word : First word of the data payload
       --
-      type IPv4_Packet_Type is record
+      type IPv4_Packet_Type is limited record
          Version_and_Header_Length : Version_and_Header_Length_Type;
          Type_of_Service : Type_of_Service_Type;
          Total_Length : Unsigned_16;
@@ -238,11 +238,14 @@ package Networking.Packet_Layout is
       --
       --  @field Destination_IP_Address Destination (target) IPv4 address
       --
-      type ARP_Packet_Type is record
+      --  NOTE: Do not use field initializers in this record, as this type is
+      --  used just to overlay a network packet payload.
+      --
+      type ARP_Packet_Type is limited record
          Type_of_Link_Address : Unsigned_16;
          Type_of_Network_Address : Unsigned_16;
-         Link_Address_Size : Byte := Ethernet_Mac_Address_Size;
-         Network_Address_Size : Byte := IPv4_Address_Size;
+         Link_Address_Size : Byte;
+         Network_Address_Size : Byte;
          Operation : Unsigned_16;
          Source_Mac_Address : Ethernet_Mac_Address_Type;
          Source_IP_Address : IPv4_Address_Type;
@@ -299,7 +302,7 @@ package Networking.Packet_Layout is
       --  @field Identifier
       --  @field Sequence_Number
       --
-      type ICMPv4_Message_Type is record
+      type ICMPv4_Message_Type is limited record
          Type_of_Message : Type_of_ICMPv4_Message_Type;
          Code : Unsigned_8;
          Checksum : Unsigned_16;
@@ -330,7 +333,7 @@ package Networking.Packet_Layout is
       --  @field Identifier
       --  @field Sequence_Number
       --
-      type ICMPv4_Echo_Message_Data_Type is record
+      type ICMPv4_Echo_Message_Data_Type is limited record
          Identifier : Unsigned_16;
          Sequence_Number : Unsigned_16;
       end record with Size => ICMPv4_Echo_Message_Data_Size * Byte'Size;
@@ -364,7 +367,10 @@ package Networking.Packet_Layout is
       --  @field Magic_Cookie
       --  @field First_Option_Word first word of options
       --
-      type DHCPv4_Message_Type is record
+      --  NOTE: Do not use field initializers in this record, as this type is
+      --  used just to overlay a network packet payload.
+      --
+      type DHCPv4_Message_Type is limited record
          Operation : Unsigned_8;
          Hardware_Type : Unsigned_8;
          Hardware_Address_Length : Unsigned_8;
@@ -377,7 +383,7 @@ package Networking.Packet_Layout is
          Next_Server_IP_Address : IPv4_Address_Type;
          Relay_Agent_IP_Address : IPv4_Address_Type;
          Client_MAC_Address : Ethernet_Mac_Address_Type;
-         Zero_Filled : Bytes_Array_Type (1 .. 10 + 192) := (others => 0);
+         Zero_Filled : Bytes_Array_Type (1 .. 10 + 192);
          Magic_Cookie : Unsigned_32;
          First_Option_Word : aliased Unsigned_32;
       end record with Size => 244 * Byte'Size;
@@ -591,7 +597,7 @@ package Networking.Packet_Layout is
       --
       --  @field First_Data_word : First word of the data payload
       --
-      type Frame_Type is record
+      type Frame_Type is limited record
          Alignment_Padding : Unsigned_16;
          Destination_Mac_Address : Ethernet_Mac_Address_Type;
          Source_Mac_Address : Ethernet_Mac_Address_Type;
@@ -611,7 +617,7 @@ package Networking.Packet_Layout is
 
       type Frame_Read_Only_Access_Type is access constant Frame_Type;
 
-      function Unsigned_16_To_Type_Of_Frame is
+      function Unsigned_16_To_Type_of_Frame is
         new Ada.Unchecked_Conversion (Source => Unsigned_16,
                                       Target => Type_of_Frame_Type);
         --

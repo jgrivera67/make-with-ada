@@ -1071,15 +1071,6 @@ package body Networking.Layer2.Ethernet_Mac_Driver is
          Ethernet_Mac_Var : in out Ethernet_Mac_Var_Type;
          Rx_Packet : in out Network_Packet_Type);
 
-      Ethernet_Mac_Const : Ethernet_Mac_Const_Type renames
-        Ethernet_Mac_Const_Devices (Ethernet_Mac_Id);
-      Ethernet_Mac_Var : Ethernet_Mac_Var_Type renames
-        Ethernet_Mac_Var_Devices (Ethernet_Mac_Id);
-      Mac_Registers_Ptr : access ENET_Peripheral renames
-        Ethernet_Mac_Const.Registers_Ptr;
-      Old_Interrupt_Mask : Interfaces.Bit_Types.Word;
-      RDAR_Value : ENET_RDAR_Register; --  default-initialized
-
       -----------------------------
       -- Atomic_Repost_Rx_Packet --
       -----------------------------
@@ -1128,6 +1119,15 @@ package body Networking.Layer2.Ethernet_Mac_Driver is
          Ethernet_Mac_Var.Rx_Ring_Entries_Filled :=
            Ethernet_Mac_Var.Rx_Ring_Entries_Filled + 1;
       end Atomic_Repost_Rx_Packet;
+
+      Ethernet_Mac_Const : Ethernet_Mac_Const_Type renames
+        Ethernet_Mac_Const_Devices (Ethernet_Mac_Id);
+      Ethernet_Mac_Var : Ethernet_Mac_Var_Type renames
+        Ethernet_Mac_Var_Devices (Ethernet_Mac_Id);
+      Mac_Registers_Ptr : access ENET_Peripheral renames
+        Ethernet_Mac_Const.Registers_Ptr;
+      Old_Interrupt_Mask : Interfaces.Bit_Types.Word;
+      RDAR_Value : ENET_RDAR_Register; --  default-initialized
 
    begin --  Repost_Rx_Packet
       Old_Interrupt_Mask := Disable_Cpu_Interrupts;

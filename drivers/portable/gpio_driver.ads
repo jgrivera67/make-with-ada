@@ -30,7 +30,7 @@ with Pin_Mux_Driver;
 --  @summary GPIO driver
 --
 package Gpio_Driver is
-   pragma Preelaborate;
+   --pragma Preelaborate;
    use Pin_Mux_Driver;
 
    --
