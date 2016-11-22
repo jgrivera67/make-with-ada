@@ -187,7 +187,7 @@ package Networking is
    --  IPv6_Address_Type (8) is least significant byte of the IPv4 address
    --
    type IPv6_Address_Type is  array (1 .. 8) of Unsigned_16
-     with Alignment => 8, Size => IPv6_Address_Size * Byte'Size;
+     with Alignment => 4, Size => IPv6_Address_Size * Byte'Size;
 
    subtype IPv6_Address_String_Type is String (1 .. 39);
 

@@ -342,6 +342,7 @@ package body Ethernet_Phy_Driver is
          --
          --  Wait for auto-negotiation completion:
          --
+         Runtime_Logs.Info_Print ("Starting Ethernet auto-negotiation ...");
          for Polling_Count in Polling_Count_Type loop
             Phy_Status_Register.Whole_Value :=
                Read_Phy_Register (Ethernet_Mac_Id, Phy_Status_Reg'Enum_Rep);
@@ -353,6 +354,8 @@ package body Ethernet_Phy_Driver is
             Runtime_Logs.Error_Print ("Ethernet PHY auto-negotiation failed");
             raise Program_Error;
          end if;
+
+         Runtime_Logs.Info_Print ("Ethernet auto-negotiation completed");
       end if;
 
       Ethernet_Phy_Var.Initialized := True;

@@ -785,12 +785,12 @@ package body Networking.Layer3_IPv4 is
 
       if IPv4_Packet_Ptr.Protocol'Valid then
          case IPv4_Packet_Ptr.Protocol is
-            when ICMPv4 =>
+            when Protocol_ICMPv4 =>
                Rx_Packet.Rx_State_Flags.Packet_In_ICMPv4_Queue := True;
                Enqueue_Network_Packet (
                   Local_IPv4_End_Point_Ptr.Rx_ICMPv4_Packet_Queue,
                   Rx_Packet'Unchecked_Access);
-            when UDP =>
+            when Protocol_UDP =>
                Networking.Layer4_UDP.Process_Incoming_UDP_Datagram (Rx_Packet);
 
             when others =>
@@ -976,7 +976,7 @@ package body Networking.Layer3_IPv4 is
       Send_IPv4_Packet (Destination_IPv4_Address,
                         Tx_Packet,
                         IPv4.ICMPv4_Message_Header_Size + Data_Payload_Length,
-                        ICMPv4);
+                        Protocol_ICMPv4);
    end Send_ICMPv4_Message;
 
    ----------------------

@@ -37,20 +37,83 @@ package Networking.Packet_Layout is
    --
    --  Layer-4 protocols
    --
-   type Layer4_Protocol_Type is (ICMPv4,
-                                 TCP,
-                                 UDP,
-                                 ICMPv6)
+   type Layer4_Protocol_Type is (Protocol_ICMPv4,
+                                 Protocol_TCP,
+                                 Protocol_UDP,
+                                 Protocol_ICMPv6)
       with Size => Byte'Size;
 
-   for Layer4_Protocol_Type use (ICMPv4 => 16#1#,
-                                 TCP => 16#6#,
-                                 UDP => 16#11#,
-                                 ICMPv6 => 16#3a#);
+   for Layer4_Protocol_Type use (Protocol_ICMPv4 => 16#1#,
+                                 Protocol_TCP => 16#6#,
+                                 Protocol_UDP => 16#11#,
+                                 Protocol_ICMPv6 => 16#3a#);
 
    type First_Data_Word_Access_Type is access all Unsigned_32;
 
    type First_Data_Word_Read_Only_Access_Type is access constant Unsigned_32;
+
+   --
+   --  UDP packet layout
+   --
+   package UDP is
+      --
+      --  UDP datagram header size in bytes
+      --
+      UDP_Datagram_Header_Size : constant := 8;
+
+      --
+      --  Layout of a UDP datagram in network byte order
+      --  (An UDP datagram is encapsulated in an IPv4 packet or an IPv6 packet)
+      --
+      --  @field Source_Port Source port number
+      --  (Host_To_Network_Byte_Order must be invoked before writing this
+      --   field. Network_to_Host_Byte_Order must be invoked after reading this
+      --   field)
+      --
+      --  @field Destination_Port Destination port number
+      --  (Host_To_Network_Byte_Order must be invoked before writing this
+      --   field. Network_to_Host_Byte_Order must be invoked after reading this
+      --   field)
+      --
+      --  @field Datagram_Length UDP datagram length (header + data payload) in
+      --  bytes. (Host_To_Network_Byte_Order must be invoked before writing
+      --  this field. Network_to_Host_Byte_Order must be invoked after reading
+      --  this field)
+      --
+      --  @field Datagram_Checksum UDP datagram checksum
+      type UDP_Datagram_Type is limited record
+         Source_Port : Unsigned_16;
+         Destination_Port : Unsigned_16;
+         Datagram_Length : Unsigned_16;
+         Datagram_Checksum : Unsigned_16;
+         First_Data_Word : aliased Unsigned_32;
+      end record with Size => (UDP_Datagram_Header_Size + 4) * Byte'Size;
+
+      for UDP_Datagram_Type use record
+         Source_Port at 0 range 0 .. 15;
+         Destination_Port at 2 range 0 .. 15;
+         Datagram_Length at 4 range 0 .. 15;
+         Datagram_Checksum at 6 range 0 .. 15;
+         First_Data_Word at 8 range 0 .. 31;
+      end record;
+
+      type UDP_Datagram_Access_Type is access all UDP_Datagram_Type;
+
+      type UDP_Datagram_Read_Only_Access_Type is
+         access constant UDP_Datagram_Type;
+
+      -- ** --
+
+      function Data_Payload_Ptr_To_UDP_Datagram_Ptr is
+        new Ada.Unchecked_Conversion (
+               Source => First_Data_Word_Access_Type,
+               Target => UDP_Datagram_Access_Type);
+
+      function Data_Payload_Ptr_To_UDP_Datagram_Read_Only_Ptr is
+        new Ada.Unchecked_Conversion (
+               Source => First_Data_Word_Read_Only_Access_Type,
+               Target => UDP_Datagram_Read_Only_Access_Type);
+   end UDP;
 
    --
    --  IPv4 packet layout
@@ -636,9 +699,31 @@ package Networking.Packet_Layout is
                Target => Frame_Read_Only_Access_Type);
    end Ethernet;
 
+   --
+   --  Maximum size of the data payload of an IPv4 packet
+   --
    Max_IPv4_Packet_Payload_Size : constant :=
       Net_Packet_Data_Buffer_Size - Ethernet.Frame_Header_Size -
       IPv4.IPv4_Packet_Header_Size;
+
+   --
+   --  Maximum size of the data payload of an IPv6 packet
+   --
+   Max_IPv6_Packet_Payload_Size : constant :=
+      Net_Packet_Data_Buffer_Size - Ethernet.Frame_Header_Size -
+      IPv6.IPv6_Packet_Header_Size;
+
+   --
+   --  Maximum size of the data payload of a UDP datagram over IPv4
+   --
+   Max_UDP_Datagram_Payload_Size_Over_IPv4 : constant :=
+      Max_IPv4_Packet_Payload_Size - UDP.UDP_Datagram_Header_Size;
+
+   --
+   --  Maximum size of the data payload of a UDP datagram over IPv6
+   --
+   Max_UDP_Datagram_Payload_Size_Over_IPv6 : constant :=
+      Max_IPv6_Packet_Payload_Size - UDP.UDP_Datagram_Header_Size;
 
    function Get_ARP_Packet (Tx_Packet : in out Network_Packet_Type)
                             return IPv4.ARP_Packet_Access_Type;
@@ -646,11 +731,23 @@ package Networking.Packet_Layout is
    function Get_ARP_Packet_Read_Only (Rx_Packet : Network_Packet_Type)
       return IPv4.ARP_Packet_Read_Only_Access_Type;
 
+   function Get_Ethernet_Frame (Tx_Packet : in out Network_Packet_Type)
+      return Ethernet.Frame_Access_Type;
+
+   function Get_Ethernet_Frame_Read_Only (Rx_Packet : Network_Packet_Type)
+      return Ethernet.Frame_Read_Only_Access_Type;
+
    function Get_IPv4_Packet (Tx_Packet : in out Network_Packet_Type)
                              return IPv4.IPv4_Packet_Access_Type;
 
    function Get_IPv4_Packet_Read_Only (Rx_Packet : Network_Packet_Type)
       return IPv4.IPv4_Packet_Read_Only_Access_Type;
+
+   function Get_IPv6_Packet (Tx_Packet : in out Network_Packet_Type)
+                             return IPv6.IPv6_Packet_Access_Type;
+
+   function Get_IPv6_Packet_Read_Only (Rx_Packet : Network_Packet_Type)
+      return IPv6.IPv6_Packet_Read_Only_Access_Type;
 
    function Get_ICMPv4_Message (IPv4_Packet_Ptr : IPv4.IPv4_Packet_Access_Type)
       return IPv4.ICMPv4_Message_Access_Type;
@@ -689,6 +786,16 @@ private
             Rx_Packet.Data_Payload_Buffer'Unchecked_Access).
                First_Data_Word'Access));
 
+   function Get_Ethernet_Frame (Tx_Packet : in out Network_Packet_Type)
+                            return Ethernet.Frame_Access_Type is
+      (Ethernet.Net_Packet_Data_Buffer_Ptr_To_Frame_Ptr (
+            Tx_Packet.Data_Payload_Buffer'Unchecked_Access));
+
+   function Get_Ethernet_Frame_Read_Only (Rx_Packet : Network_Packet_Type)
+                            return Ethernet.Frame_Read_Only_Access_Type is
+      (Ethernet.Net_Packet_Data_Buffer_Ptr_To_Frame_Read_Only_Ptr (
+          Rx_Packet.Data_Payload_Buffer'Unchecked_Access));
+
    function Get_IPv4_Packet (Tx_Packet : in out Network_Packet_Type)
                              return IPv4.IPv4_Packet_Access_Type is
      (IPv4.Data_Payload_Ptr_To_IPv4_Packet_Ptr (
@@ -699,6 +806,20 @@ private
    function Get_IPv4_Packet_Read_Only (Rx_Packet : Network_Packet_Type)
       return IPv4.IPv4_Packet_Read_Only_Access_Type is
       (IPv4.Data_Payload_Ptr_To_IPv4_Packet_Read_Only_Ptr (
+         Ethernet.Net_Packet_Data_Buffer_Ptr_To_Frame_Read_Only_Ptr (
+            Rx_Packet.Data_Payload_Buffer'Unchecked_Access).
+               First_Data_Word'Access));
+
+   function Get_IPv6_Packet (Tx_Packet : in out Network_Packet_Type)
+                             return IPv6.IPv6_Packet_Access_Type is
+     (IPv6.Data_Payload_Ptr_To_IPv6_Packet_Ptr (
+         Ethernet.Net_Packet_Data_Buffer_Ptr_To_Frame_Ptr (
+            Tx_Packet.Data_Payload_Buffer'Unchecked_Access).
+               First_Data_Word'Access));
+
+   function Get_IPv6_Packet_Read_Only (Rx_Packet : Network_Packet_Type)
+      return IPv6.IPv6_Packet_Read_Only_Access_Type is
+      (IPv6.Data_Payload_Ptr_To_IPv6_Packet_Read_Only_Ptr (
          Ethernet.Net_Packet_Data_Buffer_Ptr_To_Frame_Read_Only_Ptr (
             Rx_Packet.Data_Payload_Buffer'Unchecked_Access).
                First_Data_Word'Access));

@@ -158,25 +158,32 @@ package body Command_Parser is
             return;
          end if;
 
-         Ping_Reply_Received_Ok := Receive_Ping_Reply (3000,
-                                                       Remote_IPv4_Address,
-                                                       Reply_Identifier,
-                                                       Reply_Sequence_Number);
-         if not Ping_Reply_Received_Ok then
-            Serial_Console.Print_String (
-               "Ping " & Request_Sequence_Number'Image & " for " &
-               Destination_IPv4_Address_Str & " timed-out" & ASCII.LF);
+         loop
+            Ping_Reply_Received_Ok :=
+               Receive_Ping_Reply (3000,
+                                   Remote_IPv4_Address,
+                                   Reply_Identifier,
+                                   Reply_Sequence_Number);
+            if not Ping_Reply_Received_Ok then
+               Serial_Console.Print_String (
+                  "Ping " & Request_Sequence_Number'Image & " for " &
+                  Destination_IPv4_Address_Str & " timed-out" & ASCII.LF);
+               return;
+            end if;
 
-            return;
-         end if;
-
-         pragma Assert (Remote_IPv4_Address = Destination_IPv4_Address);
-         pragma Assert (Reply_Identifier = Request_Identifier);
-         pragma Assert (Reply_Sequence_Number = Request_Sequence_Number);
-
-         Serial_Console.Print_String (
-            "Ping" & Reply_Sequence_Number'Image & " replied by " &
-            Destination_IPv4_Address_Str & ASCII.LF);
+            if Remote_IPv4_Address /= Destination_IPv4_Address or else
+               Reply_Identifier /= Request_Identifier or else
+               Reply_Sequence_Number /= Request_Sequence_Number
+            then
+               Serial_Console.Print_String (
+                  "Received invalid or stale ping reply");
+            else
+               Serial_Console.Print_String (
+                  "Ping" & Reply_Sequence_Number'Image & " replied by " &
+                  Destination_IPv4_Address_Str & ASCII.LF);
+               exit;
+            end if;
+         end loop;
 
          Request_Sequence_Number := Request_Sequence_Number + 1;
          delay until Clock + Ping_Period_Ms;

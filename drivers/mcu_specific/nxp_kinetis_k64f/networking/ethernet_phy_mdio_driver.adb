@@ -29,7 +29,6 @@ with Ethernet_Phy_Mdio_Driver.Board_Specific_Private;
 with Microcontroller;
 with MK64F12;
 with Runtime_Logs;
-with System.Machine_Code;
 
 --
 --  @summary Implementation of the Ethernet PHY MDIO driver for the Kinetis
@@ -117,7 +116,6 @@ package body Ethernet_Phy_Mdio_Driver is
       EIR_Value : ENET.ENET_EIR_Register;
       MMFR_Value : ENET.ENET_MMFR_Register;
    begin
-      --Runtime_Logs.Debug_Print ("Read_Phy register: " & Phy_Register_Id'Image);--???
       --Suspend_Until_True (Ethernet_Phy_Mdio_Var.Mutex);
 
       MSCR_Value := Ethernet_Phy_Mdio_Const.Registers_Ptr.MSCR;
@@ -182,7 +180,6 @@ package body Ethernet_Phy_Mdio_Driver is
       EIR_Value : ENET.ENET_EIR_Register;
       MMFR_Value : ENET.ENET_MMFR_Register;
    begin
-      --Runtime_Logs.Debug_Print ("Write_Phy register: " & Phy_Register_Id'Image);--???
       --Suspend_Until_True (Ethernet_Phy_Mdio_Var.Mutex);
 
       MSCR_Value := Ethernet_Phy_Mdio_Const.Registers_Ptr.MSCR;

@@ -44,7 +44,6 @@ package body Networking.API is
       Networking.Layer2.Initialize;
       Networking.Layer3_IPv4.Initialize;
       Networking.Layer3_IPv6.Initialize;
-      Networking.Layer4_UDP.Initialize;
       Networking.Layer2.Start_Layer2_End_Points;
       Networking.Layer3_IPv4.Start_IPv4_End_Points;
       Networking.Layer3_IPv6.Start_IPv6_End_Points;

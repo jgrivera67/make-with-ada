@@ -26,7 +26,7 @@
 --
 
 with Pin_Mux_Driver.MCU_Specific_Private;
-with Runtime_Logs;--???
+
 package body Pin_Mux_Driver is
    use Pin_Mux_Driver.MCU_Specific_Private;
 
@@ -112,7 +112,6 @@ package body Pin_Mux_Driver is
          IRQC => 0,
          others => 0);
 
-      Runtime_Logs.Debug_Print ("*** PCR value " & PCR_Value.PS'Image & PCR_Value.PE'Image & PCR_Value.ODE'Image);--???
       Port_Registers.all.PCR (Pin_Info.Pin_Index) := PCR_Value;
       Pins_In_Use_Entry := True;
    end Set_Pin_Function;

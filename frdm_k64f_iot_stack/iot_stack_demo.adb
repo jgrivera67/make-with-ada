@@ -33,7 +33,6 @@ with Color_Led;
 with Networking.Layer2;
 with Networking.Layer3_IPv4;
 with Devices.MCU_Specific;
-with Ada.Text_IO;--???
 
 package body IoT_Stack_Demo is
    pragma SPARK_Mode (Off);
