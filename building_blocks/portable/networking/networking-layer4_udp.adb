@@ -36,11 +36,16 @@ package body Networking.Layer4_UDP is
    use Networking.Layer2;
    use Atomic_Utils;
 
-   function Get_UDP_Datagram (Tx_Packet : in out Network_Packet_Type)
+   function Get_Rx_UDP_Datagram (Rx_Packet : Network_Packet_Type)
+      return UDP.UDP_Datagram_Read_Only_Access_Type with Inline;
+
+   function Get_Tx_UDP_Datagram_Over_IPv4 (
+      Tx_Packet : in out Network_Packet_Type)
       return UDP.UDP_Datagram_Access_Type with Inline;
 
-   function Get_UDP_Datagram_Read_Only (Rx_Packet : Network_Packet_Type)
-      return UDP.UDP_Datagram_Read_Only_Access_Type with Inline;
+   function Get_Tx_UDP_Datagram_Over_IPv6 (
+      Tx_Packet : in out Network_Packet_Type)
+      return UDP.UDP_Datagram_Access_Type with Inline;
 
    ----------------------------------------
    -- UDP_End_Point_List_Protected_Type --
@@ -66,6 +71,7 @@ package body Networking.Layer4_UDP is
 
          UDP_End_Point.Next_Ptr := Head_Ptr;
          Head_Ptr := UDP_End_Point'Unchecked_Access;
+         Length := Length + 1;
          Add_Ok := True;
       end Add;
 
@@ -73,12 +79,12 @@ package body Networking.Layer4_UDP is
       -- Lookup --
       ------------
 
-      function Lookup (Port : Unsigned_16) return UDP_End_Point_Access_Type
+      function Lookup (Port : UDP.Port_Type) return UDP_End_Point_Access_Type
       is
          Cursor : UDP_End_Point_Access_Type := Head_Ptr;
       begin
          for I in 1 .. Length loop
-            exit when Cursor = null;
+            pragma Assert (Cursor /= null);
             if Cursor.Port = Port then
                return Cursor;
             end if;
@@ -99,14 +105,15 @@ package body Networking.Layer4_UDP is
          Cursor : UDP_End_Point_Access_Type := Head_Ptr;
          Prev_Cursor : UDP_End_Point_Access_Type := null;
       begin
+         pragma Assert (Length > 0);
          for I in 1 .. Length loop
-            exit when Cursor = null or else
-                      Cursor = UDP_End_Point'Unchecked_Access;
+            pragma Assert (Cursor /= null);
+            exit when Cursor = UDP_End_Point'Unchecked_Access;
             Prev_Cursor := Cursor;
             Cursor := Cursor.Next_Ptr;
          end loop;
 
-         if Cursor /= UDP_End_Point'Unchecked_Access then
+         if Cursor = null then
             Runtime_Logs.Error_Print ("UDP end point with port" &
                                       UDP_End_Point.Port'Image &
                                       " does not exist");
@@ -146,92 +153,73 @@ package body Networking.Layer4_UDP is
                               Layer4_UDP_Var.Next_Ephemeral_Port);
          end if;
 
-         UDP_End_Point.Port := Ephemeral_Port;
+         UDP_End_Point.Port := Host_To_Network_Byte_Order (Ephemeral_Port);
       else
-         UDP_End_Point.Port := Port;
+         UDP_End_Point.Port := Host_To_Network_Byte_Order (Port);
       end if;
 
       Layer4_UDP_Var.UDP_End_Point_List.Add (UDP_End_Point, Add_Ok);
       return Add_Ok;
    end Bind_UDP_End_Point;
 
-   ----------------------
-   -- Get_UDP_Datagram --
-   ----------------------
+   --------------------------------------
+   -- Generic_Get_Rx_UDP_Datagram_Data --
+   --------------------------------------
 
-   function Get_UDP_Datagram (Tx_Packet : in out Network_Packet_Type)
-      return UDP.UDP_Datagram_Access_Type
+   function Generic_Get_Rx_UDP_Datagram_Data (
+      Rx_Packet : Network_Packet_Type)
+      return UDP_Datagram_Data_Read_Only_Access_Type
    is
-      use Networking.Packet_Layout.Ethernet;
-      Type_of_Frame : constant Type_of_Frame_Type :=
-         Unsigned_16_To_Type_of_Frame (Network_To_Host_Byte_Order (
-            Get_Ethernet_Frame (Tx_Packet).Type_of_Frame));
-   begin
-      if Type_of_Frame = Ethernet.Frame_IPv4_Packet then
-         return UDP.Data_Payload_Ptr_To_UDP_Datagram_Ptr (
-                   Get_IPv4_Packet (Tx_Packet).First_Data_Word'Access);
-      else
-         pragma Assert (Type_of_Frame = Ethernet.Frame_IPv6_Packet);
-         return UDP.Data_Payload_Ptr_To_UDP_Datagram_Ptr (
-                   Get_IPv6_Packet (Tx_Packet).First_Data_Word'Access);
-      end if;
-   end Get_UDP_Datagram;
-
-   ---------------------------
-   -- Get_UDP_Datagram_Data --
-   ---------------------------
-
-   function Get_UDP_Datagram_Data (Tx_Packet : in out Network_Packet_Type)
-      return access UDP_Data_Payload_Type
-   is
-      type UDP_Datagram_Data_Access_Type is access all UDP_Data_Payload_Type;
-
-      function Data_Payload_Ptr_To_UDP_Datagram_Data_Ptr is
-         new Ada.Unchecked_Conversion (
-               Source => First_Data_Word_Access_Type,
-               Target => UDP_Datagram_Data_Access_Type);
-   begin
-      return Data_Payload_Ptr_To_UDP_Datagram_Data_Ptr (
-                Get_UDP_Datagram (Tx_Packet).First_Data_Word'Access);
-   end Get_UDP_Datagram_Data;
-
-   ----------------------------------
-   -- Get_UDP_Datagram_Data_Length --
-   ----------------------------------
-
-   function Get_UDP_Datagram_Data_Length (Net_Packet : Network_Packet_Type)
-      return Unsigned_16
-   is
-   begin
-      return Network_To_Host_Byte_Order (
-                Get_UDP_Datagram_Read_Only (Net_Packet).Datagram_Length) -
-             UDP.UDP_Datagram_Header_Size;
-   end Get_UDP_Datagram_Data_Length;
-
-   -------------------------------------
-   -- Get_UDP_Datagram_Data_Read_Only --
-   -------------------------------------
-
-   function Get_UDP_Datagram_Data_Read_Only (Rx_Packet : Network_Packet_Type)
-      return access constant UDP_Data_Payload_Type
-   is
-      type UDP_Datagram_Data_Read_Only_Access_Type is
-         access constant UDP_Data_Payload_Type;
-
       function Data_Payload_Ptr_To_UDP_Datagram_Data_Read_Only_Ptr is
          new Ada.Unchecked_Conversion (
                Source => First_Data_Word_Read_Only_Access_Type,
                Target => UDP_Datagram_Data_Read_Only_Access_Type);
    begin
       return Data_Payload_Ptr_To_UDP_Datagram_Data_Read_Only_Ptr (
-               Get_UDP_Datagram_Read_Only (Rx_Packet).First_Data_Word'Access);
-   end Get_UDP_Datagram_Data_Read_Only;
+               Get_Rx_UDP_Datagram (Rx_Packet).First_Data_Word'Access);
+   end Generic_Get_Rx_UDP_Datagram_Data;
 
-   --------------------------------
-   -- Get_UDP_Datagram_Read_Only --
-   --------------------------------
+   ------------------------------------------------
+   -- Generic_Get_Tx_UDP_Datagram_Data_Over_IPv4 --
+   ------------------------------------------------
 
-   function Get_UDP_Datagram_Read_Only (Rx_Packet : Network_Packet_Type)
+   function Generic_Get_Tx_UDP_Datagram_Data_Over_IPv4 (
+      Tx_Packet : in out Network_Packet_Type)
+      return UDP_Datagram_Data_Access_Type
+   is
+      function Data_Payload_Ptr_To_UDP_Datagram_Data_Ptr is
+         new Ada.Unchecked_Conversion (
+               Source => First_Data_Word_Access_Type,
+               Target => UDP_Datagram_Data_Access_Type);
+   begin
+      return Data_Payload_Ptr_To_UDP_Datagram_Data_Ptr (
+                Get_Tx_UDP_Datagram_Over_IPv4 (Tx_Packet).
+                   First_Data_Word'Access);
+   end Generic_Get_Tx_UDP_Datagram_Data_Over_IPv4;
+
+   ------------------------------------------------
+   -- Generic_Get_Tx_UDP_Datagram_Data_Over_IPv6 --
+   ------------------------------------------------
+
+   function Generic_Get_Tx_UDP_Datagram_Data_Over_IPv6 (
+      Tx_Packet : in out Network_Packet_Type)
+      return UDP_Datagram_Data_Access_Type
+   is
+      function Data_Payload_Ptr_To_UDP_Datagram_Data_Ptr is
+         new Ada.Unchecked_Conversion (
+               Source => First_Data_Word_Access_Type,
+               Target => UDP_Datagram_Data_Access_Type);
+   begin
+      return Data_Payload_Ptr_To_UDP_Datagram_Data_Ptr (
+                Get_Tx_UDP_Datagram_Over_IPv6 (Tx_Packet).
+                   First_Data_Word'Access);
+   end Generic_Get_Tx_UDP_Datagram_Data_Over_IPv6;
+
+   -------------------------
+   -- Get_Rx_UDP_Datagram --
+   -------------------------
+
+   function Get_Rx_UDP_Datagram (Rx_Packet : Network_Packet_Type)
       return UDP.UDP_Datagram_Read_Only_Access_Type
    is
       use Networking.Packet_Layout.Ethernet;
@@ -255,7 +243,46 @@ package body Networking.Layer4_UDP is
             UDP.Data_Payload_Ptr_To_UDP_Datagram_Read_Only_Ptr (
                IPv6_Packet_Ptr.First_Data_Word'Access);
       end if;
-   end Get_UDP_Datagram_Read_Only;
+   end Get_Rx_UDP_Datagram;
+
+   -------------------------------------
+   -- Get_Rx_UDP_Datagram_Data_Length --
+   -------------------------------------
+
+   function Get_Rx_UDP_Datagram_Data_Length (Rx_Packet : Network_Packet_Type)
+      return Unsigned_16
+   is
+   begin
+      return Network_To_Host_Byte_Order (
+                Get_Rx_UDP_Datagram (Rx_Packet).Datagram_Length) -
+             UDP.UDP_Datagram_Header_Size;
+   end Get_Rx_UDP_Datagram_Data_Length;
+
+   -----------------------------------
+   -- Get_Tx_UDP_Datagram_over_IPv4 --
+   -----------------------------------
+
+   function Get_Tx_UDP_Datagram_Over_IPv4 (
+      Tx_Packet : in out Network_Packet_Type)
+      return UDP.UDP_Datagram_Access_Type
+   is
+   begin
+      return UDP.Data_Payload_Ptr_To_UDP_Datagram_Ptr (
+             Get_IPv4_Packet (Tx_Packet).First_Data_Word'Access);
+   end Get_Tx_UDP_Datagram_Over_IPv4;
+
+   -----------------------------------
+   -- Get_Tx_UDP_Datagram_over_IPv6 --
+   -----------------------------------
+
+   function Get_Tx_UDP_Datagram_Over_IPv6 (
+      Tx_Packet : in out Network_Packet_Type)
+      return UDP.UDP_Datagram_Access_Type
+   is
+   begin
+      return UDP.Data_Payload_Ptr_To_UDP_Datagram_Ptr (
+                Get_IPv6_Packet (Tx_Packet).First_Data_Word'Access);
+   end Get_Tx_UDP_Datagram_Over_IPv6;
 
    -----------------------------------
    -- Process_Incoming_UDP_Datagram --
@@ -265,7 +292,7 @@ package body Networking.Layer4_UDP is
      (Rx_Packet : aliased in out Network_Packet_Type)
    is
       UDP_Datagram_Ptr : constant UDP.UDP_Datagram_Read_Only_Access_Type :=
-         Get_UDP_Datagram_Read_Only (Rx_Packet);
+         Get_Rx_UDP_Datagram (Rx_Packet);
 
       UDP_End_Point_Ptr : UDP_End_Point_Access_Type;
 
@@ -298,7 +325,7 @@ package body Networking.Layer4_UDP is
                                  Rx_Packet'Unchecked_Access);
          Atomic_Increment (Layer4_UDP_Var.Rx_Packets_Accepted_Count);
       else
-         Runtime_Logs.Error_Print (
+         Runtime_Logs.Debug_Print (
             "Received UDP datagram ignored: unknown port" &
             Network_To_Host_Byte_Order (
                UDP_Datagram_Ptr.Destination_Port)'Image);
@@ -332,11 +359,11 @@ package body Networking.Layer4_UDP is
       end if;
 
       IPv4_Packet_Ptr := Get_IPv4_Packet_Read_Only (Rx_Packet_Ptr.all);
-      UDP_Datagram_Ptr := Get_UDP_Datagram_Read_Only (Rx_Packet_Ptr.all);
+      UDP_Datagram_Ptr := Get_Rx_UDP_Datagram (Rx_Packet_Ptr.all);
       pragma Assert (UDP_Datagram_Ptr.Destination_Port = UDP_End_Point.Port);
 
       Source_IPv4_Address := IPv4_Packet_Ptr.Source_IPv4_Address;
-      Source_Port := UDP_Datagram_Ptr.Source_Port;
+      Source_Port := Network_To_Host_Byte_Order (UDP_Datagram_Ptr.Source_Port);
       return Rx_Packet_Ptr;
    end Receive_UDP_Datagram_Over_IPv4;
 
@@ -352,13 +379,14 @@ package body Networking.Layer4_UDP is
       Data_Payload_Length : Unsigned_16)
    is
       UDP_Datagram_Ptr : constant UDP.UDP_Datagram_Access_Type :=
-          Get_UDP_Datagram (Tx_Packet);
+          Get_Tx_UDP_Datagram_Over_IPv4 (Tx_Packet);
    begin
       --
       --  Populate UDP header:
       --
       UDP_Datagram_Ptr.Source_Port := UDP_End_Point.Port;
-      UDP_Datagram_Ptr.Destination_Port := Destination_Port;
+      UDP_Datagram_Ptr.Destination_Port :=
+         Host_To_Network_Byte_Order (Destination_Port);
       UDP_Datagram_Ptr.Datagram_Length :=
          Host_To_Network_Byte_Order (UDP.UDP_Datagram_Header_Size +
                                      Data_Payload_Length);
@@ -423,6 +451,5 @@ package body Networking.Layer4_UDP is
       Layer4_UDP_Var.UDP_End_Point_List.Remove (UDP_End_Point);
       UDP_End_Point.Port := 0;
    end Unbind_UDP_End_Point;
-
 
 end Networking.Layer4_UDP;

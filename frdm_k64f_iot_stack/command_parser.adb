@@ -160,7 +160,7 @@ package body Command_Parser is
 
          loop
             Ping_Reply_Received_Ok :=
-               Receive_Ping_Reply (3000,
+               Receive_Ping_Reply (5000,
                                    Remote_IPv4_Address,
                                    Reply_Identifier,
                                    Reply_Sequence_Number);
@@ -176,7 +176,7 @@ package body Command_Parser is
                Reply_Sequence_Number /= Request_Sequence_Number
             then
                Serial_Console.Print_String (
-                  "Received invalid or stale ping reply");
+                  "Received invalid or stale ping reply" & ASCII.LF);
             else
                Serial_Console.Print_String (
                   "Ping" & Reply_Sequence_Number'Image & " replied by " &

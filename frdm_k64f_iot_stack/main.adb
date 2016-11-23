@@ -95,14 +95,15 @@ begin -- Main
    Color_Led.Initialize;
    Serial_Console.Initialize;
    Nor_Flash_Driver.Initialize;
-   Networking.API.Initialize;
-
-   App_Configuration.Load_And_Apply_Config_Parameters;
 
    Old_Color := Color_Led.Set_Color (Color_Led.Blue);
    Color_Led.Turn_On_Blinker (Heartbeat_Period_Ms);
 
    Print_Greeting;
+
+   Networking.API.Initialize;
+
+   App_Configuration.Load_And_Apply_Config_Parameters;
 
    IoT_Stack_Demo.Initialize;
 

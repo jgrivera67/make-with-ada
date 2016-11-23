@@ -32,6 +32,7 @@ with Serial_Console;
 with Color_Led;
 with Networking.Layer2;
 with Networking.Layer3_IPv4;
+with Networking.Layer4_UDP;
 with Devices.MCU_Specific;
 
 package body IoT_Stack_Demo is
@@ -40,6 +41,11 @@ package body IoT_Stack_Demo is
    use Interfaces;
    use Networking.Layer2;
    use Networking.Layer3_IPv4;
+   use Networking.Layer4_UDP;
+   use Networking;
+   use Devices;
+
+   Blank_Line : constant String (1 .. 80) := (others => ' ');
 
    ----------------
    -- Initialize --
@@ -270,18 +276,181 @@ package body IoT_Stack_Demo is
       end loop;
    end Network_Stats_Task;
 
+   UDP_Server_End_Point : aliased UDP_End_Point_Type;
+
    ---------------------
    -- Udp_Server_Task --
    ---------------------
 
    task body Udp_Server_Task is
+      procedure Process_Incoming_Command (Cmd : String);
+
+      procedure Process_Incoming_Message (
+         UDP_End_Point : in out UDP_End_Point_Type;
+         Source_IPv4_Address : IPv4_Address_Type;
+         Source_Port : Unsigned_16;
+         Rx_Packet_Ptr : Network_Packet_Access_Type;
+         Rx_Message_Length : Positive;
+         Seq_Char : in out Character)
+         with Pre =>
+                 Rx_Message_Length < Max_UDP_Datagram_Payload_Size_Over_IPv4;
+
+      ------------------------------
+      -- Process_Incoming_Command --
+      ------------------------------
+
+      procedure Process_Incoming_Command (Cmd : String)
+      is
+         Old_Color : Color_Led.Led_Color_Type with Unreferenced;
+      begin
+         if Cmd = "red" then
+            Old_Color := Color_Led.Set_Color (Color_Led.Red);
+         elsif Cmd = "green" then
+            Old_Color := Color_Led.Set_Color (Color_Led.Green);
+         elsif Cmd = "blue" then
+            Old_Color := Color_Led.Set_Color (Color_Led.Blue);
+         elsif Cmd = "yellow" then
+            Old_Color := Color_Led.Set_Color (Color_Led.Yellow);
+         elsif Cmd = "cyan" then
+            Old_Color := Color_Led.Set_Color (Color_Led.Cyan);
+         elsif Cmd = "magenta" then
+            Old_Color := Color_Led.Set_Color (Color_Led.Magenta);
+         elsif Cmd = "white" then
+            Old_Color := Color_Led.Set_Color (Color_Led.White);
+         elsif Cmd = "black" then
+            Old_Color := Color_Led.Set_Color (Color_Led.Black);
+         else
+            Runtime_Logs.Error_Print (
+               "Received invalid command: '" & Cmd & "'");
+         end if;
+      end Process_Incoming_Command;
+
+      ------------------------------
+      -- Process_Incoming_Message --
+      ------------------------------
+
+      procedure Process_Incoming_Message (
+         UDP_End_Point : in out UDP_End_Point_Type;
+         Source_IPv4_Address : IPv4_Address_Type;
+         Source_Port : Unsigned_16;
+         Rx_Packet_Ptr : Network_Packet_Access_Type;
+         Rx_Message_Length : Positive;
+         Seq_Char : in out Character)
+      is
+         subtype Rx_Message_Type is String (1 .. Rx_Message_Length);
+         subtype Tx_Message_Type is String (1 .. Rx_Message_Length + 1);
+
+         type Rx_Message_Read_Only_Access_Type is
+            access constant Rx_Message_Type;
+         pragma No_Strict_Aliasing (Rx_Message_Read_Only_Access_Type);
+
+         type Tx_Message_Access_Type is
+            access all Tx_Message_Type;
+         pragma No_Strict_Aliasing (Tx_Message_Access_Type);
+
+         function Get_Rx_Message is new
+            Generic_Get_Rx_UDP_Datagram_Data (
+               Rx_Message_Type, Rx_Message_Read_Only_Access_Type);
+
+         function Get_Tx_Message is new
+            Generic_Get_Tx_UDP_Datagram_Data_Over_IPv4 (
+               Tx_Message_Type, Tx_Message_Access_Type);
+
+         Rx_Message_Ptr : constant Rx_Message_Read_Only_Access_Type :=
+            Get_Rx_Message (Rx_Packet_Ptr.all);
+
+         Tx_Packet_Ptr : constant Network_Packet_Access_Type :=
+            Allocate_Tx_Packet (Free_After_Tx_Complete => True);
+
+         Tx_Message_Ptr : constant Tx_Message_Access_Type :=
+            Get_Tx_Message (Tx_Packet_Ptr.all);
+      begin
+         Process_Incoming_Command (
+            Rx_Message_Ptr.all (1 .. Rx_Message_Length));
+
+         --
+         --  Display incoming message on the console:
+         --
+         Serial_Console.Lock;
+         Serial_Console.Print_Pos_String (
+            23, 27, Rx_Message_Ptr.all (1 .. Rx_Message_Length));
+         if Rx_Message_Length < 55 then
+            Serial_Console.Print_Pos_String (
+               23, Serial_Console.Column_Type (27 + Rx_Message_Length),
+               Blank_Line (1 .. 55 - Rx_Message_Length));
+         end if;
+         Serial_Console.Unlock;
+
+         Tx_Message_Ptr.all (1 .. Rx_Message_Length) := Rx_Message_Ptr.all;
+         Tx_Message_Ptr.all (Rx_Message_Length + 1) := Seq_Char;
+         if Seq_Char = 'Z' then
+            Seq_Char := 'A';
+         else
+            Seq_Char := Character'Succ (Seq_Char);
+         end if;
+
+         --
+         --  Recycle Rx_Packet, since we don't need it anymore:
+         --
+         Recycle_Rx_Packet (Rx_Packet_Ptr.all);
+
+         --
+         --  Send reply (echo + appended letter):
+         --
+         Send_UDP_Datagram_Over_IPv4 (UDP_End_Point,
+                                      Source_IPv4_Address,
+                                      Source_Port,
+                                      Tx_Packet_Ptr.all,
+                                      Unsigned_16 (Rx_Message_Length + 1));
+      end Process_Incoming_Message;
+
+      -- ** --
+
+      UDP_Server_Port : constant Unsigned_16 := 8887;
+      Rx_Packet_Ptr : Network_Packet_Access_Type;
+      Bind_Ok : Boolean;
+      Source_IPv4_Address : IPv4_Address_Type;
+      Source_Port : Unsigned_16;
+      Input_Message_Count : Natural := 0;
+      Input_Message_Size : Unsigned_16;
+      Seq_Char : Character := 'A';
+
    begin
       Suspend_Until_True (IoT_Stack_Demo.Udp_Server_Task_Suspension_Obj);
       Runtime_Logs.Info_Print ("UDP server task started");
 
+      Bind_Ok :=
+         Bind_UDP_End_Point (UDP_Server_End_Point,
+                             UDP_Server_Port);
+
+      if not Bind_Ok then
+         Runtime_Logs.Error_Print ("UDP end point binding to port" &
+                                   UDP_Server_Port'Image & " failed");
+         raise Program_Error;
+      end if;
+
       loop
-         delay until Clock + Milliseconds (1000);--???
+         Rx_Packet_Ptr := Receive_UDP_Datagram_Over_IPv4 (UDP_Server_End_Point,
+                                                          Source_IPv4_Address,
+                                                          Source_Port);
+         if Rx_Packet_Ptr = null then
+            Runtime_Logs.Error_Print ("receiving UDP datagram on port" &
+                                      UDP_Server_Port'Image & " failed");
+            raise Program_Error;
+         end if;
+
+         Input_Message_Count := Input_Message_Count + 1;
+         Input_Message_Size :=
+            Get_Rx_UDP_Datagram_Data_Length (Rx_Packet_Ptr.all);
+
+         Process_Incoming_Message (UDP_Server_End_Point,
+                                   Source_IPv4_Address,
+                                   Source_Port,
+                                   Rx_Packet_Ptr,
+                                   Positive (Input_Message_Size),
+                                   Seq_Char);
       end loop;
+
    end Udp_Server_Task;
 
    -----------------------------

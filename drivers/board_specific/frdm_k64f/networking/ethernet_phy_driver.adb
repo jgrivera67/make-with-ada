@@ -219,6 +219,8 @@ package body Ethernet_Phy_Driver is
       Whole_Value at 0 range 0 .. 15;
    end record;
 
+   procedure Do_Autonegotiation (Ethernet_Mac_Id : Ethernet_Mac_Id_Type);
+
    --
    --  Array of Ethernet PHY device constant objects to be placed on flash:
    --
@@ -267,6 +269,56 @@ package body Ethernet_Phy_Driver is
               )
      );
 
+   ------------------------
+   -- Do_Autonegotiation --
+   ------------------------
+
+   procedure Do_Autonegotiation (Ethernet_Mac_Id : Ethernet_Mac_Id_Type)
+   is
+      Ethernet_Phy_Var : Ethernet_Phy_Var_Type renames
+        Ethernet_Phy_Var_Devices (Ethernet_Mac_Id);
+      Phy_Status_Register : Phy_Status_Register_Type;
+      Phy_Control_Register : Phy_Control_Register_Type;
+   begin
+      Phy_Status_Register.Whole_Value :=
+        Read_Phy_Register (Ethernet_Mac_Id, Phy_Status_Reg'Enum_Rep);
+
+      if Phy_Status_Register.Auto_Neg_Capable /= 0 and then
+         Phy_Status_Register.Auto_Neg_Complete = 0
+      then
+         --
+         --  Set auto-negotiation:
+         --
+         Phy_Control_Register.Whole_Value :=
+           Read_Phy_Register (Ethernet_Mac_Id, Phy_Control_Reg'Enum_Rep);
+
+         Phy_Control_Register.Auto_Negotiation := 1;
+         Write_Phy_Register (Ethernet_Mac_Id,
+                             Phy_Control_Reg'Enum_Rep,
+                             Phy_Control_Register.Whole_Value);
+
+         --
+         --  Wait for auto-negotiation completion:
+         --
+         Runtime_Logs.Info_Print ("Starting Ethernet auto-negotiation ...");
+         for Polling_Count in Polling_Count_Type loop
+            Phy_Status_Register.Whole_Value :=
+               Read_Phy_Register (Ethernet_Mac_Id, Phy_Status_Reg'Enum_Rep);
+            exit when Phy_Status_Register.Auto_Neg_Complete = 1;
+            delay until Clock + Microseconds (10);
+         end loop;
+
+         if Phy_Status_Register.Auto_Neg_Complete /= 0 then
+            Ethernet_Phy_Var.Autonegotiation_Done := True;
+            Runtime_Logs.Info_Print ("Ethernet auto-negotiation completed");
+         else
+            Runtime_Logs.Error_Print ("Ethernet PHY auto-negotiation failed");
+         end if;
+      else
+         Ethernet_Phy_Var.Autonegotiation_Done := True;
+      end if;
+   end Do_Autonegotiation;
+
    ----------------
    -- Initialize --
    ----------------
@@ -279,7 +331,7 @@ package body Ethernet_Phy_Driver is
       Ethernet_Phy_Var : Ethernet_Phy_Var_Type renames
         Ethernet_Phy_Var_Devices (Ethernet_Mac_Id);
       Phy_Control_Register : Phy_Control_Register_Type;
-      Phy_Status_Register : Phy_Status_Register_Type;
+
    begin
       Ethernet_Phy_Mdio_Driver.Initialize (
          Ethernet_Mac_Id,
@@ -322,42 +374,7 @@ package body Ethernet_Phy_Driver is
          raise Program_Error;
       end if;
 
-      Phy_Status_Register.Whole_Value :=
-        Read_Phy_Register (Ethernet_Mac_Id, Phy_Status_Reg'Enum_Rep);
-
-      if Phy_Status_Register.Auto_Neg_Capable /= 0 and then
-         Phy_Status_Register.Auto_Neg_Complete = 0
-      then
-         --
-         --  Set auto-negotiation:
-         --
-         Phy_Control_Register.Whole_Value :=
-           Read_Phy_Register (Ethernet_Mac_Id, Phy_Control_Reg'Enum_Rep);
-
-         Phy_Control_Register.Auto_Negotiation := 1;
-         Write_Phy_Register (Ethernet_Mac_Id,
-                             Phy_Control_Reg'Enum_Rep,
-                             Phy_Control_Register.Whole_Value);
-
-         --
-         --  Wait for auto-negotiation completion:
-         --
-         Runtime_Logs.Info_Print ("Starting Ethernet auto-negotiation ...");
-         for Polling_Count in Polling_Count_Type loop
-            Phy_Status_Register.Whole_Value :=
-               Read_Phy_Register (Ethernet_Mac_Id, Phy_Status_Reg'Enum_Rep);
-            exit when Phy_Status_Register.Auto_Neg_Complete = 1;
-            delay until Clock + Microseconds (10);
-         end loop;
-
-         if Phy_Status_Register.Auto_Neg_Complete = 0 then
-            Runtime_Logs.Error_Print ("Ethernet PHY auto-negotiation failed");
-            raise Program_Error;
-         end if;
-
-         Runtime_Logs.Info_Print ("Ethernet auto-negotiation completed");
-      end if;
-
+      Do_Autonegotiation (Ethernet_Mac_Id);
       Ethernet_Phy_Var.Initialized := True;
    end Initialize;
 
@@ -369,12 +386,23 @@ package body Ethernet_Phy_Driver is
      (Ethernet_Mac_Id : Ethernet_Mac_Id_Type)
       return Boolean
    is
+      Ethernet_Phy_Var : Ethernet_Phy_Var_Type renames
+        Ethernet_Phy_Var_Devices (Ethernet_Mac_Id);
       Phy_Status_Register : Phy_Status_Register_Type;
+      Link_Up : Boolean;
    begin
       Phy_Status_Register.Whole_Value :=
         Read_Phy_Register (Ethernet_Mac_Id, Phy_Status_Reg'Enum_Rep);
 
-      return Phy_Status_Register.Link_Up = 1;
+      Link_Up := (Phy_Status_Register.Link_Up = 1);
+      if Ethernet_Phy_Var.Link_Up /= Link_Up then
+         Ethernet_Phy_Var.Link_Up := Link_Up;
+         if Link_Up then
+            Do_Autonegotiation (Ethernet_Mac_Id);
+         end if;
+      end if;
+
+      return Link_Up;
    end Link_Is_Up;
 
    -----------------------

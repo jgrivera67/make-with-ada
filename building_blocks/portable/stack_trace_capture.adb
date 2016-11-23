@@ -230,6 +230,10 @@ package body Stack_Trace_Capture is
                To_Address (To_Integer (Return_Address) and not
                            Arm_Thumb_Code_Flag);
 
+            exit when Instruction_Address = Null_Address or else
+                      Unsigned_32 (To_Integer (Instruction_Address)) <=
+                         Unsigned_32 (Instruction_Size);
+
             Instruction_Pointer :=
                Address_To_Instruction_Pointer.To_Pointer (
                   Instruction_Address - Instruction_Size);

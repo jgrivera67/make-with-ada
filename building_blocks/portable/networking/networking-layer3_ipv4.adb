@@ -847,10 +847,10 @@ package body Networking.Layer3_IPv4 is
       ICMPv4_Message_Ptr := Get_ICMPv4_Message_Read_Only (IPv4_Packet_Ptr);
 
       if not ICMPv4_Message_Ptr.Type_of_Message'Valid or else
-         ICMPv4_Message_Ptr.Type_of_Message /= Ping_Reply
+         ICMPv4_Message_Ptr.Type_of_Message /= Ping_Reply'Enum_Rep
       then
          Runtime_Logs.Error_Print (
-            "Unexpected ICMPv4 message type received: " &
+            "Unexpected ICMPv4 message type received:" &
             ICMPv4_Message_Ptr.Type_of_Message'Image);
          return False;
       end if;
@@ -961,7 +961,7 @@ package body Networking.Layer3_IPv4 is
       --
       --  Populate ICMP header:
       --
-      ICMPv4_Message_Ptr.Type_of_Message := Type_of_Message;
+      ICMPv4_Message_Ptr.Type_of_Message := Type_of_Message'Enum_Rep;
       ICMPv4_Message_Ptr.Code := Message_Code;
 
       --
@@ -1395,42 +1395,41 @@ package body Networking.Layer3_IPv4 is
                          IPv4_Packet_Header_Size +
                          ICMPv4_Message_Header_Size));
 
-         if ICMPv4_Message_Ptr.Type_of_Message'Valid then
-            case ICMPv4_Message_Ptr.Type_of_Message is
-               when Ping_Reply =>
-                  pragma Assert (ICMPv4_Message_Ptr.Code =
-                                 Ping_Reply_Code);
-                  Layer3_IPv4_Var.Ping_Serializer.End_Ping (End_Ping_Ok);
-                  if End_Ping_Ok then
-                     Enqueue_Network_Packet (
-                        Layer3_IPv4_Var.Rx_Ping_Reply_Packet_Queue,
-                        Rx_Packet'Unchecked_Access);
-                  else
-                     --
-                     --  Drop unmatched ping reply
-                     --
-                     Runtime_Logs.Error_Print (
-                        "Unexpected ping reply received");
-
-                     Recycle_Rx_Packet (Rx_Packet);
-                  end if;
-
-               when Ping_Request =>
-                  pragma Assert (ICMPv4_Message_Ptr.Code =
-                                 Ping_Request_Code);
-                  Send_Ping_Reply (
-                     IPv4_Packet_Ptr.Source_IPv4_Address,
-                     ICMPv4_Message_Ptr);
+         case ICMPv4_Message_Ptr.Type_of_Message is
+            when Ping_Reply'Enum_Rep =>
+               pragma Assert (ICMPv4_Message_Ptr.Code =
+                              Ping_Reply_Code);
+               Layer3_IPv4_Var.Ping_Serializer.End_Ping (End_Ping_Ok);
+               if End_Ping_Ok then
+                  Enqueue_Network_Packet (
+                     Layer3_IPv4_Var.Rx_Ping_Reply_Packet_Queue,
+                     Rx_Packet'Unchecked_Access);
+               else
+                  --
+                  --  Drop unmatched ping reply
+                  --
+                  Runtime_Logs.Error_Print (
+                     "Unexpected ping reply received");
 
                   Recycle_Rx_Packet (Rx_Packet);
-            end case;
-         else
-            Runtime_Logs.Error_Print (
-               "Received ICMPv4 message with invalid type: " &
-               ICMPv4_Message_Ptr.Type_of_Message'Image);
+               end if;
 
-            Recycle_Rx_Packet (Rx_Packet);
-         end if;
+            when Ping_Request'Enum_Rep =>
+               pragma Assert (ICMPv4_Message_Ptr.Code =
+                              Ping_Request_Code);
+               Send_Ping_Reply (
+                  IPv4_Packet_Ptr.Source_IPv4_Address,
+                  ICMPv4_Message_Ptr);
+
+               Recycle_Rx_Packet (Rx_Packet);
+
+            when others =>
+               Runtime_Logs.Error_Print (
+                  "Received ICMPv4 message with invalid type: " &
+                  ICMPv4_Message_Ptr.Type_of_Message'Image);
+
+               Recycle_Rx_Packet (Rx_Packet);
+         end case;
       end Process_Incoming_ICMPv4_Message;
 
       ---------------------

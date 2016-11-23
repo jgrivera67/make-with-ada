@@ -62,6 +62,11 @@ package Networking.Packet_Layout is
       UDP_Datagram_Header_Size : constant := 8;
 
       --
+      --  UDP port number type (in network byte order);
+      --
+      subtype Port_Type is Unsigned_16;
+
+      --
       --  Layout of a UDP datagram in network byte order
       --  (An UDP datagram is encapsulated in an IPv4 packet or an IPv6 packet)
       --
@@ -82,8 +87,8 @@ package Networking.Packet_Layout is
       --
       --  @field Datagram_Checksum UDP datagram checksum
       type UDP_Datagram_Type is limited record
-         Source_Port : Unsigned_16;
-         Destination_Port : Unsigned_16;
+         Source_Port : Port_Type;
+         Destination_Port : Port_Type;
          Datagram_Length : Unsigned_16;
          Datagram_Checksum : Unsigned_16;
          First_Data_Word : aliased Unsigned_32;
@@ -337,7 +342,7 @@ package Networking.Packet_Layout is
       --
       type Type_of_ICMPv4_Message_Type is (Ping_Reply,
                                            Ping_Request)
-      with Size => Byte'Size;
+      with Size => Unsigned_8'Size;
 
       for Type_of_ICMPv4_Message_Type use (Ping_Reply => 0,
                                            Ping_Request => 8);
@@ -366,7 +371,7 @@ package Networking.Packet_Layout is
       --  @field Sequence_Number
       --
       type ICMPv4_Message_Type is limited record
-         Type_of_Message : Type_of_ICMPv4_Message_Type;
+         Type_of_Message : Unsigned_8;
          Code : Unsigned_8;
          Checksum : Unsigned_16;
          First_Data_Word : aliased Unsigned_32;
@@ -712,18 +717,6 @@ package Networking.Packet_Layout is
    Max_IPv6_Packet_Payload_Size : constant :=
       Net_Packet_Data_Buffer_Size - Ethernet.Frame_Header_Size -
       IPv6.IPv6_Packet_Header_Size;
-
-   --
-   --  Maximum size of the data payload of a UDP datagram over IPv4
-   --
-   Max_UDP_Datagram_Payload_Size_Over_IPv4 : constant :=
-      Max_IPv4_Packet_Payload_Size - UDP.UDP_Datagram_Header_Size;
-
-   --
-   --  Maximum size of the data payload of a UDP datagram over IPv6
-   --
-   Max_UDP_Datagram_Payload_Size_Over_IPv6 : constant :=
-      Max_IPv6_Packet_Payload_Size - UDP.UDP_Datagram_Header_Size;
 
    function Get_ARP_Packet (Tx_Packet : in out Network_Packet_Type)
                             return IPv4.ARP_Packet_Access_Type;

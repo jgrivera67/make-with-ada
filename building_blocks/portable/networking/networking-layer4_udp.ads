@@ -34,20 +34,57 @@ package Networking.Layer4_UDP is
    pragma SPARK_Mode (Off);
    use Networking.Packet_Layout;
 
+   --
+   --  Maximum size of the data payload of a UDP datagram over IPv4
+   --
+   Max_UDP_Datagram_Payload_Size_Over_IPv4 : constant :=
+      Max_IPv4_Packet_Payload_Size - UDP.UDP_Datagram_Header_Size;
+
+   --
+   --  Maximum size of the data payload of a UDP datagram over IPv6
+   --
+   Max_UDP_Datagram_Payload_Size_Over_IPv6 : constant :=
+      Max_IPv6_Packet_Payload_Size - UDP.UDP_Datagram_Header_Size;
+
    type UDP_End_Point_Type is limited private;
 
    generic
-      type UDP_Data_Payload_Type is private;
-   function Get_UDP_Datagram_Data (Tx_Packet : in out Network_Packet_Type)
-      return access UDP_Data_Payload_Type;
+      type UDP_Datagram_Data_Type is private;
+      type UDP_Datagram_Data_Read_Only_Access_Type is
+         access constant UDP_Datagram_Data_Type;
+   function Generic_Get_Rx_UDP_Datagram_Data (
+      Rx_Packet : Network_Packet_Type)
+      return UDP_Datagram_Data_Read_Only_Access_Type;
 
    generic
-      type UDP_Data_Payload_Type is private;
-   function Get_UDP_Datagram_Data_Read_Only (Rx_Packet : Network_Packet_Type)
-      return access constant UDP_Data_Payload_Type;
+      type UDP_Datagram_Data_Type is private;
+      type UDP_Datagram_Data_Access_Type is
+         access all UDP_Datagram_Data_Type;
+   function Generic_Get_Tx_UDP_Datagram_Data_Over_IPv4 (
+      Tx_Packet : in out Network_Packet_Type)
+      return UDP_Datagram_Data_Access_Type;
 
-   function Get_UDP_Datagram_Data_Length (Net_Packet : Network_Packet_Type)
-      return Unsigned_16 with Inline;
+   generic
+      type UDP_Datagram_Data_Type is private;
+      type UDP_Datagram_Data_Access_Type is
+         access all UDP_Datagram_Data_Type;
+   function Generic_Get_Tx_UDP_Datagram_Data_Over_IPv6 (
+      Tx_Packet : in out Network_Packet_Type)
+      return UDP_Datagram_Data_Access_Type;
+
+   function Get_Rx_UDP_Datagram_Data_Length (Rx_Packet : Network_Packet_Type)
+      return Unsigned_16
+      with Inline,
+           Post => Get_Rx_UDP_Datagram_Data_Length'Result <=
+                   Max_UDP_Datagram_Payload_Size_Over_IPv4;
+   --
+   --  Get data payload length of the UDP datagram containe din the given
+   --  packet
+   --
+   --  @param Rx_Packet Network packet containing a UDP datagram received
+   --
+   --  @return data payload length in host byte order
+   --
 
    procedure Process_Incoming_UDP_Datagram (
       Rx_Packet : aliased in out Network_Packet_Type);
@@ -64,7 +101,7 @@ package Networking.Layer4_UDP is
    --  Bind a UDP port to a given local UDP end point
    --
    --  @param UDP_End_Point local UDP end point
-   --  @param Port UDP port number in network byte order (big endian)
+   --  @param Port UDP port number in host byte order
    --
 
    procedure Unbind_UDP_End_Point (
@@ -90,8 +127,8 @@ package Networking.Layer4_UDP is
    --
    --  @param UDP_End_Point local UDP end point
    --  @param Destination_IPv4_Address Destination IPv4 address
-   --  @param Destination_Port Destination UDP port number in network byte
-   --  order (big endian)
+   --  @param Destination_Port Destination UDP port number in host byte
+   --  order
    --
 
    function Receive_UDP_Datagram_Over_IPv4 (
@@ -107,8 +144,7 @@ package Networking.Layer4_UDP is
    --
    --  @param UDP_End_Point local UDP end point
    --  @param Source_IPv4_Addreass Source IPv4 address
-   --  @param Source_Port Source UDP port number in network byte order (big
-   --  endian)
+   --  @param Source_Port Source UDP port number in host byte order
    --  @param Timeout_Ms timeout in millseconds or 0 if no timeout.
    --  @return Pointer to network packet containing the received UDP datagram
    --  or null if timeout.
@@ -117,8 +153,8 @@ package Networking.Layer4_UDP is
 private
 
    --
-   --  First ephemeral port. All port number greater or equal
-   --  to this value are ephemeral ports.
+   --  First ephemeral port (in host byte order).
+   --  All port numbers greater or equal to this value are ephemeral ports.
    --
    First_Ephemeral_Port : constant Unsigned_16 := 49152;
 
@@ -137,7 +173,7 @@ private
    --  existing UDP end points.
    --
    type UDP_End_Point_Type is limited record
-      Port : Unsigned_16 := 0;
+      Port : UDP.Port_Type := 0;
       Rx_Packet_Queue : aliased Network_Packet_Queue_Type;
       Next_Ptr : access UDP_End_Point_Type := null;
    end record;
@@ -156,7 +192,7 @@ private
                      Add_Ok : out Boolean)
          with Pre => UDP_End_Point.Port /= 0;
 
-      function Lookup (Port : Unsigned_16) return UDP_End_Point_Access_Type
+      function Lookup (Port : UDP.Port_Type) return UDP_End_Point_Access_Type
          with Pre => Port /= 0;
 
       procedure Remove (
@@ -176,8 +212,8 @@ private
    --  @field Tracing_On Flag indicating if tracing is currently enabled for
    --  this layer
    --
-   --  @field Next_Ephemeral_Port Next ephemeral port to assign to a local UDP
-   --  end point.
+   --  @field Next_Ephemeral_Port Next ephemeral port (in host byte order) to
+   --  assign to a local UDP end point.
    --
    --  @field Rx_Packets_Accepted_Count Number of received UDP datagrams
    --  accepted

@@ -73,6 +73,8 @@ private
    --
    type Ethernet_Phy_Var_Type is limited record
       Initialized : Boolean := False;
+      Autonegotiation_Done : Boolean := False;
+      Link_Up : Boolean := False;
    end record;
 
    --
