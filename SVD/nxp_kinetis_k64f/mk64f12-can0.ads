@@ -29,6 +29,7 @@ with System;
 --  Flex Controller Area Network module
 package MK64F12.CAN0 is
    pragma Preelaborate;
+   pragma SPARK_Mode (Off);
 
    ---------------
    -- Registers --
@@ -555,7 +556,9 @@ package MK64F12.CAN0 is
       BOFFMSK      : CTRL1_BOFFMSK_Field :=
                       MK64F12.CAN0.CTRL1_BOFFMSK_Field_0;
       --  Phase Segment 2
-      PSEG         : CTRL1_PSEG_Field := (As_Array => False, Val => 16#0#);
+      PSEG2        : CTRL1_PSEG_Element := 16#0#;
+      --  Phase Segment 1
+      PSEG1        : CTRL1_PSEG_Element := 16#0#;
       --  Resync Jump Width
       RJW          : CTRL1_RJW_Field := 16#0#;
       --  Prescaler Division Factor
@@ -578,7 +581,8 @@ package MK64F12.CAN0 is
       CLKSRC       at 0 range 13 .. 13;
       ERRMSK       at 0 range 14 .. 14;
       BOFFMSK      at 0 range 15 .. 15;
-      PSEG         at 0 range 16 .. 21;
+      PSEG2        at 0 range 16 .. 18;
+      PSEG1        at 0 range 19 .. 21;
       RJW          at 0 range 22 .. 23;
       PRESDIV      at 0 range 24 .. 31;
    end record;
@@ -918,118 +922,13 @@ package MK64F12.CAN0 is
       Reserved_19_31 at 0 range 19 .. 31;
    end record;
 
-   --  Buffer MB0 Interrupt Or "reserved"
-   type IFLAG1_BUF0I_Field is
-     (
-      --  The corresponding buffer has no occurrence of successfully completed
-      --  transmission or reception when MCR[RFEN]=0.
-      IFLAG1_BUF0I_Field_0,
-      --  The corresponding buffer has successfully completed transmission or
-      --  reception when MCR[RFEN]=0.
-      IFLAG1_BUF0I_Field_1)
-     with Size => 1;
-   for IFLAG1_BUF0I_Field use
-     (IFLAG1_BUF0I_Field_0 => 0,
-      IFLAG1_BUF0I_Field_1 => 1);
-
-   --  Buffer MB i Interrupt Or "reserved"
-   type IFLAG1_BUF4TO1I_Field is
-     (
-      --  The corresponding buffer has no occurrence of successfully completed
-      --  transmission or reception when MCR[RFEN]=0.
-      IFLAG1_BUF4TO1I_Field_0,
-      --  The corresponding buffer has successfully completed transmission or
-      --  reception when MCR[RFEN]=0.
-      IFLAG1_BUF4TO1I_Field_1)
-     with Size => 4;
-   for IFLAG1_BUF4TO1I_Field use
-     (IFLAG1_BUF4TO1I_Field_0 => 0,
-      IFLAG1_BUF4TO1I_Field_1 => 1);
-
-   --  Buffer MB5 Interrupt Or "Frames available in Rx FIFO"
-   type IFLAG1_BUF5I_Field is
-     (
-      --  No occurrence of MB5 completing transmission/reception when
-      --  MCR[RFEN]=0, or of frame(s) available in the FIFO, when MCR[RFEN]=1
-      IFLAG1_BUF5I_Field_0,
-      --  MB5 completed transmission/reception when MCR[RFEN]=0, or frame(s)
-      --  available in the Rx FIFO when MCR[RFEN]=1
-      IFLAG1_BUF5I_Field_1)
-     with Size => 1;
-   for IFLAG1_BUF5I_Field use
-     (IFLAG1_BUF5I_Field_0 => 0,
-      IFLAG1_BUF5I_Field_1 => 1);
-
-   --  Buffer MB6 Interrupt Or "Rx FIFO Warning"
-   type IFLAG1_BUF6I_Field is
-     (
-      --  No occurrence of MB6 completing transmission/reception when
-      --  MCR[RFEN]=0, or of Rx FIFO almost full when MCR[RFEN]=1
-      IFLAG1_BUF6I_Field_0,
-      --  MB6 completed transmission/reception when MCR[RFEN]=0, or Rx FIFO
-      --  almost full when MCR[RFEN]=1
-      IFLAG1_BUF6I_Field_1)
-     with Size => 1;
-   for IFLAG1_BUF6I_Field use
-     (IFLAG1_BUF6I_Field_0 => 0,
-      IFLAG1_BUF6I_Field_1 => 1);
-
-   --  Buffer MB7 Interrupt Or "Rx FIFO Overflow"
-   type IFLAG1_BUF7I_Field is
-     (
-      --  No occurrence of MB7 completing transmission/reception when
-      --  MCR[RFEN]=0, or of Rx FIFO overflow when MCR[RFEN]=1
-      IFLAG1_BUF7I_Field_0,
-      --  MB7 completed transmission/reception when MCR[RFEN]=0, or Rx FIFO
-      --  overflow when MCR[RFEN]=1
-      IFLAG1_BUF7I_Field_1)
-     with Size => 1;
-   for IFLAG1_BUF7I_Field use
-     (IFLAG1_BUF7I_Field_0 => 0,
-      IFLAG1_BUF7I_Field_1 => 1);
-
-   --  Buffer MBi Interrupt
-   type IFLAG1_BUF31TO8I_Field is
-     (
-      --  The corresponding buffer has no occurrence of successfully completed
-      --  transmission or reception.
-      IFLAG1_BUF31TO8I_Field_0,
-      --  The corresponding buffer has successfully completed transmission or
-      --  reception.
-      IFLAG1_BUF31TO8I_Field_1)
-     with Size => 24;
-   for IFLAG1_BUF31TO8I_Field use
-     (IFLAG1_BUF31TO8I_Field_0 => 0,
-      IFLAG1_BUF31TO8I_Field_1 => 1);
+   --  Interrupt Mask 1 register
+   type CAN0_IMASK1_Register is  array (0 .. 31) of MK64F12.Bit
+      with Component_Size => 1, Size => 32;
 
    --  Interrupt Flags 1 register
-   type CAN0_IFLAG1_Register is record
-      --  Buffer MB0 Interrupt Or "reserved"
-      BUF0I     : IFLAG1_BUF0I_Field := MK64F12.CAN0.IFLAG1_BUF0I_Field_0;
-      --  Buffer MB i Interrupt Or "reserved"
-      BUF4TO1I  : IFLAG1_BUF4TO1I_Field :=
-                   MK64F12.CAN0.IFLAG1_BUF4TO1I_Field_0;
-      --  Buffer MB5 Interrupt Or "Frames available in Rx FIFO"
-      BUF5I     : IFLAG1_BUF5I_Field := MK64F12.CAN0.IFLAG1_BUF5I_Field_0;
-      --  Buffer MB6 Interrupt Or "Rx FIFO Warning"
-      BUF6I     : IFLAG1_BUF6I_Field := MK64F12.CAN0.IFLAG1_BUF6I_Field_0;
-      --  Buffer MB7 Interrupt Or "Rx FIFO Overflow"
-      BUF7I     : IFLAG1_BUF7I_Field := MK64F12.CAN0.IFLAG1_BUF7I_Field_0;
-      --  Buffer MBi Interrupt
-      BUF31TO8I : IFLAG1_BUF31TO8I_Field :=
-                   MK64F12.CAN0.IFLAG1_BUF31TO8I_Field_0;
-   end record
-     with Volatile_Full_Access, Size => 32,
-          Bit_Order => System.Low_Order_First;
-
-   for CAN0_IFLAG1_Register use record
-      BUF0I     at 0 range 0 .. 0;
-      BUF4TO1I  at 0 range 1 .. 4;
-      BUF5I     at 0 range 5 .. 5;
-      BUF6I     at 0 range 6 .. 6;
-      BUF7I     at 0 range 7 .. 7;
-      BUF31TO8I at 0 range 8 .. 31;
-   end record;
+   type CAN0_IFLAG1_Register is  array (0 .. 31) of MK64F12.Bit
+      with Component_Size => 1, Size => 32;
 
    --  Entire Frame Arbitration Field Comparison Enable For Rx Mailboxes
    type CTRL2_EACEN_Field is
@@ -1281,62 +1180,34 @@ package MK64F12.CAN0 is
       PRIO at 0 range 29 .. 31;
    end record;
 
-   subtype WORD00_DATA_BYTE_3_Field is MK64F12.Byte;
-   subtype WORD00_DATA_BYTE_2_Field is MK64F12.Byte;
-   subtype WORD00_DATA_BYTE_1_Field is MK64F12.Byte;
-   subtype WORD00_DATA_BYTE_0_Field is MK64F12.Byte;
-
-   --  Message Buffer 0 WORD0 Register
-   type WORD_Register is record
-      --  Data byte 3 of Rx/Tx frame.
-      DATA_BYTE_3 : WORD00_DATA_BYTE_3_Field := 16#0#;
-      --  Data byte 2 of Rx/Tx frame.
-      DATA_BYTE_2 : WORD00_DATA_BYTE_2_Field := 16#0#;
-      --  Data byte 1 of Rx/Tx frame.
-      DATA_BYTE_1 : WORD00_DATA_BYTE_1_Field := 16#0#;
-      --  Data byte 0 of Rx/Tx frame.
-      DATA_BYTE_0 : WORD00_DATA_BYTE_0_Field := 16#0#;
-   end record
-     with Volatile_Full_Access, Size => 32,
-          Bit_Order => System.Low_Order_First;
-
-   for WORD_Register use record
-      DATA_BYTE_3 at 0 range 0 .. 7;
-      DATA_BYTE_2 at 0 range 8 .. 15;
-      DATA_BYTE_1 at 0 range 16 .. 23;
-      DATA_BYTE_0 at 0 range 24 .. 31;
-   end record;
-
-   subtype WORD10_DATA_BYTE_7_Field is MK64F12.Byte;
-   subtype WORD10_DATA_BYTE_6_Field is MK64F12.Byte;
-   subtype WORD10_DATA_BYTE_5_Field is MK64F12.Byte;
-   subtype WORD10_DATA_BYTE_4_Field is MK64F12.Byte;
-
-   --  Message Buffer 0 WORD1 Register
-   type WORD_Register_1 is record
-      --  Data byte 7 of Rx/Tx frame.
-      DATA_BYTE_7 : WORD10_DATA_BYTE_7_Field := 16#0#;
-      --  Data byte 6 of Rx/Tx frame.
-      DATA_BYTE_6 : WORD10_DATA_BYTE_6_Field := 16#0#;
-      --  Data byte 5 of Rx/Tx frame.
-      DATA_BYTE_5 : WORD10_DATA_BYTE_5_Field := 16#0#;
-      --  Data byte 4 of Rx/Tx frame.
-      DATA_BYTE_4 : WORD10_DATA_BYTE_4_Field := 16#0#;
-   end record
-     with Volatile_Full_Access, Size => 32,
-          Bit_Order => System.Low_Order_First;
-
-   for WORD_Register_1 use record
-      DATA_BYTE_7 at 0 range 0 .. 7;
-      DATA_BYTE_6 at 0 range 8 .. 15;
-      DATA_BYTE_5 at 0 range 16 .. 23;
-      DATA_BYTE_4 at 0 range 24 .. 31;
-   end record;
-
    --  Rx Individual Mask Registers
 
    --  Rx Individual Mask Registers
    type CAN0_RXIMR_Registers is array (0 .. 15) of MK64F12.Word;
+
+   type CAN_Message_Data_Words_Array_Type is array (0 .. 1) of MK64F12.Word
+      with Size => MK64F12.Word'Size * 2;
+
+   --
+   --  CAN message buffer layout
+   --
+   type CAN_Message_Buffer_Type is limited record
+      --  CS Register
+      CS      : CS_Register;
+      --  ID Register
+      ID      : ID_Register;
+      --  Data WORDs
+      Message_Data_Words_Array : CAN_Message_Data_Words_Array_Type;
+   end record with Volatile, Size => 16 * Byte'Size;
+
+   for CAN_Message_Buffer_Type use record
+      CS      at 0 range 0 .. 31;
+      ID      at 4 range 0 .. 31;
+      Message_Data_Words_Array  at 8 range 0 .. 63;
+   end record;
+
+   type CAN_Message_Buffer_Array_Type is
+      array (0 .. 15) of CAN_Message_Buffer_Type;
 
    -----------------
    -- Peripherals --
@@ -1361,7 +1232,7 @@ package MK64F12.CAN0 is
       --  Error and Status 1 register
       ESR1     : CAN0_ESR1_Register;
       --  Interrupt Masks 1 register
-      IMASK1   : MK64F12.Word;
+      IMASK1   : CAN0_IMASK1_Register;
       --  Interrupt Flags 1 register
       IFLAG1   : CAN0_IFLAG1_Register;
       --  Control 2 register
@@ -1374,134 +1245,8 @@ package MK64F12.CAN0 is
       RXFGMASK : MK64F12.Word;
       --  Rx FIFO Information Register
       RXFIR    : CAN0_RXFIR_Register;
-      --  Message Buffer 0 CS Register
-      CS0      : CS_Register;
-      --  Message Buffer 0 ID Register
-      ID0      : ID_Register;
-      --  Message Buffer 0 WORD0 Register
-      WORD00   : WORD_Register;
-      --  Message Buffer 0 WORD1 Register
-      WORD10   : WORD_Register_1;
-      --  Message Buffer 1 CS Register
-      CS1      : CS_Register;
-      --  Message Buffer 1 ID Register
-      ID1      : ID_Register;
-      --  Message Buffer 1 WORD0 Register
-      WORD01   : WORD_Register;
-      --  Message Buffer 1 WORD1 Register
-      WORD11   : WORD_Register_1;
-      --  Message Buffer 2 CS Register
-      CS2      : CS_Register;
-      --  Message Buffer 2 ID Register
-      ID2      : ID_Register;
-      --  Message Buffer 2 WORD0 Register
-      WORD02   : WORD_Register;
-      --  Message Buffer 2 WORD1 Register
-      WORD12   : WORD_Register_1;
-      --  Message Buffer 3 CS Register
-      CS3      : CS_Register;
-      --  Message Buffer 3 ID Register
-      ID3      : ID_Register;
-      --  Message Buffer 3 WORD0 Register
-      WORD03   : WORD_Register;
-      --  Message Buffer 3 WORD1 Register
-      WORD13   : WORD_Register_1;
-      --  Message Buffer 4 CS Register
-      CS4      : CS_Register;
-      --  Message Buffer 4 ID Register
-      ID4      : ID_Register;
-      --  Message Buffer 4 WORD0 Register
-      WORD04   : WORD_Register;
-      --  Message Buffer 4 WORD1 Register
-      WORD14   : WORD_Register_1;
-      --  Message Buffer 5 CS Register
-      CS5      : CS_Register;
-      --  Message Buffer 5 ID Register
-      ID5      : ID_Register;
-      --  Message Buffer 5 WORD0 Register
-      WORD05   : WORD_Register;
-      --  Message Buffer 5 WORD1 Register
-      WORD15   : WORD_Register_1;
-      --  Message Buffer 6 CS Register
-      CS6      : CS_Register;
-      --  Message Buffer 6 ID Register
-      ID6      : ID_Register;
-      --  Message Buffer 6 WORD0 Register
-      WORD06   : WORD_Register;
-      --  Message Buffer 6 WORD1 Register
-      WORD16   : WORD_Register_1;
-      --  Message Buffer 7 CS Register
-      CS7      : CS_Register;
-      --  Message Buffer 7 ID Register
-      ID7      : ID_Register;
-      --  Message Buffer 7 WORD0 Register
-      WORD07   : WORD_Register;
-      --  Message Buffer 7 WORD1 Register
-      WORD17   : WORD_Register_1;
-      --  Message Buffer 8 CS Register
-      CS8      : CS_Register;
-      --  Message Buffer 8 ID Register
-      ID8      : ID_Register;
-      --  Message Buffer 8 WORD0 Register
-      WORD08   : WORD_Register;
-      --  Message Buffer 8 WORD1 Register
-      WORD18   : WORD_Register_1;
-      --  Message Buffer 9 CS Register
-      CS9      : CS_Register;
-      --  Message Buffer 9 ID Register
-      ID9      : ID_Register;
-      --  Message Buffer 9 WORD0 Register
-      WORD09   : WORD_Register;
-      --  Message Buffer 9 WORD1 Register
-      WORD19   : WORD_Register_1;
-      --  Message Buffer 10 CS Register
-      CS10     : CS_Register;
-      --  Message Buffer 10 ID Register
-      ID10     : ID_Register;
-      --  Message Buffer 10 WORD0 Register
-      WORD010  : WORD_Register;
-      --  Message Buffer 10 WORD1 Register
-      WORD110  : WORD_Register_1;
-      --  Message Buffer 11 CS Register
-      CS11     : CS_Register;
-      --  Message Buffer 11 ID Register
-      ID11     : ID_Register;
-      --  Message Buffer 11 WORD0 Register
-      WORD011  : WORD_Register;
-      --  Message Buffer 11 WORD1 Register
-      WORD111  : WORD_Register_1;
-      --  Message Buffer 12 CS Register
-      CS12     : CS_Register;
-      --  Message Buffer 12 ID Register
-      ID12     : ID_Register;
-      --  Message Buffer 12 WORD0 Register
-      WORD012  : WORD_Register;
-      --  Message Buffer 12 WORD1 Register
-      WORD112  : WORD_Register_1;
-      --  Message Buffer 13 CS Register
-      CS13     : CS_Register;
-      --  Message Buffer 13 ID Register
-      ID13     : ID_Register;
-      --  Message Buffer 13 WORD0 Register
-      WORD013  : WORD_Register;
-      --  Message Buffer 13 WORD1 Register
-      WORD113  : WORD_Register_1;
-      --  Message Buffer 14 CS Register
-      CS14     : CS_Register;
-      --  Message Buffer 14 ID Register
-      ID14     : ID_Register;
-      --  Message Buffer 14 WORD0 Register
-      WORD014  : WORD_Register;
-      --  Message Buffer 14 WORD1 Register
-      WORD114  : WORD_Register_1;
-      --  Message Buffer 15 CS Register
-      CS15     : CS_Register;
-      --  Message Buffer 15 ID Register
-      ID15     : ID_Register;
-      --  Message Buffer 15 WORD0 Register
-      WORD015  : WORD_Register;
-      --  Message Buffer 15 WORD1 Register
-      WORD115  : WORD_Register_1;
+      --  Message Buffers
+      Message_Buffer_Array : CAN_Message_Buffer_Array_Type;
       --  Rx Individual Mask Registers
       RXIMR    : CAN0_RXIMR_Registers;
    end record
@@ -1523,70 +1268,7 @@ package MK64F12.CAN0 is
       CRCR     at 68 range 0 .. 31;
       RXFGMASK at 72 range 0 .. 31;
       RXFIR    at 76 range 0 .. 31;
-      CS0      at 128 range 0 .. 31;
-      ID0      at 132 range 0 .. 31;
-      WORD00   at 136 range 0 .. 31;
-      WORD10   at 140 range 0 .. 31;
-      CS1      at 144 range 0 .. 31;
-      ID1      at 148 range 0 .. 31;
-      WORD01   at 152 range 0 .. 31;
-      WORD11   at 156 range 0 .. 31;
-      CS2      at 160 range 0 .. 31;
-      ID2      at 164 range 0 .. 31;
-      WORD02   at 168 range 0 .. 31;
-      WORD12   at 172 range 0 .. 31;
-      CS3      at 176 range 0 .. 31;
-      ID3      at 180 range 0 .. 31;
-      WORD03   at 184 range 0 .. 31;
-      WORD13   at 188 range 0 .. 31;
-      CS4      at 192 range 0 .. 31;
-      ID4      at 196 range 0 .. 31;
-      WORD04   at 200 range 0 .. 31;
-      WORD14   at 204 range 0 .. 31;
-      CS5      at 208 range 0 .. 31;
-      ID5      at 212 range 0 .. 31;
-      WORD05   at 216 range 0 .. 31;
-      WORD15   at 220 range 0 .. 31;
-      CS6      at 224 range 0 .. 31;
-      ID6      at 228 range 0 .. 31;
-      WORD06   at 232 range 0 .. 31;
-      WORD16   at 236 range 0 .. 31;
-      CS7      at 240 range 0 .. 31;
-      ID7      at 244 range 0 .. 31;
-      WORD07   at 248 range 0 .. 31;
-      WORD17   at 252 range 0 .. 31;
-      CS8      at 256 range 0 .. 31;
-      ID8      at 260 range 0 .. 31;
-      WORD08   at 264 range 0 .. 31;
-      WORD18   at 268 range 0 .. 31;
-      CS9      at 272 range 0 .. 31;
-      ID9      at 276 range 0 .. 31;
-      WORD09   at 280 range 0 .. 31;
-      WORD19   at 284 range 0 .. 31;
-      CS10     at 288 range 0 .. 31;
-      ID10     at 292 range 0 .. 31;
-      WORD010  at 296 range 0 .. 31;
-      WORD110  at 300 range 0 .. 31;
-      CS11     at 304 range 0 .. 31;
-      ID11     at 308 range 0 .. 31;
-      WORD011  at 312 range 0 .. 31;
-      WORD111  at 316 range 0 .. 31;
-      CS12     at 320 range 0 .. 31;
-      ID12     at 324 range 0 .. 31;
-      WORD012  at 328 range 0 .. 31;
-      WORD112  at 332 range 0 .. 31;
-      CS13     at 336 range 0 .. 31;
-      ID13     at 340 range 0 .. 31;
-      WORD013  at 344 range 0 .. 31;
-      WORD113  at 348 range 0 .. 31;
-      CS14     at 352 range 0 .. 31;
-      ID14     at 356 range 0 .. 31;
-      WORD014  at 360 range 0 .. 31;
-      WORD114  at 364 range 0 .. 31;
-      CS15     at 368 range 0 .. 31;
-      ID15     at 372 range 0 .. 31;
-      WORD015  at 376 range 0 .. 31;
-      WORD115  at 380 range 0 .. 31;
+      Message_Buffer_Array at 128 range 0 .. 2047;
       RXIMR    at 2176 range 0 .. 511;
    end record;
 

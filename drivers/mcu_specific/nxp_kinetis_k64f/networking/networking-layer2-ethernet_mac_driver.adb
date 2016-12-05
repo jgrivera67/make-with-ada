@@ -41,7 +41,6 @@ with System.Address_To_Access_Conversions;
 with Microcontroller.MCU_Specific;
 with System;
 with MPU_Driver;
-with Ada.Text_IO;--???
 
 package body Networking.Layer2.Ethernet_Mac_Driver is
    pragma SPARK_Mode (Off);
@@ -150,7 +149,8 @@ package body Networking.Layer2.Ethernet_Mac_Driver is
    --  Array of Ethernet MAC device objects
    --
    Ethernet_Mac_Var_Devices :
-     array (Ethernet_Mac_Id_Type) of Ethernet_Mac_Var_Type;
+     array (Ethernet_Mac_Id_Type) of Ethernet_Mac_Var_Type :=
+        (MAC0 => (Ethernet_Mac_Id => MAC0, others => <>));
 
    -- ** --
 
@@ -556,7 +556,7 @@ package body Networking.Layer2.Ethernet_Mac_Driver is
       MIBC_Value : ENET_MIBC_Register;
       Zeroed_Word : constant MK64F12.Word := 0;
    begin
-      Ethernet_Mac_Var.Ethernet_Mac_Id := Ethernet_Mac_Id;
+      pragma Assert (Ethernet_Mac_Var.Ethernet_Mac_Id = Ethernet_Mac_Id);
       Enable_Clock (Ethernet_Mac_Id);
 
       --
@@ -629,7 +629,7 @@ package body Networking.Layer2.Ethernet_Mac_Driver is
       Ethernet_Phy_Driver.Initialize (Ethernet_Mac_Id);
       Crc_32_Accelerator_Driver.Initialize;
       Ethernet_Mac_Var.Initialized := True;
-      Runtime_Logs.Debug_Print ("Ethernet MAC: Initialized MAC " &
+      Runtime_Logs.Debug_Print ("Ethernet MAC: Initialized MAC" &
                                 Ethernet_Mac_Id'Image);
    end Initialize;
 
@@ -640,7 +640,8 @@ package body Networking.Layer2.Ethernet_Mac_Driver is
    function Initialized (Ethernet_Mac_Id : Ethernet_Mac_Id_Type)
                          return Boolean is
      (Ethernet_Mac_Var_Devices (Ethernet_Mac_Id).Initialized and then
-      Ethernet_Mac_Var_Devices (Ethernet_Mac_Id).Ethernet_Mac_Id'Valid);
+      Ethernet_Mac_Var_Devices (Ethernet_Mac_Id).Ethernet_Mac_Id =
+         Ethernet_Mac_Id);
 
    --------------------------------
    -- Initialize_Ethernet_Mac_Rx --
