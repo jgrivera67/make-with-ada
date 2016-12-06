@@ -95,25 +95,7 @@ package body Pin_Mux_Driver is
    procedure Set_Pin_Function (Pin_Info : Pin_Info_Type;
                                Drive_Strength_Enable : Boolean := False;
                                Pullup_Resistor : Boolean := False;
-                               Open_Drain_Enable : Boolean := False) is
-      Pins_In_Use_Entry : Boolean renames
-        Pins_In_Use_Map (Pin_Info.Pin_Port, Pin_Info.Pin_Index);
-
-      Port_Registers : access PORT.Registers_Type renames
-        Ports (Pin_Info.Pin_Port);
-      PCR_Value : PORT.PCR_Type;
-   begin
-      pragma Assert (not Pins_In_Use_Entry);
-      PCR_Value :=
-        (MUX => Pin_Function_Type'Pos (Pin_Info.Pin_Function),
-         DSE => Boolean'Pos (Drive_Strength_Enable),
-         PS | PE => Boolean'Pos (Pullup_Resistor),
-         ODE => Boolean'Pos (Open_Drain_Enable),
-         IRQC => 0,
-         others => 0);
-
-      Port_Registers.all.PCR (Pin_Info.Pin_Index) := PCR_Value;
-      Pins_In_Use_Entry := True;
-   end Set_Pin_Function;
+                               Open_Drain_Enable : Boolean := False)
+   is separate;
 
 end Pin_Mux_Driver;

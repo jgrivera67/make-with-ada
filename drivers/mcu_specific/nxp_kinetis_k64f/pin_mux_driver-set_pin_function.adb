@@ -25,23 +25,28 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with Devices.MCU_Specific;
+separate (Pin_Mux_Driver)
+   procedure Set_Pin_Function (Pin_Info : Pin_Info_Type;
+                               Drive_Strength_Enable : Boolean := False;
+                               Pullup_Resistor : Boolean := False;
+                               Open_Drain_Enable : Boolean := False)
+   is
+      Pins_In_Use_Entry : Boolean renames
+        Pins_In_Use_Map (Pin_Info.Pin_Port, Pin_Info.Pin_Index);
 
---
---  @summary MCU-specific GPIO declarations
---
-private package Gpio_Driver.MCU_Specific_Private is
-   pragma SPARK_Mode (Off);
-   use Devices.MCU_Specific;
+      Port_Registers : access PORT.Registers_Type renames
+        Ports (Pin_Info.Pin_Port);
+      PCR_Value : PORT.PCR_Type;
+   begin
+      pragma Assert (not Pins_In_Use_Entry);
+      PCR_Value :=
+        (MUX => Pin_Function_Type'Pos (Pin_Info.Pin_Function),
+         DSE => Boolean'Pos (Drive_Strength_Enable),
+         PS | PE => Boolean'Pos (Pullup_Resistor),
+         ODE => Boolean'Pos (Open_Drain_Enable),
+         IRQC => 0,
+         others => 0);
 
-   --
-   -- Table of pointers to the registers for each GPIO port
-   --
-   Gpio_Ports : constant array (Pin_Port_Type) of access GPIO.Registers_Type :=
-     (PIN_PORT_A => GPIO.PortA_Registers'Access,
-      PIN_PORT_B => GPIO.PortB_Registers'Access,
-      PIN_PORT_C => GPIO.PortC_Registers'Access,
-      PIN_PORT_D => GPIO.PortD_Registers'Access,
-      PIN_PORT_E => GPIO.PortE_Registers'Access);
-
-end Gpio_Driver.MCU_Specific_Private;
+      Port_Registers.all.PCR (Pin_Info.Pin_Index) := PCR_Value;
+      Pins_In_Use_Entry := True;
+   end Set_Pin_Function;

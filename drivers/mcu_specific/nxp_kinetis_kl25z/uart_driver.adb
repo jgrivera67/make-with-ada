@@ -56,14 +56,60 @@ package body Uart_Driver is
 
    Uart_Receive_Queue_Name : aliased constant String := "UART Rx queue";
 
-   --
-   --  Subprogram Initialize
-   --
+   -----------------------
+   -- Can_Receive_Char --
+   -----------------------
+
+   function Can_Receive_Char (Uart_Device_Id : Uart_Device_Id_Type)
+                               return Boolean is
+      Uart_Registers_Ptr : access UART.Registers_Type renames
+        Uart_Devices (Uart_Device_Id).Registers_Ptr;
+   begin
+      return (Uart_Registers_Ptr.all.S1.RDRF = 1);
+   end Can_Receive_Char;
+
+   -----------------------
+   -- Can_Transmit_Char --
+   -----------------------
+
+   function Can_Transmit_Char
+     (Uart_Device_Id : Uart_Device_Id_Type) return Boolean is
+
+      Uart_Registers_Ptr : access UART.Registers_Type renames
+        Uart_Devices (Uart_Device_Id).Registers_Ptr;
+   begin
+      return (Uart_Registers_Ptr.all.S1.TDRE = 1);
+   end Can_Transmit_Char;
+
+  ---------------
+   -- Get_Byte --
+  ---------------
+
+   function Get_Byte (Uart_Device_Id : Uart_Device_Id_Type) return Byte is
+      Uart_Device_Var : Uart_Device_Var_Type renames
+        Uart_Devices_Var (Uart_Device_Id);
+      Byte_Read : Byte;
+   begin
+      Byte_Ring_Buffers.Read (Uart_Device_Var.Receive_Queue, Byte_Read);
+      return Byte_Read;
+   end Get_Byte;
+
+  ---------------
+   -- Get_Char --
+  ---------------
+
+   function Get_Char (Uart_Device_Id : Uart_Device_Id_Type) return Character is
+   begin
+      return Character'Val (Get_Byte (Uart_Device_Id));
+   end Get_Char;
+
+  -----------------
+   -- Initialize --
+  -----------------
+
    procedure Initialize (Uart_Device_Id : Uart_Device_Id_Type;
                          Baud_Rate : Baud_Rate_Type) is
-      --
-      --  Helper subprograms
-      --
+
       procedure Enable_Clock;
       procedure Select_Clock_Source;
       procedure Set_Baud_Rate;
@@ -75,9 +121,10 @@ package body Uart_Driver is
       Uart_Registers_Ptr : access UART.Registers_Type renames
         Uart_Device.Registers_Ptr;
 
-      --
-      --  Subprogram Enable_Clock
-      --
+      ------------------
+      -- Enable_Clock --
+      ------------------
+
       procedure Enable_Clock is
          SCGC4_Value : SIM.SCGC4_Type := SIM.Registers.SCGC4;
       begin
@@ -93,9 +140,10 @@ package body Uart_Driver is
          SIM.Registers.SCGC4 := SCGC4_Value;
       end Enable_Clock;
 
-      --
-      --  Subprogram Select_Clock_Source
-      --
+      -------------------------
+      -- Select_Clock_Source --
+      -------------------------
+
       procedure Select_Clock_Source is
          SOPT2_Value : SIM.SOPT2_Type;
       begin
@@ -117,9 +165,10 @@ package body Uart_Driver is
          end case;
       end Select_Clock_Source;
 
-      --
-      --  Subprogram Set_Baud_Rate
-      --
+      -------------------
+      -- Set_Baud_Rate --
+      -------------------
+
       procedure Set_Baud_Rate is
          SBR_Field_Value : Positive range 1 .. 16#1FFF#;
          SBR_Field_Encoded : UART.Encoded_Baud_Rate_Type with
@@ -256,23 +305,12 @@ package body Uart_Driver is
 
    end Initialize;
 
-   --
-   --  Subprogram Can_Transmit_Char
-   --
-   function Can_Transmit_Char
-     (Uart_Device_Id : Uart_Device_Id_Type) return Boolean is
+   --------------
+   -- Put_Byte --
+   --------------
 
-      Uart_Registers_Ptr : access UART.Registers_Type renames
-        Uart_Devices (Uart_Device_Id).Registers_Ptr;
-   begin
-      return (Uart_Registers_Ptr.all.S1.TDRE = 1);
-   end Can_Transmit_Char;
-
-   --
-   --  Subprogram Put_Char
-   --
-   procedure Put_Char (Uart_Device_Id : Uart_Device_Id_Type;
-                       Char : Character) is
+   procedure Put_Byte (Uart_Device_Id : Uart_Device_Id_Type;
+                       Data : Byte) is
       Uart_Registers_Ptr : access UART.Registers_Type renames
         Uart_Devices (Uart_Device_Id).Registers_Ptr;
    begin
@@ -280,33 +318,30 @@ package body Uart_Driver is
          exit when Uart_Registers_Ptr.all.S1.TDRE = 1;
       end loop;
 
-      Uart_Registers_Ptr.all.D := Byte (Character'Pos (Char));
+      Uart_Registers_Ptr.all.D := Data;
+   end Put_Byte;
+
+   ---------------
+   -- Put_Bytes --
+   ---------------
+
+   procedure Put_Bytes (Uart_Device_Id : Uart_Device_Id_Type;
+                       Data : Bytes_Array_Type) is
+   begin
+      for Data_Byte of Data loop
+         Put_Byte (Uart_Device_Id, Data_Byte);
+      end loop;
+   end Put_Bytes;
+
+   --------------
+   -- Put_Char --
+   --------------
+
+   procedure Put_Char (Uart_Device_Id : Uart_Device_Id_Type;
+                       Char : Character) is
+   begin
+      Put_Byte (Uart_Device_Id, Byte (Character'Pos (Char)));
    end Put_Char;
-
-   --
-   --  Subprogram Can_Receive_Char
-   --
-   function Can_Receive_Char (Uart_Device_Id : Uart_Device_Id_Type)
-                               return Boolean is
-      Uart_Registers_Ptr : access UART.Registers_Type renames
-        Uart_Devices (Uart_Device_Id).Registers_Ptr;
-   begin
-      return (Uart_Registers_Ptr.all.S1.RDRF = 1);
-   end Can_Receive_Char;
-
-   --
-   --  Subprogram Get_Char
-   --
-   function Get_Char (Uart_Device_Id : Uart_Device_Id_Type) return Character is
-      Uart_Device_Var : Uart_Device_Var_Type renames
-        Uart_Devices_Var (Uart_Device_Id);
-      Byte_Read : Byte;
-      Char : Character;
-   begin
-      Byte_Ring_Buffers.Read (Uart_Device_Var.Receive_Queue, Byte_Read);
-      Char := Character'Val (Byte_Read);
-      return Char;
-   end Get_Char;
 
    --
    -- Interrupt handlers
