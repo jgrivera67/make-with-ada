@@ -46,7 +46,8 @@ package Uart_Driver is
    --  @private (Used only in contracts)
 
    procedure Initialize (Uart_Device_Id : Uart_Device_Id_Type;
-                         Baud_Rate : Baud_Rate_Type)
+                         Baud_Rate : Baud_Rate_Type;
+                         Use_Two_Stop_Bits : Boolean := False)
      with Pre => not Initialized (Uart_Device_Id);
    --
    --  Initialize the given UART

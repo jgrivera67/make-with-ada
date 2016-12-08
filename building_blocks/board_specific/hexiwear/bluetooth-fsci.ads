@@ -43,7 +43,7 @@ package Bluetooth.FSCI is
    FSCI_Packet_Header_Size : constant := 5;
 
    --
-   --  FSCI protocol packet
+   --  FSCI protocol packet header
    --
    --  @field STX Used for synchronization over the serial interface.
    --  The value is always 0x02.
@@ -58,23 +58,34 @@ package Bluetooth.FSCI is
    --  An FSCI packet has the following layout:
    --  header (5 bytes), payload ('length' bytes), Checksum (1 byte)
    --
-   type FSCI_Packet_Type is limited record
-      STX : Byte := 16#02#;
+   --  The checksum is computed as the XOR sum of the packet bytes from the
+   --  Opcode_Group field to the last byte of the data payload.
+   --
+   type FSCI_Packet_Header_Type is limited record
+      STX : Byte;
       Opcode_Group : Byte;
       Opcode : Byte;
       Length : Unsigned_16;
-      First_Payload_Byte : aliased Byte;
    end record
-     with Size => (FSCI_Packet_Header_Size + 1) * Byte'Size,
+     with Size => FSCI_Packet_Header_Size * Byte'Size,
           Bit_Order => System.Low_Order_First;
 
-   for FSCI_Packet_Type use record
+   for FSCI_Packet_Header_Type use record
       STX          at 0 range 0 .. 7;
       Opcode_Group at 1 range 0 .. 7;
       Opcode       at 2 range 0 .. 7;
       Length       at 3 range 0 .. 15;
-      First_Payload_Byte at 5 range 0 .. 7;
    end record;
+
+   STX_Value : constant Byte := 16#02#;
+
+   type FSCI_Packet_Header_Access_Type is access all FSCI_Packet_Header_Type;
+
+   type Byte_Access_Type is access all Byte;
+
+   function Packet_First_Byte_Ptr_To_Packet_Header_Ptr is
+      new Ada.Unchecked_Conversion (Source => Byte_Access_Type,
+                                    Target => FSCI_Packet_Header_Access_Type);
 
    type Opcode_Group_Type is (GATT,    --  Generic Attribute Profile
                               GATT_DB, --  GATT Data Base
@@ -96,12 +107,5 @@ package Bluetooth.FSCI is
       GAP_Add_Device_To_White_List_Request => 16#23#,
       GAP_Confirm => 16#80#
      );
-
-   subtype FSCI_Packets_Bytes_Type is
-       Devices.Bytes_Array_Type (1 .. FSCI_Packet_Type'Size / Byte'Size);
-
-   function FSCI_Packet_To_Bytes_Array is
-        new Ada.Unchecked_Conversion (Source => FSCI_Packet_Type,
-                                      Target => FSCI_Packets_Bytes_Type);
 
 end Bluetooth.FSCI;

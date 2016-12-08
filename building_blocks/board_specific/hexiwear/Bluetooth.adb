@@ -32,16 +32,19 @@ with Ada.Synchronous_Task_Control;
 with System;
 with Interfaces.Bit_Types;
 with Bluetooth.FSCI;
-with Ada.Text_IO; --???
 
 package body Bluetooth is
    pragma SPARK_Mode (Off);
    use Devices.MCU_Specific;
+   use Devices;
    use Ada.Synchronous_Task_Control;
    use Interfaces.Bit_Types;
    use Interfaces;
    use Bluetooth.FSCI;
    use System;
+
+   procedure Compute_FSCI_Packet_Checksum (
+      Packet_Buffer : in out Bytes_Array_Type);
 
    --
    --  Baud rate for the Bluetooth UART
@@ -72,6 +75,23 @@ package body Bluetooth is
    -- Initialized --
    -----------------
 
+   procedure Compute_FSCI_Packet_Checksum (
+      Packet_Buffer : in out Bytes_Array_Type)
+   is
+     Checksum : Byte := 0;
+   begin
+      for Byte_Value of
+         Packet_Buffer (Packet_Buffer'First + 1 .. Packet_Buffer'Last - 1) loop
+         Checksum := Checksum xor Byte_Value;
+      end loop;
+
+      Packet_Buffer (Packet_Buffer'Last) := Checksum;
+   end Compute_FSCI_Packet_Checksum;
+
+   -----------------
+   -- Initialized --
+   -----------------
+
    function Initialized return Boolean is
       (Bluetooth_Serial_Interface_Var.Initialized);
 
@@ -94,31 +114,40 @@ package body Bluetooth is
    ------------------------------------------------
 
    task body Bluetooth_Serial_Interface_Input_Task_Type is
-      FSCI_Packet : FSCI_Packet_Type;
-      FSCI_Packet_Size : Positive;
+      Packet_Buffer : Bytes_Array_Type (1 .. FSCI_Packet_Header_Size + 1);
+      Packet_Header_Ptr : access FSCI_Packet_Header_Type :=
+         Packet_First_Byte_Ptr_To_Packet_Header_Ptr (
+            Packet_Buffer (1)'Unchecked_Access);
+      Packet_Size : Positive;
       Data : Byte;
    begin
       Suspend_Until_True (Bluetooth_Serial_Interface_Ptr.Initialized_Condvar);
       Runtime_Logs.Info_Print ("Bluetooth input task started");
 
+      --
+      --  Initalize Bluetooth in KW40
+      --
+      Packet_Header_Ptr.STX := STX_Value;
+      Packet_Header_Ptr.Opcode_Group := GAP'Enum_Rep;
+      Packet_Header_Ptr.Opcode := GAP_BLE_Host_Initialize_Request'Enum_Rep;
+      Packet_Header_Ptr.Length := 0;
+
+      Packet_Size :=
+         Positive (FSCI_Packet_Header_Size + Packet_Header_Ptr.Length + 1);
+
+      Compute_FSCI_Packet_Checksum (Packet_Buffer (1 .. Packet_Size));
+
+      Uart_Driver.Put_Bytes (
+         Bluetooth_Serial_Interface_Ptr.Uart,
+         Packet_Buffer (1 .. Packet_Size));
+
       --???
-      FSCI_Packet.Opcode_Group := GAP'Enum_Rep;
-      FSCI_Packet.Opcode := GAP_BLE_Host_Initialize_Request'Enum_Rep;
-      FSCI_Packet.Length := 0;
-      FSCI_Packet_Size :=
-        Positive (FSCI_Packet_Header_Size + FSCI_Packet.Length);
+      Runtime_Logs.Debug_Print ("Waiting for KW40 ...");--???
       loop
-         Uart_Driver.Put_Bytes (
-            Bluetooth_Serial_Interface_Ptr.Uart,
-         FSCI_Packet_To_Bytes_Array (FSCI_Packet) (1 .. FSCI_Packet_Size));
-         --???
-
-         Ada.Text_IO.Put_Line ("Waiting for KW40 ...");--???
          Data := Uart_Driver.Get_Byte (Bluetooth_Serial_Interface_Ptr.Uart);
-
-         Ada.Text_IO.Put (Data'Image & " ");
+         Runtime_Logs.Debug_Print ("Byte received from KW40" & Data'Image);--???
       end loop;
-
+      --???
    end Bluetooth_Serial_Interface_Input_Task_Type;
 
 

@@ -51,16 +51,10 @@ private package Uart_Driver.Board_Specific_Private is
 
       UART1 =>
         (Registers_Ptr => UART.Uart1_Registers'Access,
-         Tx_Pin =>
-           (Pin_Port => PIN_PORT_B, -- TODO: Fix this
-            Pin_Index => 17,                   -- TODO: Fix this
-            Pin_Function => PIN_FUNCTION_ALT3),
-         Rx_Pin =>
-           (Pin_Port => PIN_PORT_B, -- TODO: Fix this
-            Pin_Index => 16,                   -- TODO: Fix this
-            Pin_Function => PIN_FUNCTION_ALT3),
+         Tx_Pin => <>,
+         Rx_Pin => <>,
          Rx_Pin_Pullup_Resistor_Enabled => False,
-         Source_Clock_Freq_In_Hz => System_Clock_Frequency -- TODO: Fix this
+         Source_Clock_Freq_In_Hz => System_Clock_Frequency
         ),
 
       UART2 =>
@@ -74,7 +68,7 @@ private package Uart_Driver.Board_Specific_Private is
             Pin_Index => 2,
             Pin_Function => PIN_FUNCTION_ALT3),
          Rx_Pin_Pullup_Resistor_Enabled => False,
-         Source_Clock_Freq_In_Hz => System_Clock_Frequency -- TODO: Fix this
+         Source_Clock_Freq_In_Hz => Bus_Clock_Frequency
         ),
 
       UART3 =>
@@ -88,7 +82,7 @@ private package Uart_Driver.Board_Specific_Private is
             Pin_Index => 16,
             Pin_Function => PIN_FUNCTION_ALT3),
          Rx_Pin_Pullup_Resistor_Enabled => False,
-         Source_Clock_Freq_In_Hz => System_Clock_Frequency -- TODO: Fix this
+         Source_Clock_Freq_In_Hz => Bus_Clock_Frequency
         ),
 
       UART4 =>
@@ -107,16 +101,10 @@ private package Uart_Driver.Board_Specific_Private is
 
       UART5 =>
         (Registers_Ptr => UART.Uart5_Registers'Access,
-         Tx_Pin =>
-           (Pin_Port => PIN_PORT_C, -- TODO: Fix this
-            Pin_Index => 15,                   -- TODO: Fix this
-            Pin_Function => PIN_FUNCTION_ALT3),
-         Rx_Pin =>
-           (Pin_Port => PIN_PORT_C, -- TODO: Fix this
-            Pin_Index => 14,                   -- TODO: Fix this
-            Pin_Function => PIN_FUNCTION_ALT3),
+         Tx_Pin => <>,
+         Rx_Pin => <>,
          Rx_Pin_Pullup_Resistor_Enabled => True,
-         Source_Clock_Freq_In_Hz => Bus_Clock_Frequency -- TODO: Fix this
+         Source_Clock_Freq_In_Hz => Bus_Clock_Frequency
         )
      );
 

@@ -53,6 +53,15 @@ package body Uart_Driver is
 
       procedure Uart2_Irq_Handler;
       pragma Attach_Handler (Uart2_Irq_Handler, Names.UART2_Interrupt);
+
+      procedure Uart3_Irq_Handler;
+      pragma Attach_Handler (Uart3_Irq_Handler, Names.UART3_Interrupt);
+
+      procedure Uart4_Irq_Handler;
+      pragma Attach_Handler (Uart4_Irq_Handler, Names.UART4_Interrupt);
+
+      procedure Uart5_Irq_Handler;
+      pragma Attach_Handler (Uart5_Irq_Handler, Names.UART5_Interrupt);
    end Uart_Interrupts_Object;
    pragma Unreferenced (Uart_Interrupts_Object);
 
@@ -100,7 +109,8 @@ package body Uart_Driver is
    -- ** --
 
    procedure Initialize (Uart_Device_Id : Uart_Device_Id_Type;
-                         Baud_Rate : Baud_Rate_Type)
+                         Baud_Rate : Baud_Rate_Type;
+                         Use_Two_Stop_Bits : Boolean := False)
    is
       procedure Enable_Clock;
       procedure Set_Baud_Rate;
@@ -157,6 +167,11 @@ package body Uart_Driver is
          --  Set BDH and BDL registers:
          BDH_Value := Uart_Registers_Ptr.all.BDH;
          BDH_Value.SBR := Encoded_Baud_Rate.High_Part;
+         if Use_Two_Stop_Bits then
+            BDH_Value.SBNS := 1;
+         else
+            BDH_Value.SBNS := 0;
+         end if;
          Uart_Registers_Ptr.all.BDH := BDH_Value;
          Uart_Registers_Ptr.all.BDL := Encoded_Baud_Rate.Low_Part;
       end Set_Baud_Rate;
@@ -217,10 +232,10 @@ package body Uart_Driver is
       C2_Value.TIE := 0;
       Uart_Registers_Ptr.all.C2 := C2_Value;
 
-     --
-     --  Enable interrupts in the interrupt controller (NVIC):
-     --  NOTE: This is implicitly done by the Ada runtime
-     --
+      --
+      --  Enable interrupts in the interrupt controller (NVIC):
+      --  NOTE: This is implicitly done by the Ada runtime
+      --
 
       --  Enable UART's transmitter and receiver:
       C2_Value.TE := 1;
@@ -284,6 +299,21 @@ package body Uart_Driver is
       begin
          Uart_Irq_Common_Handler (UART2);
       end Uart2_Irq_Handler;
+
+      procedure Uart3_Irq_Handler is
+      begin
+         Uart_Irq_Common_Handler (UART3);
+      end Uart3_Irq_Handler;
+
+      procedure Uart4_Irq_Handler is
+      begin
+         Uart_Irq_Common_Handler (UART4);
+      end Uart4_Irq_Handler;
+
+      procedure Uart5_Irq_Handler is
+      begin
+         Uart_Irq_Common_Handler (UART5);
+      end Uart5_Irq_Handler;
 
       procedure Uart_Irq_Common_Handler
         (Uart_Device_Id : Uart_Device_Id_Type) is

@@ -85,12 +85,12 @@ begin -- Hexiwear_Iot_Stack
    Pin_Mux_Driver.Initialize;
    Color_Led.Initialize;
    Serial_Console.Initialize;
-   Bluetooth.Initialize;
 
    Old_Color := Color_Led.Set_Color (Color_Led.Blue);
    Color_Led.Turn_On_Blinker (Heartbeat_Period_Ms);
 
    Print_Greeting;
+   Bluetooth.Initialize;
    Command_Parser.Initialize;
 
    loop
