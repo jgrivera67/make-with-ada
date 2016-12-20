@@ -161,6 +161,27 @@ package MKL25Z4.PIT is
       Reserved_1_31 at 0 range 1 .. 31;
    end record;
 
+   type PIT_Channel_Type is limited record
+      --  Timer Load Value Register
+      LDVAL  : MKL25Z4.Word;
+      --  Current Timer Value Register
+      CVAL   : MKL25Z4.Word;
+      --  Timer Control Register
+      TCTRL  : TCTRL_Register;
+      --  Timer Flag Register
+      TFLG   : TFLG_Register;
+   end record with Volatile,
+                   Size => 4 * MKL25Z4.Word'Size;
+
+   for PIT_Channel_Type use record
+      LDVAL  at 0 range 0 .. 31;
+      CVAL   at 4 range 0 .. 31;
+      TCTRL  at 8 range 0 .. 31;
+      TFLG   at 12 range 0 .. 31;
+   end record;
+
+   type PIT_Channel_Array_Type is array (0 .. 1) of PIT_Channel_Type;
+
    -----------------
    -- Peripherals --
    -----------------
@@ -173,22 +194,8 @@ package MKL25Z4.PIT is
       LTMR64H : MKL25Z4.Word;
       --  PIT Lower Lifetime Timer Register
       LTMR64L : MKL25Z4.Word;
-      --  Timer Load Value Register
-      LDVAL0  : MKL25Z4.Word;
-      --  Current Timer Value Register
-      CVAL0   : MKL25Z4.Word;
-      --  Timer Control Register
-      TCTRL0  : TCTRL_Register;
-      --  Timer Flag Register
-      TFLG0   : TFLG_Register;
-      --  Timer Load Value Register
-      LDVAL1  : MKL25Z4.Word;
-      --  Current Timer Value Register
-      CVAL1   : MKL25Z4.Word;
-      --  Timer Control Register
-      TCTRL1  : TCTRL_Register;
-      --  Timer Flag Register
-      TFLG1   : TFLG_Register;
+      --  PIT Channels
+      PIT_Channel_Array : PIT_Channel_Array_Type;
    end record
      with Volatile;
 
@@ -196,14 +203,7 @@ package MKL25Z4.PIT is
       MCR     at 0 range 0 .. 31;
       LTMR64H at 224 range 0 .. 31;
       LTMR64L at 228 range 0 .. 31;
-      LDVAL0  at 256 range 0 .. 31;
-      CVAL0   at 260 range 0 .. 31;
-      TCTRL0  at 264 range 0 .. 31;
-      TFLG0   at 268 range 0 .. 31;
-      LDVAL1  at 272 range 0 .. 31;
-      CVAL1   at 276 range 0 .. 31;
-      TCTRL1  at 280 range 0 .. 31;
-      TFLG1   at 284 range 0 .. 31;
+      PIT_Channel_Array at 256 range 0 .. 255;
    end record;
 
    --  Periodic Interrupt Timer

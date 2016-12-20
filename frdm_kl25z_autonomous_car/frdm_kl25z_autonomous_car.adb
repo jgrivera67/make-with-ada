@@ -34,7 +34,8 @@ with Pin_Mux_Driver;
 with Color_Led;
 with Serial_Console;
 with Command_Parser;
---with Car_Controller;
+with Nor_Flash_Driver;
+with Car_Controller;
 with GNAT.Source_Info;
 with Ada.Real_Time;
 with Last_Chance_Handler;
@@ -42,6 +43,11 @@ pragma Unreferenced (Last_Chance_Handler);
 
 procedure Frdm_Kl25z_Autonomous_Car is
    pragma Priority (System.Priority'First + 2);
+
+   procedure Log_Start_Info;
+   procedure Print_Greeting;
+
+   -- ** --
 
    procedure Log_Start_Info is
       Reset_Count : constant Interfaces.Unsigned_32 := Reset_Counter.Get;
@@ -61,7 +67,8 @@ procedure Frdm_Kl25z_Autonomous_Car is
       Serial_Console.Lock;
       Serial_Console.Clear_Screen;
       Serial_Console.Print_String (
-        "Autonomous Car (Written in Ada 2012, built on " & GNAT.Source_Info.Compilation_Date &
+        "Autonomous Car (Written in Ada 2012, built on " &
+        GNAT.Source_Info.Compilation_Date &
         " at " & GNAT.Source_Info.Compilation_Time & ")" & ASCII.LF);
 
       Serial_Console.Unlock;
@@ -84,14 +91,15 @@ begin -- Frdm_Kl25z_Autonomous_Car
    Pin_Mux_Driver.Initialize;
    Color_Led.Initialize;
    Serial_Console.Initialize;
+   Nor_Flash_Driver.Initialize;
 
    Old_Color := Color_Led.Set_Color (Color_Led.Blue);
    Color_Led.Turn_On_Blinker (Heartbeat_Period_Ms);
 
    Print_Greeting;
-   Command_Parser.Initialize;
-   --Car_Controller.Initialize;
 
+   Car_Controller.Initialize;
+   Command_Parser.Initialize;
    loop
       Command_Parser.Parse_Command;
    end loop;

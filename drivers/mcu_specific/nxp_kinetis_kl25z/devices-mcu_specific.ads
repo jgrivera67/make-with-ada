@@ -29,6 +29,9 @@ with Kinetis_KL25Z.PORT;
 with Kinetis_KL25Z.SIM;
 with Kinetis_KL25Z.GPIO;
 with Kinetis_KL25Z.UART;
+with MKL25Z4.ADC0;
+with MKL25Z4.TPM;
+with MKL25Z4.PIT;
 
 --
 --  @summary Devices in the NXP Kinetis KL25Z MCU
@@ -46,16 +49,34 @@ package Devices.MCU_Specific is
                           PIN_PORT_E);
 
    --
-   -- IDs of UART instances
+   --  IDs of UART instances
    --
    type Uart_Device_Id_Type is
      (UART0,
       UART1,
       UART2);
 
+   --
+   --  IDs of ADC device instances
+   --
+   type ADC_Device_Id_Type is (ADC0);
+
+   --
+   --  IDs of PWM device instances
+   --
+   type PWM_Device_Id_Type is (PWM0, PWM1, PWM2);
+
+   --
+   --  IDs of Periodic timer device instances
+   --
+   type Periodic_Timer_Device_Id_Type is (Periodic_Timer0);
+
    package PORT renames Kinetis_KL25Z.PORT;
    package SIM renames Kinetis_KL25Z.SIM;
    package GPIO renames Kinetis_KL25Z.GPIO;
    package UART renames Kinetis_KL25Z.UART;
+   package ADC renames MKL25Z4.ADC0;
+   package PWM renames MKL25Z4.TPM;
+   package PIT renames MKL25Z4.PIT;
 
 end Devices.MCU_Specific;

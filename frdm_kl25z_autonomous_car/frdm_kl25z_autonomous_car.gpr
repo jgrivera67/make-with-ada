@@ -25,13 +25,14 @@ project frdm_kl25z_autonomous_car is
              "-gnatf",                      --  Full, verbose error messages
              "-gnatwa",                     --  All optional warnings
              "-gnatVa",                     --  All validity checks
-             -- "-gnaty3abcdefhiklmnoOprstux", --  Style checks
+             "-gnaty3abcdefhiklmnoOprstux", --  Style checks
              -- "-gnatwe",                     --  Treat warnings as errors
              "-gnat2012",                   --  Use Ada 2012
              "-Wall",                       --  All GCC warnings
              --"-Wstack-usage=256",           -- check stack usage per subprogram
              "-fno-omit-frame-pointer",     -- To be able to unwind the stack
              -- "-E",                          --  Generate stack trace for exceptions
+             "-v",
              "-O2");                        --  Optimise (level 2/3)
 
       for Local_Configuration_Pragmas use "../gnat_pragmas.adc";

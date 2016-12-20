@@ -237,7 +237,7 @@ package MKL25Z4.TPM is
       CnSC_CHF_Field_1 => 1);
 
    --  Channel (n) Status and Control
-   type TPM0_CnSCCHANNELS_Register is record
+   type TPM0_CnSC_Register is record
       --  DMA Enable
       DMA           : CnSC_DMA_Field := MKL25Z4.TPM.CnSC_DMA_Field_0;
       --  unspecified
@@ -260,7 +260,7 @@ package MKL25Z4.TPM is
      with Volatile_Full_Access, Size => 32,
           Bit_Order => System.Low_Order_First;
 
-   for TPM0_CnSCCHANNELS_Register use record
+   for TPM0_CnSC_Register use record
       DMA           at 0 range 0 .. 0;
       Reserved_1_1  at 0 range 1 .. 1;
       ELSA          at 0 range 2 .. 2;
@@ -275,7 +275,7 @@ package MKL25Z4.TPM is
    subtype CnV_VAL_Field is MKL25Z4.Short;
 
    --  Channel (n) Value
-   type TPM0_CnVCHANNELS_Register is record
+   type TPM0_CnV_Register is record
       --  Channel Value
       VAL            : CnV_VAL_Field := 16#0#;
       --  unspecified
@@ -284,7 +284,7 @@ package MKL25Z4.TPM is
      with Volatile_Full_Access, Size => 32,
           Bit_Order => System.Low_Order_First;
 
-   for TPM0_CnVCHANNELS_Register use record
+   for TPM0_CnV_Register use record
       VAL            at 0 range 0 .. 15;
       Reserved_16_31 at 0 range 16 .. 31;
    end record;
@@ -292,9 +292,9 @@ package MKL25Z4.TPM is
    --  Grouping of Channels
    type TPM0_CHANNELS_Cluster is record
       --  Channel (n) Status and Control
-      CnSC : TPM0_CnSCCHANNELS_Register;
+      CnSC : TPM0_CnSC_Register;
       --  Channel (n) Value
-      CnV  : TPM0_CnVCHANNELS_Register;
+      CnV  : TPM0_CnV_Register;
    end record
      with Volatile, Size => 64;
 
@@ -653,7 +653,7 @@ package MKL25Z4.TPM is
    -----------------
 
    --  Timer/PWM Module
-   type TPM0_Peripheral is record
+   type TPM_Peripheral is record
       --  Status and Control
       SC       : TPM0_SC_Register;
       --  Counter
@@ -669,7 +669,7 @@ package MKL25Z4.TPM is
    end record
      with Volatile;
 
-   for TPM0_Peripheral use record
+   for TPM_Peripheral use record
       SC       at 0 range 0 .. 31;
       CNT      at 4 range 0 .. 31;
       MOD_k    at 8 range 0 .. 31;
@@ -679,43 +679,8 @@ package MKL25Z4.TPM is
    end record;
 
    --  Timer/PWM Module
-   TPM0_Periph : aliased TPM0_Peripheral
+   TPM0_Periph : aliased TPM_Peripheral
      with Import, Address => TPM0_Base;
-
-   --  Timer/PWM Module
-   type TPM_Peripheral is record
-      --  Status and Control
-      SC     : TPM0_SC_Register;
-      --  Counter
-      CNT    : TPM0_CNT_Register;
-      --  Modulo
-      MOD_k  : TPM0_MOD_Register;
-      --  Channel (n) Status and Control
-      CSC0   : CSC_Register;
-      --  Channel (n) Value
-      CV0    : CV_Register;
-      --  Channel (n) Status and Control
-      CSC1   : CSC_Register;
-      --  Channel (n) Value
-      CV1    : CV_Register;
-      --  Capture and Compare Status
-      STATUS : TPM0_STATUS_Register;
-      --  Configuration
-      CONF   : TPM0_CONF_Register;
-   end record
-     with Volatile;
-
-   for TPM_Peripheral use record
-      SC     at 0 range 0 .. 31;
-      CNT    at 4 range 0 .. 31;
-      MOD_k  at 8 range 0 .. 31;
-      CSC0   at 12 range 0 .. 31;
-      CV0    at 16 range 0 .. 31;
-      CSC1   at 20 range 0 .. 31;
-      CV1    at 24 range 0 .. 31;
-      STATUS at 80 range 0 .. 31;
-      CONF   at 132 range 0 .. 31;
-   end record;
 
    --  Timer/PWM Module
    TPM1_Periph : aliased TPM_Peripheral

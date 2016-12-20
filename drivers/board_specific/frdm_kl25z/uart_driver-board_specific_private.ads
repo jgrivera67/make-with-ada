@@ -26,7 +26,7 @@
 --
 
 --
--- @summary Board-specific UART driver private declarations
+--  @summary Board-specific UART driver private declarations
 --
 private package Uart_Driver.Board_Specific_Private is
    pragma SPARK_Mode (Off);
