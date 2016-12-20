@@ -37,7 +37,7 @@ package body PWM_Driver is
    use Interfaces;
 
    type Pwm_Channels_In_Use_Type is array (PWM_Channel_Id_Type) of Boolean
-      with Component_Size => 1, Size => Unsigned_32'Size;
+      with Component_Size => 1, Size => Max_Num_PWM_Channels;
 
    --
    --  State variables of a PWM device object
@@ -73,7 +73,7 @@ package body PWM_Driver is
      (PWM_Device_Id : PWM_Device_Id_Type;
       PWM_Clock_Freq_Hz : Hertz_Type;
       PWM_Pulse_Period_Us : PWM_Pulse_Period_Us_Type;
-      PWM_Clock_Prescale : Natural)
+      PWM_Clock_Prescale : PWM_Clock_Preescale_Type)
    is
       use MKL25Z4.SIM;
       PWM_Device_Const : PWM_Device_Const_Type renames
@@ -115,7 +115,7 @@ package body PWM_Driver is
       --
       --  Setup prescaler before enabling the TPM counter
       --
-      SC_Value := (PS => SC_PS_Field'Enum_Val (PWM_Clock_Prescale),
+      SC_Value := (PS => SC_PS_Field'Enum_Val (PWM_Clock_Prescale'Enum_Rep),
                    others => <>);
       PWM_Registers_Ptr.SC := SC_Value;
 
@@ -139,7 +139,8 @@ package body PWM_Driver is
       MOD_Value :=
         (MOD_k =>
             Unsigned_16 (((Unsigned_32 (PWM_Clock_Freq_Hz) /
-                           Shift_Left (Unsigned_32 (1), PWM_Clock_Prescale)) /
+                           Shift_Left (Unsigned_32 (1),
+                                       PWM_Clock_Prescale'Enum_Rep)) /
                            Unsigned_32 (PWM_Overflow_Freq_Hz)) - 1),
          others => <>);
 

@@ -33,6 +33,7 @@ with Pin_Mux_Driver;
 --  @summary Pulse Width Modulator (PWM) driver
 --
 package PWM_Driver is
+   pragma SPARK_Mode (On);
    use Devices.MCU_Specific;
    use Microcontroller_Clocks;
    use Pin_Mux_Driver;
@@ -48,6 +49,24 @@ package PWM_Driver is
 
    type PWM_Channel_Id_Type is range 0 .. Max_Num_PWM_Channels - 1;
 
+   type PWM_Clock_Preescale_Type is (Divide_Clock_By_1,
+                                     Divide_Clock_By_2,
+                                     Divide_Clock_By_4,
+                                     Divide_Clock_By_8,
+                                     Divide_Clock_By_16,
+                                     Divide_Clock_By_32,
+                                     Divide_Clock_By_64,
+                                     Divide_Clock_By_128);
+
+   for PWM_Clock_Preescale_Type use (Divide_Clock_By_1 => 0,
+                                     Divide_Clock_By_2 => 1,
+                                     Divide_Clock_By_4 => 2,
+                                     Divide_Clock_By_8 => 3,
+                                     Divide_Clock_By_16 => 4,
+                                     Divide_Clock_By_32 => 5,
+                                     Divide_Clock_By_64 => 6,
+                                     Divide_Clock_By_128 => 7);
+
    function Initialized (
       PWM_Device_Id : PWM_Device_Id_Type) return Boolean;
    --  @private (Used only in contracts)
@@ -55,7 +74,7 @@ package PWM_Driver is
    procedure Initialize (PWM_Device_Id : PWM_Device_Id_Type;
                          PWM_Clock_Freq_Hz : Hertz_Type;
                          PWM_Pulse_Period_Us : PWM_Pulse_Period_Us_Type;
-                         PWM_Clock_Prescale : Natural)
+                         PWM_Clock_Prescale : PWM_Clock_Preescale_Type)
      with Pre => not Initialized (PWM_Device_Id);
    --
    --  Initialize the given Pulse Width Modulator (PWM) device

@@ -26,9 +26,16 @@
 --
 
 --
---  @summary TFC push buttns driver
+--  @summary TFC push buttons driver
 --
-package tfc_push_buttons is
+package TFC_Push_Buttons is
 
+   type Push_Buttons_Pressed_Type is array (Positive range <>) of Boolean
+      with Component_Size => 1;
 
-end tfc_push_buttons;
+   procedure Initialize;
+
+   procedure Read_Push_Buttons (
+      Push_Buttons_Pressed : out Push_Buttons_Pressed_Type);
+
+end TFC_Push_Buttons;

@@ -25,39 +25,55 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with PWM_Driver;
+with Devices.MCU_Specific;
+with Microcontroller_Clocks;
 
---
---  @summary TFC steering servo driver
---
-package TFC_Steering_Servo is
-   pragma SPARK_Mode (On);
-   use PWM_Driver;
+package body TFC_Steering_Servo is
+   use Devices.MCU_Specific;
 
    --
-   --  Steering servo minimum duty cycle in microseconds
-   --  (limit for steering to the left)
+   --  Steering servo PWM device
    --
-   Servo_Min_Duty_Cycle_Us : constant := 1000 + 100;
+   Servo_PWM_Device_Id : constant PWM_Device_Id_Type := PWM1;
 
    --
-   --  Steering servo middle duty cycle in microseconds
-   --  (for center position - wheels straight)
+   --  Steering servo PWM channel
    --
-   Servo_Middle_Duty_Cycle_Us : constant := 1500;
+   Servo_PWM_Channel_Id : constant PWM_Channel_Id_Type := 0;
 
    --
-   --  Steering servo maximum duty cycle in microseconds
-   --  (limit for steering to the right)
+   --  Steering servo PWM period in microseconds
    --
-   Servo_Max_Duty_Cycle_Us : constant := 2000 - 100;
+   Servo_PWM_Period_Us : constant := 20000; -- 20 ms
 
-   subtype Servo_Pulse_Width_Us_Type is PWM_Pulse_Width_Us_Type range
-     Servo_Min_Duty_Cycle_Us .. Servo_Max_Duty_Cycle_Us;
+   ----------------
+   -- Initialize --
+   ----------------
 
-   procedure Initialize;
+   procedure Initialize is
+   begin
+      PWM_Driver.Initialize (Servo_PWM_Device_Id,
+                             Microcontroller_Clocks.Bus_Clock_Frequency,
+                             Servo_PWM_Period_Us,
+                             Divide_Clock_By_64);
+
+      PWM_Driver.Initialize_Channel (Servo_PWM_Device_Id,
+                                     Servo_PWM_Channel_Id,
+                                     Inverted_Pulse => False,
+                                     Initial_Duty_Cycle_Us =>
+                                       Servo_Middle_Duty_Cycle_Us);
+   end Initialize;
+
+   ------------------------
+   -- Set_PWN_Duty_Cycle --
+   ------------------------
 
    procedure Set_PWM_Duty_Cycle (
-      PWM_Duty_Cycle_Us : Servo_Pulse_Width_Us_Type);
+      PWM_Duty_Cycle_Us : Servo_Pulse_Width_Us_Type) is
+   begin
+      PWM_Driver.Set_Channel_Duty_Cycle (Servo_PWM_Device_Id,
+                                         Servo_PWM_Channel_Id,
+                                         PWM_Duty_Cycle_Us);
+   end Set_PWM_Duty_Cycle;
 
 end TFC_Steering_Servo;

@@ -28,7 +28,13 @@
 --
 --  @summary TFC DIP switches driver
 --
-package tfc_dip_switches is
+package TFC_DIP_Switches is
 
+   type DIP_Switches_Type is array (Positive range <>) of Boolean
+        with Component_Size => 1;
 
-end tfc_dip_switches;
+   procedure Initialize;
+
+   procedure Read_DIP_Switches (DIP_Switches : out DIP_Switches_Type);
+
+end TFC_DIP_Switches;

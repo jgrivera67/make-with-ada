@@ -25,10 +25,51 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
+with PWM_Driver;
+
 --
 --  @summary TFC wheel motors driver
 --
-package tfc_wheel_motors is
+package TFC_Wheel_Motors is
+   pragma SPARK_Mode (On);
+   use PWM_Driver;
 
+   --
+   --  Wheel motor minimum duty cycle in microseconds
+   --  (limit for backward wheel speed)
+   --
+   Motor_Min_Duty_Cycle_Us : constant := 0;
 
-end tfc_wheel_motors;
+   --
+   --  Wheel motor middle duty cycle in microseconds
+   --  (for center position - wheel stopped)
+   --
+   Motor_Middle_Duty_Cycle_Us : constant := 100;
+
+   --
+   --  Wheel motor maximum duty cycle in microseconds
+   --  (limit for wheel forward speed)
+   --
+   Motor_Max_Duty_Cycle_Us : constant := 200;
+
+   --
+   --  Wheel motor stopped duty cycle in microseconds
+   --
+   Motor_Stopped_Duty_Cycle_Us : constant := Motor_Middle_Duty_Cycle_Us;
+
+   --
+   --  Maximum throttle for wheel speed
+   --
+   Motor_Max_Throttle : constant :=
+      Motor_Max_Duty_Cycle_Us - Motor_Stopped_Duty_Cycle_Us;
+
+   subtype Motor_Pulse_Width_Us_Type is PWM_Pulse_Width_Us_Type range
+     Motor_Min_Duty_Cycle_Us .. Motor_Max_Duty_Cycle_Us;
+
+   procedure Initialize;
+
+   procedure Set_PWM_Duty_Cycles (
+      Left_Wheel_Duty_Cycle_Us : Motor_Pulse_Width_Us_Type;
+      Right_Wheel_Duty_Cycle_Us : Motor_Pulse_Width_Us_Type);
+
+end TFC_Wheel_Motors;
