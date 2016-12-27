@@ -286,14 +286,50 @@ package MKL25Z4.FTFA is
    end record;
 
    --  Flash Common Command Object Registers
+   type FTFA_FCCOB_Registers is record
+      FCCOB3 : MKL25Z4.Byte;
+      FCCOB2 : MKL25Z4.Byte;
+      FCCOB1 : MKL25Z4.Byte;
+      FCCOB0 : MKL25Z4.Byte;
+      FCCOB7 : MKL25Z4.Byte;
+      FCCOB6 : MKL25Z4.Byte;
+      FCCOB5 : MKL25Z4.Byte;
+      FCCOB4 : MKL25Z4.Byte;
+      FCCOBB : MKL25Z4.Byte;
+      FCCOBA : MKL25Z4.Byte;
+      FCCOB9 : MKL25Z4.Byte;
+      FCCOB8 : MKL25Z4.Byte;
+   end record;
 
-   --  Flash Common Command Object Registers
-   type FTFA_FCCOB_Registers is array (0 .. 11) of MKL25Z4.Byte;
+   for FTFA_FCCOB_Registers use record
+      FCCOB3 at 0 range 0 .. 7;
+      FCCOB2 at 1 range 0 .. 7;
+      FCCOB1 at 2 range 0 .. 7;
+      FCCOB0 at 3 range 0 .. 7;
+      FCCOB7 at 4 range 0 .. 7;
+      FCCOB6 at 5 range 0 .. 7;
+      FCCOB5 at 6 range 0 .. 7;
+      FCCOB4 at 7 range 0 .. 7;
+      FCCOBB at 8 range 0 .. 7;
+      FCCOBA at 9 range 0 .. 7;
+      FCCOB9 at 10 range 0 .. 7;
+      FCCOB8 at 11 range 0 .. 7;
+   end record;
 
    --  Program Flash Protection Registers
+   type FTFA_FPROT_Registers is record
+      FPROT3 : MKL25Z4.Byte;
+      FPROT2 : MKL25Z4.Byte;
+      FPROT1 : MKL25Z4.Byte;
+      FPROT0 : MKL25Z4.Byte;
+   end record;
 
-   --  Program Flash Protection Registers
-   type FTFA_FPROT_Registers is array (0 .. 3) of MKL25Z4.Byte;
+   for FTFA_FPROT_Registers use record
+      FPROT3 at 0 range 0 .. 7;
+      FPROT2 at 1 range 0 .. 7;
+      FPROT1 at 2 range 0 .. 7;
+      FPROT0 at 3 range 0 .. 7;
+   end record;
 
    -----------------
    -- Peripherals --

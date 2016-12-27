@@ -42,6 +42,14 @@ package Number_Conversion_Utils is
                                          Value : out Unsigned_8;
                                          Conversion_Ok : out Boolean);
 
+   procedure Decimal_String_To_Float (Decimal_Str : String;
+                                      Value : out Float;
+                                      Conversion_Ok : out Boolean);
+
+   procedure Float_To_Decimal_String (Value : Float;
+                                      Buffer : out String;
+                                      Actual_Length : out Positive);
+
    procedure Hexadecimal_String_To_Unsigned (Hexadecimal_Str : String;
                                              Value : out Unsigned_32;
                                              Conversion_Ok : out Boolean);

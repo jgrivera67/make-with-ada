@@ -29,37 +29,53 @@ with Devices.MCU_Specific;
 with Gpio_Driver;
 with Pin_Mux_Driver;
 
-package body TFC_Push_Buttons is
+package body TFC_Battery_LEDs is
    use Devices.MCU_Specific;
    use Gpio_Driver;
    use Pin_Mux_Driver;
 
+   --
+   --  Number of LEDS for battery indicator
+   --
+   TFC_Num_Battery_LEDs : constant := 4;
+
    type Pins_Array_Type is
-      array (1 .. Num_Push_Buttons) of aliased Gpio_Pin_Type;
+      array (1 .. TFC_Num_Battery_LEDs) of aliased Gpio_Pin_Type;
 
    --
-   --  Record type for the constant portion of the Push buttons group object
+   --  Record type for the constant portion of the battery LEDs object
    --
-   type Push_Buttons_Const_Type is limited record
+   type Battery_LEDs_Const_Type is limited record
       Pins_Array : Pins_Array_Type;
    end record;
 
    --
    --
-   Push_Buttons_Const : constant Push_Buttons_Const_Type :=
+   Battery_LEDs_Const : constant Battery_LEDs_Const_Type :=
       (Pins_Array =>
           --
-          --  TFC push buttons pins (KL25's pins PTC13, PTC17)
+          --  TFC Battery LED pins (KL25's pins PTB8 - PTB11)
           --
-          (1 => ((Pin_Port => PIN_PORT_C,
-                  Pin_Index => 13,
+          (1 => ((Pin_Port => PIN_PORT_B,
+                  Pin_Index => 8,
                   Pin_Function => PIN_FUNCTION_ALT1),
                  Is_Active_High => True),
 
-           2 => ((Pin_Port => PIN_PORT_C,
-                  Pin_Index => 17,
+           2 => ((Pin_Port => PIN_PORT_B,
+                  Pin_Index => 9,
                   Pin_Function => PIN_FUNCTION_ALT1),
-                 Is_Active_High => True)));
+                 Is_Active_High => True),
+
+           3 => ((Pin_Port => PIN_PORT_B,
+                  Pin_Index => 10,
+                  Pin_Function => PIN_FUNCTION_ALT1),
+                 Is_Active_High => True),
+
+           4 => ((Pin_Port => PIN_PORT_B,
+                  Pin_Index => 11,
+                  Pin_Function => PIN_FUNCTION_ALT1),
+                 Is_Active_High => True)
+      ));
 
    ----------------
    -- Initialize --
@@ -67,26 +83,35 @@ package body TFC_Push_Buttons is
 
    procedure Initialize is
    begin
-      for Pin of Push_Buttons_Const.Pins_Array loop
+      for Pin of Battery_LEDs_Const.Pins_Array loop
          Gpio_Driver.Configure_Pin (Pin,
-                                    Drive_Strength_Enable => False,
+                                    Drive_Strength_Enable => True,
                                     Pullup_Resistor => False,
-                                    Is_Output_Pin => False);
+                                    Is_Output_Pin => True);
+
+         Gpio_Driver.Deactivate_Output_Pin (Pin);
       end loop;
    end Initialize;
 
-   -----------------------
-   -- Read_Push_Buttons --
-   -----------------------
+   --------------
+   -- Set_LEDs --
+   --------------
 
-   procedure Read_Push_Buttons (
-      Push_Buttons_Pressed : out Push_Buttons_Pressed_Type)
+   procedure Set_LEDs (Battery_Level : Unsigned_8)
    is
+      Num_LEDs_On : constant Natural :=
+         Natural (if Battery_Level <= TFC_Num_Battery_LEDs then
+                     Battery_Level
+                  else
+                     TFC_Num_Battery_LEDs);
    begin
-      for I in Push_Buttons_Const.Pins_Array'Range loop
-         Push_Buttons_Pressed (I) :=
-            Gpio_Driver.Read_Input_Pin (Push_Buttons_Const.Pins_Array (I));
+      for I in 1 .. Num_LEDs_On loop
+         Gpio_Driver.Activate_Output_Pin (Battery_LEDs_Const.Pins_Array (I));
       end loop;
-   end Read_Push_Buttons;
 
-end TFC_Push_Buttons;
+      for I in Num_LEDs_On + 1 .. TFC_Num_Battery_LEDs loop
+         Gpio_Driver.Deactivate_Output_Pin (Battery_LEDs_Const.Pins_Array (I));
+      end loop;
+   end Set_LEDs;
+
+end TFC_Battery_LEDs;

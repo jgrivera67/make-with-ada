@@ -25,30 +25,36 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with Runtime_Logs;
+with Nor_Flash_Driver;
+with Interfaces.Bit_Types;
 
 package body Generic_App_Config is
+   use Nor_Flash_Driver;
+   use Interfaces.Bit_Types;
+   use Interfaces;
 
    -----------------
    -- Load_Config --
    -----------------
 
    procedure Load_Config (App_Config : out App_Config_Type) is
+      App_Config_In_Nor_Flash : App_Config_Type with
+         Import, Address => Nor_Flash_Config_Addr;
    begin
-      --  Generated stub: replace with real body!
-      pragma Compile_Time_Warning (Standard.True, "Load_Config unimplemented");
-      Runtime_Logs.Debug_Print ("Load_Config not implemented yet");
+      App_Config := App_Config_In_Nor_Flash;
    end Load_Config;
 
    -----------------
    -- Save_Config --
    -----------------
 
-   procedure Save_Config (App_Config : App_Config_Type) is
+   function Save_Config (App_Config : App_Config_Type) return Boolean is
+
    begin
-      --  Generated stub: replace with real body!
-      pragma Compile_Time_Warning (Standard.True, "Save_Config unimplemented");
-      Runtime_Logs.Debug_Print ("Save_Config not implemented yet" & ASCII.LF);
+      return Nor_Flash_Driver.Write (
+                Dest_Addr => Nor_Flash_Config_Addr,
+                Src_Addr  => App_Config'Address,
+                Src_Size  => App_Config'Size / Byte'Size);
    end Save_Config;
 
 end Generic_App_Config;

@@ -100,6 +100,7 @@ package body TFC_Line_Scan_Camera is
    --  Camera frame capture state variables
    --
    --  @field Initialized Flag indicating if Initialize has been called
+   --  @field ADC_Device_Id A/D converter device Id to use
    --  @field State Current state in the capture of the current camera frame
    --  @field Camera_ADC_Channel ADC channel for the analog input pin from the
    --         camera
@@ -121,6 +122,7 @@ package body TFC_Line_Scan_Camera is
    --
    type Frame_Capture_Var_Type is limited record
       Initialized : Boolean := False;
+      ADC_Device_Id : ADC_Device_Id_Type;
       State : Frame_Capture_State_Type := Frame_Capture_Not_Started;
       Camera_ADC_Channel : Unsigned_8;
       Ping_Pong_Frame_Buffers : Ping_Pong_Frame_Buffers_Type;
@@ -200,7 +202,7 @@ package body TFC_Line_Scan_Camera is
                --  Dummy ADC conversion:
                --
                ADC_Driver.Start_Async_Conversion (
-                  ADC0,
+                  Frame_Capture_Var.ADC_Device_Id,
                   Frame_Capture_Var.Camera_ADC_Channel,
                   Hardware_Average_On => False,
                   Mux_Selector => ADC_Mux_Side_B,
@@ -220,7 +222,7 @@ package body TFC_Line_Scan_Camera is
             --  pixel):
             --
             ADC_Driver.Start_Async_Conversion (
-                  ADC0,
+                  Frame_Capture_Var.ADC_Device_Id,
                   Frame_Capture_Var.Camera_ADC_Channel,
                   Hardware_Average_On => False,
                   Mux_Selector => ADC_Mux_Side_B,
@@ -254,7 +256,7 @@ package body TFC_Line_Scan_Camera is
                   --  Dummy ADC conversion:
                   --
                   ADC_Driver.Start_Async_Conversion (
-                     ADC0,
+                     Frame_Capture_Var.ADC_Device_Id,
                      Frame_Capture_Var.Camera_ADC_Channel,
                      Hardware_Average_On => False,
                      Mux_Selector => ADC_Mux_Side_B,
@@ -287,7 +289,7 @@ package body TFC_Line_Scan_Camera is
             --  Start async ADC conversion to capture next pixel:
             --
             ADC_Driver.Start_Async_Conversion (
-                     ADC0,
+                     Frame_Capture_Var.ADC_Device_Id,
                      Frame_Capture_Var.Camera_ADC_Channel,
                      Hardware_Average_On => False,
                      Mux_Selector => ADC_Mux_Side_B,
@@ -346,6 +348,7 @@ package body TFC_Line_Scan_Camera is
    ----------------
 
    procedure Initialize (
+      ADC_Device_Id : ADC_Device_Id_Type;
       Camera_ADC_Channel : Unsigned_8;
       Piggybacked_AD_Conversion_Array_Ptr :
          Piggybacked_AD_Conversion_Array_Access_Type)
@@ -373,6 +376,7 @@ package body TFC_Line_Scan_Camera is
       Deactivate_Output_Pin (Frame_Capture_Const.SI_Pin);
       Deactivate_Output_Pin (Frame_Capture_Const.CLK_Pin);
 
+      Frame_Capture_Var.ADC_Device_Id := ADC_Device_Id;
       Frame_Capture_Var.Piggybacked_AD_Conversion_Array_Ptr :=
          Piggybacked_AD_Conversion_Array_Ptr;
       Frame_Capture_Var.Next_Piggybacked_AD_Conversion :=
@@ -424,7 +428,7 @@ package body TFC_Line_Scan_Camera is
          --  Dummy ADC conversion:
          --
          ADC_Driver.Start_Async_Conversion (
-            ADC0,
+            Frame_Capture_Var.ADC_Device_Id,
             Frame_Capture_Var.Camera_ADC_Channel,
             Hardware_Average_On => False,
             Mux_Selector => ADC_Mux_Side_B,
@@ -470,7 +474,7 @@ package body TFC_Line_Scan_Camera is
       Frame_Capture_Var.Pending_Piggybakced_AD_Conversion := True;
 
       ADC_Driver.Start_Async_Conversion (
-         ADC0,
+         Frame_Capture_Var.ADC_Device_Id,
          Piggybacked_Conversion_Var.ADC_Channel,
          Hardware_Average_On => False,
          Mux_Selector => Piggybacked_Conversion_Var.ADC_Mux_Selector,

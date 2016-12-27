@@ -31,6 +31,7 @@ with Kinetis_K64F.GPIO;
 with Kinetis_K64F.UART;
 with MK64F12.ENET;
 with MK64F12.CAN0;
+with MK64F12.FTFE;
 
 --
 --  @summary Devices in the Kinetis K64F MCU
@@ -74,5 +75,5 @@ package Devices.MCU_Specific is
    package UART renames Kinetis_K64F.UART;
    package ENET renames MK64F12.ENET;
    package CAN  renames MK64F12.CAN0;
-
+   package NOR renames MK64F12.FTFE;
 end Devices.MCU_Specific;

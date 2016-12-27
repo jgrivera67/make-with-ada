@@ -27,12 +27,10 @@
 
 with Generic_App_Config;
 with Runtime_Logs;
-with Devices.MCU_Specific;
-with Networking.Layer2;
-with Networking.Layer3_IPv4;
-with Networking.Layer4_UDP;
 with Nor_Flash_Driver;
 with System;
+with TFC_Steering_Servo;
+with TFC_Line_Scan_Camera;
 with Memory_Utils;
 
 package body App_Configuration is
@@ -45,18 +43,56 @@ package body App_Configuration is
       Nor_Flash_Last_Sector_Address;
 
    package App_Config is new
-     Generic_App_Config (Nor_Flash_App_Config_Addr,
-                         Config_Parameters_Type);
+      Generic_App_Config (Nor_Flash_App_Config_Addr,
+                          Config_Parameters_Type);
 
-   --------------------------------------
-   -- Load_And_Apply_Config_Parameters --
-   --------------------------------------
+   --
+   --  PID control algorithm default constants:
+   --
 
-   procedure Load_And_Apply_Config_Parameters (
-      Config_Parameters : out Config_Parameters_Type) is
-      IPv4_End_Point_Ptr :
-         constant Networking.Layer3_IPv4.IPv4_End_Point_Access_Type :=
-         Networking.Layer3_IPv4.Get_IPv4_End_Point (Devices.MCU_Specific.MAC0);
+   Default_Steering_Servo_Proportional_Gain : constant Float :=
+      (Float (TFC_Steering_Servo.Servo_Max_Duty_Cycle_Us -
+              TFC_Steering_Servo.Servo_Middle_Duty_Cycle_Us) /
+       Float (TFC_Line_Scan_Camera.TFC_Num_Camera_Pixels / 2)) * 1.8;
+
+   Default_Steering_Servo_Integral_Gain : constant Float :=
+      Default_Steering_Servo_Proportional_Gain * 0.008;
+
+   Default_Steering_Servo_Derivative_Gain : constant Float := 0.0;
+
+   Default_Wheel_Differential_Proportional_Gain : constant Float :=
+      (Float (TFC_Wheel_Motors.Motor_Max_Duty_Cycle_Us -
+              TFC_Wheel_Motors.Motor_Stopped_Duty_Cycle_Us) /
+       Float (TFC_Line_Scan_Camera.TFC_Num_Camera_Pixels / 2)) / 3.0;
+
+   Default_Wheel_Differential_Integral_Gain : constant Float :=
+      Default_Wheel_Differential_Proportional_Gain * 0.02;
+
+   Default_Wheel_Differential_Derivative_Gain : constant Float := 0.0;
+
+   --
+   --  Default wheel motor duty cycle when the car is going straight
+   --
+   Default_Car_Straight_Wheel_Motor_Duty_Cycle :
+      constant Motor_Pulse_Width_Us_Type := 142;
+
+   --
+   --  Default wheel motor duty cycle when the car is turning left or right
+   --
+   Default_Car_Turning_Wheel_Motor_Duty_Cycle :
+      constant Motor_Pulse_Width_Us_Type := 138;
+
+   ----------------------------
+   -- Load_Config_Parameters --
+   ----------------------------
+
+   procedure Load_Config_Parameters (
+      Config_Parameters : out Config_Parameters_Type)
+   is
+      pragma Compile_Time_Error (
+                Config_Parameters.Checksum'Position =
+                (Config_Parameters'Size - Unsigned_32'Size) /
+                System.Storage_Unit, "Checksum field is in the wrong place");
 
       Checksum : Unsigned_32;
       Config_Bytes : Memory_Utils.Bytes_Array_Type (
@@ -77,30 +113,24 @@ package body App_Configuration is
          --
          --  Set config parameters to default values:
          --
-         Config_Parameters.Local_IPv4_Address := (192, 168, 8, 2);
-         Config_Parameters.IPv4_Subnet_Prefix := 24;
-         Config_Parameters.Net_Tracing_Layer2_On := True;
-         Config_Parameters.Net_Tracing_Layer3_On := True;
-         Config_Parameters.Net_Tracing_Layer4_On := True;
+         Config_Parameters.Steering_Servo_Proportional_Gain :=
+            Default_Steering_Servo_Proportional_Gain;
+         Config_Parameters.Steering_Servo_Integral_Gain :=
+            Default_Steering_Servo_Integral_Gain;
+         Config_Parameters.Steering_Servo_Derivative_Gain :=
+            Default_Steering_Servo_Derivative_Gain;
+         Config_Parameters.Wheel_Differential_Proportional_Gain :=
+            Default_Wheel_Differential_Proportional_Gain;
+         Config_Parameters.Wheel_Differential_Integral_Gain :=
+            Default_Wheel_Differential_Integral_Gain;
+         Config_Parameters.Wheel_Differential_Derivative_Gain :=
+            Default_Wheel_Differential_Derivative_Gain;
+         Config_Parameters.Car_Straight_Wheel_Motor_Duty_Cycle :=
+            Default_Car_Straight_Wheel_Motor_Duty_Cycle;
+         Config_Parameters.Car_Turning_Wheel_Motor_Duty_Cycle :=
+            Default_Car_Turning_Wheel_Motor_Duty_Cycle;
       end if;
-
-      if Config_Parameters.Net_Tracing_Layer2_On then
-         Networking.Layer2.Start_Tracing;
-      end if;
-
-      if Config_Parameters.Net_Tracing_Layer3_On then
-         Networking.Layer3_IPv4.Start_Tracing;
-      end if;
-
-      if Config_Parameters.Net_Tracing_Layer4_On then
-         Networking.Layer4_UDP.Start_Tracing;
-      end if;
-
-      Networking.Layer3_IPv4.Set_Local_IPv4_Address (
-         IPv4_End_Point_Ptr.all,
-         Config_Parameters.Local_IPv4_Address,
-         Config_Parameters.IPv4_Subnet_Prefix);
-   end Load_And_Apply_Config_Parameters;
+   end Load_Config_Parameters;
 
    ----------------------------
    -- Save_Config_Parameters --

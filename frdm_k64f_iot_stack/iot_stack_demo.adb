@@ -34,6 +34,8 @@ with Networking.Layer2;
 with Networking.Layer3_IPv4;
 with Networking.Layer4_UDP;
 with Devices.MCU_Specific;
+with App_Configuration;
+with System;
 
 package body IoT_Stack_Demo is
    pragma SPARK_Mode (Off);
@@ -44,8 +46,16 @@ package body IoT_Stack_Demo is
    use Networking.Layer4_UDP;
    use Networking;
    use Devices;
+   use App_Configuration;
 
    Blank_Line : constant String (1 .. 80) := (others => ' ');
+
+   Config_Parameters : Config_Parameters_Type;
+
+   pragma Compile_Time_Error (
+             Config_Parameters.Checksum'Position =
+             (Config_Parameters'Size - Unsigned_32'Size) /
+             System.Storage_Unit, "Checksum field is in the wrong place");
 
    ----------------
    -- Initialize --
@@ -54,6 +64,7 @@ package body IoT_Stack_Demo is
    procedure Initialize
    is
    begin
+      App_Configuration.Load_And_Apply_Config_Parameters (Config_Parameters);
       IoT_Stack_Demo.Initialized := True;
       Set_True (IoT_Stack_Demo.Network_Stats_Task_Suspension_Obj);
       Set_True (IoT_Stack_Demo.Udp_Server_Task_Suspension_Obj);

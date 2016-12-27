@@ -26,17 +26,18 @@
 --
 
 with Networking;
-
+with Interfaces;
 --
 --  @summary Application-specific run-time configurable parameters
 --
 package App_Configuration is
    use Networking;
+   use Interfaces;
 
    --
    --  FRRDM-K64F IoT stack configurable parameters
    --
-   type Config_Parameters_Type is limited record
+   type Config_Parameters_Type is record
       --
       --  IPv4 configuration
       --
@@ -49,8 +50,17 @@ package App_Configuration is
       Net_Tracing_Layer2_On : Boolean := False;
       Net_Tracing_Layer3_On : Boolean := False;
       Net_Tracing_Layer4_On : Boolean := False;
+
+      --
+      --  Checksum of the preceding fields
+      --
+      Checksum : Unsigned_32;
    end record;
 
-   procedure Load_And_Apply_Config_Parameters;
+   procedure Load_And_Apply_Config_Parameters (
+      Config_Parameters : out Config_Parameters_Type);
+
+   function Save_Config_Parameters (
+      Config_Parameters : in out Config_Parameters_Type) return Boolean;
 
 end App_Configuration;

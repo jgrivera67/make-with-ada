@@ -358,14 +358,50 @@ package MK64F12.FTFE is
    end record;
 
    --  Flash Common Command Object Registers
+   type FTFE_FCCOB_Registers is record
+      FCCOB3 : MK64F12.Byte;
+      FCCOB2 : MK64F12.Byte;
+      FCCOB1 : MK64F12.Byte;
+      FCCOB0 : MK64F12.Byte;
+      FCCOB7 : MK64F12.Byte;
+      FCCOB6 : MK64F12.Byte;
+      FCCOB5 : MK64F12.Byte;
+      FCCOB4 : MK64F12.Byte;
+      FCCOBB : MK64F12.Byte;
+      FCCOBA : MK64F12.Byte;
+      FCCOB9 : MK64F12.Byte;
+      FCCOB8 : MK64F12.Byte;
+   end record;
 
-   --  Flash Common Command Object Registers
-   type FTFE_FCCOB_Registers is array (0 .. 11) of MK64F12.Byte;
+   for FTFE_FCCOB_Registers use record
+      FCCOB3 at 0 range 0 .. 7;
+      FCCOB2 at 1 range 0 .. 7;
+      FCCOB1 at 2 range 0 .. 7;
+      FCCOB0 at 3 range 0 .. 7;
+      FCCOB7 at 4 range 0 .. 7;
+      FCCOB6 at 5 range 0 .. 7;
+      FCCOB5 at 6 range 0 .. 7;
+      FCCOB4 at 7 range 0 .. 7;
+      FCCOBB at 8 range 0 .. 7;
+      FCCOBA at 9 range 0 .. 7;
+      FCCOB9 at 10 range 0 .. 7;
+      FCCOB8 at 11 range 0 .. 7;
+   end record;
 
    --  Program Flash Protection Registers
+   type FTFE_FPROT_Registers is record
+      FPROT3 : MK64F12.Byte;
+      FPROT2 : MK64F12.Byte;
+      FPROT1 : MK64F12.Byte;
+      FPROT0 : MK64F12.Byte;
+   end record;
 
-   --  Program Flash Protection Registers
-   type FTFE_FPROT_Registers is array (0 .. 3) of MK64F12.Byte;
+   for FTFE_FPROT_Registers use record
+      FPROT3 at 0 range 0 .. 7;
+      FPROT2 at 1 range 0 .. 7;
+      FPROT1 at 2 range 0 .. 7;
+      FPROT0 at 3 range 0 .. 7;
+   end record;
 
    -----------------
    -- Peripherals --

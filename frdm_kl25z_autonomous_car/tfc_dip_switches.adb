@@ -30,12 +30,9 @@ with Gpio_Driver;
 with Pin_Mux_Driver;
 
 package body TFC_DIP_Switches is
-
    use Devices.MCU_Specific;
    use Gpio_Driver;
    use Pin_Mux_Driver;
-
-   Num_DIP_Switches : constant := 4;
 
    type Pins_Array_Type is
       array (1 .. Num_DIP_Switches) of aliased Gpio_Pin_Type;

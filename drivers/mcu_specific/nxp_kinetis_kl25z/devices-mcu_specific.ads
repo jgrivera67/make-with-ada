@@ -32,6 +32,7 @@ with Kinetis_KL25Z.UART;
 with MKL25Z4.ADC0;
 with MKL25Z4.TPM;
 with MKL25Z4.PIT;
+with MKL25Z4.FTFA;
 
 --
 --  @summary Devices in the NXP Kinetis KL25Z MCU
@@ -78,5 +79,6 @@ package Devices.MCU_Specific is
    package ADC renames MKL25Z4.ADC0;
    package PWM renames MKL25Z4.TPM;
    package PIT renames MKL25Z4.PIT;
+   package NOR renames MKL25Z4.FTFA;
 
 end Devices.MCU_Specific;

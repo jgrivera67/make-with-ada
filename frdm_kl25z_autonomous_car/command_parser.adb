@@ -28,11 +28,18 @@
 with Command_Line;
 with Serial_Console;
 with Command_Parser_Common;
+with Number_Conversion_Utils;
+with Car_Controller;
+with App_Configuration;
+with Interfaces;
+with TFC_Wheel_Motors;
 
 --
 --  Application-specific command parser implementation
 --
 package body Command_Parser is
+   use Number_Conversion_Utils;
+   use Interfaces;
 
    --
    --  Help message string
@@ -78,114 +85,222 @@ package body Command_Parser is
 
    -- ** --
 
+   procedure Cmd_Dump_Camera_Frames_On_Off;
+   procedure Cmd_Dump_Driving_Log;
+   procedure Cmd_Garage_Mode_On_Off;
+   procedure Cmd_Plot_Camera_Frames_On_Off;
+   procedure Cmd_Print_Car_Controller_Config_Params;
+   procedure Cmd_Print_Car_Stats;
+   procedure Cmd_Print_Help with Pre => Serial_Console.Is_Locked;
+   procedure Cmd_Save_Car_Controller_Config_Params;
+   procedure Cmd_Set;
+   procedure Cmd_Set_Car_Straight_Wheel_Motor_Duty_Cycle;
+   procedure Cmd_Set_Car_Turning_Wheel_Motor_Duty_Cycle;
+   procedure Cmd_Set_PID_Steering_Servo;
+   procedure Cmd_Set_Pid_Steering_Servo_Derivative_Gain;
+   procedure Cmd_Set_Pid_Steering_Servo_Integral_Gain;
+   procedure Cmd_Set_Pid_Steering_Servo_Proportional_Gain;
+   procedure Cmd_Set_PID_Wheel_Differential;
+   procedure Cmd_Set_Pid_Wheel_Differential_Derivative_Gain;
+   procedure Cmd_Set_Pid_Wheel_Differential_Integral_Gain;
+   procedure Cmd_Set_Pid_Wheel_Differential_Proportional_Gain;
+   procedure Cmd_Test;
+
    function Initialized return Boolean is (Command_Parser_Var.Initialized);
 
    -- ** --
 
-   procedure Initialize is
-   begin
-      Command_Line.Initialize (Prompt'Access);
-      Command_Parser_Var.Initialized := True;
-   end Initialize;
-
-   -- ** --
-
-   procedure Cmd_Print_Help
-     with Pre => Serial_Console.Is_Locked is
-   begin
-      Serial_Console.Print_String(Help_Msg);
-   end Cmd_Print_Help;
-
-   -- ** --
-
-   procedure Cmd_Print_Car_Stats is
-   begin
-      Serial_Console.Print_String("Not implemented yet" & ASCII.LF);
-   end Cmd_Print_Car_Stats;
-
-   -- ** --
-
-   procedure Cmd_Dump_Driving_Log is
-   begin
-      Serial_Console.Print_String("Not implemented yet" & ASCII.LF);
-   end Cmd_Dump_Driving_Log;
-
-   -- ** --
-
-   procedure Cmd_Garage_Mode_On_Off is
-   begin
-      Serial_Console.Print_String("Not implemented yet" & ASCII.LF);
-   end Cmd_Garage_Mode_On_Off;
-
-   -- ** --
+   -----------------------------------
+   -- Cmd_Dump_Camera_Frames_On_Off --
+   -----------------------------------
 
    procedure Cmd_Dump_Camera_Frames_On_Off is
    begin
       Serial_Console.Print_String("Not implemented yet" & ASCII.LF);
    end Cmd_Dump_Camera_Frames_On_Off;
 
-   -- ** --
+   --------------------------
+   -- Cmd_Dump_Driving_Log --
+   --------------------------
+
+   procedure Cmd_Dump_Driving_Log is
+   begin
+      Serial_Console.Print_String("Not implemented yet" & ASCII.LF);
+   end Cmd_Dump_Driving_Log;
+
+   ----------------------------
+   -- Cmd_Garage_Mode_On_Off --
+   ----------------------------
+
+   procedure Cmd_Garage_Mode_On_Off is
+   begin
+      Serial_Console.Print_String("Not implemented yet" & ASCII.LF);
+   end Cmd_Garage_Mode_On_Off;
+
+   -----------------------------------
+   -- Cmd_Plot_Camera_Frames_On_Off --
+   -----------------------------------
 
    procedure Cmd_Plot_Camera_Frames_On_Off is
    begin
       Serial_Console.Print_String("Not implemented yet" & ASCII.LF);
    end Cmd_Plot_Camera_Frames_On_Off;
 
-   -- ** --
+   --------------------------------------------
+   -- Cmd_Print_Car_Controller_Config_Params --
+   --------------------------------------------
 
-   function Parse_Test_Command (Command : String) return Boolean is
+   procedure Cmd_Print_Car_Controller_Config_Params is
+      Float_Str : String (1 .. 16);
+      Float_Str_Length : Positive;
+      Config_Parameters : App_Configuration.Config_Parameters_Type;
    begin
-      if Command = "color" then
-         Command_Parser_Common.Cmd_Test_Color;
-      elsif Command = "assert" then
-         pragma Assert (False);
-      else
-         return False;
-      end if;
+      Car_Controller.Get_Configuration_Paramters (Config_Parameters);
 
-      return True;
-   end Parse_Test_Command;
+      Serial_Console.Print_String ("PID control algorithm constants:" &
+                                   ASCII.LF);
 
-   -- ** --
+      Float_To_Decimal_String (
+         Config_Parameters.Steering_Servo_Proportional_Gain,
+         Float_Str, Float_Str_Length);
 
-   procedure Cmd_Test is
-      Token : Command_Line.Token_Type;
-      Token_Found : Boolean;
-      Parsing_Ok : Boolean;
+      Serial_Console.Print_String (
+         ASCII.HT &
+         "Steering_Servo_Proportional_Gain: " &
+         Float_Str (1 .. Float_Str_Length) & ASCII.LF);
+
+      Float_To_Decimal_String (
+         Config_Parameters.Steering_Servo_Integral_Gain,
+         Float_Str, Float_Str_Length);
+
+      Serial_Console.Print_String (
+        ASCII.HT &
+        "Steering_Servo_Integral_Gain: " &
+        Float_Str (1 .. Float_Str_Length) & ASCII.LF);
+
+      Float_To_Decimal_String (
+         Config_Parameters.Steering_Servo_Derivative_Gain,
+         Float_Str, Float_Str_Length);
+
+      Serial_Console.Print_String (
+        ASCII.HT &
+        "Steering_Servo_Derivative_Gain: " &
+        Float_Str (1 .. Float_Str_Length) & ASCII.LF);
+
+      Float_To_Decimal_String (
+         Config_Parameters.Wheel_Differential_Proportional_Gain,
+         Float_Str, Float_Str_Length);
+
+      Serial_Console.Print_String (
+        ASCII.HT &
+        "Wheel_Differential_Proportional_Gain: " &
+        Float_Str (1 .. Float_Str_Length) & ASCII.LF);
+
+      Float_To_Decimal_String (
+         Config_Parameters.Wheel_Differential_Integral_Gain,
+         Float_Str, Float_Str_Length);
+
+      Serial_Console.Print_String (
+        ASCII.HT &
+        "Wheel_Differential_Integral_Gain: " &
+        Float_Str (1 .. Float_Str_Length) & ASCII.LF);
+
+      Float_To_Decimal_String (
+         Config_Parameters.Wheel_Differential_Derivative_Gain,
+         Float_Str, Float_Str_Length);
+
+      Serial_Console.Print_String (
+        ASCII.HT &
+        "Wheel_Differential_Derivative_Gain: " &
+        Float_Str (1 .. Float_Str_Length) & ASCII.LF);
+
+      Serial_Console.Print_String (
+        ASCII.HT &
+        "Car_Straight_Wheel_Motor_Duty_Cycle:" &
+        Unsigned_8'Image (
+          Unsigned_8 (Config_Parameters.Car_Straight_Wheel_Motor_Duty_Cycle)) &
+          ASCII.LF);
+
+      Serial_Console.Print_String (
+        ASCII.HT &
+        "Car_Turning_Wheel_Motor_Duty_Cycle:" &
+        Unsigned_8'Image (
+          Unsigned_8 (Config_Parameters.Car_Turning_Wheel_Motor_Duty_Cycle)) &
+          ASCII.LF);
+   end Cmd_Print_Car_Controller_Config_Params;
+
+   -------------------------
+   -- Cmd_Print_Car_Stats --
+   -------------------------
+
+   procedure Cmd_Print_Car_Stats is
    begin
-      Token_Found := Command_Line.Get_Next_Token (Token);
-      if not Token_Found then
-         goto Error;
+      Serial_Console.Print_String("Not implemented yet" & ASCII.LF);
+   end Cmd_Print_Car_Stats;
 
-      end if;
+   --------------------
+   -- Cmd_Print_Help --
+   --------------------
 
-      Parsing_Ok := Parse_Test_Command (Token.String_Value (1 .. Token.Length));
-      if not Parsing_Ok then
-         goto Error;
-      end if;
-
-      return;
-
-      <<Error>>
-      Serial_Console.Print_String ("Error: Invalid syntax for command 'test'" &
-                                     ASCII.LF);
-   end Cmd_Test;
-
-   -- ** --
-
-   function Parse_Set_Command (Set_Command : String) return Boolean is
+   procedure Cmd_Print_Help
+   is
    begin
-      Serial_Console.Print_String ("set command not implemented yet" & ASCII.LF);
-      return True;
-   end Parse_Set_Command;
+      Serial_Console.Print_String (Help_Msg);
+   end Cmd_Print_Help;
 
-   -- ** --
+   -------------------------------------------
+   -- Cmd_Save_Car_Controller_Config_Params --
+   -------------------------------------------
+
+   procedure Cmd_Save_Car_Controller_Config_Params is
+      Save_Ok : Boolean;
+   begin
+      Save_Ok := Car_Controller.Save_Config_Parameters;
+      if not Save_Ok then
+         Serial_Console.Print_String(
+            "Error: Could not save configuration in NOR flash" & ASCII.LF);
+      end if;
+   end Cmd_Save_Car_Controller_Config_Params;
+
+   -------------
+   -- Cmd_Set --
+   -------------
 
    procedure Cmd_Set is
+      function Parse_Set_Command (Set_Command : String) return Boolean;
+
+      -----------------------
+      -- Parse_Set_Command --
+      -----------------------
+
+      function Parse_Set_Command (Set_Command : String) return Boolean is
+      begin
+         if Set_Command = "steering-Servo" or else Set_Command = "ss" then
+            Cmd_Set_PID_Steering_Servo;
+         elsif Set_Command = "wheel-differential" or else Set_Command = "wd"
+         then
+            Cmd_Set_PID_Wheel_Differential;
+         elsif Set_Command = "car-straight-wheel-motor-duty-cycle" or else
+               Set_Command = "sdc"
+         then
+            Cmd_Set_Car_Straight_Wheel_Motor_Duty_Cycle;
+         elsif Set_Command = "car-turning-wheel-motor-duty-cycle" or else
+               Set_Command = "tdc"
+         then
+            Cmd_Set_Car_Turning_Wheel_Motor_Duty_Cycle;
+         else
+            Serial_Console.Print_String ("Subcommand '" & Set_Command &
+                                         "' is not recognized" & ASCII.LF);
+            return False;
+         end if;
+
+         return True;
+      end Parse_Set_Command;
+
       Token : Command_Line.Token_Type;
       Token_Found : Boolean;
       Parsing_Ok : Boolean;
-   begin
+   begin -- Cmd_Set
       Token_Found := Command_Line.Get_Next_Token (Token);
       if not Token_Found then
          goto Error;
@@ -204,23 +319,390 @@ package body Command_Parser is
                                    ASCII.LF);
    end Cmd_Set;
 
-   -- ** --
+   -------------------------------------------------
+   -- Cmd_Set_Car_Straight_Wheel_Motor_Duty_Cycle --
+   -------------------------------------------------
 
-   procedure Cmd_Print_Car_Controller_Config_Params is
+   procedure Cmd_Set_Car_Straight_Wheel_Motor_Duty_Cycle
+   is
+      Token_Found : Boolean;
+      Conversion_Ok : Boolean;
+      Token : Command_Line.Token_Type;
+      Duty_Cycle_Value : Unsigned_8;
    begin
-      Serial_Console.Print_String("Not implemented yet" & ASCII.LF);
-   end Cmd_Print_Car_Controller_Config_Params;
+      Token_Found := Command_Line.Get_Next_Token (Token);
+      if not Token_Found then
+         Serial_Console.Print_String ("Error: Incomplete command" & ASCII.LF);
+         return;
+      end if;
 
-   -- ** --
-   --
-   procedure Cmd_Save_Car_Controller_Config_Params is
+      Decimal_String_To_Unsigned (
+         Token.String_Value (1 .. Token.Length),
+         Duty_Cycle_Value,
+         Conversion_Ok);
+
+      if not Conversion_Ok then
+         return;
+      end if;
+
+      Car_Controller.Set_Car_Straight_Wheel_Motor_Duty_Cycle (
+          TFC_Wheel_Motors.Motor_Pulse_Width_Us_Type (Duty_Cycle_Value));
+   end Cmd_Set_Car_Straight_Wheel_Motor_Duty_Cycle;
+
+   -------------------------------------------------
+   -- Cmd_Set_Car_Turning_Wheel_Motor_Duty_Cycle --
+   -------------------------------------------------
+
+   procedure Cmd_Set_Car_Turning_Wheel_Motor_Duty_Cycle
+   is
+      Token_Found : Boolean;
+      Conversion_Ok : Boolean;
+      Token : Command_Line.Token_Type;
+      Duty_Cycle_Value : Unsigned_8;
    begin
-      Serial_Console.Print_String("Not implemented yet" & ASCII.LF);
-   end Cmd_Save_Car_Controller_Config_Params;
+      Token_Found := Command_Line.Get_Next_Token (Token);
+      if not Token_Found then
+         Serial_Console.Print_String ("Error: Incomplete command" & ASCII.LF);
+         return;
+      end if;
 
-   -- ** --
+      Decimal_String_To_Unsigned (
+         Token.String_Value (1 .. Token.Length),
+         Duty_Cycle_Value,
+         Conversion_Ok);
+
+      if not Conversion_Ok then
+         return;
+      end if;
+
+      Car_Controller.Set_Car_Turning_Wheel_Motor_Duty_Cycle (
+          TFC_Wheel_Motors.Motor_Pulse_Width_Us_Type (Duty_Cycle_Value));
+   end Cmd_Set_Car_Turning_Wheel_Motor_Duty_Cycle;
+
+   --------------------------------
+   -- Cmd_Set_PID_Steering_Servo --
+   --------------------------------
+
+   procedure Cmd_Set_PID_Steering_Servo
+   is
+      Token_Found : Boolean;
+      Token : Command_Line.Token_Type;
+   begin
+      Token_Found := Command_Line.Get_Next_Token (Token);
+      if not Token_Found then
+         Serial_Console.Print_String ("Error: Incomplete command" & ASCII.LF);
+         return;
+      end if;
+
+      if  Token.String_Value (1 .. Token.Length) = "proportional-gain" or else
+          Token.String_Value (1 .. Token.Length) = "pg"
+      then
+         Cmd_Set_Pid_Steering_Servo_Proportional_Gain;
+      elsif  Token.String_Value (1 .. Token.Length) = "integral-gain" or else
+          Token.String_Value (1 .. Token.Length) = "ig"
+      then
+         Cmd_Set_Pid_Steering_Servo_Integral_Gain;
+      elsif  Token.String_Value (1 .. Token.Length) = "derivative-gain" or else
+          Token.String_Value (1 .. Token.Length) = "dg"
+      then
+         Cmd_Set_Pid_Steering_Servo_Derivative_Gain;
+      else
+         Serial_Console.Print_String ("Error: Subcommand '" &
+                                      Token.String_Value (1 .. Token.Length) &
+                                      "' is not recognized" & ASCII.LF);
+      end if;
+   end Cmd_Set_PID_Steering_Servo;
+
+   ------------------------------------------------
+   -- Cmd_Set_Pid_Steering_Servo_Derivative_Gain --
+   ------------------------------------------------
+
+   procedure Cmd_Set_Pid_Steering_Servo_Derivative_Gain
+   is
+      Token_Found : Boolean;
+      Conversion_Ok : Boolean;
+      Token : Command_Line.Token_Type;
+      Gain_Value : Float;
+   begin
+      Token_Found := Command_Line.Get_Next_Token (Token);
+      if not Token_Found then
+         Serial_Console.Print_String ("Error: Incomplete command" & ASCII.LF);
+         return;
+      end if;
+
+      Decimal_String_To_Float (
+         Token.String_Value (1 .. Token.Length),
+         Gain_Value,
+         Conversion_Ok);
+
+      if not Conversion_Ok then
+         Serial_Console.Print_String ("Error: Invalid argument " &
+                                      Token.String_Value (1 .. Token.Length) &
+                                      ASCII.LF);
+         return;
+      end if;
+
+      Car_Controller.Set_Steering_Servo_Derivative_Gain (Gain_Value);
+   end Cmd_Set_Pid_Steering_Servo_Derivative_Gain;
+
+   ----------------------------------------------
+   -- Cmd_Set_Pid_Steering_Servo_Integral_Gain --
+   ----------------------------------------------
+
+   procedure Cmd_Set_Pid_Steering_Servo_Integral_Gain
+   is
+      Token_Found : Boolean;
+      Conversion_Ok : Boolean;
+      Token : Command_Line.Token_Type;
+      Gain_Value : Float;
+   begin
+      Token_Found := Command_Line.Get_Next_Token (Token);
+      if not Token_Found then
+         Serial_Console.Print_String ("Error: Incomplete command" & ASCII.LF);
+         return;
+      end if;
+
+      Decimal_String_To_Float (
+         Token.String_Value (1 .. Token.Length),
+         Gain_Value,
+         Conversion_Ok);
+
+      if not Conversion_Ok then
+         Serial_Console.Print_String ("Error: Invalid argument " &
+                                      Token.String_Value (1 .. Token.Length) &
+                                      ASCII.LF);
+         return;
+      end if;
+
+      Car_Controller.Set_Steering_Servo_Integral_Gain (Gain_Value);
+   end Cmd_Set_Pid_Steering_Servo_Integral_Gain;
+
+   --------------------------------------------------
+   -- Cmd_Set_Pid_Steering_Servo_Proportional_Gain --
+   --------------------------------------------------
+
+   procedure Cmd_Set_Pid_Steering_Servo_Proportional_Gain
+   is
+      Token_Found : Boolean;
+      Conversion_Ok : Boolean;
+      Token : Command_Line.Token_Type;
+      Gain_Value : Float;
+   begin
+      Token_Found := Command_Line.Get_Next_Token (Token);
+      if not Token_Found then
+         Serial_Console.Print_String ("Error: Incomplete command" & ASCII.LF);
+         return;
+      end if;
+
+      Decimal_String_To_Float (
+         Token.String_Value (1 .. Token.Length),
+         Gain_Value,
+         Conversion_Ok);
+
+      if not Conversion_Ok then
+         Serial_Console.Print_String ("Error: Invalid argument " &
+                                      Token.String_Value (1 .. Token.Length) &
+                                      ASCII.LF);
+         return;
+      end if;
+
+      Car_Controller.Set_Steering_Servo_Proportional_Gain (Gain_Value);
+   end Cmd_Set_Pid_Steering_Servo_Proportional_Gain;
+
+   ------------------------------------
+   -- Cmd_Set_PID_Wheel_Differential --
+   ------------------------------------
+
+   procedure Cmd_Set_PID_Wheel_Differential
+   is
+      Token_Found : Boolean;
+      Token : Command_Line.Token_Type;
+   begin
+      Token_Found := Command_Line.Get_Next_Token (Token);
+      if not Token_Found then
+         Serial_Console.Print_String ("Error: Incomplete command" & ASCII.LF);
+         return;
+      end if;
+
+      if  Token.String_Value (1 .. Token.Length) = "proportional-gain" or else
+          Token.String_Value (1 .. Token.Length) = "pg"
+      then
+         Cmd_Set_Pid_Wheel_Differential_Proportional_Gain;
+      elsif  Token.String_Value (1 .. Token.Length) = "integral-gain" or else
+          Token.String_Value (1 .. Token.Length) = "ig"
+      then
+         Cmd_Set_Pid_Wheel_Differential_Integral_Gain;
+      elsif  Token.String_Value (1 .. Token.Length) = "derivative-gain" or else
+          Token.String_Value (1 .. Token.Length) = "dg"
+      then
+         Cmd_Set_Pid_Wheel_Differential_Derivative_Gain;
+      else
+         Serial_Console.Print_String ("Error: Subcommand '" &
+                                      Token.String_Value (1 .. Token.Length) &
+                                      "' is not recognized" & ASCII.LF);
+      end if;
+
+   end Cmd_Set_PID_Wheel_Differential;
+
+   ----------------------------------------------------
+   -- Cmd_Set_Pid_Wheel_Differential_Derivative_Gain --
+   ----------------------------------------------------
+
+   procedure Cmd_Set_Pid_Wheel_Differential_Derivative_Gain
+   is
+      Token_Found : Boolean;
+      Conversion_Ok : Boolean;
+      Token : Command_Line.Token_Type;
+      Gain_Value : Float;
+   begin
+      Token_Found := Command_Line.Get_Next_Token (Token);
+      if not Token_Found then
+         Serial_Console.Print_String ("Error: Incomplete command" & ASCII.LF);
+         return;
+      end if;
+
+      Decimal_String_To_Float (
+         Token.String_Value (1 .. Token.Length),
+         Gain_Value,
+         Conversion_Ok);
+
+      if not Conversion_Ok then
+         Serial_Console.Print_String ("Error: Invalid argument " &
+                                      Token.String_Value (1 .. Token.Length) &
+                                      ASCII.LF);
+         return;
+      end if;
+
+      Car_Controller.Set_Wheel_Differential_Derivative_Gain (Gain_Value);
+   end Cmd_Set_Pid_Wheel_Differential_Derivative_Gain;
+
+   --------------------------------------------------
+   -- Cmd_Set_Pid_Wheel_Differential_Integral_Gain --
+   --------------------------------------------------
+
+   procedure Cmd_Set_Pid_Wheel_Differential_Integral_Gain
+   is
+      Token_Found : Boolean;
+      Conversion_Ok : Boolean;
+      Token : Command_Line.Token_Type;
+      Gain_Value : Float;
+   begin
+      Token_Found := Command_Line.Get_Next_Token (Token);
+      if not Token_Found then
+         Serial_Console.Print_String ("Error: Incomplete command" & ASCII.LF);
+         return;
+      end if;
+
+      Decimal_String_To_Float (
+         Token.String_Value (1 .. Token.Length),
+         Gain_Value,
+         Conversion_Ok);
+
+      if not Conversion_Ok then
+         Serial_Console.Print_String ("Error: Invalid argument " &
+                                      Token.String_Value (1 .. Token.Length) &
+                                      ASCII.LF);
+         return;
+      end if;
+
+      Car_Controller.Set_Wheel_Differential_Integral_Gain (Gain_Value);
+   end Cmd_Set_Pid_Wheel_Differential_Integral_Gain;
+
+   ------------------------------------------------------
+   -- Cmd_Set_Pid_Wheel_Differential_Proportional_Gain --
+   ------------------------------------------------------
+
+   procedure Cmd_Set_Pid_Wheel_Differential_Proportional_Gain
+   is
+      Token_Found : Boolean;
+      Conversion_Ok : Boolean;
+      Token : Command_Line.Token_Type;
+      Gain_Value : Float;
+   begin
+      Token_Found := Command_Line.Get_Next_Token (Token);
+      if not Token_Found then
+         Serial_Console.Print_String ("Error: Incomplete command" & ASCII.LF);
+         return;
+      end if;
+
+      Decimal_String_To_Float (
+         Token.String_Value (1 .. Token.Length),
+         Gain_Value,
+         Conversion_Ok);
+
+      if not Conversion_Ok then
+         Serial_Console.Print_String ("Error: Invalid argument " &
+                                      Token.String_Value (1 .. Token.Length) &
+                                      ASCII.LF);
+         return;
+      end if;
+
+      Car_Controller.Set_Wheel_Differential_Proportional_Gain (Gain_Value);
+   end Cmd_Set_Pid_Wheel_Differential_Proportional_Gain;
+
+   --------------
+   -- Cmd_Test --
+   --------------
+
+   procedure Cmd_Test is
+      function Parse_Test_Command (Command : String) return Boolean;
+
+      ------------------------
+      -- Parse_Test_Command --
+      ------------------------
+
+      function Parse_Test_Command (Command : String) return Boolean is
+      begin
+         if Command = "color" then
+            Command_Parser_Common.Cmd_Test_Color;
+         elsif Command = "assert" then
+            pragma Assert (False);
+         else
+            return False;
+         end if;
+
+         return True;
+      end Parse_Test_Command;
+
+      Token : Command_Line.Token_Type;
+      Token_Found : Boolean;
+      Parsing_Ok : Boolean;
+   begin -- Cmd_Test
+      Token_Found := Command_Line.Get_Next_Token (Token);
+      if not Token_Found then
+         goto Error;
+
+      end if;
+
+      Parsing_Ok :=
+         Parse_Test_Command (Token.String_Value (1 .. Token.Length));
+      if not Parsing_Ok then
+         goto Error;
+      end if;
+
+      return;
+
+      <<Error>>
+      Serial_Console.Print_String ("Error: Invalid syntax for command 'test'" &
+                                     ASCII.LF);
+   end Cmd_Test;
+
+   ----------------
+   -- Initialize --
+   ----------------
+
+   procedure Initialize is
+   begin
+      Command_Line.Initialize (Prompt'Access);
+      Command_Parser_Var.Initialized := True;
+   end Initialize;
+
+   -------------------
+   -- Parse_Command --
+   -------------------
 
    procedure Parse_Command is
+      procedure Command_Dispatcher (Command : String);
 
       procedure Command_Dispatcher (Command : String) is
       begin
@@ -272,7 +754,7 @@ package body Command_Parser is
       Serial_Console.Lock;
       Serial_Console.Put_Char (ASCII.LF);
       Command_Dispatcher (Token.String_Value (1 .. Token.Length));
-      Serial_Console.UnLock;
+      Serial_Console.Unlock;
    end Parse_Command;
 
 end Command_Parser;

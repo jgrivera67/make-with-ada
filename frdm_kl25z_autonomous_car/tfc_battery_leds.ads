@@ -25,19 +25,22 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
+with Interfaces;
+
 --
---  @summary Generic application configuration services
+--  @summary TFC Bsttery LEDs driver
 --
+package TFC_Battery_LEDs is
+   use Interfaces;
 
-with System;
+   type DIP_Switches_Type is array (Positive range <>) of Boolean
+        with Component_Size => 1;
 
-generic
-   Nor_Flash_Config_Addr : System.Address;
-   type App_Config_Type is private;
-package Generic_App_Config is
+   procedure Initialize;
 
-   procedure Load_Config (App_Config : out App_Config_Type);
+   procedure Set_LEDs (Battery_Level : Unsigned_8);
+   --
+   --  Set LEDs according to the battery level
+   --
 
-   function Save_Config (App_Config : App_Config_Type) return Boolean;
-
-end Generic_App_Config;
+end TFC_Battery_LEDs;

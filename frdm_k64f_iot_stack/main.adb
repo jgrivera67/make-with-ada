@@ -103,8 +103,6 @@ begin -- Main
 
    Networking.API.Initialize;
 
-   App_Configuration.Load_And_Apply_Config_Parameters;
-
    IoT_Stack_Demo.Initialize;
 
    Command_Parser.Initialize;

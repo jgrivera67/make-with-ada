@@ -24,13 +24,33 @@
 --  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 --  POSSIBILITY OF SUCH DAMAGE.
 --
-with Interfaces; use Interfaces;
+with Interfaces;
 
 package Memory_Utils is
    pragma Pure;
+   use Interfaces;
 
    function Get_Flash_Used return Unsigned_32;
 
    function Get_Sram_Used return Unsigned_32;
+
+   function How_Many (M : Unsigned_32; N : Unsigned_32) return Unsigned_32
+   is (((M - 1) / N) + 1);
+
+   function Round_Up (M : Unsigned_32; N : Unsigned_32) return Unsigned_32
+   is (How_Many (M, N) * N);
+
+   type Bytes_Array_Type is array (Positive range <>) of Unsigned_8;
+
+   function Compute_Checksum (Bytes_Array : Bytes_Array_Type)
+      return Unsigned_32;
+   --
+   --  Computes the CRC-32 checksum for a given block of memory
+   --
+   --  @param start_addr: start address of the memory block
+   --  @param size: size in bytes
+   --
+   --  @return calculated CRC value
+   --
 
 end Memory_Utils;

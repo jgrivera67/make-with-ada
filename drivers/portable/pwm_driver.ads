@@ -90,7 +90,7 @@ package PWM_Driver is
       Channel_Id : PWM_Channel_Id_Type;
       Inverted_Pulse : Boolean;
       Initial_Duty_Cycle_Us : PWM_Pulse_Width_Us_Type)
-     with Pre => not Initialized (PWM_Device_Id);
+     with Pre => Initialized (PWM_Device_Id);
    --
    --  Initialize the given channel in the given PWM device
    --
@@ -105,7 +105,7 @@ package PWM_Driver is
       PWM_Device_Id : PWM_Device_Id_Type;
       Channel_Id : PWM_Channel_Id_Type;
       Duty_Cycle_Us : PWM_Pulse_Width_Us_Type)
-      with Pre => not Initialized (PWM_Device_Id);
+      with Pre => Initialized (PWM_Device_Id);
    --
    --  Set the duty cycle (pulse width) for the given channel in the given
    --  PWM device

@@ -27,6 +27,62 @@
 
 package body Number_Conversion_Utils is
 
+   -----------------------------
+   -- Decimal_String_To_Float --
+   -----------------------------
+
+   procedure Decimal_String_To_Float (Decimal_Str : String;
+                                      Value : out Float;
+                                      Conversion_Ok : out Boolean)
+   is
+      Integer_Part : Unsigned_32;
+      Fraction_Part : Unsigned_32;
+      Decimal_Point_Index : Natural := 0;
+      Decimal_Divisor : Natural;
+   begin
+      Value := 0.0;
+
+      for I in Decimal_Str'Range loop
+         if Decimal_Str (I) = '.' then
+            Decimal_Point_Index := I;
+            exit;
+         end if;
+      end loop;
+
+      if Decimal_Point_Index = 0 then
+         Conversion_Ok := False;
+         return;
+      end if;
+
+      Decimal_String_To_Unsigned (Decimal_Str (Decimal_Str'First ..
+                                               Decimal_Point_Index - 1),
+                                  Integer_Part,
+                                  Conversion_Ok);
+      if not Conversion_Ok then
+         return;
+      end if;
+
+      Decimal_String_To_Unsigned (Decimal_Str (Decimal_Point_Index + 1 ..
+                                               Decimal_Str'Last),
+                                  Fraction_Part,
+                                  Conversion_Ok);
+      if not Conversion_Ok then
+         return;
+      end if;
+
+      Decimal_Divisor := 1;
+      for I in Decimal_Point_Index + 1 .. Decimal_Str'Last loop
+         Decimal_Divisor := Decimal_Divisor * 10;
+      end loop;
+
+      if Decimal_Divisor /= 0 then
+         Value := Float (Integer_Part) + (Float (Fraction_Part) /
+                                          Float (Decimal_Divisor));
+      else
+         Value := Float (Integer_Part);
+      end if;
+   end Decimal_String_To_Float;
+
    --------------------------------
    -- Decimal_String_To_Unsigned --
    --------------------------------
@@ -106,9 +162,53 @@ package body Number_Conversion_Utils is
       end if;
    end Decimal_String_To_Unsigned;
 
-   --------------------------------
+   -----------------------------
+   -- Float_To_Decimal_String --
+   -----------------------------
+
+   procedure Float_To_Decimal_String (Value : Float;
+                                      Buffer : out String;
+                                      Actual_Length : out Positive)
+   is
+      Buffer_Index : Positive := Buffer'First;
+      Integer_Part : constant Unsigned_32 :=
+         Unsigned_32 (Float'Floor (abs Value));
+      Fraction_Part : constant Unsigned_32 :=
+         Unsigned_32 (
+            Float'Rounding (((abs Value) - Float (Integer_Part)) * 100.0));
+      Integer_Part_Str_Length : Positive;
+      Fraction_Part_Str_Length : Positive;
+   begin
+      if Value < 0.0 then
+         Buffer (Buffer_Index) := '-';
+         Buffer_Index := Buffer_Index + 1;
+      end if;
+
+      Unsigned_To_Decimal_String (Integer_Part,
+                                  Buffer (Buffer_Index .. Buffer'Last),
+                                  Integer_Part_Str_Length);
+      Buffer_Index := Buffer_Index + Integer_Part_Str_Length;
+      if Buffer_Index > Buffer'Last then
+         Actual_Length := Integer_Part_Str_Length;
+         return;
+      end if;
+
+      Buffer (Buffer_Index) := '.';
+      Buffer_Index := Buffer_Index + 1;
+      if Buffer_Index > Buffer'Last then
+         Actual_Length := Integer_Part_Str_Length + 1;
+         return;
+      end if;
+
+      Unsigned_To_Decimal_String (Fraction_Part,
+                                  Buffer (Buffer_Index .. Buffer'Last),
+                                  Fraction_Part_Str_Length);
+      Actual_Length := Integer_Part_Str_Length + 1 + Fraction_Part_Str_Length;
+   end Float_To_Decimal_String;
+
+   ------------------------------------
    -- Hexadecimal_String_To_Unsigned --
-   --------------------------------
+   ------------------------------------
 
    procedure Hexadecimal_String_To_Unsigned
      (Hexadecimal_Str : String;

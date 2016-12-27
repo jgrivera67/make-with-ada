@@ -28,13 +28,15 @@
 with Runtime_Logs;
 with Ada.Real_Time;
 with ADC_Driver;
-with TFC_Line_Scan_Camera;
-with Interfaces;
+with TFC_Steering_Servo;
+with TFC_Push_Buttons;
+with TFC_Battery_LEDs;
+with Devices.MCU_Specific;
 
 package body Car_Controller is
    pragma SPARK_Mode (Off);
+   use Devices.MCU_Specific;
    use Ada.Real_Time;
-   use Interfaces;
 
    --
    --  ADC channels
@@ -72,6 +74,19 @@ package body Car_Controller is
                 others => <>)
      );
 
+   procedure Set_Car_State (Car_State : Car_State_Type);
+
+   ---------------------------------
+   -- Get_Configuration_Paramters --
+   ---------------------------------
+
+   procedure Get_Configuration_Paramters (
+      Config_Parameters : out App_Configuration.Config_Parameters_Type)
+   is
+   begin
+      Config_Parameters := Car_Controller_Obj.Config_Parameters;
+   end Get_Configuration_Paramters;
+
    ----------------
    -- Initialize --
    ----------------
@@ -79,13 +94,136 @@ package body Car_Controller is
    procedure Initialize
    is
    begin
+      ADC_Driver.Initialize (ADC0, ADC_Driver.ADC_Resolution_8_Bits);
       TFC_Line_Scan_Camera.Initialize (
+         ADC0,
          TFC_Camera_Input_Pin_ADC_Channel,
          Piggybacked_ADC_Conversions'Access);
 
+      TFC_Steering_Servo.Initialize;
+      TFC_Wheel_Motors.Initialize;
+      TFC_DIP_Switches.Initialize;
+      TFC_Push_Buttons.Initialize;
+      TFC_Battery_LEDs.Initialize;
+      TFC_Battery_LEDs.Set_LEDs (0);
+
+      App_Configuration.Load_Config_Parameters (
+         Car_Controller_Obj.Config_Parameters);
+      Set_Car_State (Car_Off);
       Car_Controller_Obj.Initialized := True;
       Set_True (Car_Controller_Obj.Car_Controller_Task_Suspension_Obj);
    end Initialize;
+
+   ----------------------------
+   -- Save_Config_Parameters --
+   ----------------------------
+
+   function Save_Config_Parameters return Boolean is
+      (App_Configuration.Save_Config_Parameters (
+          Car_Controller_Obj.Config_Parameters));
+
+   -------------------
+   -- Set_Car_State --
+   -------------------
+
+   procedure Set_Car_State (Car_State : Car_State_Type)
+   is
+   begin
+      Car_Controller_Obj.Car_State := Car_State;
+      Car_Controller_Obj.Car_States_History :=
+         Shift_Left (Car_Controller_Obj.Car_States_History,
+                     Car_State_Type'Size) or Car_State'Enum_Rep;
+   end Set_Car_State;
+
+   ---------------------------------------------
+   -- Set_Car_Straight_Wheel_Motor_Duty_Cycle --
+   ---------------------------------------------
+
+   procedure Set_Car_Straight_Wheel_Motor_Duty_Cycle (
+      Duty_Cycle : TFC_Wheel_Motors.Motor_Pulse_Width_Us_Type)
+   is
+   begin
+      Car_Controller_Obj.Config_Parameters.
+         Car_Straight_Wheel_Motor_Duty_Cycle := Duty_Cycle;
+   end Set_Car_Straight_Wheel_Motor_Duty_Cycle;
+
+   --------------------------------------------
+   -- Set_Car_Turning_Wheel_Motor_Duty_Cycle --
+   --------------------------------------------
+
+   procedure Set_Car_Turning_Wheel_Motor_Duty_Cycle (
+      Duty_Cycle : TFC_Wheel_Motors.Motor_Pulse_Width_Us_Type)
+   is
+   begin
+      Car_Controller_Obj.Config_Parameters.
+         Car_Turning_Wheel_Motor_Duty_Cycle := Duty_Cycle;
+   end Set_Car_Turning_Wheel_Motor_Duty_Cycle;
+
+   ----------------------------------------
+   -- Set_Steering_Servo_Derivative_Gain --
+   ----------------------------------------
+
+   procedure Set_Steering_Servo_Derivative_Gain (Gain : Float)
+   is
+   begin
+      Car_Controller_Obj.Config_Parameters.
+         Steering_Servo_Derivative_Gain := Gain;
+   end Set_Steering_Servo_Derivative_Gain;
+
+   ------------------------------------------
+   -- Set_Steering_Servo_Integral_Gain --
+   ------------------------------------------
+
+   procedure Set_Steering_Servo_Integral_Gain (Gain : Float)
+   is
+   begin
+      Car_Controller_Obj.Config_Parameters.
+         Steering_Servo_Integral_Gain := Gain;
+   end Set_Steering_Servo_Integral_Gain;
+
+   ------------------------------------------
+   -- Set_Steering_Servo_Proportional_Gain --
+   ------------------------------------------
+
+   procedure Set_Steering_Servo_Proportional_Gain (Gain : Float)
+   is
+   begin
+      Car_Controller_Obj.Config_Parameters.
+         Steering_Servo_Proportional_Gain := Gain;
+   end Set_Steering_Servo_Proportional_Gain;
+
+   --------------------------------------------
+   -- Set_Wheel_Differential_Derivative_Gain --
+   --------------------------------------------
+
+   procedure Set_Wheel_Differential_Derivative_Gain (Gain : Float)
+   is
+   begin
+      Car_Controller_Obj.Config_Parameters.
+         Wheel_Differential_Derivative_Gain := Gain;
+   end Set_Wheel_Differential_Derivative_Gain;
+
+   ------------------------------------------
+   -- Set_Wheel_Differential_Integral_Gain --
+   ------------------------------------------
+
+   procedure Set_Wheel_Differential_Integral_Gain (Gain : Float)
+   is
+   begin
+      Car_Controller_Obj.Config_Parameters.
+         Wheel_Differential_Integral_Gain := Gain;
+   end Set_Wheel_Differential_Integral_Gain;
+
+   ----------------------------------------------
+   -- Set_Wheel_Differential_Proportional_Gain --
+   ----------------------------------------------
+
+   procedure Set_Wheel_Differential_Proportional_Gain (Gain : Float)
+   is
+   begin
+      Car_Controller_Obj.Config_Parameters.
+         Wheel_Differential_Proportional_Gain := Gain;
+   end Set_Wheel_Differential_Proportional_Gain;
 
    ------------------------------
    -- Car_Controller_Task_Type --

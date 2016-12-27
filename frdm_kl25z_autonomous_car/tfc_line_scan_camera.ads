@@ -27,6 +27,7 @@
 
 with Interfaces;
 with ADC_Driver;
+with Devices.MCU_Specific;
 
 --
 --  @summary TFC line scan camera driver
@@ -34,6 +35,7 @@ with ADC_Driver;
 package TFC_Line_Scan_Camera is
    use Interfaces;
    use ADC_Driver;
+   use Devices.MCU_Specific;
 
    --
    --  Number of pixels per frame
@@ -75,6 +77,7 @@ package TFC_Line_Scan_Camera is
    function Initialized return Boolean;
 
    procedure Initialize (
+      ADC_Device_Id : ADC_Device_Id_Type;
       Camera_ADC_Channel : Unsigned_8;
       Piggybacked_AD_Conversion_Array_Ptr :
          Piggybacked_AD_Conversion_Array_Access_Type)

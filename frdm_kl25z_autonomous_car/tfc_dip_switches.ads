@@ -30,7 +30,9 @@
 --
 package TFC_DIP_Switches is
 
-   type DIP_Switches_Type is array (Positive range <>) of Boolean
+   Num_DIP_Switches : constant := 4;
+
+   type DIP_Switches_Type is array (1 .. Num_DIP_Switches) of Boolean
         with Component_Size => 1;
 
    procedure Initialize;

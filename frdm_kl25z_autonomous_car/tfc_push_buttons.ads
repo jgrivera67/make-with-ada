@@ -30,7 +30,9 @@
 --
 package TFC_Push_Buttons is
 
-   type Push_Buttons_Pressed_Type is array (Positive range <>) of Boolean
+   Num_Push_Buttons : constant := 2;
+
+   type Push_Buttons_Pressed_Type is array (1 .. Num_Push_Buttons) of Boolean
       with Component_Size => 1;
 
    procedure Initialize;

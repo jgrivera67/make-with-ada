@@ -49,6 +49,11 @@ package Microcontroller.MCU_Specific is
    Mcu_Sram_Size : constant Unsigned_32 := 16 * 1024;
 
    --
+   --  Sector size (in bytes) of the MCU's program flash memory
+   --
+   Nor_Flash_Sector_Size : constant := 1024;
+
+   --
    --  MMIO ranges
    --
    Mcu_Peripheral_Bridge_Min_Addr : constant Integer_Address := 16#40000000#;

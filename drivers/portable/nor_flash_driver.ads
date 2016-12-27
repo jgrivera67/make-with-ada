@@ -25,25 +25,49 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
+with Microcontroller.MCU_Specific;
+with System.Storage_Elements;
+with Interfaces;
 --
---  @summary Micrcontroller on-chip NOR Flash driver
+--  @summary NOR flash driver driver
 --
 package Nor_Flash_Driver is
+   use Microcontroller.MCU_Specific;
+   use System;
+   use System.Storage_Elements;
+   use Interfaces;
 
-   function Initialized return Boolean;
+   --
+   --  Address of last NOR flash sector
+   --
+   Nor_Flash_Last_Sector_Address : constant Address :=
+     To_Address (Mcu_Flash_Base_Addr + Integer_Address (Mcu_Flash_Size) -
+                 Integer_Address (Nor_Flash_Sector_Size));
+
+   function Initialized return Boolean with Inline;
    --  @private (Used only in contracts)
 
    procedure Initialize
-     with Pre => not Initialized;
+      with Pre => not Initialized;
+
+   function Write (Dest_Addr : Address;
+                   Src_Addr : Address;
+                   Src_Size : Unsigned_32) return Boolean
+      with Pre => Initialized;
    --
-   --  Initialize the NOR flash hardware module
+   --  Writes a data block to NOR flash at the given address. The write is done
+   --  in whole flash sectors. The corresponding flash sectors are erased
+   --  before being written.
    --
-
-
-private
-
-   Nor_Flash_Initialized : Boolean := False;
-
-   function Initialized return Boolean is (Nor_Flash_Initialized);
+   --  @param Dest_Addr Destination address in NOR flash. It must be NOR flash
+   --         sector aligned.
+   --  @param Src_Addr Source address of the data block in RAM. It must be word
+   --         (4 byte) aligned.
+   --  @param Src_Size Size of the data block in bytes. It must be a multiple
+   --         of 4 bytes (32-bit word size).
+   --
+   --  @return 0, on success
+   --  @return error code, on failure
+   --
 
 end Nor_Flash_Driver;

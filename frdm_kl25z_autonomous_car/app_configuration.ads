@@ -25,19 +25,55 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-package body Nor_Flash_Driver is
+--
+--  @summary Autonmous car run-time configurable parameters
+--
 
-   ----------------
-   -- Initialize --
-   ----------------
+with TFC_Wheel_Motors;
+with Interfaces;
 
-   procedure Initialize
-   is
-   begin
-      --  Generated stub: replace with real body!
-      pragma Compile_Time_Warning (Standard.True, "Initialize unimplemented");
+package App_Configuration is
+   use TFC_Wheel_Motors;
+   use Interfaces;
 
-      Nor_Flash_Initialized := True;
-   end Initialize;
+   --
+   --  Application-specific configurable parameters
+   --
+   type Config_Parameters_Type is record
+      --
+      --  Steering servo PID controller constants:
+      --
+      Steering_Servo_Proportional_Gain : Float;
+      Steering_Servo_Integral_Gain : Float;
+      Steering_Servo_Derivative_Gain : Float;
 
-end Nor_Flash_Driver;
+      --
+      --  Wheel differential PID controller constants:
+      --
+      Wheel_Differential_Proportional_Gain : Float;
+      Wheel_Differential_Integral_Gain : Float;
+      Wheel_Differential_Derivative_Gain : Float;
+
+      --
+      --  Base wheel motor duty cycle when the car is going straight
+      --
+      Car_Straight_Wheel_Motor_Duty_Cycle : Motor_Pulse_Width_Us_Type;
+
+      --
+      --  Base wheel motor duty cycle when the car is turning
+      --
+      Car_Turning_Wheel_Motor_Duty_Cycle : Motor_Pulse_Width_Us_Type;
+
+      --
+      --  Checksum of the preceding fields
+      --
+      Checksum : Unsigned_32;
+   end record;
+
+   procedure Load_Config_Parameters (
+      Config_Parameters : out Config_Parameters_Type);
+
+   function Save_Config_Parameters (
+      Config_Parameters : in out Config_Parameters_Type) return Boolean;
+
+end App_Configuration;
