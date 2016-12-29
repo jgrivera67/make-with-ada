@@ -28,10 +28,10 @@
 private with Ada.Synchronous_Task_Control;
 private with System;
 private with Interfaces;
-private with TFC_Line_Scan_Camera;
 private with TFC_DIP_Switches;
 with App_Configuration;
 with TFC_Wheel_Motors;
+with TFC_Line_Scan_Camera;
 
 --
 --  @summary Car controller module
@@ -154,9 +154,9 @@ private
       Right_Wheel_Motor_Pwm_Duty_Cycle_Us : Unsigned_8;
    end record;
 
-   type Driving_Long_Entry_Index_Type is mod 128;
+   type Driving_Log_Entry_Index_Type is mod 128;
 
-   type Driving_Log_Type is array (0 .. Driving_Long_Entry_Index_Type'Last) of
+   type Driving_Log_Type is array (0 .. Driving_Log_Entry_Index_Type'Last) of
       Driving_Log_Entry_Type;
 
    type Car_Controller_Type;
@@ -174,6 +174,7 @@ private
    type Car_Controller_Type is limited record
       Initialized : Boolean := False;
       Car_State : Car_State_Type := Car_Uninitialized;
+      Track_Finish_Line_Detected : Boolean := False;
       Config_Parameters : App_Configuration.Config_Parameters_Type;
       Outstanding_Events : Pending_Car_Events_Type := (others => False);
       Camera_Frame_Ptr :
@@ -190,21 +191,28 @@ private
       Trimpots_Wheel_Motor_Duty_Cycle_On : Boolean := False;
       Hill_Driving_Adjustment_On : Boolean := False;
       Wheel_Differential_On : Boolean := False;
-      Acquiring_Set_Point_Count : Unsigned_8 := 0;
-      Trimpot1_Setting : Unsigned_8 := 0;
-      Trimpot2_Setting : Unsigned_8 := 0;
+      Trimpot1_Setting : Unsigned_8 := Unsigned_8'Last;
+      Trimpot2_Setting : Unsigned_8 := Unsigned_8'Last;
       Battery_Charge_Level : Unsigned_8 := 0;
-      Dip_Switches : TFC_DIP_Switches.DIP_Switches_Type := (others => False);
+      DIP_Switches : TFC_DIP_Switches.DIP_Switches_Type := (others => False);
       Camera_Frames_Count : Unsigned_32 := 0;
+      Track_Left_Edge_Pixel_Index : Unsigned_8 := Unsigned_8'Last;
+      Prev_Track_Left_Edge_Pixel_Index : Unsigned_8;
+      Track_Right_Edge_Pixel_Index : Unsigned_8 := Unsigned_8'Last;
+      Prev_Track_Right_Edge_Pixel_Index : Unsigned_8;
       Steering_Servo_Pwm_Duty_Cycle_Us : Unsigned_16;
-      Car_Straight_Wheel_Motor_Pwm_Duty_Cycle_Us : Unsigned_8;
-      Car_Turning_Wheel_Motor_Pwm_Duty_Cycle_Us : Unsigned_8;
-      Left_Wheel_Motor_Pwm_Duty_Cycle_Us : Unsigned_8;
-      Right_Wheel_Motor_Pwm_Duty_Cycle_Us : Unsigned_8;
+      Car_Straight_Wheel_Motor_Pwm_Duty_Cycle_Us :
+         TFC_Wheel_Motors.Motor_Pulse_Width_Us_Type;
+      Car_Turning_Wheel_Motor_Pwm_Duty_Cycle_Us :
+         TFC_Wheel_Motors.Motor_Pulse_Width_Us_Type;
+      Left_Wheel_Motor_Pwm_Duty_Cycle_Us :
+         TFC_Wheel_Motors.Motor_Pulse_Width_Us_Type;
+      Right_Wheel_Motor_Pwm_Duty_Cycle_Us :
+         TFC_Wheel_Motors.Motor_Pulse_Width_Us_Type;
       Previous_PID_Error : Float := 0.0;
       PID_Integral_Term : Float := 0.0;
       Driving_Log : Driving_Log_Type;
-      Driving_Log_Cursor : Driving_Long_Entry_Index_Type := 0;
+      Driving_Log_Cursor : Driving_Log_Entry_Index_Type := 0;
       Driving_Log_Wrap_Count : Unsigned_32 := 0;
       Car_Controller_Task :
          Car_Controller_Task_Type (Car_Controller_Type'Access);

@@ -25,7 +25,6 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with Devices.MCU_Specific;
 with Periodic_Timer_Driver;
 with Ada.Synchronous_Task_Control;
 with Gpio_Driver;
@@ -33,7 +32,6 @@ with Pin_Mux_Driver;
 
 package body TFC_Line_Scan_Camera is
    pragma SPARK_Mode (Off);
-   use Devices.MCU_Specific;
    use Ada.Synchronous_Task_Control;
    use Gpio_Driver;
    use Pin_Mux_Driver;
@@ -129,7 +127,7 @@ package body TFC_Line_Scan_Camera is
       Frames_Captured_Count : Unsigned_32 := 0;
       Last_Filled_Frame_Buffer_Id : Ping_Pong_Frame_Buffer_Id_Type;
       Current_Frame_Buffer_Id : Ping_Pong_Frame_Buffer_Id_Type := 0;
-      Remaining_Pixels_Count : Natural range 0 .. TFC_Num_Camera_Pixels;
+      Remaining_Pixels_Count : Unsigned_8 range 0 .. TFC_Num_Camera_Pixels;
       Frame_Capture_Completed_Susp_Obj : Suspension_Object;
       Piggybacked_AD_Conversion_Array_Ptr :
          Piggybacked_AD_Conversion_Array_Access_Type;

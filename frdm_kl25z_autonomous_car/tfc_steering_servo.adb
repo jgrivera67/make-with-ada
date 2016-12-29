@@ -41,11 +41,6 @@ package body TFC_Steering_Servo is
    --
    Servo_PWM_Channel_Id : constant PWM_Channel_Id_Type := 0;
 
-   --
-   --  Steering servo PWM period in microseconds
-   --
-   Servo_PWM_Period_Us : constant := 20000; -- 20 ms
-
    ----------------
    -- Initialize --
    ----------------

@@ -25,48 +25,9 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with PWM_Driver;
-
---
---  @summary TFC steering servo driver
---
-package TFC_Steering_Servo is
-   pragma SPARK_Mode (On);
-   use PWM_Driver;
-
-   --
-   --  Steering servo PWM period in microseconds
-   --
-   Servo_PWM_Period_Us : constant := 20000; -- 20 ms
-
-   --
-   --  Steering servo minimum duty cycle in microseconds
-   --  (limit for steering to the left)
-   --
-   Servo_Min_Duty_Cycle_Us : constant := 1000 + 100;
-
-   --
-   --  Steering servo middle duty cycle in microseconds
-   --  (for center position - wheels straight)
-   --
-   Servo_Middle_Duty_Cycle_Us : constant := 1500;
-
-   --
-   --  Steering servo maximum duty cycle in microseconds
-   --  (limit for steering to the right)
-   --
-   Servo_Max_Duty_Cycle_Us : constant := 2000 - 100;
-
-   pragma Compile_Time_Error (
-      Servo_Max_Duty_Cycle_Us > Servo_PWM_Period_Us,
-      "Servo_Max_Duty_Cycle_Us is too big");
-
-   subtype Servo_Pulse_Width_Us_Type is PWM_Pulse_Width_Us_Type range
-     Servo_Min_Duty_Cycle_Us .. Servo_Max_Duty_Cycle_Us;
-
-   procedure Initialize;
-
-   procedure Set_PWM_Duty_Cycle (
-      PWM_Duty_Cycle_Us : Servo_Pulse_Width_Us_Type);
-
-end TFC_Steering_Servo;
+separate (Car_Controller)
+procedure Drive_Car (Car_Controller_Obj : in out Car_Controller_Type)
+is
+begin
+   null;--???
+end Drive_Car;

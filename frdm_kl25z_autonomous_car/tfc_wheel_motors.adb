@@ -49,11 +49,6 @@ package body TFC_Wheel_Motors is
    Motor_A_H_BRIDGE_A2_PWM_Channel_Id : constant PWM_Channel_Id_Type := 3;
 
    --
-   --  Wheel motor PWM period in microseconds
-   --
-   Motor_PWM_Period_Us : constant := 200;
-
-   --
    --  Record type for the constant portion of the H-bridge object
    --
    type H_Bridge_Const_Type is limited record

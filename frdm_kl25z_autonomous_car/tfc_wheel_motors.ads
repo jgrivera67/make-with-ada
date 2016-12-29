@@ -35,6 +35,11 @@ package TFC_Wheel_Motors is
    use PWM_Driver;
 
    --
+   --  Wheel motor PWM period in microseconds
+   --
+   Motor_PWM_Period_Us : constant := 200;
+
+   --
    --  Wheel motor minimum duty cycle in microseconds
    --  (limit for backward wheel speed)
    --
@@ -51,6 +56,10 @@ package TFC_Wheel_Motors is
    --  (limit for wheel forward speed)
    --
    Motor_Max_Duty_Cycle_Us : constant := 200;
+
+   pragma Compile_Time_Error (
+      Motor_Max_Duty_Cycle_Us > Motor_PWM_Period_Us,
+      "Motor_Max_Duty_Cycle_Us is too big");
 
    --
    --  Wheel motor stopped duty cycle in microseconds

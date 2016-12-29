@@ -42,6 +42,9 @@ package TFC_Line_Scan_Camera is
    --
    TFC_Num_Camera_Pixels : constant := 128;
 
+   subtype TFC_Camera_Frame_Pixel_Index_Type is
+      Unsigned_8 range 1 .. TFC_Num_Camera_Pixels;
+
    --
    --  Line-scan camera frame
    --
@@ -49,7 +52,7 @@ package TFC_Line_Scan_Camera is
    --  The right most pixel correspond to TFC_Camera_Frame_Type'Last
    --
    type TFC_Camera_Frame_Type is
-      array (1 .. TFC_Num_Camera_Pixels) of Unsigned_8;
+      array (TFC_Camera_Frame_Pixel_Index_Type) of Unsigned_8;
 
    type TFC_Camera_Frame_Read_Only_Access_Type is
       access constant TFC_Camera_Frame_Type;

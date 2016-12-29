@@ -38,7 +38,6 @@ with Nor_Flash_Driver;
 with Networking.API;
 with GNAT.Source_Info;
 with Ada.Real_Time;
-with App_Configuration;
 with IoT_Stack_Demo;
 with Last_Chance_Handler;
 pragma Unreferenced (Last_Chance_Handler);
