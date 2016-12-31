@@ -32,6 +32,23 @@ with Interfaces.Bit_Types; use Interfaces.Bit_Types;
 --
 package Serial_Console is
    --
+   --  Control characters:
+   --
+   Enter_Line_Drawing_Mode : constant Character := ASCII.SO;
+   Exit_Line_Drawing_Mode :  constant Character := ASCII.SI;
+
+   --
+   --  Line drawing characters:
+   --
+   Upper_Left_Corner :  constant Character := Character'Val (16#6c#);
+   Lower_Left_Corner :  constant Character := Character'Val (16#6d#);
+   Upper_Right_Corner : constant Character := Character'Val (16#6b#);
+   Lower_Right_Corner : constant Character := Character'Val (16#6a#);
+   Vertical_Line :      constant Character := Character'Val (16#78#);
+   Horizontal_Line :    constant Character := Character'Val (16#71#);
+   Inverted_T :         constant Character := Character'Val (16#76#);
+
+   --
    --  Character display attributes
    --
    type Attributes_Type is (Attribute_Bold,
@@ -58,25 +75,26 @@ package Serial_Console is
    procedure Initialize
      with Pre => not Initialized;
 
-   function Is_Locked return Boolean
+   function Is_Lock_Mine return Boolean
      with Inline,
           Pre => Initialized;
 
    procedure Lock
      with Inline,
-          Pre => Initialized;
+          Pre => Initialized and then
+                 not Is_Lock_Mine;
 
    procedure Unlock
      with Inline,
           Pre => Initialized and then
-                 Is_Locked;
+                 Is_Lock_Mine;
 
    procedure Put_Char (C : Character)
      with Pre => Initialized;
 
    procedure Print_String (S : String)
      with Pre => Initialized and then
-                 Is_Locked;
+                 Is_Lock_Mine;
 
    procedure Print_Pos_String (Line : Line_Type;
                                Column : Column_Type;
@@ -84,40 +102,40 @@ package Serial_Console is
                                Attributes : Attributes_Vector_Type :=
                                  Attributes_Normal)
      with Pre => Initialized and then
-                 Is_Locked;
+                 Is_Lock_Mine;
 
    procedure Turn_Off_Cursor
      with Pre => Initialized and then
-                 Is_Locked;
+                 Is_Lock_Mine;
 
    procedure Turn_On_Cursor
      with Pre => Initialized and then
-                 Is_Locked;
+                 Is_Lock_Mine;
 
    procedure Save_Cursor_and_Attributes
      with Pre => Initialized and then
-                 Is_Locked;
+                 Is_Lock_Mine;
 
    procedure Restore_Cursor_and_Attributes
      with Pre => Initialized and then
-                 Is_Locked;
+                 Is_Lock_Mine;
 
    procedure Set_Cursor_And_Attributes (Line : Line_Type;
                                         Column : Column_Type;
                                         Attributes : Attributes_Vector_Type;
                                         Save_Old : Boolean := False)
      with Pre => Initialized and then
-                 Is_Locked;
+                 Is_Lock_Mine;
 
    procedure Erase_Current_Line
      with Pre => Initialized and then
-                 Is_Locked;
+                 Is_Lock_Mine;
 
    procedure Erase_Lines (Top_Line : Line_Type;
                           Bottom_Line : Line_Type;
                           Preserve_Cursor : Boolean := False)
      with Pre => Initialized and then
-                 Is_Locked and then
+                 Is_Lock_Mine and then
                  Top_Line <= Bottom_Line;
    --
    --  Erase a range of lines
@@ -129,12 +147,12 @@ package Serial_Console is
 
    procedure Clear_Screen
      with Pre => Initialized and then
-                 Is_Locked;
+                 Is_Lock_Mine;
 
    procedure Set_Scroll_Region (Top_Line : Line_Type;
                                 Bottom_Line : Line_Type)
      with Pre => Initialized and then
-                 Is_Locked and then
+                 Is_Lock_Mine and then
                  Top_Line < Bottom_Line;
    --
    --  Set scroll region for the console screen to the given range of lines
@@ -146,7 +164,7 @@ package Serial_Console is
 
    procedure Set_Scroll_Region_To_Screen_Bottom (Top_Line : Line_Type)
      with Pre => Initialized and then
-                 Is_Locked and then
+                 Is_Lock_Mine and then
                  Top_Line < Line_Type'Last;
    --
    --  Set scroll region for the console screen from the given line to the
@@ -163,7 +181,7 @@ package Serial_Console is
                        Attributes : Attributes_Vector_Type :=
                          Attributes_Normal)
      with Pre => Initialized and then
-                 Is_Locked and then
+                 Is_Lock_Mine and then
                  Line + Height in Line_Type and then
                  Column + Width in Column_Type;
 
@@ -173,12 +191,11 @@ package Serial_Console is
                                    Attributes : Attributes_Vector_Type :=
                                      Attributes_Normal)
      with Pre => Initialized and then
-                 Is_Locked and then
+                 Is_Lock_Mine and then
                  Column + Width in Column_Type;
 
    procedure Get_Char (C : out Character)
-     with Pre => Initialized and then
-                 not Is_Locked;
+     with Pre => Initialized;
 
    function Is_Input_Available return Boolean
      with Pre => Initialized;

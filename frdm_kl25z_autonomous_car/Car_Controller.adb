@@ -28,7 +28,6 @@
 with Runtime_Logs;
 with Ada.Real_Time;
 with ADC_Driver;
-with TFC_Steering_Servo;
 with TFC_Push_Buttons;
 with TFC_Battery_LEDs;
 with Devices.MCU_Specific;
@@ -36,7 +35,6 @@ with Microcontroller.Arm_Cortex_M;
 with Color_Led;
 with Serial_Console;
 with Command_Line;
-with Memory_Utils;
 with Number_Conversion_Utils;
 
 package body Car_Controller is
@@ -51,13 +49,6 @@ package body Car_Controller is
    Max_Actuators_Latency_Ms : constant :=
      Integer'Max (TFC_Wheel_Motors.Motor_PWM_Period_Us,
                   TFC_Steering_Servo.Servo_PWM_Period_Us) / 1000;
-
-   --
-   --  DIP switches masks
-   --
-   Trimpots_Wheel_Motor_Duty_Cycle_DIP_Switch_Index : constant := 2;
-   Hill_Driving_Adjustment_DIP_Switch_Index : constant := 3;
-   Wheel_Differential_DIP_Switch_Index : constant := 4;
 
    --
    --  ADC channels
@@ -132,7 +123,6 @@ package body Car_Controller is
    procedure Poll_DIP_Switches;
    procedure Poll_Other_Analog_Inputs;
    procedure Run_Car_State_Machine;
-   procedure Set_Car_Event (Event : Car_Event_Type);
    procedure Set_Car_State (Car_State : Car_State_Type);
    procedure Set_Steering_State (Steering_State : Car_Steering_State_Type);
    procedure State_Car_Controller_On_Event_Handler (
@@ -278,31 +268,48 @@ package body Car_Controller is
       Analyze_Ok : Boolean with Unreferenced;
       Str_Buffer : String (1 .. 12);
       Str_Length : Positive;
-      Camera_Frame : TFC_Line_Scan_Camera.TFC_Camera_Frame_Type renames
-          Car_Controller_Obj.Camera_Frame_Ptr.all;
    begin
       Analyze_Ok := Analyze_Camera_Frame (
                        Car_Controller_Obj,
-                       Car_Controller_Obj.Camera_Frame_Ptr.all);
+                       Car_Controller_Obj.Camera_Frame);
 
       Serial_Console.Lock;
       Unsigned_To_Decimal_String (Car_Controller_Obj.Camera_Frames_Count,
                                   Str_Buffer,
                                   Str_Length);
-      if Str_Length < 12 then
-         Str_Buffer (Str_Length + 1 .. 12) := (others => ' ');
+      if Str_Length < Str_Buffer'Length then
+         Str_Buffer (Str_Length + 1 .. Str_Buffer'Last) := (others => ' ');
       end if;
 
       Serial_Console.Print_Pos_String (6, 17, Str_Buffer);
 
+      Unsigned_To_Decimal_String (
+         Unsigned_32 (Car_Controller_Obj.Track_Left_Edge_Pixel_Index),
+         Str_Buffer, Str_Length);
+      if Str_Length < 3 then
+         Str_Buffer (Str_Length + 1 .. 3) := (others => ' ');
+      end if;
+
+      Serial_Console.Print_Pos_String (9, 20, Str_Buffer (1 .. 3));
+
+      Unsigned_To_Decimal_String (
+         Unsigned_32 (Car_Controller_Obj.Track_Right_Edge_Pixel_Index),
+         Str_Buffer, Str_Length);
+      if Str_Length < 3 then
+         Str_Buffer (Str_Length + 1 .. 3) := (others => ' ');
+      end if;
+
+      Serial_Console.Print_Pos_String (9, 45, Str_Buffer (1 .. 3));
+
       if Car_Controller_Obj.Plot_Camera_Frame_On then
-         Plot_Frame_Graph (Camera_Frame, 15, 41, '@', Reverse_Plot => False);
+         Plot_Frame_Graph (Car_Controller_Obj.Camera_Frame, 15, 33, 'X',
+                           Reverse_Plot => False);
       end if;
 
       if Car_Controller_Obj.Dump_Camera_Frame_On then
          Serial_Console.Print_String ("Frame: ");
-         for Pixel of reverse Camera_Frame loop
-            Unsigned_To_Hexadecimal_String (Pixel, Str_Buffer);
+         for Pixel of Car_Controller_Obj.Camera_Frame loop
+            Unsigned_To_Hexadecimal_String (Pixel, Str_Buffer (1 .. 2));
             Serial_Console.Print_String (Str_Buffer (1 .. 2) & ",");
          end loop;
 
@@ -319,15 +326,15 @@ package body Car_Controller is
    procedure Garage_Mode_Update_Battery_Charge_Level (
                 Battery_Charge_Level : Unsigned_8)
    is
-      Str_Buffer : String (1 .. 2);
+      Str_Buffer : String (1 .. 3);
       Str_Length : Positive;
    begin
       TFC_Battery_LEDs.Set_LEDs (Battery_Charge_Level);
       Serial_Console.Lock;
       Unsigned_To_Decimal_String (Unsigned_32 (Battery_Charge_Level),
                                   Str_Buffer, Str_Length);
-      if Str_Length < 2 then
-         Str_Buffer (Str_Length + 1 .. 2) := (others => ' ');
+      if Str_Length < Str_Buffer'Length then
+         Str_Buffer (Str_Length + 1 .. Str_Buffer'Last) := (others => ' ');
       end if;
 
       Serial_Console.Print_Pos_String (3, 44, Str_Buffer);
@@ -440,17 +447,17 @@ package body Car_Controller is
       Serial_Console.Print_Pos_String (3, 15, "Trimpot 2");
       Serial_Console.Draw_Box (2, 24, 3, 4);
       Serial_Console.Print_Pos_String (3, 29, "Battery charge");
-      Serial_Console.Draw_Box (2, 43, 3, 4);
+      Serial_Console.Draw_Box (2, 43, 3, 5);
       Serial_Console.Print_Pos_String (6, 1, "Frames captured");
       Serial_Console.Draw_Box (5, 16, 3, 14);
       Serial_Console.Print_Pos_String (6, 31, "Servo duty cycle");
       Serial_Console.Draw_Box (5, 47, 3, 6);
       Serial_Console.Print_Pos_String (6, 54, "Motors duty cycle");
       Serial_Console.Draw_Box (5, 71, 3, 5);
-      Serial_Console.Print_Pos_String (9, 1, "Left white area ");
-      Serial_Console.Draw_Box (8, 18, 3, 6);
-      Serial_Console.Print_Pos_String (9, 25, "Right white area ");
-      Serial_Console.Draw_Box (8, 43, 3, 6);
+      Serial_Console.Print_Pos_String (9, 1, "Track left edge at ");
+      Serial_Console.Draw_Box (8, 19, 3, 5);
+      Serial_Console.Print_Pos_String (9, 25, "Track right edge at ");
+      Serial_Console.Draw_Box (8, 44, 3, 5);
       Serial_Console.Print_Pos_String (12, 1, "X-axis acceleration");
       Serial_Console.Draw_Box (11, 25, 3, 10);
       Serial_Console.Print_Pos_String (12, 37, "Y-axis acceleration");
@@ -458,11 +465,27 @@ package body Car_Controller is
       Serial_Console.Print_Pos_String (12, 73, "Z-axis acceleration");
       Serial_Console.Draw_Box (11, 97, 3, 10);
       Serial_Console.Draw_Horizontal_Line (14, 1, TFC_Num_Camera_Pixels);
-      Serial_Console.Draw_Horizontal_Line (42, 1, TFC_Num_Camera_Pixels);
-
-      Serial_Console.Set_Scroll_Region_To_Screen_Bottom (43);
       Serial_Console.Set_Cursor_And_Attributes (
-         43, 1, Serial_Console.Attributes_Normal);
+         34, 1, Serial_Console.Attributes_Normal);
+      for I in 1 .. TFC_Num_Camera_Pixels loop
+         Serial_Console.Put_Char (
+            Character'Val ((I mod 10) + Character'Pos ('0')));
+      end loop;
+
+      Serial_Console.Set_Cursor_And_Attributes (
+         35, 1, Serial_Console.Attributes_Normal);
+
+      Serial_Console.Put_Char (Serial_Console.Enter_Line_Drawing_Mode);
+      for I in 1 .. TFC_Num_Camera_Pixels loop
+         Serial_Console.Put_Char (
+            if I mod 10 = 0 then Serial_Console.Inverted_T
+            else Serial_Console.Horizontal_Line);
+      end loop;
+      Serial_Console.Put_Char (Serial_Console.Exit_Line_Drawing_Mode);
+
+      Serial_Console.Set_Scroll_Region_To_Screen_Bottom (36);
+      Serial_Console.Set_Cursor_And_Attributes (
+         36, 1, Serial_Console.Attributes_Normal);
    end Init_Car_Stats_Display;
 
    ----------------
@@ -504,41 +527,42 @@ package body Car_Controller is
                 Reverse_Plot : Boolean)
    is
       use Serial_Console;
-      Min_Value : Unsigned_8 := Unsigned_8'Last;
-      Max_Value : Unsigned_8 := 0;
-      Scale : Unsigned_8;
-      Y : Unsigned_8;
+      Min_Y : Natural := Natural (Unsigned_8'Last);
+      Max_Y : Natural := Natural (Unsigned_8'First);
+      Y_Scale : Float;
+      Y : Natural;
       Line : Line_Type;
       Column : Column_Type;
    begin
       pragma Assert (Top_Line < Bottom_Line);
-
       for Pixel of Camera_Frame loop
-         if Pixel > Max_Value then
-            Max_Value := Pixel;
+         Y := Natural (Pixel);
+         if Y > Max_Y then
+            Max_Y := Y;
          end if;
 
-         if Pixel < Min_Value then
-            Min_Value := Pixel;
+         if Y < Min_Y then
+            Min_Y := Y;
          end if;
       end loop;
 
-      Scale := Unsigned_8 (Memory_Utils.How_Many (
-                              Unsigned_32 (Max_Value - Min_Value + 1),
-                              Unsigned_32 (Bottom_Line - Top_Line + 1)));
+      Y_Scale := Float (Max_Y - Min_Y + 1) /
+                 Float (Natural (Bottom_Line) - Natural (Top_Line) + 1);
 
       Save_Cursor_and_Attributes;
       Turn_Off_Cursor;
       Erase_Lines (Top_Line, Bottom_Line);
 
       for X in Camera_Frame'Range loop
-         Y := Unsigned_8 (
-                 Float'Rounding (Float (Camera_Frame (X)) / Float (Scale)));
-         Line := Line_Type (Unsigned_8 (Bottom_Line) - Y);
+         Y := Natural (Camera_Frame (X));
+         Line := Serial_Console.Line_Type (
+                    Natural (Bottom_Line) -
+                    Natural (Float'Rounding (Float (Y - Min_Y) / Y_Scale)));
+
          if Reverse_Plot then
-            Column := Column_Type (Camera_Frame'Length - X);
+            Column := Column_Type (Camera_Frame'Last - X + 1);
          else
-            Column := Column_Type (X + 1);
+            Column := Column_Type (X);
          end if;
 
          if Line > Bottom_Line then
@@ -890,7 +914,7 @@ package body Car_Controller is
          when Event_Camera_Frame_Received =>
             Analyze_Ok := Analyze_Camera_Frame (
                              Car_Controller_Obj,
-                             Car_Controller_Obj.Camera_Frame_Ptr.all);
+                             Car_Controller_Obj.Camera_Frame);
             if not Analyze_Ok then
                Turn_Off_Car_Controller (Color_Led.Red);
                Set_Car_State (Car_Off);
@@ -1076,8 +1100,8 @@ package body Car_Controller is
       Car_Controller_Obj.Steering_State := Car_Going_Straight;
       Car_Controller_Obj.Last_Steering_State_Occurrences := 0;
       Car_Controller_Obj.Steering_States_History := 0;
-      Car_Controller_Obj.Previous_PID_Error := 0.0;
-      Car_Controller_Obj.PID_Integral_Term := 0.0;
+      Car_Controller_Obj.Previous_PID_Error := 0;
+      Car_Controller_Obj.PID_Integral_Term := 0;
       TFC_Wheel_Motors.Set_PWM_Duty_Cycles (
          TFC_Wheel_Motors.Motor_Stopped_Duty_Cycle_Us,
          TFC_Wheel_Motors.Motor_Stopped_Duty_Cycle_Us);
@@ -1158,8 +1182,8 @@ package body Car_Controller is
          --  NOTE: This wait has to be at least Max_Actuators_Latency_Ms
          --
          if Car_Controller_Obj.Car_State /= Car_Off then
-            Car_Controller_Obj.Camera_Frame_Ptr :=
-               TFC_Line_Scan_Camera.Get_Next_Frame;
+            TFC_Line_Scan_Camera.Get_Next_Frame (
+               Car_Controller_Obj.Camera_Frame);
 
             Car_Controller_Obj.Camera_Frames_Count :=
                Car_Controller_Obj.Camera_Frames_Count + 1;

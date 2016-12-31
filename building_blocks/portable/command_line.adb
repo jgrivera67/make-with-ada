@@ -64,8 +64,8 @@ package body Command_Line is
          Char_Read : Character;
          Cursor : Buffer_Index_Type := Buffer_Index_Type'First;
       begin
-         Print_Prompt;
          Serial_Console.Lock;
+         Print_Prompt;
          loop
             --  Wait for next character from the serial console:
             Serial_Console.Unlock;
@@ -182,10 +182,9 @@ package body Command_Line is
 
    procedure Print_Prompt is
    begin
-      Serial_Console.Lock;
+      pragma Assert (Serial_Console.Is_Lock_Mine);
       Serial_Console.Print_String (Command_Line_Var.Prompt.all & " ");
       Serial_Console.Turn_On_Cursor;
-      Serial_Console.Unlock;
    end Print_Prompt;
 
 end Command_Line;

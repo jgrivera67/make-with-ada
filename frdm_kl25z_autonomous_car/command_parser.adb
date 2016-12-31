@@ -33,6 +33,7 @@ with Car_Controller;
 with App_Configuration;
 with Interfaces;
 with TFC_Wheel_Motors;
+with TFC_DIP_Switches;
 
 --
 --  Application-specific command parser implementation
@@ -40,6 +41,7 @@ with TFC_Wheel_Motors;
 package body Command_Parser is
    use Number_Conversion_Utils;
    use Interfaces;
+   use Car_Controller;
 
    --
    --  Help message string
@@ -91,7 +93,7 @@ package body Command_Parser is
    procedure Cmd_Plot_Camera_Frames_On_Off;
    procedure Cmd_Print_Car_Controller_Config_Params;
    procedure Cmd_Print_Car_Stats;
-   procedure Cmd_Print_Help with Pre => Serial_Console.Is_Locked;
+   procedure Cmd_Print_Help with Pre => Serial_Console.Is_Lock_Mine;
    procedure Cmd_Save_Car_Controller_Config_Params;
    procedure Cmd_Set;
    procedure Cmd_Set_Car_Straight_Wheel_Motor_Duty_Cycle;
@@ -116,7 +118,12 @@ package body Command_Parser is
 
    procedure Cmd_Dump_Camera_Frames_On_Off is
    begin
-      Serial_Console.Print_String("Not implemented yet" & ASCII.LF);
+      if Get_Car_State /= Car_Garage_Mode_On then
+         Serial_Console.Print_String ("Error: not in garage mode" & ASCII.LF);
+         return;
+      end if;
+
+      Set_Car_Event (Event_Dump_Camera_Frame_Toggle_Command);
    end Cmd_Dump_Camera_Frames_On_Off;
 
    --------------------------
@@ -134,7 +141,7 @@ package body Command_Parser is
 
    procedure Cmd_Garage_Mode_On_Off is
    begin
-      Serial_Console.Print_String("Not implemented yet" & ASCII.LF);
+      Set_Car_Event (Event_Garage_Mode_Toggle_Command);
    end Cmd_Garage_Mode_On_Off;
 
    -----------------------------------
@@ -143,7 +150,12 @@ package body Command_Parser is
 
    procedure Cmd_Plot_Camera_Frames_On_Off is
    begin
-      Serial_Console.Print_String("Not implemented yet" & ASCII.LF);
+      if Get_Car_State /= Car_Garage_Mode_On then
+         Serial_Console.Print_String ("Error: not in garage mode" & ASCII.LF);
+         return;
+      end if;
+
+      Set_Car_Event (Event_Plot_Camera_Frame_Toggle_Command);
    end Cmd_Plot_Camera_Frames_On_Off;
 
    --------------------------------------------
@@ -154,6 +166,8 @@ package body Command_Parser is
       Float_Str : String (1 .. 16);
       Float_Str_Length : Positive;
       Config_Parameters : App_Configuration.Config_Parameters_Type;
+      DIP_Switches : constant TFC_DIP_Switches.DIP_Switches_Type :=
+         Car_Controller.Get_DIP_Switches;
    begin
       Car_Controller.Get_Configuration_Paramters (Config_Parameters);
 
@@ -227,6 +241,13 @@ package body Command_Parser is
         Unsigned_8'Image (
           Unsigned_8 (Config_Parameters.Car_Turning_Wheel_Motor_Duty_Cycle)) &
           ASCII.LF);
+
+      Serial_Console.Print_String (ASCII.HT & "DIP_Switches: ");
+      for DIP_Swicth of DIP_Switches loop
+         Serial_Console.Put_Char (if DIP_Swicth then '1' else '0');
+      end loop;
+
+      Serial_Console.Put_Char (ASCII.LF);
    end Cmd_Print_Car_Controller_Config_Params;
 
    -------------------------
@@ -234,8 +255,92 @@ package body Command_Parser is
    -------------------------
 
    procedure Cmd_Print_Car_Stats is
+      History : Unsigned_64;
+      Car_State : Car_State_Type;
+      Car_Event : Car_Event_Type;
+      Steering_State : Car_Steering_State_Type;
    begin
-      Serial_Console.Print_String("Not implemented yet" & ASCII.LF);
+      pragma Assert (Serial_Console.Is_Lock_Mine);
+      Serial_Console.Print_String (
+         "Car current state: " & Car_State_To_String (Get_Car_State).all &
+         ASCII.LF);
+
+      Serial_Console.Print_String (
+         "Car states history (most recent first): ");
+      History := Get_Car_States_History;
+      for I in 1 .. Unsigned_64'Size / Car_State_Type'Size loop
+         Car_State := Car_State_Type'Enum_Val (
+                         History and ((2 ** Car_State_Type'Size) - 1));
+
+         if Car_State = Car_Uninitialized then
+            exit;
+         end if;
+
+         Serial_Console.Print_String (
+            Car_State_To_String (Car_State).all & ", ");
+
+         History := Shift_Right (History, Car_State_Type'Size);
+      end loop;
+
+      Serial_Console.Print_String (ASCII.LF & ASCII.LF);
+
+      Serial_Console.Print_String (
+         "Received events history (most recent first): ");
+      History := Get_Received_Car_Events_History;
+      for I in 1 .. Unsigned_64'Size / Car_Event_Type'Size loop
+         Car_Event := Car_Event_Type'Enum_Val (
+                         History and ((2 ** Car_Event_Type'Size) - 1));
+
+         if Car_Event = Event_None then
+            exit;
+         end if;
+
+         Serial_Console.Print_String (
+            Car_Event_To_String (Car_Event).all & ", ");
+
+         History := Shift_Right (History, Car_Event_Type'Size);
+      end loop;
+
+      Serial_Console.Print_String (ASCII.LF & ASCII.LF);
+
+      Serial_Console.Print_String (
+         "Ignored events history (most recent first): ");
+      History := Get_Ignored_Car_Events_History;
+      for I in 1 .. Unsigned_64'Size / Car_Event_Type'Size loop
+         Car_Event := Car_Event_Type'Enum_Val (
+                         History and ((2 ** Car_Event_Type'Size) - 1));
+
+         if Car_Event = Event_None then
+            exit;
+         end if;
+
+         Serial_Console.Print_String (
+            Car_Event_To_String (Car_Event).all & ", ");
+
+         History := Shift_Right (History, Car_Event_Type'Size);
+      end loop;
+
+      Serial_Console.Print_String (ASCII.LF & ASCII.LF);
+
+      Serial_Console.Print_String (
+         "Car steering states history (most recent first): ");
+      History := Get_Steering_States_History;
+      for I in 1 .. Unsigned_64'Size / Car_Steering_State_Type'Size loop
+         Steering_State := Car_Steering_State_Type'Enum_Val (
+                              History and
+                              ((2 ** Car_Steering_State_Type'Size) - 1));
+
+         if Steering_State = Steering_None then
+            exit;
+         end if;
+
+         Serial_Console.Print_String (
+            Car_Steering_State_To_String (Steering_State).all & ", ");
+
+         History := Shift_Right (History, Car_Steering_State_Type'Size);
+      end loop;
+
+      Serial_Console.Print_String (ASCII.LF & ASCII.LF);
    end Cmd_Print_Car_Stats;
 
    --------------------
@@ -257,7 +362,7 @@ package body Command_Parser is
    begin
       Save_Ok := Car_Controller.Save_Config_Parameters;
       if not Save_Ok then
-         Serial_Console.Print_String(
+         Serial_Console.Print_String (
             "Error: Could not save configuration in NOR flash" & ASCII.LF);
       end if;
    end Cmd_Save_Car_Controller_Config_Params;

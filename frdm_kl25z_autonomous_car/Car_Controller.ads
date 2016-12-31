@@ -25,18 +25,20 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-private with Ada.Synchronous_Task_Control;
-private with System;
-private with Interfaces;
-private with TFC_DIP_Switches;
 with App_Configuration;
 with TFC_Wheel_Motors;
+with TFC_Steering_Servo;
 with TFC_Line_Scan_Camera;
+with TFC_DIP_Switches;
+with Interfaces;
+private with Ada.Synchronous_Task_Control;
+private with System;
 
 --
 --  @summary Car controller module
 --
 package Car_Controller is
+   use Interfaces;
 
    function Initialized return Boolean;
    --  @private (Used only in contracts)
@@ -76,13 +78,6 @@ package Car_Controller is
    procedure Get_Configuration_Paramters (
       Config_Parameters : out App_Configuration.Config_Parameters_Type);
 
-private
-   pragma SPARK_Mode (Off);
-   use Ada.Synchronous_Task_Control;
-   use Interfaces;
-   use TFC_Line_Scan_Camera;
-   use TFC_DIP_Switches;
-
    --
    --  Possible states for the car state machine
    --
@@ -92,6 +87,18 @@ private
       Car_Garage_Mode_On,
       Car_Controller_On)
       with Size => 3;
+
+   Car_Uninitialized_Str : aliased constant String := "Car_Uninitialized";
+   Car_Off_Str : aliased constant String := "Car_Off";
+   Car_Garage_Mode_On_Str : aliased constant String := "Car_Garage_Mode_On";
+   Car_Controller_On_Str : aliased constant String := "Car_Controller_On";
+
+   Car_State_To_String : constant array (Car_State_Type) of
+      not null access constant String :=
+      (Car_Uninitialized_Str'Access,
+       Car_Off_Str'Access,
+       Car_Garage_Mode_On_Str'Access,
+       Car_Controller_On_Str'Access);
 
    --
    --  Possible events that cause state transitions
@@ -121,6 +128,62 @@ private
       Event_Dump_Camera_Frame_Toggle_Command)
       with Size => 5;
 
+   Event_None_Str : aliased constant String := "None";
+   Event_Trimpots_Wheel_Motor_Duty_Cycle_Switch_Turned_On_Str :
+      aliased constant String :=
+         "Trimpots_Wheel_Motor_Duty_Cycle_Switch_Turned_On";
+   Event_Trimpots_Wheel_Motor_Duty_Cycle_Switch_Turned_Off_Str :
+      aliased constant String :=
+         "Trimpots_Wheel_Motor_Duty_Cycle_Switch_Turned_Off";
+   Event_Hill_Driving_Adjustment_Switch_Turned_On_Str :
+      aliased constant String :=
+         "Hill_Driving_Adjustment_Switch_Turned_On";
+   Event_Hill_Driving_Adjustment_Switch_Turned_Off_Str :
+      aliased constant String :=
+         "Hill_Driving_Adjustment_Switch_Turned_Off";
+   Event_Wheel_Differential_Mode_Switch_Turned_On_Str :
+      aliased constant String := "Wheel_Differential_Mode_Switch_Turned_On";
+   Event_Wheel_Differential_Mode_Switch_Turned_Off_Str :
+      aliased constant String := "Wheel_Differential_Mode_Switch_Turned_Off";
+   Event_Trimpot1_Changed_Str : aliased constant String := "Trimpot1_Changed";
+   Event_Trimpot2_Changed_Str : aliased constant String := "Trimpot2_Changed";
+   Event_Battery_Charge_Level_Changed_Str : aliased constant String :=
+      "Battery_Charge_Level_Changed";
+   Event_Camera_Frame_Received_Str : aliased constant String :=
+      "Camera_Frame_Received";
+   Event_Acceleration_Changed_Str : aliased constant String :=
+      "Turn_On_Car_Button_Pressed";
+   Event_Turn_On_Car_Button_Pressed_Str : aliased constant String :=
+      "Turn_On_Car_Button_Pressed";
+   Event_Turn_Off_Car_Button_Pressed_Str : aliased constant String :=
+      "Turn_Off_Car_Button_Pressed";
+   Event_Garage_Mode_Toggle_Command_Str : aliased constant String :=
+      "Garage_Mode_Toggle_Command";
+   Event_Plot_Camera_Frame_Toggle_Command_Str : aliased constant String :=
+      "Plot_Camera_Frame_Toggle_Command";
+   Event_Dump_Camera_Frame_Toggle_Command_Str : aliased constant String :=
+      "Dump_Camera_Frame_Toggle_Command";
+
+   Car_Event_To_String : constant array (Car_Event_Type) of
+      not null access constant String :=
+      (Event_None_Str'Access,
+       Event_Trimpots_Wheel_Motor_Duty_Cycle_Switch_Turned_On_Str'Access,
+       Event_Trimpots_Wheel_Motor_Duty_Cycle_Switch_Turned_Off_Str'Access,
+       Event_Hill_Driving_Adjustment_Switch_Turned_On_Str'Access,
+       Event_Hill_Driving_Adjustment_Switch_Turned_Off_Str'Access,
+       Event_Wheel_Differential_Mode_Switch_Turned_On_Str'Access,
+       Event_Wheel_Differential_Mode_Switch_Turned_Off_Str'Access,
+       Event_Trimpot1_Changed_Str'Access,
+       Event_Trimpot2_Changed_Str'Access,
+       Event_Battery_Charge_Level_Changed_Str'Access,
+       Event_Camera_Frame_Received_Str'Access,
+       Event_Acceleration_Changed_Str'Access,
+       Event_Turn_On_Car_Button_Pressed_Str'Access,
+       Event_Turn_Off_Car_Button_Pressed_Str'Access,
+       Event_Garage_Mode_Toggle_Command_Str'Access,
+       Event_Plot_Camera_Frame_Toggle_Command_Str'Access,
+       Event_Dump_Camera_Frame_Toggle_Command_Str'Access);
+
    --
    --  Car steering states
    --
@@ -142,6 +205,33 @@ private
        Car_Going_Straight_Str'Access,
        Car_Turning_Left_Str'Access,
        Car_Turning_Right_Str'Access);
+
+   --
+   --  DIP switches masks
+   --
+   Trimpots_Wheel_Motor_Duty_Cycle_DIP_Switch_Index : constant := 2;
+   Hill_Driving_Adjustment_DIP_Switch_Index : constant := 3;
+   Wheel_Differential_DIP_Switch_Index : constant := 4;
+
+   function Get_Car_State return Car_State_Type;
+
+   function Get_Car_States_History return Unsigned_64;
+
+   function Get_Received_Car_Events_History return Unsigned_64;
+
+   function Get_Ignored_Car_Events_History return Unsigned_64;
+
+   function Get_Steering_States_History return Unsigned_64;
+
+   function Get_DIP_Switches return TFC_DIP_Switches.DIP_Switches_Type;
+
+   procedure Set_Car_Event (Event : Car_Event_Type);
+
+private
+   pragma SPARK_Mode (Off);
+   use Ada.Synchronous_Task_Control;
+   use TFC_Line_Scan_Camera;
+   use TFC_DIP_Switches;
 
    type Pending_Car_Events_Type is array (Car_Event_Type) of Boolean
       with Component_Size => 1, Size => Unsigned_32'Size;
@@ -168,6 +258,9 @@ private
      Car_Controller_Ptr : not null access Car_Controller_Type)
      with Priority => System.Priority'Last - 2; -- High priority
 
+   type Camera_Frame_Derivative_Type is
+      array (TFC_Line_Scan_Camera.TFC_Camera_Frame_Pixel_Index_Type) of Float;
+
    --
    --  Car controller object type
    --
@@ -177,8 +270,8 @@ private
       Track_Finish_Line_Detected : Boolean := False;
       Config_Parameters : App_Configuration.Config_Parameters_Type;
       Outstanding_Events : Pending_Car_Events_Type := (others => False);
-      Camera_Frame_Ptr :
-         TFC_Line_Scan_Camera.TFC_Camera_Frame_Read_Only_Access_Type := null;
+      Camera_Frame : TFC_Line_Scan_Camera.TFC_Camera_Frame_Type;
+      Camera_Frame_Derivative : Camera_Frame_Derivative_Type;
       Car_States_History : Unsigned_64 := 0;
       Received_Car_Events_History : Unsigned_64 := 0;
       Ignored_Car_Events_History : Unsigned_64 := 0;
@@ -200,7 +293,8 @@ private
       Prev_Track_Left_Edge_Pixel_Index : Unsigned_8;
       Track_Right_Edge_Pixel_Index : Unsigned_8 := Unsigned_8'Last;
       Prev_Track_Right_Edge_Pixel_Index : Unsigned_8;
-      Steering_Servo_Pwm_Duty_Cycle_Us : Unsigned_16;
+      Steering_Servo_Pwm_Duty_Cycle_Us :
+         TFC_Steering_Servo.Servo_Pulse_Width_Us_Type;
       Car_Straight_Wheel_Motor_Pwm_Duty_Cycle_Us :
          TFC_Wheel_Motors.Motor_Pulse_Width_Us_Type;
       Car_Turning_Wheel_Motor_Pwm_Duty_Cycle_Us :
@@ -209,8 +303,8 @@ private
          TFC_Wheel_Motors.Motor_Pulse_Width_Us_Type;
       Right_Wheel_Motor_Pwm_Duty_Cycle_Us :
          TFC_Wheel_Motors.Motor_Pulse_Width_Us_Type;
-      Previous_PID_Error : Float := 0.0;
-      PID_Integral_Term : Float := 0.0;
+      Previous_PID_Error : Integer := 0;
+      PID_Integral_Term : Integer := 0;
       Driving_Log : Driving_Log_Type;
       Driving_Log_Cursor : Driving_Log_Entry_Index_Type := 0;
       Driving_Log_Wrap_Count : Unsigned_32 := 0;
@@ -227,5 +321,23 @@ private
    -- ** --
 
    function Initialized return Boolean is (Car_Controller_Obj.Initialized);
+
+   function Get_Car_State return Car_State_Type is
+      (Car_Controller_Obj.Car_State);
+
+   function Get_Car_States_History return Unsigned_64 is
+      (Car_Controller_Obj.Car_States_History);
+
+   function Get_Received_Car_Events_History return Unsigned_64 is
+      (Car_Controller_Obj.Received_Car_Events_History);
+
+   function Get_Ignored_Car_Events_History return Unsigned_64 is
+      (Car_Controller_Obj.Ignored_Car_Events_History);
+
+   function Get_Steering_States_History return Unsigned_64 is
+      (Car_Controller_Obj.Steering_States_History);
+
+   function Get_DIP_Switches return TFC_DIP_Switches.DIP_Switches_Type is
+      (Car_Controller_Obj.DIP_Switches);
 
 end Car_Controller;

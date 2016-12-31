@@ -54,9 +54,6 @@ package TFC_Line_Scan_Camera is
    type TFC_Camera_Frame_Type is
       array (TFC_Camera_Frame_Pixel_Index_Type) of Unsigned_8;
 
-   type TFC_Camera_Frame_Read_Only_Access_Type is
-      access constant TFC_Camera_Frame_Type;
-
    --
    --  ADC conversion piggy-backed during the sequential ADC conversions
    --  done for capturing a camera frame.
@@ -92,7 +89,7 @@ package TFC_Line_Scan_Camera is
    procedure Stop_Frame_Capture
       with Pre => Initialized;
 
-   function Get_Next_Frame return TFC_Camera_Frame_Read_Only_Access_Type
+   procedure Get_Next_Frame (Camera_Frame : out TFC_Camera_Frame_Type)
       with Pre => Initialized;
 
 end TFC_Line_Scan_Camera;

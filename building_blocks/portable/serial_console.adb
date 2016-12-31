@@ -30,12 +30,14 @@ with Generic_Ring_Buffers;
 with Number_Conversion_Utils;
 with Runtime_Logs;
 with Ada.Synchronous_Task_Control;
+with Ada.Task_Identification;
 with System;
 
 package body Serial_Console is
    pragma SPARK_Mode (Off);
    use Devices.MCU_Specific;
    use Ada.Synchronous_Task_Control;
+   use Ada.Task_Identification;
    use Number_Conversion_Utils;
 
    --
@@ -47,22 +49,6 @@ package body Serial_Console is
    --  Size (in bytes) of the console output ring buffer
    --
    Console_Output_Buffer_Size : constant := 256;
-
-   --
-   --  Control characters:
-   --
-   Enter_Line_Drawing_Mode : constant Character := ASCII.SO;
-   Exit_Line_Drawing_Mode :  constant Character := ASCII.SI;
-
-   --
-   --  Line drawing characters:
-   --
-   Upper_Left_Corner :  constant Character := Character'Val (16#6c#);
-   Lower_Left_Corner :  constant Character := Character'Val (16#6d#);
-   Upper_Right_Corner : constant Character := Character'Val (16#6b#);
-   Lower_Right_Corner : constant Character := Character'Val (16#6a#);
-   Vertical_Line :      constant Character := Character'Val (16#78#);
-   Horizontal_Line :    constant Character := Character'Val (16#71#);
 
    --
    --  Ring buffer of bytes
@@ -88,6 +74,7 @@ package body Serial_Console is
       Saved_Attributes : Attributes_Vector_Type;
       Attributes_Were_Saved : Boolean := False;
       Lock : Suspension_Object;
+      Lock_Owner_Task_Id : Task_Id;
       Output_Task : Console_Output_Task_Type (Console_Type'Access);
    end record;
 
@@ -240,10 +227,11 @@ package body Serial_Console is
 
    -- ** --
 
-   function Is_Locked return Boolean is
+   function Is_Lock_Mine return Boolean is
+       Current_Task_Id : constant Task_Id := Current_Task;
    begin
-      return Current_State (Console_Var.Lock) = False;
-   end Is_Locked;
+      return Console_Var.Lock_Owner_Task_Id = Current_Task_Id;
+   end Is_Lock_Mine;
 
    -- ** --
 
@@ -254,6 +242,8 @@ package body Serial_Console is
       --  (i.e. more than two tasks using the serial console).
       --
       Suspend_Until_True (Console_Var.Lock);
+      pragma Assert (Console_Var.Lock_Owner_Task_Id = Null_Task_Id);
+      Console_Var.Lock_Owner_Task_Id := Current_Task;
    end Lock;
 
    -- ** --
@@ -419,6 +409,7 @@ package body Serial_Console is
 
    procedure Unlock is
    begin
+      Console_Var.Lock_Owner_Task_Id := Null_Task_Id;
       Set_True (Console_Var.Lock);
    end Unlock;
 

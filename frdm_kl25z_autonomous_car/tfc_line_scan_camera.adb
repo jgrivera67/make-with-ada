@@ -29,6 +29,7 @@ with Periodic_Timer_Driver;
 with Ada.Synchronous_Task_Control;
 with Gpio_Driver;
 with Pin_Mux_Driver;
+with Microcontroller.Arm_Cortex_M;
 
 package body TFC_Line_Scan_Camera is
    pragma SPARK_Mode (Off);
@@ -123,10 +124,8 @@ package body TFC_Line_Scan_Camera is
       ADC_Device_Id : ADC_Device_Id_Type;
       State : Frame_Capture_State_Type := Frame_Capture_Not_Started;
       Camera_ADC_Channel : Unsigned_8;
-      Ping_Pong_Frame_Buffers : Ping_Pong_Frame_Buffers_Type;
+      Camera_Frame_Buffer : TFC_Camera_Frame_Type;
       Frames_Captured_Count : Unsigned_32 := 0;
-      Last_Filled_Frame_Buffer_Id : Ping_Pong_Frame_Buffer_Id_Type;
-      Current_Frame_Buffer_Id : Ping_Pong_Frame_Buffer_Id_Type := 0;
       Remaining_Pixels_Count : Unsigned_8 range 0 .. TFC_Num_Camera_Pixels;
       Frame_Capture_Completed_Susp_Obj : Suspension_Object;
       Piggybacked_AD_Conversion_Array_Ptr :
@@ -172,10 +171,6 @@ package body TFC_Line_Scan_Camera is
 
    procedure AD_Conversion_Completion_Callback (ADC_Reading : Unsigned_16)
    is
-      Current_Frame : TFC_Camera_Frame_Type renames
-         Frame_Capture_Var.
-           Ping_Pong_Frame_Buffers (Frame_Capture_Var.Current_Frame_Buffer_Id);
-
       Piggybacked_AD_Conversion_End : constant Positive :=
          Frame_Capture_Var.Piggybacked_AD_Conversion_Array_Ptr.all'Last + 1;
 
@@ -233,15 +228,22 @@ package body TFC_Line_Scan_Camera is
             --
             --  Save current pixel reading:
             --
+            --  NOTE: Pixels are stored in the resverse order in which they are
+            --  received, so that:
+            --  - Right most pixel is stored at
+            --    Camera_Frame (Camerara_Frame'Last)
+            --  - Left most pixel is stored at
+            --    Camera_Frame (Camerara_Frame'First)
+            --
             if Frame_Capture_Var.Remaining_Pixels_Count > 0 then
-               Frame_Capture_Var.Remaining_Pixels_Count :=
-                  Frame_Capture_Var.Remaining_Pixels_Count - 1;
-
+               Frame_Capture_Var.State := Frame_Capture_SI_Low_Clk_Low;
                pragma Assert (ADC_Reading <= Unsigned_16 (Unsigned_8'Last));
-               Current_Frame (Frame_Capture_Var.Remaining_Pixels_Count) :=
+               Frame_Capture_Var.Camera_Frame_Buffer
+                  (Frame_Capture_Var.Remaining_Pixels_Count) :=
                   Unsigned_8 (ADC_Reading);
 
-               Frame_Capture_Var.State := Frame_Capture_SI_Low_Clk_Low;
+               Frame_Capture_Var.Remaining_Pixels_Count :=
+                  Frame_Capture_Var.Remaining_Pixels_Count - 1;
 
                --
                --  Start dummy async ADC conversion to pace CLK signal,
@@ -265,11 +267,6 @@ package body TFC_Line_Scan_Camera is
                end if;
             else
                Frame_Capture_Var.State := Frame_Capture_Finished;
-               Frame_Capture_Var.Last_Filled_Frame_Buffer_Id :=
-                  Frame_Capture_Var.Current_Frame_Buffer_Id;
-               Frame_Capture_Var.Current_Frame_Buffer_Id :=
-                  Frame_Capture_Var.Current_Frame_Buffer_Id + 1;
-
                Set_True (Frame_Capture_Var.Frame_Capture_Completed_Susp_Obj);
 
                pragma Assert (Frame_Capture_Var.Next_Piggybacked_AD_Conversion
@@ -329,16 +326,15 @@ package body TFC_Line_Scan_Camera is
    -- Get_Next_Frame --
    --------------------
 
-   function Get_Next_Frame return TFC_Camera_Frame_Read_Only_Access_Type
+   procedure Get_Next_Frame (Camera_Frame : out TFC_Camera_Frame_Type)
    is
-      Last_Frame_Captured_Ptr : TFC_Camera_Frame_Read_Only_Access_Type;
+      Int_Mask : Unsigned_32;
    begin
       Suspend_Until_True (Frame_Capture_Var.Frame_Capture_Completed_Susp_Obj);
-      Last_Frame_Captured_Ptr :=
-        Frame_Capture_Var.Ping_Pong_Frame_Buffers (
-          Frame_Capture_Var.Last_Filled_Frame_Buffer_Id)'Access;
 
-      return Last_Frame_Captured_Ptr;
+      Int_Mask := Microcontroller.Arm_Cortex_M.Disable_Cpu_Interrupts;
+      Camera_Frame := Frame_Capture_Var.Camera_Frame_Buffer;
+      Microcontroller.Arm_Cortex_M.Restore_Cpu_Interrupts (Int_Mask);
    end Get_Next_Frame;
 
    ----------------
