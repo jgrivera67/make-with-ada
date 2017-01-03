@@ -49,7 +49,7 @@ package body Last_Chance_Handler is
                              Break_Point,
                              Dummy_Infinite_Loop);
 
-   Disposition : constant Disposition_Type := Dummy_Infinite_Loop;
+   Disposition : constant Disposition_Type := System_Reset;
 
    -------------------------
    -- Last_Chance_Handler --

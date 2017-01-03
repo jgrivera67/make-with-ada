@@ -46,7 +46,11 @@ package Serial_Console is
    Lower_Right_Corner : constant Character := Character'Val (16#6a#);
    Vertical_Line :      constant Character := Character'Val (16#78#);
    Horizontal_Line :    constant Character := Character'Val (16#71#);
-   Inverted_T :         constant Character := Character'Val (16#76#);
+   T_Pointing_Up :      constant Character := Character'Val (16#76#);
+   T_Pointing_Down :    constant Character := Character'Val (16#77#);
+   T_Pointing_Left :    constant Character := Character'Val (16#75#);
+   T_Pointing_Right :   constant Character := Character'Val (16#74#);
+   Line_Intersection :  constant Character := Character'Val (16#6e#);
 
    --
    --  Character display attributes

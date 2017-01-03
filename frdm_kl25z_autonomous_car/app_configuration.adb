@@ -53,7 +53,7 @@ package body App_Configuration is
    Default_Steering_Servo_Proportional_Gain : constant Float :=
       (Float (TFC_Steering_Servo.Servo_Max_Duty_Cycle_Us -
               TFC_Steering_Servo.Servo_Middle_Duty_Cycle_Us) /
-       Float (TFC_Line_Scan_Camera.TFC_Num_Camera_Pixels / 2)) * 1.8;
+       Float (TFC_Line_Scan_Camera.TFC_Num_Camera_Pixels)); --* 16.0; --1.8;
 
    Default_Steering_Servo_Integral_Gain : constant Float :=
       Default_Steering_Servo_Proportional_Gain * 0.008;
@@ -63,7 +63,7 @@ package body App_Configuration is
    Default_Wheel_Differential_Proportional_Gain : constant Float :=
       (Float (TFC_Wheel_Motors.Motor_Max_Duty_Cycle_Us -
               TFC_Wheel_Motors.Motor_Stopped_Duty_Cycle_Us) /
-       Float (TFC_Line_Scan_Camera.TFC_Num_Camera_Pixels / 2)) / 3.0;
+       Float (TFC_Line_Scan_Camera.TFC_Num_Camera_Pixels)); -- * 8.0; --/ 1.0; --3.0
 
    Default_Wheel_Differential_Integral_Gain : constant Float :=
       Default_Wheel_Differential_Proportional_Gain * 0.02;

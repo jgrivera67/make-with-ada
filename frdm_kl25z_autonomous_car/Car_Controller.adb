@@ -100,7 +100,11 @@ package body Car_Controller is
       return TFC_Wheel_Motors.Motor_Pulse_Width_Us_Type;
 
    procedure Clear_Car_Event (Event : Car_Event_Type);
-   procedure Drive_Car (Car_Controller_Obj : in out Car_Controller_Type);
+
+   procedure Drive_Car (Car_Controller_Obj : in out Car_Controller_Type)
+      with Pre => Car_Controller_Obj.Track_Edge_Tracing_State /=
+                  No_Track_Edge_Detected;
+
    procedure Enter_Garage_Mode;
    procedure Exit_Garage_Mode;
    procedure Garage_Mode_Process_Camera_Frame;
@@ -235,6 +239,7 @@ package body Car_Controller is
       Car_Controller_Obj.Trimpot1_Setting := Unsigned_8'Last;
       Car_Controller_Obj.Trimpot2_Setting := Unsigned_8'Last;
       Car_Controller_Obj.Battery_Charge_Level := 0;
+      Car_Controller_Obj.Track_Edge_Tracing_State := No_Track_Edge_Detected;
 
       TFC_Line_Scan_Camera.Start_Frame_Capture;
       Old_Color := Color_Led.Set_Color (Color_Led.Cyan);
@@ -268,6 +273,8 @@ package body Car_Controller is
       Analyze_Ok : Boolean with Unreferenced;
       Str_Buffer : String (1 .. 12);
       Str_Length : Positive;
+      Track_Left_Edge_Pixel_Index : TFC_Camera_Frame_Pixel_Index_Type;
+      Track_Right_Edge_Pixel_Index : TFC_Camera_Frame_Pixel_Index_Type;
    begin
       Analyze_Ok := Analyze_Camera_Frame (
                        Car_Controller_Obj,
@@ -283,8 +290,28 @@ package body Car_Controller is
 
       Serial_Console.Print_Pos_String (6, 17, Str_Buffer);
 
+      case Car_Controller_Obj.Track_Edge_Tracing_State is
+         when No_Track_Edge_Detected =>
+            Track_Left_Edge_Pixel_Index :=
+               TFC_Camera_Frame_Pixel_Index_Type'First;
+            Track_Right_Edge_Pixel_Index :=
+               TFC_Camera_Frame_Pixel_Index_Type'Last;
+
+         when Following_Left_Track_Edge =>
+            Track_Left_Edge_Pixel_Index :=
+               Car_Controller_Obj.Current_Track_Edge_Pixel_Index;
+            Track_Right_Edge_Pixel_Index :=
+               TFC_Camera_Frame_Pixel_Index_Type'Last;
+
+         when Following_Right_Track_Edge =>
+            Track_Left_Edge_Pixel_Index :=
+               TFC_Camera_Frame_Pixel_Index_Type'First;
+            Track_Right_Edge_Pixel_Index :=
+               Car_Controller_Obj.Current_Track_Edge_Pixel_Index;
+      end case;
+
       Unsigned_To_Decimal_String (
-         Unsigned_32 (Car_Controller_Obj.Track_Left_Edge_Pixel_Index),
+         Unsigned_32 (Track_Left_Edge_Pixel_Index),
          Str_Buffer, Str_Length);
       if Str_Length < 3 then
          Str_Buffer (Str_Length + 1 .. 3) := (others => ' ');
@@ -293,7 +320,7 @@ package body Car_Controller is
       Serial_Console.Print_Pos_String (9, 20, Str_Buffer (1 .. 3));
 
       Unsigned_To_Decimal_String (
-         Unsigned_32 (Car_Controller_Obj.Track_Right_Edge_Pixel_Index),
+         Unsigned_32 (Track_Right_Edge_Pixel_Index),
          Str_Buffer, Str_Length);
       if Str_Length < 3 then
          Str_Buffer (Str_Length + 1 .. 3) := (others => ' ');
@@ -302,8 +329,8 @@ package body Car_Controller is
       Serial_Console.Print_Pos_String (9, 45, Str_Buffer (1 .. 3));
 
       if Car_Controller_Obj.Plot_Camera_Frame_On then
-         Plot_Frame_Graph (Car_Controller_Obj.Camera_Frame, 15, 33, 'X',
-                           Reverse_Plot => False);
+         Plot_Frame_Graph (Car_Controller_Obj.Filtered_Camera_Frame, 15, 33,
+                           'X', Reverse_Plot => False);
       end if;
 
       if Car_Controller_Obj.Dump_Camera_Frame_On then
@@ -478,7 +505,7 @@ package body Car_Controller is
       Serial_Console.Put_Char (Serial_Console.Enter_Line_Drawing_Mode);
       for I in 1 .. TFC_Num_Camera_Pixels loop
          Serial_Console.Put_Char (
-            if I mod 10 = 0 then Serial_Console.Inverted_T
+            if I mod 10 = 0 then Serial_Console.T_Pointing_Up
             else Serial_Console.Horizontal_Line);
       end loop;
       Serial_Console.Put_Char (Serial_Console.Exit_Line_Drawing_Mode);
@@ -548,6 +575,9 @@ package body Car_Controller is
 
       Y_Scale := Float (Max_Y - Min_Y + 1) /
                  Float (Natural (Bottom_Line) - Natural (Top_Line) + 1);
+      if Y_Scale < 1.0 then
+         Y_Scale := 1.0;
+      end if;
 
       Save_Cursor_and_Attributes;
       Turn_Off_Cursor;
@@ -609,6 +639,19 @@ package body Car_Controller is
    begin
       TFC_DIP_Switches.Read_DIP_Switches (DIP_Switches);
       if DIP_Switches /= Car_Controller_Obj.DIP_Switches then
+         if DIP_Switches (Garage_Mode_DIP_Switch_Index)
+            and then
+            not Car_Controller_Obj.DIP_Switches (Garage_Mode_DIP_Switch_Index)
+         then
+            Set_Car_Event (Event_Garage_Mode_Switch_Turned_On);
+         elsif
+            not DIP_Switches (Garage_Mode_DIP_Switch_Index)
+            and then
+            Car_Controller_Obj.DIP_Switches (Garage_Mode_DIP_Switch_Index)
+         then
+            Set_Car_Event (Event_Garage_Mode_Switch_Turned_Off);
+         end if;
+
          if DIP_Switches (Trimpots_Wheel_Motor_Duty_Cycle_DIP_Switch_Index)
             and then
             not Car_Controller_Obj.
@@ -641,23 +684,6 @@ package body Car_Controller is
          then
             Set_Car_Event (
                Event_Hill_Driving_Adjustment_Switch_Turned_Off);
-         end if;
-
-         if DIP_Switches (Wheel_Differential_DIP_Switch_Index)
-            and then
-            not Car_Controller_Obj.
-               DIP_Switches (Wheel_Differential_DIP_Switch_Index)
-         then
-            Set_Car_Event (
-               Event_Wheel_Differential_Mode_Switch_Turned_On);
-         elsif
-            not DIP_Switches (Wheel_Differential_DIP_Switch_Index)
-            and then
-            Car_Controller_Obj.DIP_Switches (
-               Wheel_Differential_DIP_Switch_Index)
-         then
-            Set_Car_Event (
-               Event_Wheel_Differential_Mode_Switch_Turned_Off);
          end if;
 
          Car_Controller_Obj.DIP_Switches := DIP_Switches;
@@ -838,9 +864,6 @@ package body Car_Controller is
    begin
       pragma Assert (Steering_State /= Steering_None);
 
-      Car_Controller_Obj.Prev_Steering_State :=
-         Car_Controller_Obj.Steering_State;
-
       if Car_Controller_Obj.Steering_State /= Steering_State then
          Car_Controller_Obj.Steering_State := Steering_State;
          Car_Controller_Obj.Last_Steering_State_Occurrences := 1;
@@ -896,15 +919,17 @@ package body Car_Controller is
    is
       Analyze_Ok : Boolean;
    begin
-      if not Car_Controller_Obj.Trimpots_Wheel_Motor_Duty_Cycle_On then
-         Car_Controller_Obj.Car_Straight_Wheel_Motor_Pwm_Duty_Cycle_Us :=
-            Car_Controller_Obj.Config_Parameters.
-               Car_Straight_Wheel_Motor_Duty_Cycle;
-
-         Car_Controller_Obj.Car_Turning_Wheel_Motor_Pwm_Duty_Cycle_Us :=
-            Car_Controller_Obj.Config_Parameters.
-               Car_Turning_Wheel_Motor_Duty_Cycle;
-      end if;
+      --???
+      --if not Car_Controller_Obj.Trimpots_Wheel_Motor_Duty_Cycle_On then
+      --   Car_Controller_Obj.Car_Straight_Wheel_Motor_Pwm_Duty_Cycle_Us :=
+      --      Car_Controller_Obj.Config_Parameters.
+      --         Car_Straight_Wheel_Motor_Duty_Cycle;
+      --
+      --   Car_Controller_Obj.Car_Turning_Wheel_Motor_Pwm_Duty_Cycle_Us :=
+      --      Car_Controller_Obj.Config_Parameters.
+      --         Car_Turning_Wheel_Motor_Duty_Cycle;
+      --end if;
+      --???
 
       case Car_Event is
          when Event_Turn_Off_Car_Button_Pressed =>
@@ -960,12 +985,6 @@ package body Car_Controller is
          when Event_Hill_Driving_Adjustment_Switch_Turned_Off =>
             Car_Controller_Obj.Hill_Driving_Adjustment_On := False;
 
-         when Event_Wheel_Differential_Mode_Switch_Turned_On =>
-            Car_Controller_Obj.Wheel_Differential_On := True;
-
-         when Event_Wheel_Differential_Mode_Switch_Turned_Off =>
-            Car_Controller_Obj.Wheel_Differential_On := False;
-
          when Event_Trimpots_Wheel_Motor_Duty_Cycle_Switch_Turned_On =>
             Car_Controller_Obj.Trimpots_Wheel_Motor_Duty_Cycle_On := True;
             Car_Controller_Obj.Car_Straight_Wheel_Motor_Pwm_Duty_Cycle_Us :=
@@ -1002,7 +1021,8 @@ package body Car_Controller is
    is
    begin
       case Car_Event is
-         when Event_Garage_Mode_Toggle_Command =>
+         when Event_Garage_Mode_Toggle_Command |
+              Event_Garage_Mode_Switch_Turned_Off =>
             Exit_Garage_Mode;
             Turn_Off_Car_Controller (Color_Led.Blue);
             Set_Car_State (Car_Off);
@@ -1051,7 +1071,8 @@ package body Car_Controller is
             Turn_On_Car_Controller;
             Set_Car_State (Car_Controller_On);
 
-         when Event_Garage_Mode_Toggle_Command =>
+         when Event_Garage_Mode_Toggle_Command |
+              Event_Garage_Mode_Switch_Turned_On =>
             Enter_Garage_Mode;
             Set_Car_State (Car_Garage_Mode_On);
 
@@ -1098,10 +1119,12 @@ package body Car_Controller is
       pragma Assert (Car_Controller_Obj.Car_State = Car_Off);
       Car_Controller_Obj.Track_Finish_Line_Detected := False;
       Car_Controller_Obj.Steering_State := Car_Going_Straight;
+      Car_Controller_Obj.Track_Edge_Tracing_State := No_Track_Edge_Detected;
       Car_Controller_Obj.Last_Steering_State_Occurrences := 0;
       Car_Controller_Obj.Steering_States_History := 0;
       Car_Controller_Obj.Previous_PID_Error := 0;
       Car_Controller_Obj.PID_Integral_Term := 0;
+
       TFC_Wheel_Motors.Set_PWM_Duty_Cycles (
          TFC_Wheel_Motors.Motor_Stopped_Duty_Cycle_Us,
          TFC_Wheel_Motors.Motor_Stopped_Duty_Cycle_Us);
@@ -1118,12 +1141,6 @@ package body Car_Controller is
       Car_Controller_Obj.Right_Wheel_Motor_Pwm_Duty_Cycle_Us :=
          TFC_Wheel_Motors.Motor_Stopped_Duty_Cycle_Us;
 
-      Car_Controller_Obj.Car_Straight_Wheel_Motor_Pwm_Duty_Cycle_Us :=
-         TFC_Wheel_Motors.Motor_Stopped_Duty_Cycle_Us;
-
-      Car_Controller_Obj.Car_Turning_Wheel_Motor_Pwm_Duty_Cycle_Us :=
-         TFC_Wheel_Motors.Motor_Stopped_Duty_Cycle_Us;
-
       Car_Controller_Obj.Steering_Servo_Pwm_Duty_Cycle_Us :=
          TFC_Steering_Servo.Servo_Middle_Duty_Cycle_Us;
 
@@ -1131,13 +1148,27 @@ package body Car_Controller is
          Car_Controller_Obj.DIP_Switches (
             Trimpots_Wheel_Motor_Duty_Cycle_DIP_Switch_Index);
 
+      if Car_Controller_Obj.Trimpots_Wheel_Motor_Duty_Cycle_On then
+         Car_Controller_Obj.Car_Straight_Wheel_Motor_Pwm_Duty_Cycle_Us :=
+            Calculate_Wheel_Motor_Pwm_Duty_Cycle_Us_From_Trimpot (
+               Car_Controller_Obj.Trimpot2_Setting);
+
+         Car_Controller_Obj.Car_Turning_Wheel_Motor_Pwm_Duty_Cycle_Us :=
+            Calculate_Wheel_Motor_Pwm_Duty_Cycle_Us_From_Trimpot (
+               Car_Controller_Obj.Trimpot1_Setting);
+      else
+         Car_Controller_Obj.Car_Straight_Wheel_Motor_Pwm_Duty_Cycle_Us :=
+            Car_Controller_Obj.Config_Parameters.
+               Car_Straight_Wheel_Motor_Duty_Cycle;
+
+         Car_Controller_Obj.Car_Turning_Wheel_Motor_Pwm_Duty_Cycle_Us :=
+            Car_Controller_Obj.Config_Parameters.
+               Car_Turning_Wheel_Motor_Duty_Cycle;
+      end if;
+
       Car_Controller_Obj.Hill_Driving_Adjustment_On :=
          Car_Controller_Obj.DIP_Switches (
             Hill_Driving_Adjustment_DIP_Switch_Index);
-
-      Car_Controller_Obj.Wheel_Differential_On :=
-          Car_Controller_Obj.DIP_Switches (
-             Wheel_Differential_DIP_Switch_Index);
 
       TFC_Line_Scan_Camera.Start_Frame_Capture;
 

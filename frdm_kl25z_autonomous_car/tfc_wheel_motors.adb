@@ -146,11 +146,11 @@ package body TFC_Wheel_Motors is
       end if;
 
       PWM_Driver.Set_Channel_Duty_Cycle (Motor_PWM_Device_Id,
-                                         Motor_B_H_BRIDGE_B1_PWM_Channel_Id,
+                                         Motor_A_H_BRIDGE_A1_PWM_Channel_Id,
                                          Right_Wheel_Duty_Cycle_Us);
 
       PWM_Driver.Set_Channel_Duty_Cycle (Motor_PWM_Device_Id,
-                                         Motor_B_H_BRIDGE_B2_PWM_Channel_Id,
+                                         Motor_A_H_BRIDGE_A2_PWM_Channel_Id,
                                          Right_Wheel_Duty_Cycle_Us);
 
       PWM_Driver.Set_Channel_Duty_Cycle (Motor_PWM_Device_Id,

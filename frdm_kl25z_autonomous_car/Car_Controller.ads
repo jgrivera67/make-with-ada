@@ -110,12 +110,12 @@ package Car_Controller is
    --
    type Car_Event_Type is (
       Event_None,
+      Event_Garage_Mode_Switch_Turned_On,
+      Event_Garage_Mode_Switch_Turned_Off,
       Event_Trimpots_Wheel_Motor_Duty_Cycle_Switch_Turned_On,
       Event_Trimpots_Wheel_Motor_Duty_Cycle_Switch_Turned_Off,
       Event_Hill_Driving_Adjustment_Switch_Turned_On,
       Event_Hill_Driving_Adjustment_Switch_Turned_Off,
-      Event_Wheel_Differential_Mode_Switch_Turned_On,
-      Event_Wheel_Differential_Mode_Switch_Turned_Off,
       Event_Trimpot1_Changed,
       Event_Trimpot2_Changed,
       Event_Battery_Charge_Level_Changed,
@@ -129,6 +129,12 @@ package Car_Controller is
       with Size => 5;
 
    Event_None_Str : aliased constant String := "None";
+   Event_Garage_Mode_Switch_Turned_On_Str :
+      aliased constant String :=
+         "Event_Garage_Mode_Switch_Turned_On";
+   Event_Garage_Mode_Switch_Turned_Off_Str :
+      aliased constant String :=
+         "Event_Garage_Mode_Switch_Turned_Off";
    Event_Trimpots_Wheel_Motor_Duty_Cycle_Switch_Turned_On_Str :
       aliased constant String :=
          "Trimpots_Wheel_Motor_Duty_Cycle_Switch_Turned_On";
@@ -141,10 +147,6 @@ package Car_Controller is
    Event_Hill_Driving_Adjustment_Switch_Turned_Off_Str :
       aliased constant String :=
          "Hill_Driving_Adjustment_Switch_Turned_Off";
-   Event_Wheel_Differential_Mode_Switch_Turned_On_Str :
-      aliased constant String := "Wheel_Differential_Mode_Switch_Turned_On";
-   Event_Wheel_Differential_Mode_Switch_Turned_Off_Str :
-      aliased constant String := "Wheel_Differential_Mode_Switch_Turned_Off";
    Event_Trimpot1_Changed_Str : aliased constant String := "Trimpot1_Changed";
    Event_Trimpot2_Changed_Str : aliased constant String := "Trimpot2_Changed";
    Event_Battery_Charge_Level_Changed_Str : aliased constant String :=
@@ -167,12 +169,12 @@ package Car_Controller is
    Car_Event_To_String : constant array (Car_Event_Type) of
       not null access constant String :=
       (Event_None_Str'Access,
+       Event_Garage_Mode_Switch_Turned_On_Str'Access,
+       Event_Garage_Mode_Switch_Turned_Off_Str'Access,
        Event_Trimpots_Wheel_Motor_Duty_Cycle_Switch_Turned_On_Str'Access,
        Event_Trimpots_Wheel_Motor_Duty_Cycle_Switch_Turned_Off_Str'Access,
        Event_Hill_Driving_Adjustment_Switch_Turned_On_Str'Access,
        Event_Hill_Driving_Adjustment_Switch_Turned_Off_Str'Access,
-       Event_Wheel_Differential_Mode_Switch_Turned_On_Str'Access,
-       Event_Wheel_Differential_Mode_Switch_Turned_Off_Str'Access,
        Event_Trimpot1_Changed_Str'Access,
        Event_Trimpot2_Changed_Str'Access,
        Event_Battery_Charge_Level_Changed_Str'Access,
@@ -209,9 +211,9 @@ package Car_Controller is
    --
    --  DIP switches masks
    --
+   Garage_Mode_DIP_Switch_Index : constant := 1;
    Trimpots_Wheel_Motor_Duty_Cycle_DIP_Switch_Index : constant := 2;
    Hill_Driving_Adjustment_DIP_Switch_Index : constant := 3;
-   Wheel_Differential_DIP_Switch_Index : constant := 4;
 
    function Get_Car_State return Car_State_Type;
 
@@ -249,6 +251,10 @@ private
    type Driving_Log_Type is array (0 .. Driving_Log_Entry_Index_Type'Last) of
       Driving_Log_Entry_Type;
 
+   type Track_Edge_Tracing_State_Type is (No_Track_Edge_Detected,
+                                         Following_Left_Track_Edge,
+                                         Following_Right_Track_Edge);
+
    type Car_Controller_Type;
 
    --
@@ -259,7 +265,8 @@ private
      with Priority => System.Priority'Last - 2; -- High priority
 
    type Camera_Frame_Derivative_Type is
-      array (TFC_Line_Scan_Camera.TFC_Camera_Frame_Pixel_Index_Type) of Float;
+      array (TFC_Line_Scan_Camera.TFC_Camera_Frame_Pixel_Index_Type range <>)
+      of Float;
 
    --
    --  Car controller object type
@@ -271,28 +278,28 @@ private
       Config_Parameters : App_Configuration.Config_Parameters_Type;
       Outstanding_Events : Pending_Car_Events_Type := (others => False);
       Camera_Frame : TFC_Line_Scan_Camera.TFC_Camera_Frame_Type;
-      Camera_Frame_Derivative : Camera_Frame_Derivative_Type;
+      Filtered_Camera_Frame : TFC_Line_Scan_Camera.TFC_Camera_Frame_Type;
+      Camera_Frame_Derivative :
+         Camera_Frame_Derivative_Type (TFC_Camera_Frame_Pixel_Index_Type);
       Car_States_History : Unsigned_64 := 0;
       Received_Car_Events_History : Unsigned_64 := 0;
       Ignored_Car_Events_History : Unsigned_64 := 0;
       Steering_States_History : Unsigned_64 := 0;
       Steering_State : Car_Steering_State_Type;
-      Prev_Steering_State : Car_Steering_State_Type := Steering_None;
       Last_Steering_State_Occurrences : Unsigned_8 := 0;
       Dump_Camera_Frame_On : Boolean := False;
       Plot_Camera_Frame_On : Boolean := False;
       Trimpots_Wheel_Motor_Duty_Cycle_On : Boolean := False;
       Hill_Driving_Adjustment_On : Boolean := False;
-      Wheel_Differential_On : Boolean := False;
       Trimpot1_Setting : Unsigned_8 := Unsigned_8'Last;
       Trimpot2_Setting : Unsigned_8 := Unsigned_8'Last;
       Battery_Charge_Level : Unsigned_8 := 0;
       DIP_Switches : TFC_DIP_Switches.DIP_Switches_Type := (others => False);
       Camera_Frames_Count : Unsigned_32 := 0;
-      Track_Left_Edge_Pixel_Index : Unsigned_8 := Unsigned_8'Last;
-      Prev_Track_Left_Edge_Pixel_Index : Unsigned_8;
-      Track_Right_Edge_Pixel_Index : Unsigned_8 := Unsigned_8'Last;
-      Prev_Track_Right_Edge_Pixel_Index : Unsigned_8;
+      Track_Edge_Tracing_State : Track_Edge_Tracing_State_Type :=
+         No_Track_Edge_Detected;
+      Reference_Track_Edge_Pixel_Index : TFC_Camera_Frame_Pixel_Index_Type;
+      Current_Track_Edge_Pixel_Index : TFC_Camera_Frame_Pixel_Index_Type;
       Steering_Servo_Pwm_Duty_Cycle_Us :
          TFC_Steering_Servo.Servo_Pulse_Width_Us_Type;
       Car_Straight_Wheel_Motor_Pwm_Duty_Cycle_Us :

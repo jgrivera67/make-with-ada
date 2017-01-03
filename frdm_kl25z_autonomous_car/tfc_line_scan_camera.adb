@@ -125,6 +125,7 @@ package body TFC_Line_Scan_Camera is
       State : Frame_Capture_State_Type := Frame_Capture_Not_Started;
       Camera_ADC_Channel : Unsigned_8;
       Camera_Frame_Buffer : TFC_Camera_Frame_Type;
+      Camera_Frame_Captured : Boolean := False;
       Frames_Captured_Count : Unsigned_32 := 0;
       Remaining_Pixels_Count : Unsigned_8 range 0 .. TFC_Num_Camera_Pixels;
       Frame_Capture_Completed_Susp_Obj : Suspension_Object;
@@ -267,6 +268,8 @@ package body TFC_Line_Scan_Camera is
                end if;
             else
                Frame_Capture_Var.State := Frame_Capture_Finished;
+               --pragma Assert (not Frame_Capture_Var.Camera_Frame_Captured);
+               Frame_Capture_Var.Camera_Frame_Captured := True;
                Set_True (Frame_Capture_Var.Frame_Capture_Completed_Susp_Obj);
 
                pragma Assert (Frame_Capture_Var.Next_Piggybacked_AD_Conversion
@@ -332,8 +335,10 @@ package body TFC_Line_Scan_Camera is
    begin
       Suspend_Until_True (Frame_Capture_Var.Frame_Capture_Completed_Susp_Obj);
 
+      pragma Assert (Frame_Capture_Var.Camera_Frame_Captured);
       Int_Mask := Microcontroller.Arm_Cortex_M.Disable_Cpu_Interrupts;
       Camera_Frame := Frame_Capture_Var.Camera_Frame_Buffer;
+      Frame_Capture_Var.Camera_Frame_Captured := False;
       Microcontroller.Arm_Cortex_M.Restore_Cpu_Interrupts (Int_Mask);
    end Get_Next_Frame;
 
