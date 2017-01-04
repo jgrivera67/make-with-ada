@@ -56,7 +56,7 @@ package body App_Configuration is
        Float (TFC_Line_Scan_Camera.TFC_Num_Camera_Pixels)) * 16.0; --1.8;
 
    Default_Steering_Servo_Integral_Gain : constant Float :=
-      Default_Steering_Servo_Proportional_Gain * 0.01;
+      Default_Steering_Servo_Proportional_Gain * 0.4;
 
    Default_Steering_Servo_Derivative_Gain : constant Float := 0.0;
 
@@ -66,7 +66,7 @@ package body App_Configuration is
        Float (TFC_Line_Scan_Camera.TFC_Num_Camera_Pixels)) * 8.0; --/ 1.0; --3.0
 
    Default_Wheel_Differential_Integral_Gain : constant Float :=
-      Default_Wheel_Differential_Proportional_Gain * 0.00;
+      Default_Wheel_Differential_Proportional_Gain * 0.02;
 
    Default_Wheel_Differential_Derivative_Gain : constant Float := 0.0;
 

@@ -129,15 +129,19 @@ begin -- Drive_Car
    Car_Controller_Obj.PID_Integral_Term :=
       Car_Controller_Obj.PID_Integral_Term + PID_Error;
 
-   Offset_Steering_Servo_Pwm_Duty_Cycle :=
-      Integer (Float'Rounding (
-         PID_Params.Steering_Servo_Proportional_Gain *
-            Float (PID_Error) +
-         PID_Params.Steering_Servo_Integral_Gain *
-            Float (Car_Controller_Obj.PID_Integral_Term) +
-         PID_Params.Steering_Servo_Derivative_Gain *
-            Float (Derivative_Term)
-      ));
+   if PID_Error = 0 then
+      Offset_Steering_Servo_Pwm_Duty_Cycle := 0;
+   else
+      Offset_Steering_Servo_Pwm_Duty_Cycle :=
+         Integer (Float'Rounding (
+            PID_Params.Steering_Servo_Proportional_Gain *
+               Float (PID_Error) +
+            PID_Params.Steering_Servo_Integral_Gain *
+               Float (Car_Controller_Obj.PID_Integral_Term) +
+            PID_Params.Steering_Servo_Derivative_Gain *
+               Float (Derivative_Term)
+         ));
+   end if;
 
    if Offset_Steering_Servo_Pwm_Duty_Cycle > 0 then
       --

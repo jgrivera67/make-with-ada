@@ -284,8 +284,8 @@ begin -- Analyze_Camera_Frame
    --  frame
    --
    Moving_Average_Filter (Camera_Frame,
-                    Num_Filter_Points,
-                    Car_Controller_Obj.Filtered_Camera_Frame);
+                          Num_Filter_Points,
+                          Car_Controller_Obj.Filtered_Camera_Frame);
 
    Compute_Derivative (Car_Controller_Obj.Filtered_Camera_Frame,
                        Car_Controller_Obj.Camera_Frame_Derivative);
@@ -323,6 +323,8 @@ begin -- Analyze_Camera_Frame
          Car_Controller_Obj.Current_Track_Edge_Pixel_Index :=
             Track_Edge_Start_Index;
 
+         Car_Controller_Obj.Previous_PID_Error := 0;
+         Car_Controller_Obj.PID_Integral_Term := 0;
       when Following_Left_Track_Edge =>
          Track_Edge_Start_Index :=
             Find_Track_Left_Edge (Car_Controller_Obj.Camera_Frame_Derivative);
