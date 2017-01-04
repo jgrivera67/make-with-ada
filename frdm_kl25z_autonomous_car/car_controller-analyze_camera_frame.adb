@@ -26,10 +26,9 @@
 --
 
 separate (Car_Controller)
-function Analyze_Camera_Frame (
+procedure Analyze_Camera_Frame (
    Car_Controller_Obj : in out Car_Controller_Type;
    Camera_Frame : TFC_Line_Scan_Camera.TFC_Camera_Frame_Type)
-   return Boolean
 is
    procedure Compute_Derivative (
       Camera_Frame : TFC_Camera_Frame_Type;
@@ -284,7 +283,7 @@ begin -- Analyze_Camera_Frame
    --  frame and Camera_Frame'Last is the index of the right most pixel in the
    --  frame
    --
-   Gaussian_Filter (Camera_Frame,
+   Moving_Average_Filter (Camera_Frame,
                     Num_Filter_Points,
                     Car_Controller_Obj.Filtered_Camera_Frame);
 
@@ -315,7 +314,7 @@ begin -- Analyze_Camera_Frame
                Car_Controller_Obj.Track_Edge_Tracing_State :=
                   Following_Left_Track_Edge;
             else
-               return False;
+               return;
             end if;
          end if;
 
@@ -331,7 +330,7 @@ begin -- Analyze_Camera_Frame
          if Track_Edge_Start_Index = Camera_Frame'First then
             Car_Controller_Obj.Track_Edge_Tracing_State :=
                No_Track_Edge_Detected;
-            return False;
+            return;
          end if;
 
          Car_Controller_Obj.Current_Track_Edge_Pixel_Index :=
@@ -344,13 +343,10 @@ begin -- Analyze_Camera_Frame
          if Track_Edge_Start_Index = Camera_Frame'Last then
             Car_Controller_Obj.Track_Edge_Tracing_State :=
                No_Track_Edge_Detected;
-            return False;
+            return;
          end if;
 
          Car_Controller_Obj.Current_Track_Edge_Pixel_Index :=
             Track_Edge_Start_Index;
    end case;
-
-   return True; --???
-
 end Analyze_Camera_Frame;

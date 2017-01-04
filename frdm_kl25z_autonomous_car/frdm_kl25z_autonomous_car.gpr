@@ -1,8 +1,9 @@
+--with "../../embedded-runtimes/ravenscar-kinetis_kl25z_frdm/ravenscar_build.gpr";
 project frdm_kl25z_autonomous_car is
 
    for Languages use ("ada");
 
-   for Main use ("frdm_kl25z_autonomous_car.adb");
+   for Main use ("main.adb");
    for Source_Dirs use (".",
                         "../building_blocks/portable",
                         "../building_blocks/cpu_specific/arm_cortex_m0plus",
@@ -40,9 +41,11 @@ project frdm_kl25z_autonomous_car is
 
    package Builder is
       for Default_Switches ("ada") use ("-g", "-O0");
+      for Executable ("main.adb") use "frdm_kl25z_autonomous_car";
    end Builder;
 
    for Runtime ("Ada") use "ravenscar-sfp-kinetis_kl25z_frdm";
+   --for Runtime ("Ada") use Ravenscar_Build'Runtime ("Ada");
    for Target use "arm-eabi";
 
    package Ide is

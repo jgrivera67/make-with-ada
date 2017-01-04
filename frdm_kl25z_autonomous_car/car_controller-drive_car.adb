@@ -110,9 +110,14 @@ begin -- Drive_Car
    --  NOTE: right-most pixel index is TFC_Camera_Frame_Pixel_Index_Type'Last
    --  and left-most pixel index is TFC_Camera_Frame_Pixel_Index_Type'First
    --
-   PID_Error :=
-      Integer (Car_Controller_Obj.Current_Track_Edge_Pixel_Index) -
-      Integer (Car_Controller_Obj.Reference_Track_Edge_Pixel_Index);
+   if  Car_Controller_Obj.Track_Edge_Tracing_State = No_Track_Edge_Detected
+   then
+      PID_Error := 0;
+   else
+      PID_Error :=
+         Integer (Car_Controller_Obj.Current_Track_Edge_Pixel_Index) -
+         Integer (Car_Controller_Obj.Reference_Track_Edge_Pixel_Index);
+   end if;
 
    --if PID_Error <= Min_PID_Error then
    --   New_Steering_State := Car_Going_Straight;

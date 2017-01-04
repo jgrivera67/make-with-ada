@@ -86,10 +86,9 @@ package body Car_Controller is
                 others => <>)
      );
 
-   function  Analyze_Camera_Frame (
+   procedure Analyze_Camera_Frame (
       Car_Controller_Obj : in out Car_Controller_Type;
-      Camera_Frame : TFC_Line_Scan_Camera.TFC_Camera_Frame_Type)
-      return Boolean;
+      Camera_Frame : TFC_Line_Scan_Camera.TFC_Camera_Frame_Type);
 
    function Calculate_Steering_Servo_Pwm_Duty_Cycle_Us_From_Trimpot (
                Trimpot_Setting : Unsigned_8)
@@ -101,9 +100,7 @@ package body Car_Controller is
 
    procedure Clear_Car_Event (Event : Car_Event_Type);
 
-   procedure Drive_Car (Car_Controller_Obj : in out Car_Controller_Type)
-      with Pre => Car_Controller_Obj.Track_Edge_Tracing_State /=
-                  No_Track_Edge_Detected;
+   procedure Drive_Car (Car_Controller_Obj : in out Car_Controller_Type);
 
    procedure Enter_Garage_Mode;
    procedure Exit_Garage_Mode;
@@ -142,10 +139,10 @@ package body Car_Controller is
    -- Analyze_Camera_Frame --
    --------------------------
 
-   function Analyze_Camera_Frame (
+   procedure Analyze_Camera_Frame (
       Car_Controller_Obj : in out Car_Controller_Type;
       Camera_Frame : TFC_Line_Scan_Camera.TFC_Camera_Frame_Type)
-      return Boolean is separate;
+      is separate;
 
    -------------------------------------------------------------
    -- Calculate_Steering_Servo_Pwm_Duty_Cycle_Us_From_Trimpot --
@@ -270,15 +267,13 @@ package body Car_Controller is
 
    procedure Garage_Mode_Process_Camera_Frame
    is
-      Analyze_Ok : Boolean with Unreferenced;
       Str_Buffer : String (1 .. 12);
       Str_Length : Positive;
       Track_Left_Edge_Pixel_Index : TFC_Camera_Frame_Pixel_Index_Type;
       Track_Right_Edge_Pixel_Index : TFC_Camera_Frame_Pixel_Index_Type;
    begin
-      Analyze_Ok := Analyze_Camera_Frame (
-                       Car_Controller_Obj,
-                       Car_Controller_Obj.Camera_Frame);
+      Analyze_Camera_Frame (Car_Controller_Obj,
+                            Car_Controller_Obj.Camera_Frame);
 
       Serial_Console.Lock;
       Unsigned_To_Decimal_String (Car_Controller_Obj.Camera_Frames_Count,
@@ -917,7 +912,6 @@ package body Car_Controller is
 
    procedure State_Car_Controller_On_Event_Handler (Car_Event : Car_Event_Type)
    is
-      Analyze_Ok : Boolean;
    begin
       --???
       --if not Car_Controller_Obj.Trimpots_Wheel_Motor_Duty_Cycle_On then
@@ -937,18 +931,13 @@ package body Car_Controller is
             Set_Car_State (Car_Off);
 
          when Event_Camera_Frame_Received =>
-            Analyze_Ok := Analyze_Camera_Frame (
-                             Car_Controller_Obj,
-                             Car_Controller_Obj.Camera_Frame);
-            if not Analyze_Ok then
-               Turn_Off_Car_Controller (Color_Led.Red);
-               Set_Car_State (Car_Off);
-               return;
-            end if;
+            Analyze_Camera_Frame (Car_Controller_Obj,
+                                  Car_Controller_Obj.Camera_Frame);
 
             if Car_Controller_Obj.Track_Finish_Line_Detected then
                Turn_Off_Car_Controller (Color_Led.Blue);
                Set_Car_State (Car_Off);
+               return;
             end if;
 
             --
