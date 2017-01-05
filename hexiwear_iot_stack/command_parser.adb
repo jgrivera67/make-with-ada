@@ -78,7 +78,7 @@ package body Command_Parser is
    -- ** --
 
    procedure Cmd_Print_Help
-     with Pre => Serial_Console.Is_Locked is
+     with Pre => Serial_Console.Is_Lock_Mine is
    begin
       Serial_Console.Print_String(Help_Msg);
    end Cmd_Print_Help;

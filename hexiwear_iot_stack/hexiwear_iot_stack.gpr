@@ -1,8 +1,10 @@
+with "../../embedded-runtimes/ravenscar-kinetis_k64f_hexiwear/ravenscar_build.gpr";
+
 project hexiwear_iot_stack is
 
    for Languages use ("ada");
 
-   for Main use ("hexiwear_iot_stack.adb");
+   for Main use ("main.adb");
    for Source_Dirs use (".",
                         "../building_blocks/portable",
                         "../building_blocks/cpu_specific/arm_cortex_m4",
@@ -36,9 +38,11 @@ project hexiwear_iot_stack is
 
    package Builder is
       for Default_Switches ("ada") use ("-g", "-O0");
+      for Executable ("main.adb") use "hexiwear_iot_stack";
    end Builder;
 
-   for Runtime ("Ada") use "ravenscar-sfp-kinetis_k64f_hexiwear";
+   --for Runtime ("Ada") use "ravenscar-sfp-kinetis_k64f_hexiwear";
+   for Runtime ("Ada") use Ravenscar_Build'Runtime ("Ada");
    for Target use "arm-eabi";
 
    package Ide is

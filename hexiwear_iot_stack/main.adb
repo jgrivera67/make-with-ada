@@ -40,7 +40,7 @@ with Ada.Real_Time;
 with Last_Chance_Handler;
 pragma Unreferenced (Last_Chance_Handler);
 
-procedure Hexiwear_Iot_Stack is
+procedure Main is
    pragma Priority (System.Priority'First + 2);
 
    procedure Log_Start_Info is
@@ -96,4 +96,4 @@ begin -- Hexiwear_Iot_Stack
    loop
       Command_Parser.Parse_Command;
    end loop;
-end Hexiwear_Iot_Stack;
+end Main;
