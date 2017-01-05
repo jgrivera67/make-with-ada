@@ -304,6 +304,8 @@ begin -- Analyze_Camera_Frame
          if Track_Edge_Start_Index < Camera_Frame'Last then
             Car_Controller_Obj.Track_Edge_Tracing_State :=
                Following_Right_Track_Edge;
+            Car_Controller_Obj.Reference_Track_Edge_Pixel_Index :=
+               Camera_Frame'Last;
          else
             Track_Edge_Start_Index :=
                Find_Track_Left_Edge (
@@ -313,15 +315,15 @@ begin -- Analyze_Camera_Frame
             if Track_Edge_Start_Index > Camera_Frame'First then
                Car_Controller_Obj.Track_Edge_Tracing_State :=
                   Following_Left_Track_Edge;
+               Car_Controller_Obj.Reference_Track_Edge_Pixel_Index :=
+                  Camera_Frame'First;
             else
                return;
             end if;
          end if;
 
-         Car_Controller_Obj.Reference_Track_Edge_Pixel_Index :=
-            Track_Edge_Start_Index;
          Car_Controller_Obj.Current_Track_Edge_Pixel_Index :=
-            Track_Edge_Start_Index;
+            Track_Edge_Start_Index; --??? move tihs after the case
 
          Car_Controller_Obj.Previous_PID_Error := 0;
          Car_Controller_Obj.PID_Integral_Term := 0;
