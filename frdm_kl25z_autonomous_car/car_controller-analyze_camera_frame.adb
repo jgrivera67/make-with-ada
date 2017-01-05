@@ -43,13 +43,6 @@ is
       Frame_Derivative : Camera_Frame_Derivative_Type)
       return TFC_Camera_Frame_Pixel_Index_Type;
 
-   procedure Gaussian_Filter (
-      Raw_Camera_Frame : TFC_Camera_Frame_Type;
-      Num_Filter_Points : Positive;
-      Filtered_Camera_Frame : out TFC_Camera_Frame_Type)
-      with Pre => Raw_Camera_Frame'Length >= Num_Filter_Points and
-                  Num_Filter_Points mod 2 /= 0;
-
    procedure Moving_Average_Filter (
       Raw_Camera_Frame : TFC_Camera_Frame_Type;
       Num_Filter_Points : Positive;
@@ -179,38 +172,6 @@ is
       return Track_Edge_Start_Index;
    end Find_Track_Right_Edge;
 
-   ---------------------
-   -- Gaussian_Filter --
-   ---------------------
-
-   procedure Gaussian_Filter (
-      Raw_Camera_Frame : TFC_Camera_Frame_Type;
-      Num_Filter_Points : Positive;
-      Filtered_Camera_Frame : out TFC_Camera_Frame_Type)
-   is
-      Temp_Camera_Frame : TFC_Camera_Frame_Type;
-   begin
-      --
-      --  Implementation of the Gausian filter with a 4-pass moving average
-      --  filter
-      --
-      Moving_Average_Filter (Raw_Camera_Frame,
-                             Num_Filter_Points,
-                             Temp_Camera_Frame);
-
-      Moving_Average_Filter (Temp_Camera_Frame,
-                             Num_Filter_Points,
-                             Filtered_Camera_Frame);
-
-      Moving_Average_Filter (Filtered_Camera_Frame,
-                             Num_Filter_Points,
-                             Temp_Camera_Frame);
-
-      Moving_Average_Filter (Temp_Camera_Frame,
-                             Num_Filter_Points,
-                             Filtered_Camera_Frame);
-   end Gaussian_Filter;
-
    ---------------------------
    -- Moving_Average_Filter --
    ---------------------------
@@ -322,11 +283,9 @@ begin -- Analyze_Camera_Frame
             end if;
          end if;
 
-         Car_Controller_Obj.Current_Track_Edge_Pixel_Index :=
-            Track_Edge_Start_Index; --??? move tihs after the case
-
          Car_Controller_Obj.Previous_PID_Error := 0;
          Car_Controller_Obj.PID_Integral_Term := 0;
+
       when Following_Left_Track_Edge =>
          Track_Edge_Start_Index :=
             Find_Track_Left_Edge (Car_Controller_Obj.Camera_Frame_Derivative);
@@ -337,9 +296,6 @@ begin -- Analyze_Camera_Frame
             return;
          end if;
 
-         Car_Controller_Obj.Current_Track_Edge_Pixel_Index :=
-            Track_Edge_Start_Index;
-
       when Following_Right_Track_Edge =>
          Track_Edge_Start_Index :=
             Find_Track_Right_Edge (Car_Controller_Obj.Camera_Frame_Derivative);
@@ -349,8 +305,9 @@ begin -- Analyze_Camera_Frame
                No_Track_Edge_Detected;
             return;
          end if;
-
-         Car_Controller_Obj.Current_Track_Edge_Pixel_Index :=
-            Track_Edge_Start_Index;
    end case;
+
+   Car_Controller_Obj.Current_Track_Edge_Pixel_Index :=
+      Track_Edge_Start_Index;
+
 end Analyze_Camera_Frame;

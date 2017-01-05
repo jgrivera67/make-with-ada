@@ -913,18 +913,6 @@ package body Car_Controller is
    procedure State_Car_Controller_On_Event_Handler (Car_Event : Car_Event_Type)
    is
    begin
-      --???
-      --if not Car_Controller_Obj.Trimpots_Wheel_Motor_Duty_Cycle_On then
-      --   Car_Controller_Obj.Car_Straight_Wheel_Motor_Pwm_Duty_Cycle_Us :=
-      --      Car_Controller_Obj.Config_Parameters.
-      --         Car_Straight_Wheel_Motor_Duty_Cycle;
-      --
-      --   Car_Controller_Obj.Car_Turning_Wheel_Motor_Pwm_Duty_Cycle_Us :=
-      --      Car_Controller_Obj.Config_Parameters.
-      --         Car_Turning_Wheel_Motor_Duty_Cycle;
-      --end if;
-      --???
-
       case Car_Event is
          when Event_Turn_Off_Car_Button_Pressed =>
             Turn_Off_Car_Controller (Color_Led.Blue);

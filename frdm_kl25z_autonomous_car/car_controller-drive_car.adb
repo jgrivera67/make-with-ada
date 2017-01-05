@@ -88,7 +88,6 @@ is
 
    -- ** --
 
-   --Min_PID_Error : constant Integer := 3;
    PID_Params : App_Configuration.Config_Parameters_Type renames
       Car_Controller_Obj.Config_Parameters;
    PID_Error : Integer;
@@ -118,11 +117,6 @@ begin -- Drive_Car
          Integer (Car_Controller_Obj.Current_Track_Edge_Pixel_Index) -
          Integer (Car_Controller_Obj.Reference_Track_Edge_Pixel_Index);
    end if;
-
-   --if PID_Error <= Min_PID_Error then
-   --   New_Steering_State := Car_Going_Straight;
-   --   PID_Error := 0;
-   --end if;
 
    Derivative_Term := PID_Error - Car_Controller_Obj.Previous_PID_Error;
    Car_Controller_Obj.Previous_PID_Error := PID_Error;
