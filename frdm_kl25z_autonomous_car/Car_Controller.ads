@@ -277,8 +277,10 @@ private
       Track_Finish_Line_Detected : Boolean := False;
       Config_Parameters : App_Configuration.Config_Parameters_Type;
       Outstanding_Events : Pending_Car_Events_Type := (others => False);
-      Camera_Frame : TFC_Line_Scan_Camera.TFC_Camera_Frame_Type;
-      Filtered_Camera_Frame : TFC_Line_Scan_Camera.TFC_Camera_Frame_Type;
+      Camera_Frame :
+         TFC_Camera_Frame_Type (TFC_Camera_Frame_Pixel_Index_Type);
+      Filtered_Camera_Frame :
+         TFC_Camera_Frame_Type (TFC_Camera_Frame_Pixel_Index_Type);
       Camera_Frame_Derivative :
          Camera_Frame_Derivative_Type (TFC_Camera_Frame_Pixel_Index_Type);
       Car_States_History : Unsigned_64 := 0;
@@ -300,6 +302,7 @@ private
          No_Track_Edge_Detected;
       Reference_Track_Edge_Pixel_Index : TFC_Camera_Frame_Pixel_Index_Type;
       Current_Track_Edge_Pixel_Index : TFC_Camera_Frame_Pixel_Index_Type;
+      Reference_Total_White_Area : Natural := 0;
       Steering_Servo_Pwm_Duty_Cycle_Us :
          TFC_Steering_Servo.Servo_Pulse_Width_Us_Type;
       Car_Straight_Wheel_Motor_Pwm_Duty_Cycle_Us :

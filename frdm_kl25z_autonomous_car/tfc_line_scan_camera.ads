@@ -52,7 +52,7 @@ package TFC_Line_Scan_Camera is
    --  The right most pixel correspond to TFC_Camera_Frame_Type'Last
    --
    type TFC_Camera_Frame_Type is
-      array (TFC_Camera_Frame_Pixel_Index_Type) of Unsigned_8;
+      array (TFC_Camera_Frame_Pixel_Index_Type range <>) of Unsigned_8;
 
    --
    --  ADC conversion piggy-backed during the sequential ADC conversions
@@ -82,12 +82,6 @@ package TFC_Line_Scan_Camera is
       Piggybacked_AD_Conversion_Array_Ptr :
          Piggybacked_AD_Conversion_Array_Access_Type)
       with Pre => not Initialized;
-
-   procedure Start_Frame_Capture
-      with Pre => Initialized;
-
-   procedure Stop_Frame_Capture
-      with Pre => Initialized;
 
    procedure Get_Next_Frame (Camera_Frame : out TFC_Camera_Frame_Type)
       with Pre => Initialized;

@@ -101,6 +101,7 @@ is
       TFC_Wheel_Motors.Motor_Pulse_Width_Us_Type;
    Right_Wheel_Motor_Pwm_Duty_Cycle_Us :
       TFC_Wheel_Motors.Motor_Pulse_Width_Us_Type;
+   Actuators_Delay_Ms : Natural;
 
 begin -- Drive_Car
    --
@@ -213,7 +214,7 @@ begin -- Drive_Car
    --
    --  Send commands to actuators:
    --
-
+   Actuators_Delay_Ms := 0;
    if Car_Controller_Obj.Steering_Servo_Pwm_Duty_Cycle_Us /=
       Steering_Servo_Pwm_Duty_Cycle_Us
    then
@@ -221,6 +222,8 @@ begin -- Drive_Car
 
       Car_Controller_Obj.Steering_Servo_Pwm_Duty_Cycle_Us :=
          Steering_Servo_Pwm_Duty_Cycle_Us;
+
+      Actuators_Delay_Ms := TFC_Steering_Servo.Servo_PWM_Period_Us / 1000;
    end if;
 
    if Car_Controller_Obj.Left_Wheel_Motor_Pwm_Duty_Cycle_Us /=
@@ -236,8 +239,15 @@ begin -- Drive_Car
          Left_Wheel_Motor_Pwm_Duty_Cycle_Us;
       Car_Controller_Obj.Right_Wheel_Motor_Pwm_Duty_Cycle_Us :=
          Right_Wheel_Motor_Pwm_Duty_Cycle_Us;
+
+      if Actuators_Delay_Ms = 0 then
+         Actuators_Delay_Ms := TFC_Wheel_Motors.Motor_PWM_Period_Us / 1000;
+      end if;
    end if;
 
+   if Actuators_Delay_Ms /= 0 then
+      delay until Clock + Milliseconds (Actuators_Delay_Ms);
+   end if;
    --
    --  Capture driving log entry:
    --

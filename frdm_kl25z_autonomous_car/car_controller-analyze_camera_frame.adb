@@ -30,10 +30,15 @@ procedure Analyze_Camera_Frame (
    Car_Controller_Obj : in out Car_Controller_Type;
    Camera_Frame : TFC_Line_Scan_Camera.TFC_Camera_Frame_Type)
 is
-   procedure Compute_Derivative (
+
+   procedure Compute_Frame_Derivative (
       Camera_Frame : TFC_Camera_Frame_Type;
       Frame_Derivative : out Camera_Frame_Derivative_Type)
-      with Pre => Camera_Frame'Length >= 2;
+      with Pre => Camera_Frame'Last - Camera_Frame'First >= 1;
+
+   function Compute_Frame_Fragment_Integral (
+      Frame_Fragment : TFC_Camera_Frame_Type) return Natural
+      with Pre => Camera_Frame'Last - Camera_Frame'First >= 1;
 
    function Find_Track_Left_Edge (
       Frame_Derivative : Camera_Frame_Derivative_Type)
@@ -47,14 +52,20 @@ is
       Raw_Camera_Frame : TFC_Camera_Frame_Type;
       Num_Filter_Points : Positive;
       Filtered_Camera_Frame : out TFC_Camera_Frame_Type)
-      with Pre => Raw_Camera_Frame'Length >= Num_Filter_Points and
+      with Pre => Raw_Camera_Frame'First = Filtered_Camera_Frame'First
+                  and
+                  Raw_Camera_Frame'Last = Filtered_Camera_Frame'Last
+                  and
+                  Positive (Raw_Camera_Frame'Last -
+                            Raw_Camera_Frame'First + 1) >= Num_Filter_Points
+                  and
                   Num_Filter_Points mod 2 /= 0;
 
-   ------------------------
-   -- Compute_Derivative --
-   ------------------------
+   ------------------------------
+   -- Compute_Frame_Derivative --
+   ------------------------------
 
-   procedure Compute_Derivative (
+   procedure Compute_Frame_Derivative (
       Camera_Frame : TFC_Camera_Frame_Type;
       Frame_Derivative : out Camera_Frame_Derivative_Type)
    is
@@ -78,7 +89,23 @@ is
       Frame_Derivative (Frame_Derivative'Last) :=
          Float (Integer (Camera_Frame (Camera_Frame'Last)) -
                 Integer (Camera_Frame (Camera_Frame'Last - 1))) / 2.0;
-   end Compute_Derivative;
+   end Compute_Frame_Derivative;
+
+   -------------------------------------
+   -- Compute_Frame_Fragment_Integral --
+   -------------------------------------
+
+   function Compute_Frame_Fragment_Integral (
+      Frame_Fragment : TFC_Camera_Frame_Type) return Natural
+   is
+      Sum : Natural := 0;
+   begin
+      for X in Frame_Fragment'First .. Frame_Fragment'Last loop
+         Sum := Sum + Natural (Frame_Fragment (X));  -- X delta is 1
+      end loop;
+
+      return Sum;
+   end Compute_Frame_Fragment_Integral;
 
    --------------------------
    -- Find_Track_Left_Edge --
@@ -195,9 +222,9 @@ is
       --  TODO: Optimize the algorithm below to avoid redundant calculations
       --  by using the recurrence equation 15-3.
       --
-      for I in Integer (TFC_Camera_Frame_Type'First) + Half_Num_Filter_Points
+      for I in Integer (Raw_Camera_Frame'First) + Half_Num_Filter_Points
                ..
-               Integer (TFC_Camera_Frame_Type'Last) - Half_Num_Filter_Points
+               Integer (Raw_Camera_Frame'Last) - Half_Num_Filter_Points
       loop
          Sum := 0;
          for J in -Half_Num_Filter_Points .. Half_Num_Filter_Points loop
@@ -208,20 +235,20 @@ is
             Unsigned_8 (Sum / Num_Filter_Points);
       end loop;
 
-      for I in Integer (TFC_Camera_Frame_Type'First) ..
-               Integer (TFC_Camera_Frame_Type'First) +
+      for I in Integer (Filtered_Camera_Frame'First) ..
+               Integer (Filtered_Camera_Frame'First) +
                   Half_Num_Filter_Points - 1 loop
          Filtered_Camera_Frame (Unsigned_8 (I)) :=
-            Filtered_Camera_Frame (TFC_Camera_Frame_Type'First +
+            Filtered_Camera_Frame (Filtered_Camera_Frame'First +
                                    Unsigned_8 (Half_Num_Filter_Points));
       end loop;
 
-      for I in Integer (TFC_Camera_Frame_Type'Last) -
+      for I in Integer (Filtered_Camera_Frame'Last) -
                   Half_Num_Filter_Points + 1
                ..
-               Integer (TFC_Camera_Frame_Type'Last) loop
+               Integer (Filtered_Camera_Frame'Last) loop
          Filtered_Camera_Frame (Unsigned_8 (I)) :=
-            Filtered_Camera_Frame (TFC_Camera_Frame_Type'Last -
+            Filtered_Camera_Frame (Filtered_Camera_Frame'Last -
                                    Unsigned_8 (Half_Num_Filter_Points));
       end loop;
 
@@ -237,6 +264,8 @@ is
       (TFC_Camera_Frame_Pixel_Index_Type'First +
        TFC_Camera_Frame_Pixel_Index_Type'Last) / 2;
    Track_Edge_Start_Index : TFC_Camera_Frame_Pixel_Index_Type;
+   Left_Half_Area : Natural;
+   Right_Half_Area : Natural;
 
 begin -- Analyze_Camera_Frame
    --
@@ -248,8 +277,8 @@ begin -- Analyze_Camera_Frame
                           Num_Filter_Points,
                           Car_Controller_Obj.Filtered_Camera_Frame);
 
-   Compute_Derivative (Car_Controller_Obj.Filtered_Camera_Frame,
-                       Car_Controller_Obj.Camera_Frame_Derivative);
+   Compute_Frame_Derivative (Car_Controller_Obj.Filtered_Camera_Frame,
+                             Car_Controller_Obj.Camera_Frame_Derivative);
 
    case Car_Controller_Obj.Track_Edge_Tracing_State is
       when No_Track_Edge_Detected =>
@@ -279,7 +308,50 @@ begin -- Analyze_Camera_Frame
                Car_Controller_Obj.Reference_Track_Edge_Pixel_Index :=
                   Camera_Frame'First;
             else
-               return;
+               --
+               --  Fall back to try to detect one of the tow edges of the
+               --  track, by comparing the amount of "white" in each of the
+               --  two halves of the camera frame
+               --
+               Left_Half_Area :=
+                  Compute_Frame_Fragment_Integral (
+                     Car_Controller_Obj.Filtered_Camera_Frame (
+                        Camera_Frame'First .. Middle_Pixel_Index));
+
+               Right_Half_Area :=
+                  Compute_Frame_Fragment_Integral (
+                     Car_Controller_Obj.Filtered_Camera_Frame (
+                        Middle_Pixel_Index .. Camera_Frame'Last));
+
+               if Car_Controller_Obj.Reference_Total_White_Area = 0 then
+                  Car_Controller_Obj.Reference_Total_White_Area :=
+                     Left_Half_Area + Right_Half_Area;
+               elsif Left_Half_Area + Right_Half_Area <
+                        Car_Controller_Obj.Reference_Total_White_Area / 4
+               then
+                  Car_Controller_Obj.Track_Finish_Line_Detected := True;
+                  return;
+               end if;
+
+               if Right_Half_Area < Left_Half_Area / 4 then
+                  Car_Controller_Obj.Track_Edge_Tracing_State :=
+                     Following_Right_Track_Edge;
+                  Car_Controller_Obj.Reference_Track_Edge_Pixel_Index :=
+                     Camera_Frame'Last;
+
+                  --  Cause a hard-right steering:
+                  Track_Edge_Start_Index := Middle_Pixel_Index - 1;
+               elsif Left_Half_Area < Right_Half_Area / 4 then
+                  Car_Controller_Obj.Track_Edge_Tracing_State :=
+                     Following_Left_Track_Edge;
+                  Car_Controller_Obj.Reference_Track_Edge_Pixel_Index :=
+                     Camera_Frame'First;
+
+                  --  Cause a hard-left steering:
+                  Track_Edge_Start_Index := Middle_Pixel_Index + 1;
+               else
+                  return;
+               end if;
             end if;
          end if;
 
@@ -291,9 +363,24 @@ begin -- Analyze_Camera_Frame
             Find_Track_Left_Edge (Car_Controller_Obj.Camera_Frame_Derivative);
 
          if Track_Edge_Start_Index = Camera_Frame'First then
-            Car_Controller_Obj.Track_Edge_Tracing_State :=
-               No_Track_Edge_Detected;
-            return;
+            Left_Half_Area :=
+               Compute_Frame_Fragment_Integral (
+                  Car_Controller_Obj.Filtered_Camera_Frame (
+                     Camera_Frame'First .. Middle_Pixel_Index));
+
+            Right_Half_Area :=
+               Compute_Frame_Fragment_Integral (
+                  Car_Controller_Obj.Filtered_Camera_Frame (
+                     Middle_Pixel_Index .. Camera_Frame'Last));
+
+            if Left_Half_Area < Right_Half_Area / 2 then
+               --  Cause a hard-left steering:
+               Track_Edge_Start_Index := Middle_Pixel_Index + 1;
+            else
+               Car_Controller_Obj.Track_Edge_Tracing_State :=
+                  No_Track_Edge_Detected;
+               return;
+            end if;
          end if;
 
       when Following_Right_Track_Edge =>
@@ -301,9 +388,24 @@ begin -- Analyze_Camera_Frame
             Find_Track_Right_Edge (Car_Controller_Obj.Camera_Frame_Derivative);
 
          if Track_Edge_Start_Index = Camera_Frame'Last then
-            Car_Controller_Obj.Track_Edge_Tracing_State :=
-               No_Track_Edge_Detected;
-            return;
+            Left_Half_Area :=
+               Compute_Frame_Fragment_Integral (
+                  Car_Controller_Obj.Filtered_Camera_Frame (
+                     Camera_Frame'First .. Middle_Pixel_Index));
+
+            Right_Half_Area :=
+               Compute_Frame_Fragment_Integral (
+                  Car_Controller_Obj.Filtered_Camera_Frame (
+                     Middle_Pixel_Index .. Camera_Frame'Last));
+
+            if Right_Half_Area < Left_Half_Area / 2 then
+               --  Cause a hard-right steering:
+               Track_Edge_Start_Index := Middle_Pixel_Index - 1;
+            else
+               Car_Controller_Obj.Track_Edge_Tracing_State :=
+                  No_Track_Edge_Detected;
+               return;
+            end if;
          end if;
    end case;
 

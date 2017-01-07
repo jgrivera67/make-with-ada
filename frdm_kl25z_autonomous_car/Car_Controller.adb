@@ -237,8 +237,6 @@ package body Car_Controller is
       Car_Controller_Obj.Trimpot2_Setting := Unsigned_8'Last;
       Car_Controller_Obj.Battery_Charge_Level := 0;
       Car_Controller_Obj.Track_Edge_Tracing_State := No_Track_Edge_Detected;
-
-      TFC_Line_Scan_Camera.Start_Frame_Capture;
       Old_Color := Color_Led.Set_Color (Color_Led.Cyan);
    end Enter_Garage_Mode;
 
@@ -923,7 +921,7 @@ package body Car_Controller is
                                   Car_Controller_Obj.Camera_Frame);
 
             if Car_Controller_Obj.Track_Finish_Line_Detected then
-               Turn_Off_Car_Controller (Color_Led.Blue);
+               Turn_Off_Car_Controller (Color_Led.Red);
                Set_Car_State (Car_Off);
                return;
             end if;
@@ -1072,7 +1070,6 @@ package body Car_Controller is
    begin
       pragma Assert (Car_Controller_Obj.Car_State /= Car_Off);
 
-      TFC_Line_Scan_Camera.Stop_Frame_Capture;
       TFC_Battery_LEDs.Set_LEDs (0);
       TFC_Wheel_Motors.Set_PWM_Duty_Cycles (
          TFC_Wheel_Motors.Motor_Stopped_Duty_Cycle_Us,
@@ -1101,6 +1098,7 @@ package body Car_Controller is
       Car_Controller_Obj.Steering_States_History := 0;
       Car_Controller_Obj.Previous_PID_Error := 0;
       Car_Controller_Obj.PID_Integral_Term := 0;
+      Car_Controller_Obj.Reference_Total_White_Area := 0;
 
       TFC_Wheel_Motors.Set_PWM_Duty_Cycles (
          TFC_Wheel_Motors.Motor_Stopped_Duty_Cycle_Us,
@@ -1147,8 +1145,6 @@ package body Car_Controller is
          Car_Controller_Obj.DIP_Switches (
             Hill_Driving_Adjustment_DIP_Switch_Index);
 
-      TFC_Line_Scan_Camera.Start_Frame_Capture;
-
       --
       --  Initialize driving log:
       --
@@ -1184,11 +1180,6 @@ package body Car_Controller is
       Runtime_Logs.Info_Print ("Car Controller task started");
 
       loop
-         --
-         --  Wait until the next camera frame is available:
-         --
-         --  NOTE: This wait has to be at least Max_Actuators_Latency_Ms
-         --
          if Car_Controller_Obj.Car_State /= Car_Off then
             TFC_Line_Scan_Camera.Get_Next_Frame (
                Car_Controller_Obj.Camera_Frame);

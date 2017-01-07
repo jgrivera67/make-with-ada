@@ -25,28 +25,17 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with Periodic_Timer_Driver;
 with Ada.Synchronous_Task_Control;
 with Gpio_Driver;
 with Pin_Mux_Driver;
-with Microcontroller.Arm_Cortex_M;
+with Ada.Real_Time;--???
 
 package body TFC_Line_Scan_Camera is
    pragma SPARK_Mode (Off);
    use Ada.Synchronous_Task_Control;
    use Gpio_Driver;
    use Pin_Mux_Driver;
-
-   --
-   --  Periodic timer device used to capture camera frames
-   --
-   Frame_Capture_Timer_Id : constant Periodic_Timer_Device_Id_Type :=
-      Periodic_Timer0;
-
-   --
-   --  Deadline (in milliseconds) to capture the next Line-scan camera frame
-   --
-   Frame_Capture_Period_Ms : constant := 20;
+   use Ada.Real_Time;
 
    --
    --  States of capturing camera frames
@@ -57,11 +46,6 @@ package body TFC_Line_Scan_Camera is
                                      Frame_Capture_SI_Low_Clk_High,
                                      Frame_Capture_SI_Low_Clk_Low,
                                      Frame_Capture_Finished);
-
-   type Ping_Pong_Frame_Buffer_Id_Type is mod 2;
-
-   type Ping_Pong_Frame_Buffers_Type is
-      array (Ping_Pong_Frame_Buffer_Id_Type) of aliased TFC_Camera_Frame_Type;
 
    --
    --  Camera frame capture constant object type
@@ -124,8 +108,9 @@ package body TFC_Line_Scan_Camera is
       ADC_Device_Id : ADC_Device_Id_Type;
       State : Frame_Capture_State_Type := Frame_Capture_Not_Started;
       Camera_ADC_Channel : Unsigned_8;
-      Camera_Frame_Buffer : TFC_Camera_Frame_Type;
-      Camera_Frame_Captured : Boolean := False;
+      Camera_Frame_Buffer :
+         TFC_Camera_Frame_Type (TFC_Camera_Frame_Pixel_Index_Type);
+      Camera_Frame_Captured : Boolean := False with Volatile;
       Frames_Captured_Count : Unsigned_32 := 0;
       Remaining_Pixels_Count : Unsigned_8 range 0 .. TFC_Num_Camera_Pixels;
       Frame_Capture_Completed_Susp_Obj : Suspension_Object;
@@ -136,12 +121,6 @@ package body TFC_Line_Scan_Camera is
    end record;
 
    Frame_Capture_Var : aliased Frame_Capture_Var_Type;
-
-   --
-   --  Periodic timer channel used to capture camera frames
-   --
-   Frame_Capture_Timer_Channel_Id :
-      constant Periodic_Timer_Driver.Periodic_Timer_Channel_Id_Type := 0;
 
    procedure AD_Conversion_Completion_Callback (ADC_Reading : Unsigned_16);
    --
@@ -155,9 +134,11 @@ package body TFC_Line_Scan_Camera is
    --  Completes a piggybacked A/D conversion
    --
 
-   procedure Periodic_Timer_Callback;
+   procedure Start_Frame_Capture
+      with Pre => Initialized and then
+           not Frame_Capture_Var.Camera_Frame_Captured;
    --
-   --  Triggers A/D conversions
+   --  Start capture of a camera frame
    --
 
    procedure Start_Piggybacked_AD_Conversion (
@@ -268,9 +249,18 @@ package body TFC_Line_Scan_Camera is
                end if;
             else
                Frame_Capture_Var.State := Frame_Capture_Finished;
-               --pragma Assert (not Frame_Capture_Var.Camera_Frame_Captured);
+               pragma Assert (not Frame_Capture_Var.Camera_Frame_Captured);
                Frame_Capture_Var.Camera_Frame_Captured := True;
-               Set_True (Frame_Capture_Var.Frame_Capture_Completed_Susp_Obj);
+
+               --
+               --  NOTE: It looks like we cannot use the Suspend_Until_True
+               --  here, due to a limitation in the Ada Ravenscar runtime for
+               --  the target MCU, that does not allow us to call Set_True from
+               --  an Interrupt handler.
+               --
+               --  Set_True (
+               --     Frame_Capture_Var.Frame_Capture_Completed_Susp_Obj);
+               --
 
                pragma Assert (Frame_Capture_Var.Next_Piggybacked_AD_Conversion
                               = Piggybacked_AD_Conversion_End);
@@ -331,15 +321,34 @@ package body TFC_Line_Scan_Camera is
 
    procedure Get_Next_Frame (Camera_Frame : out TFC_Camera_Frame_Type)
    is
-      Int_Mask : Unsigned_32;
    begin
-      Suspend_Until_True (Frame_Capture_Var.Frame_Capture_Completed_Susp_Obj);
+      Start_Frame_Capture;
+
+      --
+      --  NOTE: It looks like we cannot use the Suspend_Until_True here, due to
+      --  a limitation in the Ada Ravenscar runtime for the target MCU, that
+      --  does not allow us to call Set_True from an Interrupt handler (it may
+      --  hit an assert if there is a race between the Set_True call in
+      --  AD_Conversion_Completion_Callback and the Suspend_Until_True call
+      --  below:
+      --
+      --  Suspend_Until_True (
+      --     Frame_Capture_Var.Frame_Capture_Completed_Susp_Obj);
+      --
+      --  So we have to use an ugly polling loop
+      --
+      while not Frame_Capture_Var.Camera_Frame_Captured loop
+         delay until Clock + Milliseconds (1);
+      end loop;
 
       pragma Assert (Frame_Capture_Var.Camera_Frame_Captured);
-      Int_Mask := Microcontroller.Arm_Cortex_M.Disable_Cpu_Interrupts;
+
+      --
+      --  TODO: Avoid copying frame buffer, by filling the caller's buffer
+      --  directly, during frame capture.
+      --
       Camera_Frame := Frame_Capture_Var.Camera_Frame_Buffer;
       Frame_Capture_Var.Camera_Frame_Captured := False;
-      Microcontroller.Arm_Cortex_M.Restore_Cpu_Interrupts (Int_Mask);
    end Get_Next_Frame;
 
    ----------------
@@ -385,8 +394,6 @@ package body TFC_Line_Scan_Camera is
       Frame_Capture_Var.Piggybacked_AD_Conversion_Array_Ptr :=
          Piggybacked_AD_Conversion_Array_Ptr;
       Frame_Capture_Var.Initialized := True;
-
-      Periodic_Timer_Driver.Initialize (Frame_Capture_Timer_Id);
    end Initialize;
 
    -----------------
@@ -395,11 +402,11 @@ package body TFC_Line_Scan_Camera is
 
    function Initialized return Boolean is (Frame_Capture_Var.Initialized);
 
-   -----------------------------
-   -- Periodic_Timer_Callback --
-   -----------------------------
+   -------------------------
+   -- Start_Frame_Capture --
+   -------------------------
 
-   procedure Periodic_Timer_Callback
+   procedure Start_Frame_Capture
    is
    begin
       pragma Assert (Frame_Capture_Var.State in
@@ -436,21 +443,6 @@ package body TFC_Line_Scan_Camera is
       else
          Start_Piggybacked_AD_Conversion (Frame_Capture_Var);
       end if;
-
-   end Periodic_Timer_Callback;
-
-   -------------------------
-   -- Start_Frame_Capture --
-   -------------------------
-
-   procedure Start_Frame_Capture
-   is
-   begin
-      Periodic_Timer_Driver.Start_Timer_Channel (
-         Frame_Capture_Timer_Id,
-         Frame_Capture_Timer_Channel_Id,
-         Frame_Capture_Period_Ms,
-         Periodic_Timer_Callback'Access);
    end Start_Frame_Capture;
 
    -------------------------------------
@@ -480,19 +472,5 @@ package body TFC_Line_Scan_Camera is
          ADC_Completion_Callback_Ptr =>
          AD_Conversion_Completion_Callback'Access);
    end Start_Piggybacked_AD_Conversion;
-
-   ------------------------
-   -- Stop_Frame_Capture --
-   ------------------------
-
-   procedure Stop_Frame_Capture
-   is
-   begin
-      if Frame_Capture_Var.State /= Frame_Capture_Not_Started then
-         Periodic_Timer_Driver.Stop_Timer_Channel (
-            Frame_Capture_Timer_Id,
-            Frame_Capture_Timer_Channel_Id);
-      end if;
-   end Stop_Frame_Capture;
 
 end TFC_Line_Scan_Camera;
