@@ -28,14 +28,14 @@
 with Ada.Synchronous_Task_Control;
 with Gpio_Driver;
 with Pin_Mux_Driver;
-with Ada.Real_Time;--???
+--with Ada.Real_Time;--???
 
 package body TFC_Line_Scan_Camera is
    pragma SPARK_Mode (Off);
    use Ada.Synchronous_Task_Control;
    use Gpio_Driver;
    use Pin_Mux_Driver;
-   use Ada.Real_Time;
+   --use Ada.Real_Time;
 
    --
    --  States of capturing camera frames
@@ -338,7 +338,8 @@ package body TFC_Line_Scan_Camera is
       --  So we have to use an ugly polling loop
       --
       while not Frame_Capture_Var.Camera_Frame_Captured loop
-         delay until Clock + Milliseconds (1);
+         --delay until Clock + Milliseconds (1);
+         null;
       end loop;
 
       pragma Assert (Frame_Capture_Var.Camera_Frame_Captured);

@@ -178,7 +178,7 @@ package body Command_Parser is
 
    procedure Cmd_Dump_Driving_Log is
    begin
-      Serial_Console.Print_String ("Not implemented yet" & ASCII.LF);
+      Car_Controller.Dump_Driving_Log;
    end Cmd_Dump_Driving_Log;
 
    ----------------------------
@@ -319,6 +319,8 @@ package body Command_Parser is
       Car_State      : Car_State_Type;
       Car_Event      : Car_Event_Type;
       Steering_State : Car_Steering_State_Type;
+      Car_Driving_Stats : Car_Driving_Stats_Type;
+      Track_Edge_Detection_Stats : Track_Edge_Detection_Stats_Type;
    begin
       pragma Assert (Serial_Console.Is_Lock_Mine);
       Serial_Console.Print_String
@@ -404,6 +406,88 @@ package body Command_Parser is
       end loop;
 
       Serial_Console.Print_String (ASCII.LF & ASCII.LF);
+
+      Get_Car_Driving_Stats (Car_Driving_Stats);
+      Serial_Console.Print_String ("Car driving stats: " & ASCII.LF);
+      Serial_Console.Print_String
+        (ASCII.HT &
+         "Car_Going_Straight_Count:" &
+         Car_Driving_Stats.Car_Going_Straight_Count'Image & " times" &
+         ASCII.LF);
+
+      Serial_Console.Print_String
+        (ASCII.HT &
+         "Car_Turning_Left_Count:" &
+         Car_Driving_Stats.Car_Turning_Left_Count'Image & " times" &
+         ASCII.LF);
+
+      Serial_Console.Print_String
+        (ASCII.HT &
+         "Car_Turning_Right_Count:" &
+         Car_Driving_Stats.Car_Turning_Right_Count'Image & " times" &
+         ASCII.LF);
+
+      Serial_Console.Print_String
+        (ASCII.HT &
+         "Drive_Car_Calls_Count:" &
+         Car_Driving_Stats.Drive_Car_Calls_Count'Image & " times" &
+         ASCII.LF);
+
+      Serial_Console.Print_String
+        (ASCII.HT &
+         "Steering_Servo_Actioned_Count:" &
+         Car_Driving_Stats.Steering_Servo_Actioned_Count'Image & " times" &
+         ASCII.LF);
+
+      Serial_Console.Print_String
+        (ASCII.HT &
+         "Wheel_Motors_Actioned_Count:" &
+         Car_Driving_Stats.Wheel_Motors_Actioned_Count'Image & " times" &
+         ASCII.LF);
+
+      Get_Track_Edge_Detection_Stats (Track_Edge_Detection_Stats);
+      Serial_Console.Print_String ("Track edge detection stats: " & ASCII.LF);
+      Serial_Console.Print_String
+        (ASCII.HT &
+         "Left_Edge_Detected_With_Derivative:" &
+         Track_Edge_Detection_Stats.Left_Edge_Detected_With_Derivative'Image &
+         " times" &
+         ASCII.LF);
+
+      Serial_Console.Print_String
+        (ASCII.HT &
+         "Left_Edge_Detected_With_Integral:" &
+         Track_Edge_Detection_Stats.Left_Edge_Detected_With_Integral'Image &
+         " times" &
+         ASCII.LF);
+
+      Serial_Console.Print_String
+        (ASCII.HT &
+         "Left_Edge_Followed_With_Integral:" &
+         Track_Edge_Detection_Stats.Left_Edge_Followed_With_Integral'Image &
+         " times" &
+         ASCII.LF);
+
+      Serial_Console.Print_String
+        (ASCII.HT &
+         "Right_Edge_Detected_With_Derivative:" &
+         Track_Edge_Detection_Stats.Right_Edge_Detected_With_Derivative'Image &
+         " times" &
+         ASCII.LF);
+
+      Serial_Console.Print_String
+        (ASCII.HT &
+         "Right_Edge_Detected_With_Integral:" &
+         Track_Edge_Detection_Stats.Right_Edge_Detected_With_Integral'Image &
+         " times" &
+         ASCII.LF);
+
+      Serial_Console.Print_String
+        (ASCII.HT &
+         "Right_Edge_Followed_With_Integral:" &
+         Track_Edge_Detection_Stats.Right_Edge_Followed_With_Integral'Image &
+         " times" &
+         ASCII.LF);
    end Cmd_Print_Car_Stats;
 
    --------------------

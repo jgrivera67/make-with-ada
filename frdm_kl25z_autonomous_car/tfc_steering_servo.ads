@@ -37,7 +37,7 @@ package TFC_Steering_Servo is
    --
    --  Steering servo PWM period in microseconds
    --
-   Servo_PWM_Period_Us : constant := 20000; -- 20 ms
+   Servo_PWM_Period_Us : constant := 20_000; -- 20 ms
 
    --
    --  Steering servo minimum duty cycle in microseconds

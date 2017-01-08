@@ -38,6 +38,11 @@ package TFC_Line_Scan_Camera is
    use Devices.MCU_Specific;
 
    --
+   --  Minimum camera exposure time in milliseconds
+   --
+   Min_Exposure_Time_Ms : constant := 10;
+
+   --
    --  Number of pixels per frame
    --
    TFC_Num_Camera_Pixels : constant := 128;

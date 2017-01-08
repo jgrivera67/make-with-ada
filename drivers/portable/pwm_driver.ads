@@ -28,6 +28,7 @@
 with Devices.MCU_Specific;
 with Microcontroller_Clocks;
 with Pin_Mux_Driver;
+with Interfaces;
 
 --
 --  @summary Pulse Width Modulator (PWM) driver
@@ -37,15 +38,18 @@ package PWM_Driver is
    use Devices.MCU_Specific;
    use Microcontroller_Clocks;
    use Pin_Mux_Driver;
+   use Interfaces;
 
    --
    --  Max number of PWM channels in a PWM device
    --
    Max_Num_PWM_Channels : constant := 6;
 
-   type PWM_Pulse_Period_Us_Type is range 1 .. 1_000_000;
+   type PWM_Pulse_Period_Us_Type is range 1 .. Unsigned_16'Last
+      with Size => Unsigned_16'Size;
 
-   type PWM_Pulse_Width_Us_Type is range 0 .. PWM_Pulse_Period_Us_Type'Last;
+   type PWM_Pulse_Width_Us_Type is range 0 .. PWM_Pulse_Period_Us_Type'Last
+      with Size => Unsigned_16'Size;
 
    type PWM_Channel_Id_Type is range 0 .. Max_Num_PWM_Channels - 1;
 

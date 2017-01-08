@@ -36,6 +36,7 @@ with Color_Led;
 with Serial_Console;
 with Command_Line;
 with Number_Conversion_Utils;
+with PWM_Driver;
 
 package body Car_Controller is
    pragma SPARK_Mode (Off);
@@ -98,6 +99,9 @@ package body Car_Controller is
                Trimpot_Setting : Unsigned_8)
       return TFC_Wheel_Motors.Motor_Pulse_Width_Us_Type;
 
+   procedure Capture_Driving_Log_Entry (
+      Car_Controller_Obj : in out Car_Controller_Type);
+
    procedure Clear_Car_Event (Event : Car_Event_Type);
 
    procedure Drive_Car (Car_Controller_Obj : in out Car_Controller_Type);
@@ -113,13 +117,23 @@ package body Car_Controller is
 
    procedure Garage_Mode_Update_Wheel_Motors (Trimpot2_Setting : Unsigned_8);
 
-   procedure Init_Car_Stats_Display;
+   procedure Initialize_Car_Driving_Stats (
+      Car_Driving_Stats : out Car_Driving_Stats_Type);
+
+   procedure Initialize_Car_Stats_Display;
+
+   procedure Initialize_Driving_Log (Driving_Log : out Driving_Log_Type);
+
+   procedure Initialize_Track_Edge_Detection_Stats (
+      Track_Edge_Detection_Stats : out Track_Edge_Detection_Stats_Type);
+
    procedure Plot_Frame_Graph (
                 Camera_Frame : TFC_Line_Scan_Camera.TFC_Camera_Frame_Type;
                 Top_Line : Serial_Console.Line_Type;
                 Bottom_Line : Serial_Console.Line_Type;
                 Plot_Point_Symbol : Character;
                 Reverse_Plot : Boolean);
+
    procedure Poll_Buttons;
    procedure Poll_DIP_Switches;
    procedure Poll_Other_Analog_Inputs;
@@ -200,6 +214,93 @@ package body Car_Controller is
       return Motor_Pwm_Duty_Cycle;
    end Calculate_Wheel_Motor_Pwm_Duty_Cycle_Us_From_Trimpot;
 
+   -------------------------------
+   -- Capture_Driving_Log_Entry --
+   -------------------------------
+
+   procedure Capture_Driving_Log_Entry (
+      Car_Controller_Obj : in out Car_Controller_Type)
+   is
+      use TFC_Steering_Servo;
+      use TFC_Wheel_Motors;
+      use PWM_Driver;
+
+      Cursor : Driving_Log_Entry_Index_Type renames
+         Car_Controller_Obj.Driving_Log.Cursor;
+      Prev_Cursor : Driving_Log_Entry_Index_Type renames
+         Car_Controller_Obj.Driving_Log.Previous_Cursor;
+      Wrap_Count : Unsigned_32 renames
+         Car_Controller_Obj.Driving_Log.Wrap_Count;
+      Next_Seq_Num : Unsigned_8 renames
+         Car_Controller_Obj.Driving_Log.Next_Seq_Num;
+      Next_Log_Entry : Driving_Log_Entry_Type renames
+         Car_Controller_Obj.Driving_Log.Buffer (Cursor);
+      Prev_Log_Entry : Driving_Log_Entry_Type renames
+         Car_Controller_Obj.Driving_Log.Buffer (Prev_Cursor);
+   begin
+      if Cursor = 0 and then Wrap_Count = 0 then
+         --
+         --  Log very first entry:
+         --
+         Next_Log_Entry :=
+            (Seq_Num => Next_Seq_Num,
+             Steering_State => Car_Controller_Obj.Steering_State,
+             Steering_Servo_Pwm_Duty_Cycle_Us =>
+                Car_Controller_Obj.Steering_Servo_Pwm_Duty_Cycle_Us,
+             Left_Wheel_Motor_Pwm_Duty_Cycle_Us =>
+                Unsigned_8 (
+                   Car_Controller_Obj.Left_Wheel_Motor_Pwm_Duty_Cycle_Us),
+             Right_Wheel_Motor_Pwm_Duty_Cycle_Us =>
+                Unsigned_8 (
+                   Car_Controller_Obj.Right_Wheel_Motor_Pwm_Duty_Cycle_Us),
+             Occurrences => 1);
+
+         Next_Seq_Num := Next_Seq_Num + 1;
+         Prev_Cursor := Cursor;
+         Cursor := Cursor + 1;
+      else
+         --  Prev_cursor has a valid value
+         if Car_Controller_Obj.Steering_State = Prev_Log_Entry.Steering_State
+            and then
+            Car_Controller_Obj.Steering_Servo_Pwm_Duty_Cycle_Us =
+               Prev_Log_Entry.Steering_Servo_Pwm_Duty_Cycle_Us
+            and then
+            Car_Controller_Obj.Left_Wheel_Motor_Pwm_Duty_Cycle_Us =
+               Motor_Pulse_Width_Us_Type (
+                  Prev_Log_Entry.Left_Wheel_Motor_Pwm_Duty_Cycle_Us)
+            and then
+            Car_Controller_Obj.Right_Wheel_Motor_Pwm_Duty_Cycle_Us =
+               Motor_Pulse_Width_Us_Type (
+                  Prev_Log_Entry.Right_Wheel_Motor_Pwm_Duty_Cycle_Us)
+         then
+            Prev_Log_Entry.Occurrences := Prev_Log_Entry.Occurrences + 1;
+         else
+            --
+            --  Log new entry:
+            --
+            Next_Log_Entry :=
+            (Seq_Num => Next_Seq_Num,
+             Steering_State => Car_Controller_Obj.Steering_State,
+             Steering_Servo_Pwm_Duty_Cycle_Us =>
+                Car_Controller_Obj.Steering_Servo_Pwm_Duty_Cycle_Us,
+             Left_Wheel_Motor_Pwm_Duty_Cycle_Us =>
+                Unsigned_8 (
+                   Car_Controller_Obj.Left_Wheel_Motor_Pwm_Duty_Cycle_Us),
+             Right_Wheel_Motor_Pwm_Duty_Cycle_Us =>
+                Unsigned_8 (
+                   Car_Controller_Obj.Right_Wheel_Motor_Pwm_Duty_Cycle_Us),
+             Occurrences => 1);
+
+            Next_Seq_Num := Next_Seq_Num + 1;
+            Prev_Cursor := Cursor;
+            Cursor := Cursor + 1;
+            if Cursor = 0 then
+               Wrap_Count := Wrap_Count + 1;
+            end if;
+         end if;
+      end if;
+   end Capture_Driving_Log_Entry;
+
    ---------------------
    -- Clear_Car_Event --
    ---------------------
@@ -220,6 +321,49 @@ package body Car_Controller is
    procedure Drive_Car (
       Car_Controller_Obj : in out Car_Controller_Type) is separate;
 
+   ----------------------
+   -- Dump_Driving_Log --
+   ----------------------
+
+   procedure Dump_Driving_Log
+   is
+      Driving_Log : Driving_Log_Type renames Car_Controller_Obj.Driving_Log;
+      Dump_Index : Driving_Log_Entry_Index_Type;
+   begin
+      if Driving_Log.Wrap_Count = 0 then
+         Dump_Index := 0;
+      else
+         if Driving_Log.Cursor = Driving_Log_Entry_Index_Type'Last then
+            Dump_Index := 0;
+         else
+            Dump_Index := Driving_Log.Cursor + 1;
+         end if;
+      end if;
+
+      Serial_Console.Print_String (
+         "Driving log (wrap count" & Driving_Log.Wrap_Count'Image & ")" &
+         ASCII.LF);
+
+      while Dump_Index /= Driving_Log.Cursor loop
+         declare
+            Log_Entry : Driving_Log_Entry_Type renames
+               Driving_Log.Buffer (Dump_Index);
+         begin
+            Serial_Console.Print_String (
+               Log_Entry.Seq_Num'Image & ":" &
+               Car_Steering_State_To_String (Log_Entry.Steering_State).all &
+               ":" &
+               Log_Entry.Steering_Servo_Pwm_Duty_Cycle_Us'Image & ":" &
+               Log_Entry.Left_Wheel_Motor_Pwm_Duty_Cycle_Us'Image & ":" &
+               Log_Entry.Right_Wheel_Motor_Pwm_Duty_Cycle_Us'Image & ":" &
+               Log_Entry.Occurrences'Image & ASCII.LF);
+         end;
+
+         Dump_Index := Dump_Index + 1;
+      end loop;
+
+   end Dump_Driving_Log;
+
    -----------------------
    -- Enter_Garage_Mode --
    -----------------------
@@ -229,7 +373,7 @@ package body Car_Controller is
       Old_Color : Color_Led.Led_Color_Type with Unreferenced;
    begin
       Serial_Console.Lock;
-      Init_Car_Stats_Display;
+      Initialize_Car_Stats_Display;
       Command_Line.Print_Prompt;
       Serial_Console.Unlock;
 
@@ -237,6 +381,10 @@ package body Car_Controller is
       Car_Controller_Obj.Trimpot2_Setting := Unsigned_8'Last;
       Car_Controller_Obj.Battery_Charge_Level := 0;
       Car_Controller_Obj.Track_Edge_Tracing_State := No_Track_Edge_Detected;
+
+      Initialize_Track_Edge_Detection_Stats (
+         Car_Controller_Obj.Track_Edge_Detection_Stats);
+
       Old_Color := Color_Led.Set_Color (Color_Led.Cyan);
    end Enter_Garage_Mode;
 
@@ -337,6 +485,13 @@ package body Car_Controller is
       end if;
 
       Serial_Console.Unlock;
+
+      --
+      --  Delay to give the camera enough time to sense the next frame
+      --  (exposure time):
+      --
+      delay until Clock +
+                  Milliseconds (TFC_Line_Scan_Camera.Min_Exposure_Time_Ms);
    end Garage_Mode_Process_Camera_Frame;
 
    ---------------------------------------------
@@ -442,6 +597,17 @@ package body Car_Controller is
       Serial_Console.Unlock;
    end Garage_Mode_Update_Wheel_Motors;
 
+   ---------------------------
+   -- Get_Car_Driving_Stats --
+   ---------------------------
+
+   procedure Get_Car_Driving_Stats (
+      Car_Driving_Stats : out Car_Driving_Stats_Type)
+   is
+   begin
+      Car_Driving_Stats := Car_Controller_Obj.Car_Driving_Stats;
+   end Get_Car_Driving_Stats;
+
    ---------------------------------
    -- Get_Configuration_Paramters --
    ---------------------------------
@@ -453,11 +619,65 @@ package body Car_Controller is
       Config_Parameters := Car_Controller_Obj.Config_Parameters;
    end Get_Configuration_Paramters;
 
-   ----------------------------
-   -- Init_Car_Stats_Display --
-   ----------------------------
+   ------------------------------------
+   -- Get_Track_Edge_Detection_Stats --
+   ------------------------------------
 
-   procedure Init_Car_Stats_Display
+   procedure Get_Track_Edge_Detection_Stats (
+      Track_Edge_Detection_Stats : out Track_Edge_Detection_Stats_Type)
+   is
+   begin
+      Track_Edge_Detection_Stats :=
+         Car_Controller_Obj.Track_Edge_Detection_Stats;
+   end Get_Track_Edge_Detection_Stats;
+
+   ----------------
+   -- Initialize --
+   ----------------
+
+   procedure Initialize
+   is
+   begin
+      ADC_Driver.Initialize (ADC0, ADC_Driver.ADC_Resolution_8_Bits);
+      TFC_Line_Scan_Camera.Initialize (
+         ADC0,
+         TFC_Camera_Input_Pin_ADC_Channel,
+         Piggybacked_ADC_Conversions'Access);
+
+      TFC_Steering_Servo.Initialize;
+      TFC_Wheel_Motors.Initialize;
+      TFC_DIP_Switches.Initialize;
+      TFC_Push_Buttons.Initialize;
+      TFC_Battery_LEDs.Initialize;
+      TFC_Battery_LEDs.Set_LEDs (0);
+
+      App_Configuration.Load_Config_Parameters (
+         Car_Controller_Obj.Config_Parameters);
+      Set_Car_State (Car_Off);
+      Car_Controller_Obj.Initialized := True;
+      Set_True (Car_Controller_Obj.Car_Controller_Task_Suspension_Obj);
+   end Initialize;
+
+   ----------------------------------
+   -- Initialize_Car_Driving_Stats --
+   ----------------------------------
+
+   procedure Initialize_Car_Driving_Stats (
+      Car_Driving_Stats : out Car_Driving_Stats_Type)
+   is
+   begin
+      Car_Driving_Stats.Car_Going_Straight_Count := 0;
+      Car_Driving_Stats.Car_Turning_Left_Count := 0;
+      Car_Driving_Stats.Car_Turning_Right_Count := 0;
+      Car_Driving_Stats.Steering_Servo_Actioned_Count := 0;
+      Car_Driving_Stats.Wheel_Motors_Actioned_Count := 0;
+   end Initialize_Car_Driving_Stats;
+
+   ----------------------------------
+   -- Initialize_Car_Stats_Display --
+   ----------------------------------
+
+   procedure Initialize_Car_Stats_Display
    is
    begin
       Serial_Console.Clear_Screen;
@@ -506,34 +726,35 @@ package body Car_Controller is
       Serial_Console.Set_Scroll_Region_To_Screen_Bottom (36);
       Serial_Console.Set_Cursor_And_Attributes (
          36, 1, Serial_Console.Attributes_Normal);
-   end Init_Car_Stats_Display;
+   end Initialize_Car_Stats_Display;
 
-   ----------------
-   -- Initialize --
-   ----------------
+   ----------------------------
+   -- Initialize_Driving_Log --
+   ----------------------------
 
-   procedure Initialize
+   procedure Initialize_Driving_Log (Driving_Log : out Driving_Log_Type)
    is
    begin
-      ADC_Driver.Initialize (ADC0, ADC_Driver.ADC_Resolution_8_Bits);
-      TFC_Line_Scan_Camera.Initialize (
-         ADC0,
-         TFC_Camera_Input_Pin_ADC_Channel,
-         Piggybacked_ADC_Conversions'Access);
+      Driving_Log.Cursor := 0;
+      Driving_Log.Wrap_Count := 0;
+      Driving_Log.Next_Seq_Num := 0;
+   end Initialize_Driving_Log;
 
-      TFC_Steering_Servo.Initialize;
-      TFC_Wheel_Motors.Initialize;
-      TFC_DIP_Switches.Initialize;
-      TFC_Push_Buttons.Initialize;
-      TFC_Battery_LEDs.Initialize;
-      TFC_Battery_LEDs.Set_LEDs (0);
+   -------------------------------------------
+   -- Initialize_Track_Edge_Detection_Stats --
+   -------------------------------------------
 
-      App_Configuration.Load_Config_Parameters (
-         Car_Controller_Obj.Config_Parameters);
-      Set_Car_State (Car_Off);
-      Car_Controller_Obj.Initialized := True;
-      Set_True (Car_Controller_Obj.Car_Controller_Task_Suspension_Obj);
-   end Initialize;
+   procedure Initialize_Track_Edge_Detection_Stats (
+      Track_Edge_Detection_Stats : out Track_Edge_Detection_Stats_Type)
+   is
+   begin
+      Track_Edge_Detection_Stats.Left_Edge_Detected_With_Derivative := 0;
+      Track_Edge_Detection_Stats.Left_Edge_Detected_With_Integral := 0;
+      Track_Edge_Detection_Stats.Left_Edge_Followed_With_Integral := 0;
+      Track_Edge_Detection_Stats.Right_Edge_Detected_With_Derivative := 0;
+      Track_Edge_Detection_Stats.Right_Edge_Detected_With_Integral := 0;
+      Track_Edge_Detection_Stats.Right_Edge_Followed_With_Integral := 0;
+   end Initialize_Track_Edge_Detection_Stats;
 
    ----------------------
    -- Plot_Frame_Graph --
@@ -1100,6 +1321,12 @@ package body Car_Controller is
       Car_Controller_Obj.PID_Integral_Term := 0;
       Car_Controller_Obj.Reference_Total_White_Area := 0;
 
+      Initialize_Track_Edge_Detection_Stats (
+         Car_Controller_Obj.Track_Edge_Detection_Stats);
+
+      Initialize_Car_Driving_Stats (Car_Controller_Obj.Car_Driving_Stats);
+      Initialize_Driving_Log (Car_Controller_Obj.Driving_Log);
+
       TFC_Wheel_Motors.Set_PWM_Duty_Cycles (
          TFC_Wheel_Motors.Motor_Stopped_Duty_Cycle_Us,
          TFC_Wheel_Motors.Motor_Stopped_Duty_Cycle_Us);
@@ -1144,12 +1371,6 @@ package body Car_Controller is
       Car_Controller_Obj.Hill_Driving_Adjustment_On :=
          Car_Controller_Obj.DIP_Switches (
             Hill_Driving_Adjustment_DIP_Switch_Index);
-
-      --
-      --  Initialize driving log:
-      --
-      Car_Controller_Obj.Driving_Log_Cursor := 0;
-      Car_Controller_Obj.Driving_Log_Wrap_Count := 0;
 
       TFC_Battery_LEDs.Set_LEDs (Car_Controller_Obj.Battery_Charge_Level);
       Old_Color := Color_Led.Set_Color (Color_Led.Green);

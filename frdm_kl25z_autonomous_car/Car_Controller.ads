@@ -215,6 +215,26 @@ package Car_Controller is
    Trimpots_Wheel_Motor_Duty_Cycle_DIP_Switch_Index : constant := 2;
    Hill_Driving_Adjustment_DIP_Switch_Index : constant := 3;
 
+   type Track_Edge_Detection_Stats_Type is record
+      Left_Edge_Detected_With_Derivative : Unsigned_32 := 0;
+      Left_Edge_Detected_With_Integral : Unsigned_32 := 0;
+      Left_Edge_Followed_With_Integral : Unsigned_32 := 0;
+      Right_Edge_Detected_With_Derivative : Unsigned_32 := 0;
+      Right_Edge_Detected_With_Integral : Unsigned_32 := 0;
+      Right_Edge_Followed_With_Integral : Unsigned_32 := 0;
+   end record;
+
+   type Car_Driving_Stats_Type is record
+      Car_Going_Straight_Count : Unsigned_64 := 0;
+      Car_Turning_Left_Count : Unsigned_32 := 0;
+      Car_Turning_Right_Count : Unsigned_32 := 0;
+      Drive_Car_Calls_Count : Unsigned_32 := 0;
+      Steering_Servo_Actioned_Count : Unsigned_32 := 0;
+      Wheel_Motors_Actioned_Count : Unsigned_32 := 0;
+   end record;
+
+   procedure Dump_Driving_Log;
+
    function Get_Car_State return Car_State_Type;
 
    function Get_Car_States_History return Unsigned_64;
@@ -227,6 +247,12 @@ package Car_Controller is
 
    function Get_DIP_Switches return TFC_DIP_Switches.DIP_Switches_Type;
 
+   procedure Get_Track_Edge_Detection_Stats (
+      Track_Edge_Detection_Stats : out Track_Edge_Detection_Stats_Type);
+
+   procedure Get_Car_Driving_Stats (
+      Car_Driving_Stats : out Car_Driving_Stats_Type);
+
    procedure Set_Car_Event (Event : Car_Event_Type);
 
 private
@@ -238,18 +264,28 @@ private
    type Pending_Car_Events_Type is array (Car_Event_Type) of Boolean
       with Component_Size => 1, Size => Unsigned_32'Size;
 
-   type Driving_Log_Entry_Type is limited record
-      Count : Unsigned_8;
+   type Driving_Log_Entry_Type is record
+      Seq_Num : Unsigned_8;
       Steering_State : Car_Steering_State_Type;
-      Steering_Servo_Pwm_Duty_Cycle_Us : Unsigned_16;
+      Steering_Servo_Pwm_Duty_Cycle_Us :
+         TFC_Steering_Servo.Servo_Pulse_Width_Us_Type;
       Left_Wheel_Motor_Pwm_Duty_Cycle_Us : Unsigned_8;
       Right_Wheel_Motor_Pwm_Duty_Cycle_Us : Unsigned_8;
+      Occurrences : Unsigned_16;
    end record;
 
    type Driving_Log_Entry_Index_Type is mod 128;
 
-   type Driving_Log_Type is array (0 .. Driving_Log_Entry_Index_Type'Last) of
-      Driving_Log_Entry_Type;
+   type Driving_Log_Buffer_Type is
+      array (0 .. Driving_Log_Entry_Index_Type'Last) of Driving_Log_Entry_Type;
+
+   type Driving_Log_Type is limited record
+      Buffer : Driving_Log_Buffer_Type;
+      Cursor : Driving_Log_Entry_Index_Type := 0;
+      Previous_Cursor : Driving_Log_Entry_Index_Type;
+      Wrap_Count : Unsigned_32 := 0;
+      Next_Seq_Num : Unsigned_8 := 0;
+   end record;
 
    type Track_Edge_Tracing_State_Type is (No_Track_Edge_Detected,
                                          Following_Left_Track_Edge,
@@ -316,8 +352,8 @@ private
       Previous_PID_Error : Integer := 0;
       PID_Integral_Term : Integer := 0;
       Driving_Log : Driving_Log_Type;
-      Driving_Log_Cursor : Driving_Log_Entry_Index_Type := 0;
-      Driving_Log_Wrap_Count : Unsigned_32 := 0;
+      Track_Edge_Detection_Stats : Track_Edge_Detection_Stats_Type;
+      Car_Driving_Stats : Car_Driving_Stats_Type;
       Car_Controller_Task :
          Car_Controller_Task_Type (Car_Controller_Type'Access);
       Car_Controller_Task_Suspension_Obj : Suspension_Object;

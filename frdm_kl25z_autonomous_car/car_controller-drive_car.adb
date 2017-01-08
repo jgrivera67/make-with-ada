@@ -104,6 +104,9 @@ is
    Actuators_Delay_Ms : Natural;
 
 begin -- Drive_Car
+   Car_Controller_Obj.Car_Driving_Stats.Drive_Car_Calls_Count :=
+      Car_Controller_Obj.Car_Driving_Stats.Drive_Car_Calls_Count + 1;
+
    --
    --  Calculate PID error:
    --
@@ -144,14 +147,20 @@ begin -- Drive_Car
       --  to be > TFC_STEERING_SERVO_MIDDLE_DUTY_CYCLE_US
       --
       New_Steering_State := Car_Turning_Right;
+      Car_Controller_Obj.Car_Driving_Stats.Car_Turning_Right_Count :=
+         Car_Controller_Obj.Car_Driving_Stats.Car_Turning_Right_Count + 1;
    elsif Offset_Steering_Servo_Pwm_Duty_Cycle < 0 then
       --
       --  Need to steer left by setting servo PWM duty cycle
       --  to be < TFC_STEERING_SERVO_MIDDLE_DUTY_CYCLE_US
       --
       New_Steering_State := Car_Turning_Left;
+      Car_Controller_Obj.Car_Driving_Stats.Car_Turning_Left_Count :=
+         Car_Controller_Obj.Car_Driving_Stats.Car_Turning_Left_Count + 1;
    else
       New_Steering_State := Car_Going_Straight;
+      Car_Controller_Obj.Car_Driving_Stats.Car_Going_Straight_Count :=
+         Car_Controller_Obj.Car_Driving_Stats.Car_Going_Straight_Count + 1;
    end if;
 
    --
@@ -220,6 +229,9 @@ begin -- Drive_Car
    then
       TFC_Steering_Servo.Set_PWM_Duty_Cycle (Steering_Servo_Pwm_Duty_Cycle_Us);
 
+      Car_Controller_Obj.Car_Driving_Stats.Steering_Servo_Actioned_Count :=
+        Car_Controller_Obj.Car_Driving_Stats.Steering_Servo_Actioned_Count + 1;
+
       Car_Controller_Obj.Steering_Servo_Pwm_Duty_Cycle_Us :=
          Steering_Servo_Pwm_Duty_Cycle_Us;
 
@@ -235,6 +247,9 @@ begin -- Drive_Car
          Left_Wheel_Motor_Pwm_Duty_Cycle_Us,
          Right_Wheel_Motor_Pwm_Duty_Cycle_Us);
 
+      Car_Controller_Obj.Car_Driving_Stats.Wheel_Motors_Actioned_Count :=
+         Car_Controller_Obj.Car_Driving_Stats.Wheel_Motors_Actioned_Count + 1;
+
       Car_Controller_Obj.Left_Wheel_Motor_Pwm_Duty_Cycle_Us :=
          Left_Wheel_Motor_Pwm_Duty_Cycle_Us;
       Car_Controller_Obj.Right_Wheel_Motor_Pwm_Duty_Cycle_Us :=
@@ -245,11 +260,20 @@ begin -- Drive_Car
       end if;
    end if;
 
+   Capture_Driving_Log_Entry (Car_Controller_Obj);
+
    if Actuators_Delay_Ms /= 0 then
+      --
+      --  Delay to give the actuators enough time to actuate:
+      --
       delay until Clock + Milliseconds (Actuators_Delay_Ms);
+   else
+      --
+      --  Delay to give the camera enough time to sense the next frame
+      --  (exposure time):
+      --
+      delay until Clock +
+                  Milliseconds (TFC_Line_Scan_Camera.Min_Exposure_Time_Ms);
    end if;
-   --
-   --  Capture driving log entry:
-   --
-   --Capture_Driving_Log_Entry (Car_Controller_Obj);
+
 end Drive_Car;
