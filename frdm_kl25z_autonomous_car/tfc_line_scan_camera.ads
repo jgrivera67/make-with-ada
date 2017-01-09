@@ -38,9 +38,13 @@ package TFC_Line_Scan_Camera is
    use Devices.MCU_Specific;
 
    --
-   --  Minimum camera exposure time in milliseconds
+   --  Extra camera exposure time in milliseconds to compensate for
+   --  darker condtions of the place where the camera is used. It
+   --  must be less than 100ms, to avoid fully saturating the capacitors
+   --  of the camera light sensors (which would cause all pixles to be
+   --  white, regardless of the actual vision field).
    --
-   Min_Exposure_Time_Ms : constant := 10;
+   Extra_Exposure_Time_Ms : constant := 10;
 
    --
    --  Number of pixels per frame

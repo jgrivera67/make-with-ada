@@ -264,8 +264,6 @@ is
       (TFC_Camera_Frame_Pixel_Index_Type'First +
        TFC_Camera_Frame_Pixel_Index_Type'Last) / 2;
    Track_Edge_Start_Index : TFC_Camera_Frame_Pixel_Index_Type;
-   Left_Half_Area : Natural;
-   Right_Half_Area : Natural;
    Total_White_Area : Natural;
    Track_Edge_Detection_Stats : Track_Edge_Detection_Stats_Type renames
       Car_Controller_Obj.Track_Edge_Detection_Stats;
@@ -299,7 +297,6 @@ begin -- Analyze_Camera_Frame
                Following_Right_Track_Edge;
             Car_Controller_Obj.Reference_Track_Edge_Pixel_Index :=
                Camera_Frame'Last;
-               --Track_Edge_Start_Index;
 
             Track_Edge_Detection_Stats.Right_Edge_Detected_With_Derivative :=
                Track_Edge_Detection_Stats.
@@ -315,30 +312,16 @@ begin -- Analyze_Camera_Frame
                   Following_Left_Track_Edge;
                Car_Controller_Obj.Reference_Track_Edge_Pixel_Index :=
                   Camera_Frame'First;
-                  --Track_Edge_Start_Index;
 
                Track_Edge_Detection_Stats.Left_Edge_Detected_With_Derivative :=
                   Track_Edge_Detection_Stats.
                      Left_Edge_Detected_With_Derivative + 1;
             else
-               --
-               --  Fall back to try to detect one of the tow edges of the
-               --  track, by comparing the amount of "white" in each of the
-               --  two halves of the camera frame
-               --
-               Left_Half_Area :=
-                  Compute_Frame_Fragment_Integral (
-                     Car_Controller_Obj.Filtered_Camera_Frame (
-                        Camera_Frame'First .. Middle_Pixel_Index));
+               Total_White_Area := Compute_Frame_Fragment_Integral (
+                                     Car_Controller_Obj.Filtered_Camera_Frame);
 
-               Right_Half_Area :=
-                  Compute_Frame_Fragment_Integral (
-                     Car_Controller_Obj.Filtered_Camera_Frame (
-                        Middle_Pixel_Index .. Camera_Frame'Last));
-
-               Total_White_Area := Left_Half_Area + Right_Half_Area;
                if Total_White_Area >
-                  Car_Controller_Obj.Reference_Total_White_Area
+                     Car_Controller_Obj.Reference_Total_White_Area
                then
                   Car_Controller_Obj.Reference_Total_White_Area :=
                      Total_White_Area;
@@ -349,35 +332,9 @@ begin -- Analyze_Camera_Frame
                   return;
                end if;
 
-               if Right_Half_Area < Left_Half_Area / 4 then
-                  Car_Controller_Obj.Track_Edge_Tracing_State :=
-                     Following_Right_Track_Edge;
-                  Car_Controller_Obj.Reference_Track_Edge_Pixel_Index :=
-                     Camera_Frame'Last;
-                     --Middle_Pixel_Index - 1;
-
-                  Track_Edge_Start_Index := Middle_Pixel_Index - 1;
-
-                  Track_Edge_Detection_Stats.
-                     Right_Edge_Detected_With_Integral :=
-                     Track_Edge_Detection_Stats.
-                        Right_Edge_Detected_With_Integral + 1;
-               elsif Left_Half_Area < Right_Half_Area / 4 then
-                  Car_Controller_Obj.Track_Edge_Tracing_State :=
-                     Following_Left_Track_Edge;
-                  Car_Controller_Obj.Reference_Track_Edge_Pixel_Index :=
-                     Camera_Frame'First;
-                     --Middle_Pixel_Index + 1;
-
-                  Track_Edge_Start_Index := Middle_Pixel_Index + 1;
-
-                  Track_Edge_Detection_Stats.
-                     Left_Edge_Detected_With_Integral :=
-                     Track_Edge_Detection_Stats.
-                        Left_Edge_Detected_With_Integral + 1;
-               else
-                  return;
-               end if;
+               Car_Controller_Obj.Reference_Track_Edge_Pixel_Index :=
+                  Middle_Pixel_Index;
+               Track_Edge_Start_Index := Middle_Pixel_Index;
             end if;
          end if;
 
@@ -389,29 +346,10 @@ begin -- Analyze_Camera_Frame
             Find_Track_Left_Edge (Car_Controller_Obj.Camera_Frame_Derivative);
 
          if Track_Edge_Start_Index = Camera_Frame'First then
-            Left_Half_Area :=
-               Compute_Frame_Fragment_Integral (
-                  Car_Controller_Obj.Filtered_Camera_Frame (
-                     Camera_Frame'First .. Middle_Pixel_Index));
-
-            Right_Half_Area :=
-               Compute_Frame_Fragment_Integral (
-                  Car_Controller_Obj.Filtered_Camera_Frame (
-                     Middle_Pixel_Index .. Camera_Frame'Last));
-
-            if Left_Half_Area < Right_Half_Area / 2 then
-               --  Cause a hard-left steering:
-               Track_Edge_Start_Index := Middle_Pixel_Index + 1;
-
-               Track_Edge_Detection_Stats.
-                  Left_Edge_Followed_With_Integral :=
-                  Track_Edge_Detection_Stats.
-                     Left_Edge_Followed_With_Integral + 1;
-            else
-               Car_Controller_Obj.Track_Edge_Tracing_State :=
-                  No_Track_Edge_Detected;
-               return;
-            end if;
+            -- A hard left to try to keep the car in the center of the track
+            Track_Edge_Start_Index := Camera_Frame'Last;
+            Car_Controller_Obj.Track_Edge_Tracing_State :=
+               No_Track_Edge_Detected;
          end if;
 
       when Following_Right_Track_Edge =>
@@ -419,29 +357,10 @@ begin -- Analyze_Camera_Frame
             Find_Track_Right_Edge (Car_Controller_Obj.Camera_Frame_Derivative);
 
          if Track_Edge_Start_Index = Camera_Frame'Last then
-            Left_Half_Area :=
-               Compute_Frame_Fragment_Integral (
-                  Car_Controller_Obj.Filtered_Camera_Frame (
-                     Camera_Frame'First .. Middle_Pixel_Index));
-
-            Right_Half_Area :=
-               Compute_Frame_Fragment_Integral (
-                  Car_Controller_Obj.Filtered_Camera_Frame (
-                     Middle_Pixel_Index .. Camera_Frame'Last));
-
-            if Right_Half_Area < Left_Half_Area / 2 then
-               --  Cause a hard-right steering:
-               Track_Edge_Start_Index := Middle_Pixel_Index - 1;
-
-               Track_Edge_Detection_Stats.
-                  Right_Edge_Followed_With_Integral :=
-                  Track_Edge_Detection_Stats.
-                     Right_Edge_Followed_With_Integral + 1;
-            else
-               Car_Controller_Obj.Track_Edge_Tracing_State :=
-                  No_Track_Edge_Detected;
-               return;
-            end if;
+            -- A hard right to try to keep the car in the center of the track
+            Track_Edge_Start_Index := Camera_Frame'First;
+            Car_Controller_Obj.Track_Edge_Tracing_State :=
+               No_Track_Edge_Detected;
          end if;
    end case;
 

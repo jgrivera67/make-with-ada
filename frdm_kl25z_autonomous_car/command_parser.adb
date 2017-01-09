@@ -456,36 +456,8 @@ package body Command_Parser is
 
       Serial_Console.Print_String
         (ASCII.HT &
-         "Left_Edge_Detected_With_Integral:" &
-         Track_Edge_Detection_Stats.Left_Edge_Detected_With_Integral'Image &
-         " times" &
-         ASCII.LF);
-
-      Serial_Console.Print_String
-        (ASCII.HT &
-         "Left_Edge_Followed_With_Integral:" &
-         Track_Edge_Detection_Stats.Left_Edge_Followed_With_Integral'Image &
-         " times" &
-         ASCII.LF);
-
-      Serial_Console.Print_String
-        (ASCII.HT &
          "Right_Edge_Detected_With_Derivative:" &
          Track_Edge_Detection_Stats.Right_Edge_Detected_With_Derivative'Image &
-         " times" &
-         ASCII.LF);
-
-      Serial_Console.Print_String
-        (ASCII.HT &
-         "Right_Edge_Detected_With_Integral:" &
-         Track_Edge_Detection_Stats.Right_Edge_Detected_With_Integral'Image &
-         " times" &
-         ASCII.LF);
-
-      Serial_Console.Print_String
-        (ASCII.HT &
-         "Right_Edge_Followed_With_Integral:" &
-         Track_Edge_Detection_Stats.Right_Edge_Followed_With_Integral'Image &
          " times" &
          ASCII.LF);
    end Cmd_Print_Car_Stats;

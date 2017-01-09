@@ -217,11 +217,7 @@ package Car_Controller is
 
    type Track_Edge_Detection_Stats_Type is record
       Left_Edge_Detected_With_Derivative : Unsigned_32 := 0;
-      Left_Edge_Detected_With_Integral : Unsigned_32 := 0;
-      Left_Edge_Followed_With_Integral : Unsigned_32 := 0;
       Right_Edge_Detected_With_Derivative : Unsigned_32 := 0;
-      Right_Edge_Detected_With_Integral : Unsigned_32 := 0;
-      Right_Edge_Followed_With_Integral : Unsigned_32 := 0;
    end record;
 
    type Car_Driving_Stats_Type is record

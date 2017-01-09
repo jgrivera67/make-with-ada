@@ -491,7 +491,7 @@ package body Car_Controller is
       --  (exposure time):
       --
       delay until Clock +
-                  Milliseconds (TFC_Line_Scan_Camera.Min_Exposure_Time_Ms);
+                  Milliseconds (TFC_Line_Scan_Camera.Extra_Exposure_Time_Ms);
    end Garage_Mode_Process_Camera_Frame;
 
    ---------------------------------------------
@@ -749,11 +749,7 @@ package body Car_Controller is
    is
    begin
       Track_Edge_Detection_Stats.Left_Edge_Detected_With_Derivative := 0;
-      Track_Edge_Detection_Stats.Left_Edge_Detected_With_Integral := 0;
-      Track_Edge_Detection_Stats.Left_Edge_Followed_With_Integral := 0;
       Track_Edge_Detection_Stats.Right_Edge_Detected_With_Derivative := 0;
-      Track_Edge_Detection_Stats.Right_Edge_Detected_With_Integral := 0;
-      Track_Edge_Detection_Stats.Right_Edge_Followed_With_Integral := 0;
    end Initialize_Track_Edge_Detection_Stats;
 
    ----------------------
@@ -1371,6 +1367,13 @@ package body Car_Controller is
       Car_Controller_Obj.Hill_Driving_Adjustment_On :=
          Car_Controller_Obj.DIP_Switches (
             Hill_Driving_Adjustment_DIP_Switch_Index);
+
+      --
+      --  Discard first frame read, as it may not be valid (i.e. the
+      --  capacitors of all the camera's light sensors may be saturated)
+      --
+      TFC_Line_Scan_Camera.Get_Next_Frame (
+         Car_Controller_Obj.Camera_Frame);
 
       TFC_Battery_LEDs.Set_LEDs (Car_Controller_Obj.Battery_Charge_Level);
       Old_Color := Color_Led.Set_Color (Color_Led.Green);

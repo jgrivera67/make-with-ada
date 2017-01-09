@@ -113,14 +113,9 @@ begin -- Drive_Car
    --  NOTE: right-most pixel index is TFC_Camera_Frame_Pixel_Index_Type'Last
    --  and left-most pixel index is TFC_Camera_Frame_Pixel_Index_Type'First
    --
-   if  Car_Controller_Obj.Track_Edge_Tracing_State = No_Track_Edge_Detected
-   then
-      PID_Error := 0;
-   else
-      PID_Error :=
-         Integer (Car_Controller_Obj.Current_Track_Edge_Pixel_Index) -
-         Integer (Car_Controller_Obj.Reference_Track_Edge_Pixel_Index);
-   end if;
+   PID_Error :=
+      Integer (Car_Controller_Obj.Current_Track_Edge_Pixel_Index) -
+      Integer (Car_Controller_Obj.Reference_Track_Edge_Pixel_Index);
 
    Derivative_Term := PID_Error - Car_Controller_Obj.Previous_PID_Error;
    Car_Controller_Obj.Previous_PID_Error := PID_Error;
@@ -266,6 +261,12 @@ begin -- Drive_Car
       --
       --  Delay to give the actuators enough time to actuate:
       --
+      --  TODO: This delay impacts when the thenext camera frame capture
+      --  is started. Ideally, camera frame capture should be started
+      --  every Extra_Exposure_Time_Ms milliseconds. So, it would be better
+      --  to decouple camera frame capture from the main control loop, by
+      --  using a spearate task for camera frame capture.
+      --
       delay until Clock + Milliseconds (Actuators_Delay_Ms);
    else
       --
@@ -273,7 +274,7 @@ begin -- Drive_Car
       --  (exposure time):
       --
       delay until Clock +
-                  Milliseconds (TFC_Line_Scan_Camera.Min_Exposure_Time_Ms);
+                  Milliseconds (TFC_Line_Scan_Camera.Extra_Exposure_Time_Ms);
    end if;
 
 end Drive_Car;
