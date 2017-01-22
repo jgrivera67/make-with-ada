@@ -28,6 +28,7 @@ with System;
 
 package MK64F12.SPI is
    pragma Preelaborate;
+   pragma SPARK_Mode (Off);
 
    ---------------
    -- Registers --

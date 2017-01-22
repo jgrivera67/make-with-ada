@@ -32,6 +32,7 @@ with Kinetis_K64F.UART;
 with MK64F12.ENET;
 with MK64F12.CAN0;
 with MK64F12.FTFE;
+with MK64F12.SPI;
 
 --
 --  @summary Devices in the Kinetis K64F MCU
@@ -51,13 +52,12 @@ package Devices.MCU_Specific is
    --
    --  IDs of UART instances
    --
-   type Uart_Device_Id_Type is
-     (UART0,
-      UART1,
-      UART2,
-      UART3,
-      UART4,
-      UART5);
+   type Uart_Device_Id_Type is (UART0,
+                                UART1,
+                                UART2,
+                                UART3,
+                                UART4,
+                                UART5);
 
    --
    --  IDs of Ethernet MAC instances
@@ -69,6 +69,13 @@ package Devices.MCU_Specific is
    --
    type CAN_Device_Id_Type is (CAN0);
 
+   --
+   --  IDs of SPI instances
+   --
+   type SPI_Device_Id_Type is (SPI0,
+                               SPI1,
+                               SPI2);
+
    package PORT renames Kinetis_K64F.PORT;
    package SIM renames Kinetis_K64F.SIM;
    package GPIO renames Kinetis_K64F.GPIO;
@@ -76,4 +83,6 @@ package Devices.MCU_Specific is
    package ENET renames MK64F12.ENET;
    package CAN  renames MK64F12.CAN0;
    package NOR renames MK64F12.FTFE;
+   package SPI renames MK64F12.SPI;
+
 end Devices.MCU_Specific;

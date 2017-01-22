@@ -28,7 +28,6 @@
 with Networking.Layer2;
 with Networking.Layer3_IPv4;
 with Networking.Layer3_IPv6;
-with Networking.Layer4_UDP;
 
 package body Networking.API is
 
