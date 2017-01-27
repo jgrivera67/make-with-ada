@@ -1,0 +1,59 @@
+with "../../embedded-runtimes/ravenscar-kinetis_k64f_frdm/ravenscar_build.gpr";
+project frdm_k64f_can_to_udp_gateway is
+
+   for Languages use ("ada");
+
+   for Main use ("main.adb");
+
+   for Source_Dirs use (".",
+                        "../building_blocks/portable",
+                        "../building_blocks/portable/networking",
+                        "../building_blocks/cpu_specific/arm_cortex_m4",
+                        "../building_blocks/mcu_specific/nxp_kinetis_k64f",
+                        "../building_blocks/board_specific/frdm_k64f",
+                        "../drivers/portable",
+                        "../drivers/portable/networking",
+                        "../drivers/mcu_specific/nxp_kinetis_k64f",
+                        "../drivers/mcu_specific/nxp_kinetis_k64f/networking",
+                        "../drivers/board_specific/frdm_k64f",
+                        "../drivers/board_specific/frdm_k64f/networking",
+                        "../SVD/nxp_kinetis_k64f");
+
+   for Object_Dir use "obj";
+
+   package Compiler is
+      for Default_Switches ("ada") use (
+             "-g", "-gnatwa", "-gnatQ", "-gnat12",
+             -- "-fstack-check", --  Generate stack checking code (part of Ada)
+             "-gnata",        --  Enable assertions            (part of Ada)
+             "-gnato13",      --  Overflow checking            (part of Ada)
+             "-gnatn",        --  Inline subprograms marked for inlining
+             "-gnatf",                      --  Full, verbose error messages
+             "-gnatwa",                     --  All optional warnings
+             "-gnatVa",                     --  All validity checks
+             "-gnaty3abcdefhiklmnoOprstux", --  Style checks
+             -- "-gnatwe",                     --  Treat warnings as errors
+             "-gnat2012",                   --  Use Ada 2012
+             "-Wall",                       --  All GCC warnings
+             -- "-v",
+             "-O2");                        --  Optimise (level 2/3)
+
+      for Local_Configuration_Pragmas use "../gnat_pragmas.adc";
+   end Compiler;
+
+   package Builder is
+      for Default_Switches ("ada") use ("-g", "-O0");
+      for Executable ("main.adb") use "frdm_k64f_can_to_udp_gateway";
+   end Builder;
+
+   --for Runtime ("Ada") use "ravenscar-sfp-kinetis_k64f_frdm";
+   for Runtime ("Ada") use Ravenscar_Build'Runtime ("Ada");
+   for Target use "arm-eabi";
+
+   package Ide is
+      for Program_Host use "localhost:4242";
+      for Communication_Protocol use "remote";
+   end Ide;
+
+end frdm_k64f_can_to_udp_gateway;
+
