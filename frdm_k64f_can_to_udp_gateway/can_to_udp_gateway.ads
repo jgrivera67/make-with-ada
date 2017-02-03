@@ -27,13 +27,17 @@
 
 with App_Configuration;
 with Networking;
+with Interfaces;
 private with Ada.Synchronous_Task_Control;
+private with Devices;
+private with CAN_Driver;
 
 --
 --  @summary CAN to UDP_Gateway
 --
 package CAN_To_UDP_Gateway is
    use Networking;
+   use Interfaces;
 
    procedure Get_Configuration_Paramters (
       Config_Parameters : out App_Configuration.Config_Parameters_Type);
@@ -44,19 +48,56 @@ package CAN_To_UDP_Gateway is
    procedure Initialize
      with Pre => not Initialized;
 
+   procedure Set_Local_IPv4_Unicast_Address (
+      IPv4_Address : IPv4_Address_Type;
+      IPv4_Subnet_Prefix : IPv4_Subnet_Prefix_Type);
+
    procedure Set_IPv4_Multicast_Address (IPv4_Address : IPv4_Address_Type);
+
+   procedure Set_Multicast_UDP_Port (UDP_Port : Unsigned_16);
 
 private
    pragma SPARK_Mode (Off);
    use Ada.Synchronous_Task_Control;
+   use Devices;
+   use CAN_Driver;
+
+   type CANaerospace_Message_Type is record
+      Node_Id : Unsigned_8;
+      Data_Type : Unsigned_8;
+      Service_Code : Unsigned_8;
+      Message_Code : Unsigned_8;
+      Message_Data : Bytes_Array_Type (1 .. 4);
+   end record with Size => 8 * Unsigned_8'Size;
+
+   for CANaerospace_Message_Type use record
+      Node_Id  at 0 range 0 .. 7;
+      Data_Type at 0 range 8 .. 15;
+      Service_Code at 0 range 16 .. 23;
+      Message_Code at 0 range 24 .. 31;
+      Message_Data at 0 range 32 .. 63;
+   end record;
+
+   type CANaerospace_Message_Access_Type is
+      access all CANaerospace_Message_Type;
+
+   type UDP_Encapsulated_CAN_Message_Type is record
+      CAN_Message_Id : CAN_Message_Id_Type;
+      CANaerospace_Message : CANaerospace_Message_Type;
+   end record;
+
+   type UDP_Encapsulated_CAN_Message_Access_Type is
+      access all UDP_Encapsulated_CAN_Message_Type;
+
+   type UDP_Encapsulated_CAN_Message_Access_Read_Only_Type is
+      access constant UDP_Encapsulated_CAN_Message_Type;
 
    type CAN_To_UDP_Gateway_Type is limited record
       Initialized : Boolean := False;
       Config_Parameters : App_Configuration.Config_Parameters_Type;
       Network_Stats_Task_Suspension_Obj : Suspension_Object;
-      Udp_Server_Task_Suspension_Obj : Suspension_Object;
-      Bluetooth_Terminal_Task_Suspension_Obj : Suspension_Object;
       Udp_Multicast_Receiver_Task_Suspension_Obj : Suspension_Object;
+      CAN_Receiver_Task_Suspension_Obj : Suspension_Object;
    end record;
 
    --
@@ -64,9 +105,9 @@ private
    --
    CAN_To_UDP_Gateway : CAN_To_UDP_Gateway_Type;
 
-   task CAN_Receiver_Task;
-
    task Network_Stats_Task;
+
+   task CAN_Receiver_Task;
 
    task UDP_Multicast_Receiver_Task;
 

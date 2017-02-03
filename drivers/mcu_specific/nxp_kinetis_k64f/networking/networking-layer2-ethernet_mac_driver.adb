@@ -40,7 +40,7 @@ with Ada.Interrupts.Names;
 with System.Address_To_Access_Conversions;
 with Microcontroller.MCU_Specific;
 with System;
-with MPU_Driver;
+with Memory_Protection;
 
 package body Networking.Layer2.Ethernet_Mac_Driver is
    pragma SPARK_Mode (Off);
@@ -1222,8 +1222,8 @@ package body Networking.Layer2.Ethernet_Mac_Driver is
       --  TODO: When the MPU is enabled, replace this with code to enable
       --  access to the Rx/Tx rings memory from the ENET DMA engine
       --
-      MPU_Driver.Disable_MPU;
-
+      Memory_Protection.Disable_MPU;
+      Runtime_Logs.Debug_Print("*** MPU Disabled ***");--????
       --
       --  Initialize Tx buffer descriptor ring:
       --

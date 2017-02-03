@@ -29,7 +29,7 @@ with Devices.MCU_Specific;
 with Interfaces;
 with Microcontroller.Arm_Cortex_M;
 private with Pin_Mux_Driver;
-private with Ada.Synchronous_Task_Control;
+--private with Ada.Synchronous_Task_Control;
 
 --
 --  @summary Ethernet PHY MDIO interface driver
@@ -98,7 +98,7 @@ package Ethernet_Phy_Mdio_Driver is
 private
    pragma SPARK_Mode (Off);
    use Pin_Mux_Driver;
-   use Ada.Synchronous_Task_Control;
+   --use Ada.Synchronous_Task_Control;
 
    --
    --  Type for the constant portion of an Ethernet PHY MDIO device object

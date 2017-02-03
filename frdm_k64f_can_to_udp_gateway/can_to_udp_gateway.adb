@@ -26,7 +26,7 @@
 --
 
 with Ada.Real_Time;
-with Interfaces;
+with Interfaces.Bit_Types;
 with Runtime_Logs;
 with Serial_Console;
 with Color_Led;
@@ -39,12 +39,12 @@ with System;
 package body CAN_To_UDP_Gateway is
    pragma SPARK_Mode (Off);
    use Ada.Real_Time;
-   use Interfaces;
+   use Interfaces.Bit_Types;
    use Networking.Layer2;
    use Networking.Layer3_IPv4;
    use Networking.Layer4_UDP;
-   use Devices;
    use App_Configuration;
+   use Devices.MCU_Specific;
 
    Blank_Line : constant String (1 .. 80) := (others => ' ');
 
@@ -54,6 +54,17 @@ package body CAN_To_UDP_Gateway is
              Config_Parameters.Checksum'Position =
              (Config_Parameters'Size - Unsigned_32'Size) /
              System.Storage_Unit, "Checksum field is in the wrong place");
+
+   IPv4_Multicast_Address : constant IPv4_Address_Type := (224, 0, 0, 8);
+
+   UDP_Multicast_Receiver_Port : constant Unsigned_16 := 8887;
+
+   Local_UDP_End_Point : aliased UDP_End_Point_Type;
+
+   Ethernet_Mac_Device_Id :
+      constant Ethernet_Mac_Id_Type := Devices.MCU_Specific.MAC0;
+
+   CAN_Device_Id : constant CAN_Device_Id_Type := Devices.MCU_Specific.CAN0;
 
    ---------------------------------
    -- Get_Configuration_Paramters --
@@ -74,11 +85,12 @@ package body CAN_To_UDP_Gateway is
    is
    begin
       App_Configuration.Load_And_Apply_Config_Parameters (Config_Parameters);
+      CAN_Driver.Initialize (CAN_Device_Id, Loopback_Mode => True);
       CAN_To_UDP_Gateway.Initialized := True;
-      Set_True (CAN_To_UDP_Gateway.Network_Stats_Task_Suspension_Obj);
-      Set_True (CAN_To_UDP_Gateway.Udp_Server_Task_Suspension_Obj);
-      Set_True (CAN_To_UDP_Gateway.Bluetooth_Terminal_Task_Suspension_Obj);
+
       Set_True (CAN_To_UDP_Gateway.Udp_Multicast_Receiver_Task_Suspension_Obj);
+      Set_True (CAN_To_UDP_Gateway.Network_Stats_Task_Suspension_Obj);
+      Set_True (CAN_To_UDP_Gateway.CAN_Receiver_Task_Suspension_Obj);
    end Initialize;
 
    --------------------------------
@@ -91,6 +103,39 @@ package body CAN_To_UDP_Gateway is
       CAN_To_UDP_Gateway.Config_Parameters.IPv4_Multicast_Address :=
          IPv4_Address;
    end Set_IPv4_Multicast_Address;
+
+   ------------------------------------
+   -- Set_Local_IPv4_Unicast_Address --
+   ------------------------------------
+
+   procedure Set_Local_IPv4_Unicast_Address (
+      IPv4_Address : IPv4_Address_Type;
+      IPv4_Subnet_Prefix : IPv4_Subnet_Prefix_Type)
+   is
+      Local_IPv4_End_Point_Ptr :
+         constant Networking.Layer3_IPv4.IPv4_End_Point_Access_Type :=
+         Networking.Layer3_IPv4.Get_IPv4_End_Point (Ethernet_Mac_Device_Id);
+   begin
+      CAN_To_UDP_Gateway.Config_Parameters.Local_IPv4_Address :=
+         IPv4_Address;
+      CAN_To_UDP_Gateway.Config_Parameters.IPv4_Subnet_Prefix :=
+         IPv4_Subnet_Prefix;
+
+      Layer3_IPv4.Set_Local_IPv4_Address (Local_IPv4_End_Point_Ptr.all,
+                                          IPv4_Address,
+                                          IPv4_Subnet_Prefix);
+   end Set_Local_IPv4_Unicast_Address;
+
+   ----------------------------
+   -- Set_Multicast_UDP_Port --
+   ----------------------------
+
+   procedure Set_Multicast_UDP_Port (UDP_Port : Unsigned_16)
+   is
+   begin
+      CAN_To_UDP_Gateway.Config_Parameters.IPv4_Multicast_Receiver_UDP_Port :=
+         UDP_Port;
+   end Set_Multicast_UDP_Port;
 
    ------------------------
    -- Network_Stats_Task --
@@ -265,7 +310,9 @@ package body CAN_To_UDP_Gateway is
       end Stats_Update_Link_State;
 
    begin --  Network_Stats_Task
-      Suspend_Until_True (CAN_To_UDP_Gateway.Network_Stats_Task_Suspension_Obj);
+      Suspend_Until_True (
+         CAN_To_UDP_Gateway.Network_Stats_Task_Suspension_Obj);
+
       Runtime_Logs.Info_Print ("Network stats display task started");
 
       Networking.Layer2.Get_Mac_Address (Layer2_End_Point_Ptr.all,
@@ -307,196 +354,66 @@ package body CAN_To_UDP_Gateway is
       end loop;
    end Network_Stats_Task;
 
-   UDP_Server_End_Point : aliased UDP_End_Point_Type;
-
-   ---------------------
-   -- Udp_Server_Task --
-   ---------------------
-
-   task body Udp_Server_Task is
-      procedure Process_Incoming_Command (Cmd : String);
-
-      procedure Process_Incoming_Message (
-         UDP_End_Point : in out UDP_End_Point_Type;
-         Source_IPv4_Address : IPv4_Address_Type;
-         Source_Port : Unsigned_16;
-         Rx_Packet_Ptr : Network_Packet_Access_Type;
-         Rx_Message_Length : Positive;
-         Seq_Char : in out Character)
-         with Pre =>
-                 Rx_Message_Length < Max_UDP_Datagram_Payload_Size_Over_IPv4;
-
-      ------------------------------
-      -- Process_Incoming_Command --
-      ------------------------------
-
-      procedure Process_Incoming_Command (Cmd : String)
-      is
-         Old_Color : Color_Led.Led_Color_Type with Unreferenced;
-      begin
-         if Cmd = "red" then
-            Old_Color := Color_Led.Set_Color (Color_Led.Red);
-         elsif Cmd = "green" then
-            Old_Color := Color_Led.Set_Color (Color_Led.Green);
-         elsif Cmd = "blue" then
-            Old_Color := Color_Led.Set_Color (Color_Led.Blue);
-         elsif Cmd = "yellow" then
-            Old_Color := Color_Led.Set_Color (Color_Led.Yellow);
-         elsif Cmd = "cyan" then
-            Old_Color := Color_Led.Set_Color (Color_Led.Cyan);
-         elsif Cmd = "magenta" then
-            Old_Color := Color_Led.Set_Color (Color_Led.Magenta);
-         elsif Cmd = "white" then
-            Old_Color := Color_Led.Set_Color (Color_Led.White);
-         elsif Cmd = "black" then
-            Old_Color := Color_Led.Set_Color (Color_Led.Black);
-         else
-            Runtime_Logs.Error_Print (
-               "Received invalid command: '" & Cmd & "'");
-         end if;
-      end Process_Incoming_Command;
-
-      ------------------------------
-      -- Process_Incoming_Message --
-      ------------------------------
-
-      procedure Process_Incoming_Message (
-         UDP_End_Point : in out UDP_End_Point_Type;
-         Source_IPv4_Address : IPv4_Address_Type;
-         Source_Port : Unsigned_16;
-         Rx_Packet_Ptr : Network_Packet_Access_Type;
-         Rx_Message_Length : Positive;
-         Seq_Char : in out Character)
-      is
-         subtype Rx_Message_Type is String (1 .. Rx_Message_Length);
-         subtype Tx_Message_Type is String (1 .. Rx_Message_Length + 1);
-
-         type Rx_Message_Read_Only_Access_Type is
-            access constant Rx_Message_Type;
-         pragma No_Strict_Aliasing (Rx_Message_Read_Only_Access_Type);
-
-         type Tx_Message_Access_Type is
-            access all Tx_Message_Type;
-         pragma No_Strict_Aliasing (Tx_Message_Access_Type);
-
-         function Get_Rx_Message is new
-            Generic_Get_Rx_UDP_Datagram_Data (
-               Rx_Message_Type, Rx_Message_Read_Only_Access_Type);
-
-         function Get_Tx_Message is new
-            Generic_Get_Tx_UDP_Datagram_Data_Over_IPv4 (
-               Tx_Message_Type, Tx_Message_Access_Type);
-
-         Rx_Message_Ptr : constant Rx_Message_Read_Only_Access_Type :=
-            Get_Rx_Message (Rx_Packet_Ptr.all);
-
-         Tx_Packet_Ptr : constant Network_Packet_Access_Type :=
-            Allocate_Tx_Packet (Free_After_Tx_Complete => True);
-
-         Tx_Message_Ptr : constant Tx_Message_Access_Type :=
-            Get_Tx_Message (Tx_Packet_Ptr.all);
-      begin
-         Process_Incoming_Command (
-            Rx_Message_Ptr.all (1 .. Rx_Message_Length));
-
-         --
-         --  Display incoming message on the console:
-         --
-         Serial_Console.Lock;
-         Serial_Console.Print_Pos_String (
-            23, 27, Rx_Message_Ptr.all (1 .. Rx_Message_Length));
-         if Rx_Message_Length < 55 then
-            Serial_Console.Print_Pos_String (
-               23, Serial_Console.Column_Type (27 + Rx_Message_Length),
-               Blank_Line (1 .. 55 - Rx_Message_Length));
-         end if;
-         Serial_Console.Unlock;
-
-         Tx_Message_Ptr.all (1 .. Rx_Message_Length) := Rx_Message_Ptr.all;
-         Tx_Message_Ptr.all (Rx_Message_Length + 1) := Seq_Char;
-         if Seq_Char = 'Z' then
-            Seq_Char := 'A';
-         else
-            Seq_Char := Character'Succ (Seq_Char);
-         end if;
-
-         --
-         --  Recycle Rx_Packet, since we don't need it anymore:
-         --
-         Recycle_Rx_Packet (Rx_Packet_Ptr.all);
-
-         --
-         --  Send reply (echo + appended letter):
-         --
-         Send_UDP_Datagram_Over_IPv4 (UDP_End_Point,
-                                      Source_IPv4_Address,
-                                      Source_Port,
-                                      Tx_Packet_Ptr.all,
-                                      Unsigned_16 (Rx_Message_Length + 1));
-      end Process_Incoming_Message;
-
-      -- ** --
-
-      UDP_Server_Port : constant Unsigned_16 := 8887;
-      Rx_Packet_Ptr : Network_Packet_Access_Type;
-      Bind_Ok : Boolean;
-      Source_IPv4_Address : IPv4_Address_Type;
-      Source_Port : Unsigned_16;
-      Input_Message_Count : Natural := 0;
-      Input_Message_Size : Unsigned_16;
-      Seq_Char : Character := 'A';
-
-   begin
-      Suspend_Until_True (CAN_To_UDP_Gateway.Udp_Server_Task_Suspension_Obj);
-      Runtime_Logs.Info_Print ("UDP server task started");
-
-      Bind_Ok :=
-         Bind_UDP_End_Point (UDP_Server_End_Point,
-                             UDP_Server_Port);
-
-      if not Bind_Ok then
-         Runtime_Logs.Error_Print ("UDP end point binding to port" &
-                                   UDP_Server_Port'Image & " failed");
-         raise Program_Error;
-      end if;
-
-      loop
-         Rx_Packet_Ptr := Receive_UDP_Datagram_Over_IPv4 (UDP_Server_End_Point,
-                                                          Source_IPv4_Address,
-                                                          Source_Port);
-         if Rx_Packet_Ptr = null then
-            Runtime_Logs.Error_Print ("receiving UDP datagram on port" &
-                                      UDP_Server_Port'Image & " failed");
-            raise Program_Error;
-         end if;
-
-         Input_Message_Count := Input_Message_Count + 1;
-         Input_Message_Size :=
-            Get_Rx_UDP_Datagram_Data_Length (Rx_Packet_Ptr.all);
-
-         Process_Incoming_Message (UDP_Server_End_Point,
-                                   Source_IPv4_Address,
-                                   Source_Port,
-                                   Rx_Packet_Ptr,
-                                   Positive (Input_Message_Size),
-                                   Seq_Char);
-      end loop;
-
-   end Udp_Server_Task;
-
    -----------------------
    -- CAN_Receiver_Task --
    -----------------------
 
    task body CAN_Receiver_Task is
+      procedure Post_Receive_CAN_Message is new
+         Generic_Post_Receive_CAN_Message (
+            CAN_Message_Data_Type => CANaerospace_Message_Type,
+            CAN_Message_Data_Access_Type => CANaerospace_Message_Access_Type);
+
+      function Get_Tx_UDP_Message is new
+         Generic_Get_Tx_UDP_Datagram_Data_Over_IPv4 (
+            UDP_Datagram_Data_Type => UDP_Encapsulated_CAN_Message_Type,
+            UDP_Datagram_Data_Access_Type =>
+               UDP_Encapsulated_CAN_Message_Access_Type);
+
+      CAN_Message_Buffer_Index : CAN_Message_Buffer_Index_Type;
+      CANaerospace_Message : aliased CANaerospace_Message_Type;
+      Message_Data_Length : CAN_Message_Data_Length_Type;
+      Tx_UDP_Packet_Ptr : Network_Packet_Access_Type;
+      Tx_UDP_Message_Ptr : UDP_Encapsulated_CAN_Message_Access_Type;
+      Rx_CAN_Message_Id : CAN_Message_Id_Type;
    begin
       Suspend_Until_True (
-         CAN_To_UDP_Gateway.Bluetooth_Terminal_Task_Suspension_Obj);
+         CAN_To_UDP_Gateway.CAN_Receiver_Task_Suspension_Obj);
 
       Runtime_Logs.Info_Print ("CAN receiver task started");
 
       loop
-         delay until Clock + Milliseconds (1000);--???
+          CAN_Message_Buffer_Index :=
+            Allocate_CAN_Message_Buffer_Index (CAN_Device_Id);
+
+         Tx_UDP_Packet_Ptr :=
+            Allocate_Tx_Packet (Free_After_Tx_Complete => True);
+         Tx_UDP_Message_Ptr := Get_Tx_UDP_Message (Tx_UDP_Packet_Ptr.all);
+
+         Post_Receive_CAN_Message (CAN_Device_Id,
+                                   CAN_Message_Buffer_Index,
+                                   CANaerospace_Message'Unchecked_Access);
+
+         Wait_Receive_CAN_Message (CAN_Device_Id,
+                                   CAN_Message_Buffer_Index,
+                                   Rx_CAN_Message_Id,
+                                   Message_Data_Length);
+
+         pragma Assert (Message_Data_Length =
+                        CAN_Message_Data_Length_Type (
+                           CANaerospace_Message'Size / Byte'Size));
+
+         Tx_UDP_Message_Ptr.CAN_Message_Id := Rx_CAN_Message_Id;
+         Tx_UDP_Message_Ptr.CANaerospace_Message := CANaerospace_Message;
+
+         Release_CAN_Message_Buffer (CAN_Device_Id,
+                                     CAN_Message_Buffer_Index);
+
+         Send_UDP_Datagram_Over_IPv4 (Local_UDP_End_Point,
+                                      IPv4_Multicast_Address,
+                                      UDP_Multicast_Receiver_Port,
+                                      Tx_UDP_Packet_Ptr.all,
+                                      Tx_UDP_Message_Ptr.all'Size / Byte'Size);
       end loop;
    end CAN_Receiver_Task;
 
@@ -505,83 +422,72 @@ package body CAN_To_UDP_Gateway is
    ---------------------------------
 
    task body UDP_Multicast_Receiver_Task is
-      Local_End_Point : UDP_End_Point_Type;
+      function Get_Rx_UDP_Datagram_Data is new
+         Generic_Get_Rx_UDP_Datagram_Data (
+            UDP_Datagram_Data_Type =>
+               UDP_Encapsulated_CAN_Message_Type,
+            UDP_Datagram_Data_Read_Only_Access_Type =>
+               UDP_Encapsulated_CAN_Message_Access_Read_Only_Type);
+
+      procedure Start_Send_CAN_Message is new
+         Generic_Start_Send_CAN_Message (
+            CAN_Message_Data_Type => CANaerospace_Message_Type);
+
+      Local_IPv4_End_Point_Ptr :
+         constant Networking.Layer3_IPv4.IPv4_End_Point_Access_Type :=
+         Networking.Layer3_IPv4.Get_IPv4_End_Point (Ethernet_Mac_Device_Id);
       Bind_Ok : Boolean := False;
+      Source_IPv4_Address : IPv4_Address_Type;
+      Source_Port : Unsigned_16;
+      Rx_Packet_Ptr : Network_Packet_Access_Type;
+      Input_Message_Size : Unsigned_16;
+      Encapsulated_CAN_Message_Ptr :
+         UDP_Encapsulated_CAN_Message_Access_Read_Only_Type;
+      CAN_Message_Buffer_Index : CAN_Message_Buffer_Index_Type;
    begin
       Suspend_Until_True (
          CAN_To_UDP_Gateway.Udp_Multicast_Receiver_Task_Suspension_Obj);
 
       Runtime_Logs.Info_Print ("UDP multicast receiver task started");
 
-      Bind_Ok :=
-         Bind_UDP_End_Point (Local_End_Point,
-                             UDP_Server_Port);
+      Bind_Ok := Bind_UDP_End_Point (Local_UDP_End_Point,
+                                     UDP_Multicast_Receiver_Port);
 
+      pragma Assert (Bind_Ok);
+
+      Join_IPv4_Multicast_Group (Local_IPv4_End_Point_Ptr.all,
+                                 IPv4_Multicast_Address);
 
       loop
-         delay until Clock + Milliseconds (1000);--???
+         Rx_Packet_Ptr := Receive_UDP_Datagram_Over_IPv4 (Local_UDP_End_Point,
+                                                          Source_IPv4_Address,
+                                                          Source_Port);
+         pragma Assert (Rx_Packet_Ptr /= null);
+
+         Input_Message_Size :=
+            Get_Rx_UDP_Datagram_Data_Length (Rx_Packet_Ptr.all);
+
+         pragma Assert (Input_Message_Size =
+                        CANaerospace_Message_Type'Size / Unsigned_8'Size);
+
+         Encapsulated_CAN_Message_Ptr :=
+            Get_Rx_UDP_Datagram_Data (Rx_Packet_Ptr.all);
+
+         CAN_Message_Buffer_Index :=
+            Allocate_CAN_Message_Buffer_Index (CAN_Device_Id);
+
+         Start_Send_CAN_Message (
+            CAN_Device_Id,
+            CAN_Message_Buffer_Index,
+            Encapsulated_CAN_Message_Ptr.CAN_Message_Id,
+            Encapsulated_CAN_Message_Ptr.CANaerospace_Message,
+            Encapsulated_CAN_Message_Ptr.CANaerospace_Message'Size /
+               Byte'Size);
+
+         Recycle_Rx_Packet (Rx_Packet_Ptr.all);
+         Wait_Send_CAN_Message (CAN_Device_Id, CAN_Message_Buffer_Index);
       end loop;
-
-      ???
-
-
-    error = net_layer4_udp_end_point_bind(&local_end_point,
-                                          hton16(MY_IP4_UDP_MULTICAST_RECEIVER_PORT));
-    D_ASSERT(error == 0);
-
-    net_layer3_join_ipv4_multicast_group(&g_multicast_ip_addr);
-
-    for ( ; ; ) {
-		struct network_packet *rx_packet_p = NULL;
-		struct ipv4_address remote_ip_addr;
-		uint16_t remote_port;
-		uint32_t *in_msg_p;
-		size_t in_msg_size;
-        uint32_t led_color_mask;
-        const char *color_s;
-
-		error = net_layer4_receive_udp_datagram_over_ipv4(&local_end_point,
-                                                          0,
-                                                          &remote_ip_addr,
-                                                          &remote_port,
-                                                          &rx_packet_p);
-        D_ASSERT(error == 0);
-
-		in_msg_size = get_ipv4_udp_data_payload_length(rx_packet_p);
-	    D_ASSERT(in_msg_size == sizeof(uint32_t));
-	    in_msg_p = get_ipv4_udp_data_payload_area(rx_packet_p);
-        led_color_mask = *in_msg_p;
-	    net_recycle_rx_packet(rx_packet_p);
-
-        console_printf("Received LED color mask: %#x\n", led_color_mask);
-        heartbeat_set_led_color(led_color_mask);
-        if (led_color_mask == LED_COLOR_BLUE) {
-        	color_s = "blue";
-        } else if (led_color_mask == LED_COLOR_RED) {
-        	color_s = "red";
-        } else if (led_color_mask == LED_COLOR_GREEN) {
-        	color_s = "green";
-        } else if (led_color_mask == LED_COLOR_YELLOW) {
-        	color_s = "yellow";
-        } else if (led_color_mask == LED_COLOR_CYAN) {
-        	color_s = "cyan";
-        } else if (led_color_mask == LED_COLOR_MAGENTA) {
-        	color_s = "magenta";
-        } else if (led_color_mask == LED_COLOR_WHITE) {
-        	color_s = "white";
-        } else if (led_color_mask == LED_COLOR_BLACK) {
-        	color_s = "black";
-        }
-
-	    strcpy((char *)rf_packet.payload, color_s);
-        error = rf_transceiver_transmit_data(&rf_dest_address, &rf_packet);
-        if (error != 0) {
-           console_printf("Error sending data packet over RF (error %#x)\n",
-        				  error);
-        }
-    }
-
-
    end UDP_Multicast_Receiver_Task;
 
 end CAN_To_UDP_Gateway;
+

@@ -44,14 +44,16 @@ package CAN_Driver is
    --
    --  Ids of CAN Message buffers
    --
-   subtype CAN_Message_Buffer_Id_Type is
+   subtype CAN_Message_Buffer_Index_Type is
       Integer range 0 .. Max_Num_CAN_Buffers  - 1;
 
    --
    --  Ids of CAN messages transmitted/received (CAN frame ID used for
    --  transmission prioritization over the CAN bus)
    --
-   type CAN_Message_Id_Type is range 0 .. Integer (UInt11'Last);
+   type CAN_Message_Id_Type is new UInt11;
+
+   CAN_Message_Id_Dont_Care : constant CAN_Message_Id_Type := 0;
 
    type CAN_Message_Data_Length_Type is range 0 .. 8;
 
@@ -68,12 +70,13 @@ package CAN_Driver is
    --  @param CAN_Device_Id CAN instance Id
    --
 
-   function Allocate_CAN_Message_Buffer_Id (CAN_Device_Id : CAN_Device_Id_Type)
-      return CAN_Message_Buffer_Id_Type
+   function Allocate_CAN_Message_Buffer_Index (
+      CAN_Device_Id : CAN_Device_Id_Type)
+      return CAN_Message_Buffer_Index_Type
       with Pre => Initialized (CAN_Device_Id);
    --
    --  Allocate a CAN message buffer ID. If there are no free CAN message
-   --  buffers, it waits until one becmes available
+   --  buffers, it waits until one becomes available
    --
    --  @param CAN_Device_Id CAN instance Id
    --  @return allocated CAN message buffer Id
@@ -81,20 +84,20 @@ package CAN_Driver is
 
    procedure Release_CAN_Message_Buffer (
       CAN_Device_Id : CAN_Device_Id_Type;
-      Message_Buffer_Id : CAN_Message_Buffer_Id_Type)
+      Message_Buffer_Index : CAN_Message_Buffer_Index_Type)
       with Pre => Initialized (CAN_Device_Id);
    --
    --  Free a previously allocated message buffer ID
    --
    --  @param CAN_Device_Id CAN instance Id
-   --  @param Message_Buffer_Id previously allocated CAN message buffer Id
+   --  @param Message_Buffer_Index previously allocated CAN message buffer Id
    --
 
    generic
       type CAN_Message_Data_Type is private;
    procedure Generic_Start_Send_CAN_Message (
       CAN_Device_Id : CAN_Device_Id_Type;
-      Message_Buffer_Id : CAN_Message_Buffer_Id_Type;
+      Message_Buffer_Index : CAN_Message_Buffer_Index_Type;
       Message_Id : CAN_Message_Id_Type;
       Message_Data : CAN_Message_Data_Type;
       Message_Data_Length : CAN_Message_Data_Length_Type)
@@ -109,7 +112,7 @@ package CAN_Driver is
    --  message ID contained in the given message buffer
    --
    --  @param CAN_Device_Id CAN Device where the message is to be sent
-   --  @param Message_Buffer_Id ID for the CAN Message buffer through which
+   --  @param Message_Buffer_Index ID for the CAN Message buffer through which
    --  the message is to be sent.
    --  @param Message_ID CAN message ID that identidies the CAN message in the
    --  CAN bus during transmission. It also indicates the priority of the
@@ -117,15 +120,18 @@ package CAN_Driver is
    --  @param Message_Data Data payload for the outgoing CAN message.
    --  @param Message_Data_Length Length (in bytes) of the data payload.
    --
+   --  NOTE: Message_Data is coppied to a CAN device buffer, so it can be
+   --  modified or freed after returning to the caller.
+   --
 
    generic
       type CAN_Message_Data_Type is private;
       type CAN_Message_Data_Access_Type is access all CAN_Message_Data_Type;
    procedure Generic_Post_Receive_CAN_Message (
       CAN_Device_Id : CAN_Device_Id_Type;
-      Message_Buffer_Id : CAN_Message_Buffer_Id_Type;
-      Message_Id : CAN_Message_Id_Type;
-      Message_Data_Ptr : CAN_Message_Data_Access_Type)
+      Message_Buffer_Index : CAN_Message_Buffer_Index_Type;
+      Message_Data_Ptr : CAN_Message_Data_Access_Type;
+      Message_Id : CAN_Message_Id_Type := CAN_Message_Id_Dont_Care)
       with Pre => Initialized (CAN_Device_Id)
                   and
                   CAN_Message_Data_Type'Size / Byte'Size =
@@ -135,17 +141,18 @@ package CAN_Driver is
    --  given CAN message ID.
    --
    --  @param CAN_Device_Id CAN Device where the message is to be received
-   --  @param Message_Buffer_Id ID for the CAN Message buffer on which the
+   --  @param Message_Buffer_Index ID for the CAN Message buffer on which the
    --  message is to be received.
-   --  @param Message_ID CAN message ID used to "listen" for incoming
-   --  messages that have this message ID.
    --  @param Message_Data_Ptr Pointer to the area where the data payload of
    --  the incoming CAN message is to be stored.
+   --  @param Message_ID CAN message ID used to "listen" for incoming
+   --  messages that have this message ID, or CAN_Message_Id_Dont_Care,
+   --  if messages with ID are to be received.
    --
 
    procedure Wait_Send_CAN_Message (
       CAN_Device_Id : CAN_Device_Id_Type;
-      Message_Buffer_Id : CAN_Message_Buffer_Id_Type)
+      Message_Buffer_Index : CAN_Message_Buffer_Index_Type)
       with Pre => Initialized (CAN_Device_Id);
    --
    --  Wait until the outgoing CAN message for the given CAN message buffer
@@ -153,13 +160,14 @@ package CAN_Driver is
    --  Generic_Start_Send_CAN_Message instantiation must have been done.
    --
    --  @param CAN_Device_Id CAN Device where the message was sent
-   --  @param Message_Buffer_Id ID for the CAN Message buffer through which
+   --  @param Message_Buffer_Index ID for the CAN Message buffer through which
    --  the message was sent.
    --
 
    procedure Wait_Receive_CAN_Message (
       CAN_Device_Id : CAN_Device_Id_Type;
-      Message_Buffer_Id : CAN_Message_Buffer_Id_Type;
+      Message_Buffer_Index : CAN_Message_Buffer_Index_Type;
+      Message_Id : out CAN_Message_Id_Type;
       Message_Data_Length : out CAN_Message_Data_Length_Type)
       with Pre => Initialized (CAN_Device_Id);
    --
@@ -170,8 +178,9 @@ package CAN_Driver is
    --  instantiation must have been done.
    --
    --  @param CAN_Device_Id CAN Device where the message is received
-   --  @param Message_Buffer_Id ID for the CAN Message buffer where the message
-   --  is received.
+   --  @param Message_Buffer_Index ID for the CAN Message buffer where the
+   --  message is received.
+   --  @param Message_Id CAN message ID
    --  @param Message_Data_Length data payload length of the received message.
    --  (The data payload was stored inthe area pointed to by Message_Data_Ptr
    --   in the respective call to the Generic_Post_Receive_CAN_Message

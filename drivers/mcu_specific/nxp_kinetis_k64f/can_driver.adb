@@ -124,9 +124,9 @@ package body CAN_Driver is
    --
    --  Pool of free CAN message buffers
    --
-   package CAN_Message_Buffer_Id_Pools is
+   package CAN_Message_Buffer_Index_Pools is
      new Generic_Ring_Buffers (Max_Num_Elements => Max_Num_CAN_Buffers,
-                               Element_Type => CAN_Message_Buffer_Id_Type);
+                               Element_Type => CAN_Message_Buffer_Index_Type);
 
    type CAN_Mailbox_State_Type is (CAN_Buffer_Free,
                                    CAN_Buffer_Idle,
@@ -158,7 +158,7 @@ package body CAN_Driver is
    end record;
 
    type CAN_Mailbox_Array_Type is
-      array (CAN_Message_Buffer_Id_Type) of CAN_Mailbox_Type;
+      array (CAN_Message_Buffer_Index_Type) of CAN_Mailbox_Type;
 
    --
    --  State variables of a CAN device object
@@ -166,7 +166,8 @@ package body CAN_Driver is
    --  @field Initialized Flag indicating if Initialize has been called
    --  for this object
    --  @field Ethernet_Mac_Id Ethernet MAC device Id
-   --  @field Free_Message_Buffer_Id_Pool Pol of free CAN message buffer IDs.
+   --  @field Free_Message_Buffer_Index_Pool Pol of free CAN message buffer
+   --         IDs.
    --  @field Mailbox_Array Array of Mailbox objects, one entry per CAN message
    --   buffer
    --  @field Error_Count Number of CAN Tx/Rx errors
@@ -175,8 +176,8 @@ package body CAN_Driver is
    type CAN_Device_Var_Type is limited record
       Initialized : Boolean := False;
       CAN_Device_Id : CAN_Device_Id_Type;
-      Free_Message_Buffer_Id_Pool :
-         CAN_Message_Buffer_Id_Pools.Ring_Buffer_Type;
+      Free_Message_Buffer_Index_Pool :
+         CAN_Message_Buffer_Index_Pools.Ring_Buffer_Type;
       Mailbox_Array : CAN_Mailbox_Array_Type;
       Error_Count : Unsigned_32 := 0;
       Tx_Message_Count : Unsigned_32 := 0;
@@ -189,41 +190,42 @@ package body CAN_Driver is
    CAN_Var_Devices : array (CAN_Device_Id_Type) of CAN_Device_Var_Type :=
       (CAN0 => (CAN_Device_Id => CAN0, others => <>));
 
-   ------------------------------------
-   -- Allocate_CAN_Message_Buffer_Id --
-   ------------------------------------
+   ---------------------------------------
+   -- Allocate_CAN_Message_Buffer_Index --
+   ---------------------------------------
 
-   function Allocate_CAN_Message_Buffer_Id (CAN_Device_Id : CAN_Device_Id_Type)
-      return CAN_Message_Buffer_Id_Type
+   function Allocate_CAN_Message_Buffer_Index (
+      CAN_Device_Id : CAN_Device_Id_Type)
+      return CAN_Message_Buffer_Index_Type
    is
       CAN_Var : CAN_Device_Var_Type renames CAN_Var_Devices (CAN_Device_Id);
       CAN_Const : CAN_Const_Type renames CAN_Const_Devices (CAN_Device_Id);
       CAN_Registers_Ptr :
          access CAN0_Peripheral renames CAN_Const.Registers_Ptr;
       IMASK1_Value : CAN0_IMASK1_Register;
-      Message_Buffer_Id : CAN_Message_Buffer_Id_Type;
+      Message_Buffer_Index : CAN_Message_Buffer_Index_Type;
       CS_Value : CS_Register;
    begin
-      CAN_Message_Buffer_Id_Pools.Read (CAN_Var.Free_Message_Buffer_Id_Pool,
-                                        Message_Buffer_Id);
+      CAN_Message_Buffer_Index_Pools.Read (
+         CAN_Var.Free_Message_Buffer_Index_Pool, Message_Buffer_Index);
 
       CS_Value :=
-         CAN_Registers_Ptr.Message_Buffer_Array (Message_Buffer_Id).CS;
+         CAN_Registers_Ptr.Message_Buffer_Array (Message_Buffer_Index).CS;
       pragma Assert (CS_Value.CODE = CAN_CODE_Inactive);
 
       --
       --  Enable message buffer Tx completion interrupt:
       --
       IMASK1_Value := CAN_Registers_Ptr.IMASK1;
-      pragma Assert (IMASK1_Value (Message_Buffer_Id) = 0);
-      IMASK1_Value (Message_Buffer_Id) := 1;
+      pragma Assert (IMASK1_Value (Message_Buffer_Index) = 0);
+      IMASK1_Value (Message_Buffer_Index) := 1;
       CAN_Registers_Ptr.IMASK1 := IMASK1_Value;
-      pragma Assert (CAN_Var.Mailbox_Array (Message_Buffer_Id).State =
+      pragma Assert (CAN_Var.Mailbox_Array (Message_Buffer_Index).State =
                      CAN_Buffer_Free);
-      CAN_Var.Mailbox_Array (Message_Buffer_Id).State := CAN_Buffer_Idle;
+      CAN_Var.Mailbox_Array (Message_Buffer_Index).State := CAN_Buffer_Idle;
 
-      return Message_Buffer_Id;
-   end Allocate_CAN_Message_Buffer_Id;
+      return Message_Buffer_Index;
+   end Allocate_CAN_Message_Buffer_Index;
 
    --------------------------------------
    -- Generic_Post_Receive_CAN_Message --
@@ -231,9 +233,9 @@ package body CAN_Driver is
 
    procedure Generic_Post_Receive_CAN_Message (
       CAN_Device_Id : CAN_Device_Id_Type;
-      Message_Buffer_Id : CAN_Message_Buffer_Id_Type;
-      Message_Id : CAN_Message_Id_Type;
-      Message_Data_Ptr : CAN_Message_Data_Access_Type)
+      Message_Buffer_Index : CAN_Message_Buffer_Index_Type;
+      Message_Data_Ptr : CAN_Message_Data_Access_Type;
+      Message_Id : CAN_Message_Id_Type := CAN_Message_Id_Dont_Care)
    is
       function CAN_Message_Data_Ptr_To_Words_Array_Ptr is
         new Ada.Unchecked_Conversion (
@@ -242,19 +244,19 @@ package body CAN_Driver is
 
       CAN_Var : CAN_Device_Var_Type renames CAN_Var_Devices (CAN_Device_Id);
       Mailbox : CAN_Mailbox_Type renames
-         CAN_Var.Mailbox_Array (Message_Buffer_Id);
+         CAN_Var.Mailbox_Array (Message_Buffer_Index);
       CAN_Const : CAN_Const_Type renames CAN_Const_Devices (CAN_Device_Id);
       CAN_Registers_Ptr : access CAN0_Peripheral renames
         CAN_Const.Registers_Ptr;
       CAN_Message_Buffer : CAN_Message_Buffer_Type renames
-         CAN_Registers_Ptr.Message_Buffer_Array (Message_Buffer_Id);
+         CAN_Registers_Ptr.Message_Buffer_Array (Message_Buffer_Index);
       CS_Value : CS_Register := CAN_Message_Buffer.CS;
    begin
       pragma Assert (Mailbox.State = CAN_Buffer_Idle);
       pragma Assert (Mailbox.Rx_Message_Data_Ptr = null);
       pragma Assert (CS_Value.CODE = CAN_CODE_Inactive);
-      pragma Assert (CAN_Registers_Ptr.IFLAG1 (Message_Buffer_Id) = 0);
-      pragma Assert (CAN_Registers_Ptr.IMASK1 (Message_Buffer_Id) = 1);
+      pragma Assert (CAN_Registers_Ptr.IFLAG1 (Message_Buffer_Index) = 0);
+      pragma Assert (CAN_Registers_Ptr.IMASK1 (Message_Buffer_Index) = 1);
 
       Mailbox.Rx_Message_Data_Ptr :=
          CAN_Message_Data_Ptr_To_Words_Array_Ptr (Message_Data_Ptr);
@@ -280,7 +282,7 @@ package body CAN_Driver is
 
    procedure Generic_Start_Send_CAN_Message (
       CAN_Device_Id : CAN_Device_Id_Type;
-      Message_Buffer_Id : CAN_Message_Buffer_Id_Type;
+      Message_Buffer_Index : CAN_Message_Buffer_Index_Type;
       Message_Id : CAN_Message_Id_Type;
       Message_Data : CAN_Message_Data_Type;
       Message_Data_Length : CAN_Message_Data_Length_Type)
@@ -292,12 +294,12 @@ package body CAN_Driver is
 
       CAN_Var : CAN_Device_Var_Type renames CAN_Var_Devices (CAN_Device_Id);
       Mailbox : CAN_Mailbox_Type renames
-         CAN_Var.Mailbox_Array (Message_Buffer_Id);
+         CAN_Var.Mailbox_Array (Message_Buffer_Index);
       CAN_Const : CAN_Const_Type renames CAN_Const_Devices (CAN_Device_Id);
       CAN_Registers_Ptr : access CAN0_Peripheral renames
         CAN_Const.Registers_Ptr;
       CAN_Message_Buffer : CAN_Message_Buffer_Type renames
-         CAN_Registers_Ptr.Message_Buffer_Array (Message_Buffer_Id);
+         CAN_Registers_Ptr.Message_Buffer_Array (Message_Buffer_Index);
       CS_Value : CS_Register := CAN_Message_Buffer.CS;
    begin
       pragma Assert (Mailbox.State = CAN_Buffer_Idle);
@@ -305,8 +307,8 @@ package body CAN_Driver is
       pragma Assert (CS_Value.CODE = CAN_CODE_Inactive);
       pragma Assert (CAN_Message_Data_Type'Size =
                      CAN_Message_Data_Words_Array_Type'Size);
-      pragma Assert (CAN_Registers_Ptr.IFLAG1 (Message_Buffer_Id) = 0);
-      pragma Assert (CAN_Registers_Ptr.IMASK1 (Message_Buffer_Id) = 1);
+      pragma Assert (CAN_Registers_Ptr.IFLAG1 (Message_Buffer_Index) = 0);
+      pragma Assert (CAN_Registers_Ptr.IMASK1 (Message_Buffer_Index) = 1);
 
       --
       --  Set message buffer state to qllow buffer to be populated for Tx:
@@ -393,31 +395,31 @@ package body CAN_Driver is
          --
          --  Initialize CAN message buffers:
          --
-         for Id in CAN_Message_Buffer_Id_Type loop
+         for Index in CAN_Message_Buffer_Index_Type loop
             --
             --  Make message buffer inactive
             --
-            CAN_Registers.Message_Buffer_Array (Id).CS.CODE := 0;
+            CAN_Registers.Message_Buffer_Array (Index).CS.CODE := 0;
 
             --
             --  Set default Rx mask for the message buffer:
             --
-            CAN_Registers.RXIMR (Id) := 16#ffffffff#;
+            CAN_Registers.RXIMR (Index) := 16#ffffffff#;
          end loop;
 
          --
          --  Initialize Message Buffer pool:
          --
 
-         CAN_Message_Buffer_Id_Pools.Initialize (
-            CAN_Var.Free_Message_Buffer_Id_Pool,
+         CAN_Message_Buffer_Index_Pools.Initialize (
+            CAN_Var.Free_Message_Buffer_Index_Pool,
             Name'Access);
 
-         for Id in CAN_Message_Buffer_Id_Type loop
-            CAN_Var.Mailbox_Array (Id).State := CAN_Buffer_Free;
-            CAN_Message_Buffer_Id_Pools.Write_Non_Blocking (
-               CAN_Var.Free_Message_Buffer_Id_Pool,
-               Id,
+         for Index in CAN_Message_Buffer_Index_Type loop
+            CAN_Var.Mailbox_Array (Index).State := CAN_Buffer_Free;
+            CAN_Message_Buffer_Index_Pools.Write_Non_Blocking (
+               CAN_Var.Free_Message_Buffer_Index_Pool,
+               Index,
                Write_Ok);
             pragma Assert (Write_Ok);
          end loop;
@@ -623,7 +625,7 @@ package body CAN_Driver is
 
    procedure Release_CAN_Message_Buffer (
       CAN_Device_Id : CAN_Device_Id_Type;
-      Message_Buffer_Id : CAN_Message_Buffer_Id_Type)
+      Message_Buffer_Index : CAN_Message_Buffer_Index_Type)
    is
       CAN_Var : CAN_Device_Var_Type renames CAN_Var_Devices (CAN_Device_Id);
       CAN_Const : CAN_Const_Type renames CAN_Const_Devices (CAN_Device_Id);
@@ -632,25 +634,25 @@ package body CAN_Driver is
       Write_Ok : Boolean;
       IMASK1_Value : CAN0_IMASK1_Register;
       CS_Value : constant CS_Register :=
-         CAN_Registers_Ptr.Message_Buffer_Array (Message_Buffer_Id).CS;
+         CAN_Registers_Ptr.Message_Buffer_Array (Message_Buffer_Index).CS;
    begin
       --
       --  Disable message buffer Tx/Rx completion interrupt:
       --
       IMASK1_Value := CAN_Registers_Ptr.IMASK1;
-      pragma Assert (IMASK1_Value (Message_Buffer_Id) = 1);
-      IMASK1_Value (Message_Buffer_Id) := 0;
+      pragma Assert (IMASK1_Value (Message_Buffer_Index) = 1);
+      IMASK1_Value (Message_Buffer_Index) := 0;
       CAN_Registers_Ptr.IMASK1 := IMASK1_Value;
 
-      pragma Assert (CAN_Var.Mailbox_Array (Message_Buffer_Id).State =
+      pragma Assert (CAN_Var.Mailbox_Array (Message_Buffer_Index).State =
                      CAN_Buffer_Idle);
-      CAN_Var.Mailbox_Array (Message_Buffer_Id).State := CAN_Buffer_Free;
+      CAN_Var.Mailbox_Array (Message_Buffer_Index).State := CAN_Buffer_Free;
 
       pragma Assert (CS_Value.CODE = CAN_CODE_Inactive);
 
-      CAN_Message_Buffer_Id_Pools.Write_Non_Blocking (
-          CAN_Var.Free_Message_Buffer_Id_Pool,
-          Message_Buffer_Id,
+      CAN_Message_Buffer_Index_Pools.Write_Non_Blocking (
+          CAN_Var.Free_Message_Buffer_Index_Pool,
+          Message_Buffer_Index,
           Write_Ok);
 
       --
@@ -667,7 +669,8 @@ package body CAN_Driver is
 
    procedure Wait_Receive_CAN_Message (
       CAN_Device_Id : CAN_Device_Id_Type;
-      Message_Buffer_Id : CAN_Message_Buffer_Id_Type;
+      Message_Buffer_Index : CAN_Message_Buffer_Index_Type;
+      Message_Id : out CAN_Message_Id_Type;
       Message_Data_Length : out CAN_Message_Data_Length_Type)
    is
       CAN_Var : CAN_Device_Var_Type renames CAN_Var_Devices (CAN_Device_Id);
@@ -675,9 +678,9 @@ package body CAN_Driver is
       CAN_Registers_Ptr : access CAN0_Peripheral renames
         CAN_Const.Registers_Ptr;
       CAN_Message_Buffer : CAN_Message_Buffer_Type renames
-         CAN_Registers_Ptr.Message_Buffer_Array (Message_Buffer_Id);
+         CAN_Registers_Ptr.Message_Buffer_Array (Message_Buffer_Index);
       Mailbox : CAN_Mailbox_Type renames
-         CAN_Var.Mailbox_Array (Message_Buffer_Id);
+         CAN_Var.Mailbox_Array (Message_Buffer_Index);
       CS_Value : CS_Register;
    begin
       pragma Assert (Mailbox.Rx_Message_Data_Ptr /= null);
@@ -689,6 +692,7 @@ package body CAN_Driver is
       CS_Value := CAN_Message_Buffer.CS;
       pragma Assert (CS_Value.CODE = CAN_CODE_Inactive);
 
+      Message_Id := CAN_Message_Id_Type (CAN_Message_Buffer.ID.STD);
       Message_Data_Length := Mailbox.Rx_Message_Data_Length;
    end Wait_Receive_CAN_Message;
 
@@ -698,16 +702,16 @@ package body CAN_Driver is
 
    procedure Wait_Send_CAN_Message (
       CAN_Device_Id : CAN_Device_Id_Type;
-      Message_Buffer_Id : CAN_Message_Buffer_Id_Type)
+      Message_Buffer_Index : CAN_Message_Buffer_Index_Type)
    is
       CAN_Var : CAN_Device_Var_Type renames CAN_Var_Devices (CAN_Device_Id);
       CAN_Const : CAN_Const_Type renames CAN_Const_Devices (CAN_Device_Id);
       CAN_Registers_Ptr : access CAN0_Peripheral renames
         CAN_Const.Registers_Ptr;
       CAN_Message_Buffer : CAN_Message_Buffer_Type renames
-         CAN_Registers_Ptr.Message_Buffer_Array (Message_Buffer_Id);
+         CAN_Registers_Ptr.Message_Buffer_Array (Message_Buffer_Index);
       Mailbox : CAN_Mailbox_Type renames
-         CAN_Var.Mailbox_Array (Message_Buffer_Id);
+         CAN_Var.Mailbox_Array (Message_Buffer_Index);
       CS_Value : CS_Register;
    begin
       pragma Assert (Mailbox.Rx_Message_Data_Ptr = null);
@@ -817,7 +821,7 @@ package body CAN_Driver is
          procedure Process_CAN_Tx_Rx_Completion (
                       CAN_Registers : in out CAN0_Peripheral;
                       CAN_Var : in out CAN_Device_Var_Type;
-                      Message_Buffer_Id : CAN_Message_Buffer_Id_Type)
+                      Message_Buffer_Index : CAN_Message_Buffer_Index_Type)
             with Inline;
 
          ----------------------------------
@@ -827,13 +831,13 @@ package body CAN_Driver is
          procedure Process_CAN_Tx_Rx_Completion (
                       CAN_Registers : in out CAN0_Peripheral;
                       CAN_Var : in out CAN_Device_Var_Type;
-                      Message_Buffer_Id : CAN_Message_Buffer_Id_Type)
+                      Message_Buffer_Index : CAN_Message_Buffer_Index_Type)
          is
             Message_Buffer : CAN_Message_Buffer_Type renames
-               CAN_Registers.Message_Buffer_Array (Message_Buffer_Id);
+               CAN_Registers.Message_Buffer_Array (Message_Buffer_Index);
             CS_Value : CS_Register := Message_Buffer.CS;
             Mailbox : CAN_Mailbox_Type renames
-               CAN_Var.Mailbox_Array (Message_Buffer_Id);
+               CAN_Var.Mailbox_Array (Message_Buffer_Index);
          begin
             --  message buffer is locked
             pragma Assert ((CS_Value.CODE and CAN_CODE_BUSY_FLAG) = 0);
@@ -874,11 +878,11 @@ package body CAN_Driver is
 
       begin -- CAN_ORed_Message_Buffer_Irq_Handler
          IFLAG1_Value := CAN_Registers_Ptr.IFLAG1;
-         for Message_Buffer_Id in CAN_Message_Buffer_Id_Type loop
-            if IFLAG1_Value (Message_Buffer_Id) = 1 then
+         for Message_Buffer_Index in CAN_Message_Buffer_Index_Type loop
+            if IFLAG1_Value (Message_Buffer_Index) = 1 then
                Process_CAN_Tx_Rx_Completion (CAN_Registers_Ptr.all,
                                              CAN_Var,
-                                             Message_Buffer_Id);
+                                             Message_Buffer_Index);
             end if;
 
             --

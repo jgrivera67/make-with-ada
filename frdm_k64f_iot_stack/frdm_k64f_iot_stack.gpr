@@ -1,3 +1,5 @@
+with "../../embedded-runtimes/ravenscar-kinetis_k64f_frdm/ravenscar_build.gpr";
+
 project frdm_k64f_iot_stack is
 
    for Languages use ("ada");
@@ -41,9 +43,11 @@ project frdm_k64f_iot_stack is
 
    package Builder is
       for Default_Switches ("ada") use ("-g", "-O0");
+      for Executable ("main.adb") use "frdm_k64f_iot_stack";
    end Builder;
 
-   for Runtime ("Ada") use "ravenscar-sfp-kinetis_k64f_frdm";
+   --for Runtime ("Ada") use "ravenscar-sfp-kinetis_k64f_frdm";
+   for Runtime ("Ada") use Ravenscar_Build'Runtime ("Ada");
    for Target use "arm-eabi";
 
    package Ide is

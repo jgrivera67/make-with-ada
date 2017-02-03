@@ -41,6 +41,7 @@ with Ada.Real_Time;
 with CAN_To_UDP_Gateway;
 with Last_Chance_Handler;
 pragma Unreferenced (Last_Chance_Handler);
+with Ada.Text_IO; --???
 
 procedure Main is
    pragma Priority (System.Priority'First + 2);
@@ -101,11 +102,11 @@ begin -- Main
    Print_Greeting;
 
    Networking.API.Initialize;
-
+Ada.Text_IO.Put_Line ("Here1");--???
    CAN_To_UDP_Gateway.Initialize;
-
+Ada.Text_IO.Put_Line ("Here2");--???
    Command_Parser.Initialize;
-
+Ada.Text_IO.Put_Line ("Here3");--???
    loop
       Command_Parser.Parse_Command;
    end loop;

@@ -410,7 +410,7 @@ package body Command_Parser is
       Conversion_Ok : Boolean;
       Token         : Command_Line.Token_Type;
       IPv4_Address : IPv4_Address_Type;
-      Subnet_Prefix : Unsigned_8 with Unreferenced;
+      Subnet_Prefix : Unsigned_8;
    begin
       Token_Found := Command_Line.Get_Next_Token (Token);
       if not Token_Found then
@@ -432,7 +432,9 @@ package body Command_Parser is
          return;
       end if;
 
-      CAN_To_UDP_Gateway.Set_Local_IPv4_Unicast_Address (IPv4_Address);
+      CAN_To_UDP_Gateway.Set_Local_IPv4_Unicast_Address (
+         IPv4_Address,
+         IPv4_Subnet_Prefix_Type (Subnet_Prefix));
    end Cmd_Set_IPv4_Unicast_Address;
 
    ---------------------------

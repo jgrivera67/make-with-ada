@@ -31,7 +31,7 @@ with Command_Parser_Common;
 with Microcontroller.Arm_Cortex_M;
 with Interfaces.Bit_Types;
 with Networking.Layer3_IPv4;
-with Networking.Layer2;
+--with Networking.Layer2;
 with Ada.Real_Time;
 
 --
@@ -49,7 +49,7 @@ package body Command_Parser is
 
    procedure Cmd_Print_Config_Params;
 
-   procedure Cmd_Print_Help with Pre => Serial_Console.Is_Locked;
+   procedure Cmd_Print_Help with Pre => Serial_Console.Is_Lock_Mine;
 
    procedure Cmd_Save_Config_Params;
 
@@ -112,7 +112,7 @@ package body Command_Parser is
       Ping_Request_Sent_Ok : Boolean;
       Ping_Reply_Received_Ok : Boolean;
       Request_Sequence_Number : Unsigned_16 := 0;
-      Request_Identifier : Unsigned_16 := 88;
+      Request_Identifier : constant Unsigned_16 := 88;
       Reply_Sequence_Number : Unsigned_16;
       Reply_Identifier : Unsigned_16;
       Remote_IPv4_Address : IPv4_Address_Type;

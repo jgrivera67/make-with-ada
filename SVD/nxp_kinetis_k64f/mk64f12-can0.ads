@@ -1165,8 +1165,8 @@ package MK64F12.CAN0 is
       EXT  : ID0_EXT_Field := 16#0#;
       --  Contains standard/extended (HIGH word) identifier of message buffer.
       STD  : ID0_STD_Field := 16#0#;
-      --  Local priority. This 3-bit fieldis only used when LPRIO_EN bit is set
-      --  in MCR and it only makes sense for Tx buffers. These bits are not
+      --  Local priority. This 3-bit field is only used when LPRIO_EN bit is
+      --  set in MCR and it only makes sense for Tx buffers. These bits are not
       --  transmitted. They are appended to the regular ID to define the
       --  transmission priority.
       PRIO : ID0_PRIO_Field := 16#0#;
