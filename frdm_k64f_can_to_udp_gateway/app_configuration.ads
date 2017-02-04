@@ -26,7 +26,8 @@
 --
 
 with Networking;
-with Interfaces;
+with Interfaces.Bit_Types;
+with Memory_Utils;
 
 --
 --  @summary Application-specific run-time configurable parameters
@@ -34,30 +35,49 @@ with Interfaces;
 package App_Configuration is
    use Networking;
    use Interfaces;
+   use Interfaces.Bit_Types;
+   use Memory_Utils;
 
    --
    --  FRRDM-K64F IoT stack configurable parameters
    --
-   type Config_Parameters_Type is record
+   type Config_Parameters_Type (Byte_Array_View : Boolean := False) is record
       --
-      --  IPv4 configuration
-      --
-      Local_IPv4_Address : IPv4_Address_Type;
-      IPv4_Subnet_Prefix : IPv4_Subnet_Prefix_Type;
-      IPv4_Multicast_Address : IPv4_Address_Type;
-      IPv4_Multicast_Receiver_UDP_Port : Unsigned_16;
-
-      --
-      --  Networking stack tracing switches
-      --
-      Net_Tracing_Layer2_On : Boolean := False;
-      Net_Tracing_Layer3_On : Boolean := False;
-      Net_Tracing_Layer4_On : Boolean := False;
-
-      --
-      --  Checksum of the preceding fields
+      --  Checksum of the subsequent fields
       --
       Checksum : Unsigned_32;
+
+      case Byte_Array_View is
+         when True =>
+            Bytes_Array : Bytes_Array_Type (1 .. 11);
+         when False =>
+            --
+            --  IPv4 configuration
+            --
+            Local_IPv4_Address : IPv4_Address_Type;
+            IPv4_Multicast_Address : IPv4_Address_Type;
+            IPv4_Multicast_Receiver_UDP_Port : Unsigned_16;
+            IPv4_Subnet_Prefix : IPv4_Subnet_Prefix_Type;
+
+            --
+            --  Networking stack tracing switches
+            --
+            Net_Tracing_Layer2_On : Boolean := False;
+            Net_Tracing_Layer3_On : Boolean := False;
+            Net_Tracing_Layer4_On : Boolean := False;
+      end case;
+   end record with Unchecked_Union, Alignment => Unsigned_32'Size / Byte'Size;
+
+   for Config_Parameters_Type use record
+      Checksum at 0 range 0 .. 31;
+      Bytes_Array at 4 range 0 .. 87;
+      Local_IPv4_Address at 4 range 0 .. 31;
+      IPv4_Multicast_Address at 8 range 0 .. 31;
+      IPv4_Multicast_Receiver_UDP_Port at 12 range 0 .. 15;
+      IPv4_Subnet_Prefix at 14 range 0 .. 4;
+      Net_Tracing_Layer2_On at 14 range 5 .. 5;
+      Net_Tracing_Layer3_On at 14 range 6 .. 6;
+      Net_Tracing_Layer4_On at 14 range 7 .. 7;
    end record;
 
    procedure Load_And_Apply_Config_Parameters (

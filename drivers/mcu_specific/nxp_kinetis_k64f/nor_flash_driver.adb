@@ -220,7 +220,7 @@ package body Nor_Flash_Driver is
          Memory_Map.Valid_RAM_Pointer (Src_Addr,
                                        Unsigned_32'Size / Unsigned_8'Size));
       pragma Assert (Src_Size /= 0 and
-                     Src_Size mod Unsigned_32'Size / Unsigned_8'Size = 0);
+                     Src_Size mod (Unsigned_32'Size / Unsigned_8'Size) = 0);
 
       if Dest_Addr_Value <= Highest_Code_Addr_Value then
          --

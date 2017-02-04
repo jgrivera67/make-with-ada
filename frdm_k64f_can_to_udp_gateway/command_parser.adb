@@ -234,6 +234,7 @@ package body Command_Parser is
 
       IPv4_Address_To_String (Config_Parameters.Local_IPv4_Address,
                               IPv4_Address_Str);
+
       Unsigned_To_Decimal_String (
          Unsigned_32 (Config_Parameters.IPv4_Subnet_Prefix),
          Subnet_Prefix_Str,
@@ -284,7 +285,7 @@ package body Command_Parser is
 
    procedure Cmd_Save_Config_Params is
    begin
-      Serial_Console.Print_String ("Not implemented yet" & ASCII.LF);
+      CAN_To_UDP_Gateway.Save_Configuration_Parameters;
    end Cmd_Save_Config_Params;
 
    -- ** --
@@ -471,7 +472,6 @@ package body Command_Parser is
       Token_Found   : Boolean;
       Conversion_Ok : Boolean;
       Token         : Command_Line.Token_Type;
-      IPv4_Address : IPv4_Address_Type;
       UDP_Port : Unsigned_16;
    begin
       Token_Found := Command_Line.Get_Next_Token (Token);

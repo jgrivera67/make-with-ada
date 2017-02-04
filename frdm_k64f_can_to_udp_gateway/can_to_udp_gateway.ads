@@ -48,6 +48,8 @@ package CAN_To_UDP_Gateway is
    procedure Initialize
      with Pre => not Initialized;
 
+   procedure Save_Configuration_Parameters;
+
    procedure Set_Local_IPv4_Unicast_Address (
       IPv4_Address : IPv4_Address_Type;
       IPv4_Subnet_Prefix : IPv4_Subnet_Prefix_Type);

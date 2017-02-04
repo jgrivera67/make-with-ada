@@ -59,16 +59,14 @@ package body App_Configuration is
          Networking.Layer3_IPv4.Get_IPv4_End_Point (Devices.MCU_Specific.MAC0);
 
       Checksum : Unsigned_32;
-      Config_Bytes : Memory_Utils.Bytes_Array_Type (
-         1 .. Config_Parameters.Checksum'Position)
-         with Import, Address => Config_Parameters'Address;
    begin
       App_Config.Load_Config (Config_Parameters);
 
       --
       --  Verify checksum:
       --
-      Checksum := Memory_Utils.Compute_Checksum (Config_Bytes);
+      Checksum :=
+         Memory_Utils.Compute_Checksum (Config_Parameters.Bytes_Array);
 
       if Checksum /= Config_Parameters.Checksum then
          Runtime_Logs.Debug_Print (
@@ -111,12 +109,11 @@ package body App_Configuration is
       Config_Parameters : in out Config_Parameters_Type) return Boolean
    is
       Checksum : Unsigned_32;
-      Config_Bytes : Memory_Utils.Bytes_Array_Type (
-         1 .. Config_Parameters.Checksum'Position)
-         with Import, Address => Config_Parameters'Address;
    begin
-      Checksum := Memory_Utils.Compute_Checksum (Config_Bytes);
+      Checksum :=
+         Memory_Utils.Compute_Checksum (Config_Parameters.Bytes_Array);
       Config_Parameters.Checksum := Checksum;
+
       return App_Config.Save_Config (Config_Parameters);
    end Save_Config_Parameters;
 

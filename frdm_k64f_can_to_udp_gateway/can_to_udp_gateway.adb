@@ -93,6 +93,18 @@ package body CAN_To_UDP_Gateway is
       Set_True (CAN_To_UDP_Gateway.CAN_Receiver_Task_Suspension_Obj);
    end Initialize;
 
+   -----------------------------------
+   -- Save_Configuration_Parameters --
+   -----------------------------------
+
+   procedure Save_Configuration_Parameters is
+      Save_Ok : Boolean with Unreferenced;
+   begin
+      Save_Ok :=
+         App_Configuration.Save_Config_Parameters (
+            CAN_To_UDP_Gateway.Config_Parameters);
+   end Save_Configuration_Parameters;
+
    --------------------------------
    -- Set_IPv4_Multicast_Address --
    --------------------------------
