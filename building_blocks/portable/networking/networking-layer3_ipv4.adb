@@ -322,6 +322,7 @@ package body Networking.Layer3_IPv4 is
             IPv4_Address_Str (Str_Cursor .. Str_Cursor + 2),
             Length);
 
+         exit when Str_Cursor + Length > IPv4_Address_String_Type'Last;
          Str_Cursor := Str_Cursor + Length;
          if I < IPv4_Address'Last then
             IPv4_Address_Str (Str_Cursor) := '.';

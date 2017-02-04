@@ -52,6 +52,9 @@ package body CAN_Driver is
    use Ada.Interrupts;
    use Microcontroller.Arm_Cortex_M;
 
+   CAN_Message_Buffer_Pool_Name : aliased constant String :=
+      "CAN Message Buffer Pool";
+
    --
    --  Protected object to define Interrupt handlers for the ENET interrupts
    --
@@ -378,7 +381,6 @@ package body CAN_Driver is
          Write_Ok : Boolean;
          IMASK1_Value : CAN0_IMASK1_Register;
          IFLAG1_Value : CAN0_IFLAG1_Register;
-         Name : aliased constant String := "CAN Message Buffer Pool";
       begin
          --
          --  Disable generation of message buffer Tx/Rx interrupts:
@@ -413,7 +415,7 @@ package body CAN_Driver is
 
          CAN_Message_Buffer_Index_Pools.Initialize (
             CAN_Var.Free_Message_Buffer_Index_Pool,
-            Name'Access);
+            CAN_Message_Buffer_Pool_Name'Access);
 
          for Index in CAN_Message_Buffer_Index_Type loop
             CAN_Var.Mailbox_Array (Index).State := CAN_Buffer_Free;
