@@ -105,7 +105,7 @@ private
    --
    --  Singleton object
    --
-   CAN_To_UDP_Gateway : CAN_To_UDP_Gateway_Type;
+   CAN_To_UDP_Gateway_Var : CAN_To_UDP_Gateway_Type;
 
    task Network_Stats_Task;
 
@@ -114,6 +114,6 @@ private
    task UDP_Multicast_Receiver_Task;
 
    function Initialized return Boolean is
-     (CAN_To_UDP_Gateway.Initialized);
+     (CAN_To_UDP_Gateway_Var.Initialized);
 
 end CAN_To_UDP_Gateway;

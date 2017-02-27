@@ -257,16 +257,16 @@ package body Command_Parser is
                                       IPv4_Multicast_Receiver_UDP_Port'Image &
                                    ASCII.LF);
 
-      Serial_Console.Print_String ("Networkin Layer-2 tracing: " &
+      Serial_Console.Print_String ("Networking Layer-2 tracing: " &
                                    (if Config_Parameters.Net_Tracing_Layer2_On
                                     then "On" else "Off") &
                                    ASCII.LF);
 
-      Serial_Console.Print_String ("Networkin Layer-3 tracing: " &
+      Serial_Console.Print_String ("Networking Layer-3 tracing: " &
                                    (if Config_Parameters.Net_Tracing_Layer3_On
                                     then "On" else "Off") &
                                    ASCII.LF);
-      Serial_Console.Print_String ("Networkin Layer-4 tracing: " &
+      Serial_Console.Print_String ("Networking Layer-4 tracing: " &
                                    (if Config_Parameters.Net_Tracing_Layer4_On
                                     then "On" else "Off") &
                                    ASCII.LF);

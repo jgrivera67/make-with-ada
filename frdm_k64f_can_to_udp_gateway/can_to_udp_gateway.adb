@@ -48,12 +48,11 @@ package body CAN_To_UDP_Gateway is
 
    Blank_Line : constant String (1 .. 80) := (others => ' ');
 
-   Config_Parameters : Config_Parameters_Type;
-
    pragma Compile_Time_Error (
-             Config_Parameters.Checksum'Position =
-             (Config_Parameters'Size - Unsigned_32'Size) /
-             System.Storage_Unit, "Checksum field is in the wrong place");
+           CAN_To_UDP_Gateway_Var.Config_Parameters.Checksum'Position =
+           (CAN_To_UDP_Gateway_Var.Config_Parameters'Size - Unsigned_32'Size) /
+              System.Storage_Unit,
+           "Checksum field is in the wrong place");
 
    IPv4_Multicast_Address : constant IPv4_Address_Type := (224, 0, 0, 8);
 
@@ -74,7 +73,7 @@ package body CAN_To_UDP_Gateway is
       Config_Parameters : out App_Configuration.Config_Parameters_Type)
    is
    begin
-      Config_Parameters := CAN_To_UDP_Gateway.Config_Parameters;
+      Config_Parameters := CAN_To_UDP_Gateway_Var.Config_Parameters;
    end Get_Configuration_Paramters;
 
    ----------------
@@ -84,13 +83,15 @@ package body CAN_To_UDP_Gateway is
    procedure Initialize
    is
    begin
-      App_Configuration.Load_And_Apply_Config_Parameters (Config_Parameters);
+      App_Configuration.Load_And_Apply_Config_Parameters (
+         CAN_To_UDP_Gateway_Var.Config_Parameters);
       CAN_Driver.Initialize (CAN_Device_Id, Loopback_Mode => True);
-      CAN_To_UDP_Gateway.Initialized := True;
+      CAN_To_UDP_Gateway_Var.Initialized := True;
 
-      Set_True (CAN_To_UDP_Gateway.Udp_Multicast_Receiver_Task_Suspension_Obj);
-      Set_True (CAN_To_UDP_Gateway.Network_Stats_Task_Suspension_Obj);
-      Set_True (CAN_To_UDP_Gateway.CAN_Receiver_Task_Suspension_Obj);
+      Set_True (
+         CAN_To_UDP_Gateway_Var.Udp_Multicast_Receiver_Task_Suspension_Obj);
+      Set_True (CAN_To_UDP_Gateway_Var.Network_Stats_Task_Suspension_Obj);
+      Set_True (CAN_To_UDP_Gateway_Var.CAN_Receiver_Task_Suspension_Obj);
    end Initialize;
 
    -----------------------------------
@@ -102,7 +103,7 @@ package body CAN_To_UDP_Gateway is
    begin
       Save_Ok :=
          App_Configuration.Save_Config_Parameters (
-            CAN_To_UDP_Gateway.Config_Parameters);
+            CAN_To_UDP_Gateway_Var.Config_Parameters);
    end Save_Configuration_Parameters;
 
    --------------------------------
@@ -112,7 +113,7 @@ package body CAN_To_UDP_Gateway is
    procedure Set_IPv4_Multicast_Address (IPv4_Address : IPv4_Address_Type)
    is
    begin
-      CAN_To_UDP_Gateway.Config_Parameters.IPv4_Multicast_Address :=
+      CAN_To_UDP_Gateway_Var.Config_Parameters.IPv4_Multicast_Address :=
          IPv4_Address;
    end Set_IPv4_Multicast_Address;
 
@@ -128,9 +129,9 @@ package body CAN_To_UDP_Gateway is
          constant Networking.Layer3_IPv4.IPv4_End_Point_Access_Type :=
          Networking.Layer3_IPv4.Get_IPv4_End_Point (Ethernet_Mac_Device_Id);
    begin
-      CAN_To_UDP_Gateway.Config_Parameters.Local_IPv4_Address :=
+      CAN_To_UDP_Gateway_Var.Config_Parameters.Local_IPv4_Address :=
          IPv4_Address;
-      CAN_To_UDP_Gateway.Config_Parameters.IPv4_Subnet_Prefix :=
+      CAN_To_UDP_Gateway_Var.Config_Parameters.IPv4_Subnet_Prefix :=
          IPv4_Subnet_Prefix;
 
       Layer3_IPv4.Set_Local_IPv4_Address (Local_IPv4_End_Point_Ptr.all,
@@ -145,8 +146,8 @@ package body CAN_To_UDP_Gateway is
    procedure Set_Multicast_UDP_Port (UDP_Port : Unsigned_16)
    is
    begin
-      CAN_To_UDP_Gateway.Config_Parameters.IPv4_Multicast_Receiver_UDP_Port :=
-         UDP_Port;
+      CAN_To_UDP_Gateway_Var.Config_Parameters.
+         IPv4_Multicast_Receiver_UDP_Port := UDP_Port;
    end Set_Multicast_UDP_Port;
 
    ------------------------
@@ -323,7 +324,7 @@ package body CAN_To_UDP_Gateway is
 
    begin --  Network_Stats_Task
       Suspend_Until_True (
-         CAN_To_UDP_Gateway.Network_Stats_Task_Suspension_Obj);
+         CAN_To_UDP_Gateway_Var.Network_Stats_Task_Suspension_Obj);
 
       Runtime_Logs.Info_Print ("Network stats display task started");
 
@@ -390,7 +391,7 @@ package body CAN_To_UDP_Gateway is
       Rx_CAN_Message_Id : CAN_Message_Id_Type;
    begin
       Suspend_Until_True (
-         CAN_To_UDP_Gateway.CAN_Receiver_Task_Suspension_Obj);
+         CAN_To_UDP_Gateway_Var.CAN_Receiver_Task_Suspension_Obj);
 
       Runtime_Logs.Info_Print ("CAN receiver task started");
 
@@ -458,7 +459,7 @@ package body CAN_To_UDP_Gateway is
       CAN_Message_Buffer_Index : CAN_Message_Buffer_Index_Type;
    begin
       Suspend_Until_True (
-         CAN_To_UDP_Gateway.Udp_Multicast_Receiver_Task_Suspension_Obj);
+         CAN_To_UDP_Gateway_Var.Udp_Multicast_Receiver_Task_Suspension_Obj);
 
       Runtime_Logs.Info_Print ("UDP multicast receiver task started");
 
@@ -502,4 +503,3 @@ package body CAN_To_UDP_Gateway is
    end UDP_Multicast_Receiver_Task;
 
 end CAN_To_UDP_Gateway;
-
