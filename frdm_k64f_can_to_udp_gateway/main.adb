@@ -40,6 +40,7 @@ with GNAT.Source_Info;
 with Ada.Real_Time;
 with CAN_To_UDP_Gateway;
 with Last_Chance_Handler;
+--with Memory_Protection; --???
 pragma Unreferenced (Last_Chance_Handler);
 
 procedure Main is
@@ -99,7 +100,7 @@ begin -- Main
    Color_Led.Turn_On_Blinker (Heartbeat_Period_Ms);
 
    Print_Greeting;
-
+   --Memory_Protection.Initialize; --???
    Networking.API.Initialize;
    CAN_To_UDP_Gateway.Initialize;
    Command_Parser.Initialize;
