@@ -27,6 +27,7 @@
 
 with Pin_Mux_Driver;
 with System;
+with Microcontroller;
 
 private package Networking.Layer2.Ethernet_Mac_Driver.MCU_Specific_Private is
    pragma SPARK_Mode (Off);
@@ -409,7 +410,8 @@ private package Networking.Layer2.Ethernet_Mac_Driver.MCU_Specific_Private is
         (others => 0);
       Tx_Buffer_Descriptors : Ethernet_Tx_Buffer_Descriptors_Type;
       Rx_Buffer_Descriptors : Ethernet_Rx_Buffer_Descriptors_Type;
-   end record;
+   end record
+      with Alignment => Microcontroller.Mpu_Region_Alignment;
      --  with Type_Invariant =>
      --    Tx_Ring_Write_Cursor /= Tx_Ring_Read_Cursor or else
      --    Tx_Ring_Entries_Filled = 0;

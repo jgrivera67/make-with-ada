@@ -40,6 +40,7 @@ with Ada.Interrupts.Names;
 with System.Address_To_Access_Conversions;
 with Microcontroller.MCU_Specific;
 with System;
+with Memory_Protection;
 
 package body Networking.Layer2.Ethernet_Mac_Driver is
    pragma SPARK_Mode (Off);
@@ -55,6 +56,7 @@ package body Networking.Layer2.Ethernet_Mac_Driver is
    use Ada.Interrupts;
    use Microcontroller.MCU_Specific;
    use System;
+   use Memory_Protection;
 
    -- ** --
 
@@ -1218,9 +1220,20 @@ package body Networking.Layer2.Ethernet_Mac_Driver is
       RDAR_Value : ENET_RDAR_Register;
    begin
       --
-      --  TODO: When the MPU is enabled, replace this with code to enable
-      --  access to the Rx/Tx rings memory from the ENET DMA engine
+      --  Enable access to Rx/Tx rings memory for the ENET DMA engine:
       --
+      Define_DMA_Data_Region (Dma_Device_ENET_Region1,
+                              Dma_Device_ENET,
+                              Ethernet_Mac_Var'Address,
+                              Ethernet_Mac_Var'Size / Unsigned_8'Size);
+
+      --
+      --   Enable access to Rx/Tx buffers for the ENET DMA engine:
+      --
+      Define_DMA_Data_Region (Dma_Device_ENET_Region2,
+                              Dma_Device_ENET,
+                              Layer2_Var'Address,
+                              Layer2_Var'Size / Unsigned_8'Size);
 
       --
       --  Initialize Tx buffer descriptor ring:
