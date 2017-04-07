@@ -52,6 +52,8 @@ package body Last_Chance_Handler is
    Disposition : constant Disposition_Type := Dummy_Infinite_Loop;
                                               --  System_Reset;
 
+   Last_Chance_Handler_Running : Boolean := False;
+
    -------------------------
    -- Last_Chance_Handler --
    -------------------------
@@ -63,6 +65,7 @@ package body Last_Chance_Handler is
       Msg_Length : Natural := 0;
       Old_Interrupt_Mask : Word with Unreferenced;
    begin
+
       --
       --  Calculate length of the null-terminated 'Msg' string:
       --
@@ -70,6 +73,17 @@ package body Last_Chance_Handler is
          Msg_Length := Msg_Length + 1;
          exit when Msg_Char = ASCII.NUL;
       end loop;
+
+      if Last_Chance_Handler_Running then
+         Ada.Text_IO.Put_Line (
+            "*** Recursive call to Last_Chance_Handler: " &
+            Msg_Text (1 .. Msg_Length) & "' at line " & Line'Image);
+         loop
+            null;
+         end loop;
+      end if;
+
+      Last_Chance_Handler_Running := True;
 
       --
       --  Print exception message  to error log and UART0:
