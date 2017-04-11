@@ -86,7 +86,7 @@ package body Last_Chance_Handler is
       Last_Chance_Handler_Running := True;
 
       --
-      --  Print exception message  to error log and UART0:
+      --  Print exception message to error log and UART0:
       --
       if Line /= 0 then
          Ada.Text_IO.New_Line;
@@ -94,21 +94,19 @@ package body Last_Chance_Handler is
                                & Msg_Text (1 .. Msg_Length) &
                                  "' at line " & Line'Image);
          Print_Stack_Trace (Num_Entries_To_Skip => 0);
-         if Runtime_Logs.Initialized then
-            Runtime_Logs.Error_Print ("Exception: '" &
-                                      Msg_Text (1 .. Msg_Length) &
-                                      "' at line " & Line'Image, Caller);
-         end if;
+
+         Runtime_Logs.Error_Print ("Exception: '" &
+                                   Msg_Text (1 .. Msg_Length) &
+                                   "' at line " & Line'Image, Caller);
       else
          Ada.Text_IO.New_Line;
          Ada.Text_IO.Put_Line ("*** Exception: '" &
                                  Msg_Text (1 .. Msg_Length) & "'");
          Print_Stack_Trace (Num_Entries_To_Skip => 0);
-         if Runtime_Logs.Initialized then
-            Runtime_Logs.Error_Print ("Exception: '" &
-                                      Msg_Text (1 .. Msg_Length) &
-                                        "'", Caller);
-         end if;
+
+         Runtime_Logs.Error_Print ("Exception: '" &
+                                   Msg_Text (1 .. Msg_Length) &
+                                   "'", Caller);
       end if;
 
       case Disposition is

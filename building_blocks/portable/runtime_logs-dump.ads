@@ -31,12 +31,10 @@
 package Runtime_Logs.Dump is
 
    procedure Dump_Log (Log : Log_Type;
-                       Max_Screen_Lines : Max_Screen_Lines_Type)
-     with Pre => Initialized;
+                       Max_Screen_Lines : Max_Screen_Lines_Type);
 
    procedure Dump_Log_Tail (Log : Log_Type;
                             Num_Tail_Lines : Positive;
-                            Max_Screen_Lines : Max_Screen_Lines_Type)
-     with Pre => Initialized;
+                            Max_Screen_Lines : Max_Screen_Lines_Type);
 
 end Runtime_Logs.Dump;

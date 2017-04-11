@@ -32,6 +32,7 @@ with Runtime_Logs;
 with Ada.Synchronous_Task_Control;
 with Ada.Task_Identification;
 with System;
+with Memory_Protection;
 
 package body Serial_Console is
    pragma SPARK_Mode (Off);
@@ -39,6 +40,7 @@ package body Serial_Console is
    use Ada.Synchronous_Task_Control;
    use Ada.Task_Identification;
    use Number_Conversion_Utils;
+   use Memory_Protection;
 
    --
    --  Baud rate for the console UART
@@ -76,12 +78,18 @@ package body Serial_Console is
       Lock : Suspension_Object;
       Lock_Owner_Task_Id : Task_Id;
       Output_Task : Console_Output_Task_Type (Console_Type'Access);
-   end record;
+   end record with Alignment => MPU_Region_Alignment;
 
    Console_Output_Buffer_Name : aliased constant String :=
      "Console Output Buffer";
 
    Console_Var : aliased Console_Type (UART0);
+
+   My_Component_Region : constant Data_Region_Type :=
+      (First_Address => Console_Var'Address,
+       Last_Address => Last_Address (Console_Var'Address,
+                                     Console_Var'Size),
+       Permissions => Read_Write);
 
    -- ** --
 
@@ -200,50 +208,91 @@ package body Serial_Console is
    -- ** --
 
    procedure Get_Char (C : out Character) is
+      Old_Component_Region : Data_Region_Type;
    begin
+      Set_Component_Data_Region (My_Component_Region,
+                                 Old_Component_Region);
+
       C := Uart_Driver.Get_Char (Console_Var.Uart);
+
+      Set_Component_Data_Region (Old_Component_Region);
    end Get_Char;
 
    -- ** --
 
-   function Initialized return Boolean is (Console_Var.Initialized);
-
-   -- ** --
-
    procedure Initialize is
+      Old_Component_Region : Data_Region_Type;
    begin
+      Set_Component_Data_Region (My_Component_Region,
+                                 Old_Component_Region);
+
       Uart_Driver.Initialize (Console_Var.Uart, Console_Uart_Baud_Rate);
       Byte_Ring_Buffers.Initialize (Console_Var.Output_Buffer,
                                     Console_Output_Buffer_Name'Access);
       Set_True (Console_Var.Lock);
       Console_Var.Initialized := True;
       Set_True (Console_Var.Initialized_Condvar);
+
+      Set_Component_Data_Region (Old_Component_Region);
    end Initialize;
 
    -- ** --
 
+   function Initialized return Boolean is
+      Old_Component_Region : Data_Region_Type;
+      Result : Boolean;
+   begin
+      Set_Component_Data_Region (My_Component_Region,
+                                 Old_Component_Region);
+      Result := Console_Var.Initialized;
+      Set_Component_Data_Region (Old_Component_Region);
+      return Result;
+   end Initialized;
+
+   -- ** --
+
    function Is_Input_Available return Boolean is
-     (Uart_Driver.Can_Receive_Char (Console_Var.Uart));
+      Result : Boolean;
+      Old_Component_Region : Data_Region_Type;
+   begin
+      Set_Component_Data_Region (My_Component_Region,
+                                 Old_Component_Region);
+      Result := Uart_Driver.Can_Receive_Char (Console_Var.Uart);
+      Set_Component_Data_Region (Old_Component_Region);
+      return Result;
+   end Is_Input_Available;
 
    -- ** --
 
    function Is_Lock_Mine return Boolean is
-       Current_Task_Id : constant Task_Id := Current_Task;
+      Result : Boolean;
+      Old_Component_Region : Data_Region_Type;
+      Current_Task_Id : constant Task_Id := Current_Task;
    begin
-      return Console_Var.Lock_Owner_Task_Id = Current_Task_Id;
+      Set_Component_Data_Region (My_Component_Region,
+                                 Old_Component_Region);
+      Result := Console_Var.Lock_Owner_Task_Id = Current_Task_Id;
+      Set_Component_Data_Region (Old_Component_Region);
+      return Result;
    end Is_Lock_Mine;
 
    -- ** --
 
    procedure Lock is
+      Old_Component_Region : Data_Region_Type;
    begin
       --
       --  TODO: This is not going to work if there are more than one waiter
       --  (i.e. more than two tasks using the serial console).
       --
+      Set_Component_Data_Region (My_Component_Region,
+                                 Old_Component_Region);
+
       Suspend_Until_True (Console_Var.Lock);
       pragma Assert (Console_Var.Lock_Owner_Task_Id = Null_Task_Id);
       Console_Var.Lock_Owner_Task_Id := Current_Task;
+
+      Set_Component_Data_Region (Old_Component_Region);
    end Lock;
 
    -- ** --
@@ -263,23 +312,46 @@ package body Serial_Console is
    -- ** --
 
    procedure Print_String (S : String) is
+      Old_Component_Region : Data_Region_Type;
+      Old_Parameter_Region : Data_Region_Type;
    begin
+      Set_Component_Data_Region (My_Component_Region,
+                                 Old_Component_Region);
+      Set_Parameter_Data_Region (S'Address,
+                                 S'Length,
+                                 Read_Only,
+                                 Old_Parameter_Region);
+
       for C of S loop
-         Put_Char (C);
+         Byte_Ring_Buffers.Write (Console_Var.Output_Buffer,
+                               Byte (Character'Pos (C)));
       end loop;
+
+      Set_Component_Data_Region (Old_Component_Region);
+      Set_Parameter_Data_Region (Old_Parameter_Region);
    end Print_String;
 
    -- ** --
    procedure Put_Char (C : Character) is
+      Old_Component_Region : Data_Region_Type;
    begin
+      Set_Component_Data_Region (My_Component_Region,
+                                 Old_Component_Region);
+
       Byte_Ring_Buffers.Write (Console_Var.Output_Buffer,
                                Byte (Character'Pos (C)));
+
+      Set_Component_Data_Region (Old_Component_Region);
    end Put_Char;
 
    -- ** --
 
    procedure Restore_Cursor_and_Attributes is
+      Old_Component_Region : Data_Region_Type;
    begin
+      Set_Component_Data_Region (My_Component_Region,
+                                 Old_Component_Region);
+
       pragma Assert (Console_Var.Attributes_Were_Saved);
 
       --  Send VT100 control sequence to restore saved cursor and attributes:
@@ -287,17 +359,25 @@ package body Serial_Console is
 
       Console_Var.Current_Attributes := Console_Var.Saved_Attributes;
       Console_Var.Attributes_Were_Saved := False;
+
+      Set_Component_Data_Region (Old_Component_Region);
    end Restore_Cursor_and_Attributes;
 
    -- ** --
 
    procedure Save_Cursor_and_Attributes is
+      Old_Component_Region : Data_Region_Type;
    begin
       --  Send VT100 control sequence to save current cursor and attributes:
       Print_String (ASCII.ESC & "7");
 
+      Set_Component_Data_Region (My_Component_Region,
+                                 Old_Component_Region);
+
       Console_Var.Saved_Attributes := Console_Var.Current_Attributes;
       Console_Var.Attributes_Were_Saved := True;
+
+      Set_Component_Data_Region (Old_Component_Region);
    end Save_Cursor_and_Attributes;
 
    -- ** --
@@ -310,6 +390,7 @@ package body Serial_Console is
       Line_Str_Length : Natural;
       Col_Str : String (1 .. 3);
       Col_Str_Length : Natural;
+      Old_Component_Region : Data_Region_Type;
    begin
       if Save_Old then
          Save_Cursor_and_Attributes;
@@ -325,6 +406,9 @@ package body Serial_Console is
       --  Send VT100 control sequence to position cursor:
       Print_String (ASCII.ESC & "[" & Line_Str (1 .. Line_Str_Length) & ";" &
                     Col_Str (1 .. Col_Str_Length) & "H");
+
+      Set_Component_Data_Region (My_Component_Region,
+                                 Old_Component_Region);
 
       if Attributes /= Console_Var.Current_Attributes then
          Console_Var.Current_Attributes := Attributes;
@@ -350,6 +434,8 @@ package body Serial_Console is
             end if;
          end if;
       end if;
+
+      Set_Component_Data_Region (Old_Component_Region);
    end Set_Cursor_And_Attributes;
 
    -- ** --
@@ -408,9 +494,15 @@ package body Serial_Console is
    -- ** --
 
    procedure Unlock is
+      Old_Component_Region : Data_Region_Type;
    begin
+      Set_Component_Data_Region (My_Component_Region,
+                                 Old_Component_Region);
+
       Console_Var.Lock_Owner_Task_Id := Null_Task_Id;
       Set_True (Console_Var.Lock);
+
+      Set_Component_Data_Region (Old_Component_Region);
    end Unlock;
 
    -- ** --

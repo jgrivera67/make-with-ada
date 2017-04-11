@@ -1222,18 +1222,20 @@ package body Networking.Layer2.Ethernet_Mac_Driver is
       --
       --  Enable access to Rx/Tx rings memory for the ENET DMA engine:
       --
-      Define_DMA_Data_Region (Dma_Device_ENET_Region1,
-                              Dma_Device_ENET,
-                              Ethernet_Mac_Var'Address,
-                              Ethernet_Mac_Var'Size / Unsigned_8'Size);
+      Set_DMA_Data_Region (Dma_Device_ENET_Region1,
+                           Dma_Device_ENET,
+                           Ethernet_Mac_Var'Address,
+                           Ethernet_Mac_Var'Size / Unsigned_8'Size,
+                           Read_Write);
 
       --
       --   Enable access to Rx/Tx buffers for the ENET DMA engine:
       --
-      Define_DMA_Data_Region (Dma_Device_ENET_Region2,
-                              Dma_Device_ENET,
-                              Layer2_Var'Address,
-                              Layer2_Var'Size / Unsigned_8'Size);
+      Set_DMA_Data_Region (Dma_Device_ENET_Region2,
+                           Dma_Device_ENET,
+                           Layer2_Var'Address,
+                           Layer2_Var'Size / Unsigned_8'Size,
+                           Read_Write);
 
       --
       --  Initialize Tx buffer descriptor ring:

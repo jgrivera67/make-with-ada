@@ -43,14 +43,20 @@ package body Runtime_Logs.Dump is
      (Log : Log_Type;
       Max_Screen_Lines : Max_Screen_Lines_Type)
    is
-      Runtime_Log : Runtime_Log_Type renames Runtime_Logs (Log).all;
-      Wrap_Count : constant Unsigned_32 := Runtime_Log.Wrap_Count;
-      Dump_End_Index : constant Positive range Runtime_Log.Buffer'Range :=
-        Runtime_Log.Cursor;
-      Dump_Start_Index : Positive range Runtime_Log.Buffer'Range;
+      Old_Component_Region : Data_Region_Type;
+      Runtime_Log_Ptr : constant Runtime_Log_Access_Type :=
+         Runtime_Log_Index_To_Log_Var (Log);
+      Wrap_Count : Unsigned_32;
+      Dump_End_Index : Positive;
+      Dump_Start_Index : Positive;
    begin
+      Set_Component_Data_Region (Runtime_Logs_Component_Region,
+                                 Old_Component_Region);
+
+      Wrap_Count := Runtime_Log_Ptr.Wrap_Count;
+      Dump_End_Index := Runtime_Log_Ptr.Cursor;
       if Wrap_Count = 0 then
-         Dump_Start_Index := Runtime_Log.Buffer'First;
+         Dump_Start_Index := Runtime_Log_Ptr.Buffer'First;
       else
          Dump_Start_Index := Dump_End_Index;
       end if;
@@ -62,8 +68,10 @@ package body Runtime_Logs.Dump is
          "(sequence number:time stamp:task Id:[code addr]:message " &
          "[stack trace])" & ASCII.LF);
 
-      Dump_Log_Fragment (Runtime_Log, Dump_Start_Index, Dump_End_Index,
+      Dump_Log_Fragment (Runtime_Log_Ptr.all, Dump_Start_Index, Dump_End_Index,
                          Max_Screen_Lines);
+
+      Set_Component_Data_Region (Old_Component_Region);
    end Dump_Log;
 
    -----------------------
@@ -144,21 +152,28 @@ package body Runtime_Logs.Dump is
       Num_Tail_Lines : Positive;
       Max_Screen_Lines : Max_Screen_Lines_Type)
    is
-      Runtime_Log : Runtime_Log_Type renames Runtime_Logs (Log).all;
-      Wrap_Count : constant Unsigned_32 := Runtime_Log.Wrap_Count;
-      Dump_End_Index : constant Positive range Runtime_Log.Buffer'Range :=
-        Runtime_Log.Cursor;
-      Dump_Start_Index : Positive range Runtime_Log.Buffer'Range :=
-        Dump_End_Index;
-      Dump_Cursor : Positive range Runtime_Log.Buffer'Range;
+      Runtime_Log_Ptr : constant Runtime_Log_Access_Type :=
+         Runtime_Log_Index_To_Log_Var (Log);
+      Old_Component_Region : Data_Region_Type;
+      Wrap_Count : Unsigned_32;
+      Dump_End_Index : Positive;
+      Dump_Start_Index : Positive;
+      Dump_Cursor : Positive;
       Text_Lines_Left : Natural;
    begin
-      if Dump_End_Index =  Runtime_Log.Buffer'First then
+      Set_Component_Data_Region (Runtime_Logs_Component_Region,
+                                 Old_Component_Region);
+
+      Wrap_Count := Runtime_Log_Ptr.Wrap_Count;
+      Dump_End_Index := Runtime_Log_Ptr.Cursor;
+      Dump_Start_Index := Dump_End_Index;
+
+      if Dump_End_Index =  Runtime_Log_Ptr.Buffer'First then
          if Wrap_Count = 0 then
             return;
          end if;
 
-         Dump_Cursor :=  Runtime_Log.Buffer'Last;
+         Dump_Cursor :=  Runtime_Log_Ptr.Buffer'Last;
       else
          Dump_Cursor := Dump_End_Index - 1;
       end if;
@@ -170,18 +185,18 @@ package body Runtime_Logs.Dump is
       pragma Assert (Dump_Cursor /= Dump_End_Index);
       Text_Lines_Left := Num_Tail_Lines;
       loop
-         if Runtime_Log.Buffer (Dump_Cursor) = ASCII.LF then
+         if Runtime_Log_Ptr.Buffer (Dump_Cursor) = ASCII.LF then
             exit when Text_Lines_Left = 0;
             Text_Lines_Left := Text_Lines_Left - 1;
          end if;
 
          Dump_Start_Index := Dump_Cursor;
-         if Dump_Cursor = Runtime_Log.Buffer'First then
+         if Dump_Cursor = Runtime_Log_Ptr.Buffer'First then
             if Wrap_Count = 0 then
                exit;
             end if;
 
-            Dump_Cursor := Runtime_Log.Buffer'Last;
+            Dump_Cursor := Runtime_Log_Ptr.Buffer'Last;
          else
             Dump_Cursor := Dump_Cursor - 1;
          end if;
@@ -203,8 +218,10 @@ package body Runtime_Logs.Dump is
          "[stack trace])" &
          ASCII.LF);
 
-      Dump_Log_Fragment (Runtime_Log, Dump_Start_Index, Dump_End_Index,
+      Dump_Log_Fragment (Runtime_Log_Ptr.all, Dump_Start_Index, Dump_End_Index,
                          Max_Screen_Lines);
+
+      Set_Component_Data_Region (Old_Component_Region);
    end Dump_Log_Tail;
 
 end Runtime_Logs.Dump;

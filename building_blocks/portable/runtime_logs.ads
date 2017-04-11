@@ -28,6 +28,7 @@
 with System; use System;
 with App_Parameters;
 with Interfaces;
+private with Memory_Protection;
 
 --
 --  @summary Runtime log services
@@ -45,11 +46,7 @@ package Runtime_Logs is
 
    subtype Max_Screen_Lines_Type is Positive range 1 .. 100;
 
-   function Initialized return Boolean;
-   --  @private (Used only in contracts)
-
-   procedure Initialize
-     with Pre => not Initialized;
+   procedure Initialize;
 
    --
    --  Note: The procedures below cannot be called with interrupts disabled,
@@ -58,19 +55,19 @@ package Runtime_Logs is
    --
 
    procedure Debug_Print (Msg : String;
-                          Code_Address : Address := Null_Address)
-     with Pre => Initialized;
+                          Code_Address : Address := Null_Address);
 
    function Generate_Unique_Error_Code return Address;
 
    procedure Error_Print (Msg : String;
-                          Code_Address : Address := Generate_Unique_Error_Code)
-     with Pre => Initialized;
+                          Code_Address : Address :=
+                             Generate_Unique_Error_Code);
 
-   procedure Info_Print (Msg : String)
-     with Pre => Initialized;
+   procedure Info_Print (Msg : String);
 
 private
+   use Memory_Protection;
+
    --
    --  State variables of runtime log
    --
@@ -81,30 +78,31 @@ private
       Wrap_Count : Unsigned_32;
    end record;
 
+   type Runtime_Log_Access_Type is access all Runtime_Log_Type;
+
    --
    --  Individual Runtime logs
    --
+   type Runtime_Logs_Var_Type is limited record
+      Debug_Log : aliased Runtime_Log_Type (Debug_Log_Buffer_Size);
+      Error_Log : aliased Runtime_Log_Type (Error_Log_Buffer_Size);
+      Info_Log : aliased Runtime_Log_Type (Info_Log_Buffer_Size);
+   end record with Alignment => Memory_Protection.MPU_Region_Alignment;
 
-   Debug_Log_Var : aliased Runtime_Log_Type (Debug_Log_Buffer_Size)
-     with Linker_Section => ".runtime_logs";
+   Runtime_Logs_Var : Runtime_Logs_Var_Type
+      with Linker_Section => ".runtime_logs";
 
-   Error_Log_Var : aliased Runtime_Log_Type (Error_Log_Buffer_Size)
-     with Linker_Section => ".runtime_logs";
+   Runtime_Logs_Component_Region : constant Data_Region_Type :=
+         (First_Address => Runtime_Logs_Var'Address,
+          Last_Address => Last_Address (Runtime_Logs_Var'Address,
+                                        Runtime_Logs_Var'Size),
+          Permissions => Read_Write);
 
-   Info_Log_Var : aliased Runtime_Log_Type (Info_Log_Buffer_Size)
-     with Linker_Section => ".runtime_logs";
-
-   --
-   --  All runtime logs
-   --
-   Runtime_Logs : constant array (Log_Type) of not null access
-     Runtime_Log_Type :=
-       (Debug_Log => Debug_Log_Var'Access,
-        Error_Log => Error_Log_Var'Access,
-        Info_Log => Info_Log_Var'Access);
-
-   Runtime_Logs_Initialized : Boolean := False;
-
-   function Initialized return Boolean is (Runtime_Logs_Initialized);
+   function Runtime_Log_Index_To_Log_Var (Log_Index : Log_Type)
+       return Runtime_Log_Access_Type is
+   (case Log_Index is
+       when Debug_Log => Runtime_Logs_Var.Debug_Log'Access,
+       when Error_Log => Runtime_Logs_Var.Error_Log'Access,
+       when Info_Log => Runtime_Logs_Var.Info_Log'Access);
 
 end Runtime_Logs;

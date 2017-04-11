@@ -33,6 +33,7 @@ with Ada.Task_Identification;
 with Ada.Unchecked_Conversion;
 with Interfaces.Bit_Types;
 with Microcontroller.Arm_Cortex_M;
+with System.Text_IO.Extended; -- ???
 
 package body Runtime_Logs is
    use System.Storage_Elements;
@@ -94,10 +95,18 @@ package body Runtime_Logs is
       Time_Stamp : constant Ada.Real_Time.Time := Ada.Real_Time.Clock;
       Calling_Task_Id : Ada.Task_Identification.Task_Id;
    begin
+      System.Text_IO.Extended.Put_String (
+         "*** Capture_Log_Entry 1 ***" & ASCII.LF); -- ???
+
       Old_Interrupt_Mask := Disable_Cpu_Interrupts;
+            System.Text_IO.Extended.Put_String (
+         "*** Capture_Log_Entry 2 ***" & ASCII.LF); -- ???
 
       Log_Print_Uint32_Decimal (Runtime_Log,
                                 Runtime_Log.Seq_Num);
+       System.Text_IO.Extended.Put_String (
+         "*** Capture_Log_Entry 3 ***" & ASCII.LF); -- ???
+
       Log_Put_Char (Runtime_Log, ':');
       Log_Print_Uint64_Decimal (
          Runtime_Log, Time_To_Unsigned_64 (Time_Stamp));
@@ -117,6 +126,9 @@ package body Runtime_Logs is
       end if;
 
       Log_Put_Char (Runtime_Log, ':');
+      System.Text_IO.Extended.Put_String (
+         "*** Capture_Log_Entry 5 ***" & ASCII.LF); -- ???
+
       Log_Print_String (Runtime_Log, Msg);
       Log_Put_Char (Runtime_Log, ASCII.LF);
       if With_Stack_Trace then
@@ -128,14 +140,22 @@ package body Runtime_Logs is
 
       Restore_Cpu_Interrupts (Old_Interrupt_Mask);
 
+      System.Text_IO.Extended.Put_String (
+         "*** Capture_Log_Entry 6 ***" & ASCII.LF); -- ???
    end Capture_Log_Entry;
 
    -- ** --
 
    procedure Debug_Print (Msg : String;
                           Code_Address : Address := Null_Address) is
+      Old_Component_Region : Data_Region_Type;
    begin
-      Capture_Log_Entry (Debug_Log_Var, Msg, Code_Address);
+      Set_Component_Data_Region (Runtime_Logs_Component_Region,
+                                 Old_Component_Region);
+
+      Capture_Log_Entry (Runtime_Logs_Var.Debug_Log, Msg, Code_Address);
+
+      Set_Component_Data_Region (Old_Component_Region);
    end Debug_Print;
 
    -- ** --
@@ -143,9 +163,15 @@ package body Runtime_Logs is
    procedure Error_Print (Msg : String;
                           Code_Address : Address := Generate_Unique_Error_Code)
    is
+      Old_Component_Region : Data_Region_Type;
    begin
-      Capture_Log_Entry (Error_Log_Var, Msg, Code_Address,
+      Set_Component_Data_Region (Runtime_Logs_Component_Region,
+                                 Old_Component_Region);
+
+      Capture_Log_Entry (Runtime_Logs_Var.Error_Log, Msg, Code_Address,
                          With_Stack_Trace => True);
+
+      Set_Component_Data_Region (Old_Component_Region);
    end Error_Print;
 
    -- ** --
@@ -161,8 +187,14 @@ package body Runtime_Logs is
    -- ** --
 
    procedure Info_Print (Msg : String) is
+      Old_Component_Region : Data_Region_Type;
    begin
-      Capture_Log_Entry (Info_Log_Var, Msg, Null_Address);
+      Set_Component_Data_Region (Runtime_Logs_Component_Region,
+                                 Old_Component_Region);
+
+      Capture_Log_Entry (Runtime_Logs_Var.Info_Log, Msg, Null_Address);
+
+      Set_Component_Data_Region (Old_Component_Region);
    end Info_Print;
 
    -- ** --
@@ -182,15 +214,19 @@ package body Runtime_Logs is
       -- ** --
 
       Reset_Count : constant Unsigned_32 := Reset_Counter.Get;
+      Old_Component_Region : Data_Region_Type;
 
    begin -- Initialize
       if Reset_Count = 0 then
-         Initialize_Log (Debug_Log_Var);
-         Initialize_Log (Error_Log_Var);
-         Initialize_Log (Info_Log_Var);
-      end if;
+         Set_Component_Data_Region (Runtime_Logs_Component_Region,
+                                    Old_Component_Region);
 
-      Runtime_Logs_Initialized := True;
+         Initialize_Log (Runtime_Logs_Var.Debug_Log);
+         Initialize_Log (Runtime_Logs_Var.Error_Log);
+         Initialize_Log (Runtime_Logs_Var.Info_Log);
+
+         Set_Component_Data_Region (Old_Component_Region);
+      end if;
    end Initialize;
 
    -- ** --
@@ -220,10 +256,36 @@ package body Runtime_Logs is
 
    procedure Log_Print_String (Runtime_Log : in out Runtime_Log_Type;
                                Str : String) is
+      Old_Parameter_Region : Data_Region_Type;
    begin
+      System.Text_IO.Extended.Put_String (
+         "*** Log_Print_String 1 ***" & ASCII.LF); -- ???
+
+      Set_Parameter_Data_Region (Str'Address, Str'Length, Read_Only,
+                                 Old_Parameter_Region);
+
+      System.Text_IO.Extended.Put_String (
+         "*** Log_Print_String 2 ***" & ASCII.LF); -- ???
+
       for Char of Str loop
+            System.Text_IO.Extended.Put_String (
+         "*** Log_Print_String 3 ***" & ASCII.LF); -- ???
+
          Log_Put_Char (Runtime_Log, Char);
+
+               System.Text_IO.Extended.Put_String (
+         "*** Log_Print_String 4 ***" & ASCII.LF); -- ???
+
       end loop;
+
+            System.Text_IO.Extended.Put_String (
+         "*** Log_Print_String 5 ***" & ASCII.LF); -- ???
+
+      Set_Parameter_Data_Region (Old_Parameter_Region);
+
+            System.Text_IO.Extended.Put_String (
+         "*** Log_Print_String 6 ***" & ASCII.LF); -- ???
+
    end Log_Print_String;
 
    -- ** --
@@ -244,7 +306,14 @@ package body Runtime_Logs is
          end if;
       end loop;
 
+      System.Text_IO.Extended.Put_String (
+         "*** Log_Print_Uint32_Decimal 1 ***" & ASCII.LF); -- ???
+
       Log_Print_String (Runtime_Log, Buffer (Start_Index .. Buffer'Last));
+
+      System.Text_IO.Extended.Put_String (
+         "*** Log_Print_Uint32_Decimal 2 ***" & ASCII.LF); -- ???
+
    end Log_Print_Uint32_Decimal;
 
    -- ** --
@@ -304,8 +373,20 @@ package body Runtime_Logs is
                            Char : Character) is
       Cursor : Positive range Runtime_Log.Buffer'Range;
    begin
+         System.Text_IO.Extended.Put_String (
+         "*** Log_Put_Char 1 *** " &
+         To_Integer (Runtime_Log'Address)'Image & ", " &
+         To_Integer (Runtime_Log.Cursor'Address)'Image & ASCII.LF); -- ???
+
       Cursor := Runtime_Log.Cursor;
+
+         System.Text_IO.Extended.Put_String (
+         "*** Log_Put_Char 2 ***" & ASCII.LF); -- ???
+
       Runtime_Log.Buffer (Cursor) := Char;
+
+         System.Text_IO.Extended.Put_String (
+         "*** Log_Put_Char 3 ***" & ASCII.LF); -- ???
       if Cursor = Runtime_Log.Buffer'Last then
          Cursor := Runtime_Log.Buffer'First;
          Runtime_Log.Wrap_Count := Runtime_Log.Wrap_Count + 1;
