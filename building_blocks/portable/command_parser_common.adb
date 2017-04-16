@@ -32,83 +32,29 @@ with Reset_Counter;
 with Memory_Utils;
 with Runtime_Logs.Dump;
 with Color_Led;
-with Interfaces; use Interfaces;
+with Task_Stack_Info;
+with System.Storage_Elements;
+with Interfaces;
+with Number_Conversion_Utils;
 
 --
 --  Command parser common services implementation
 --
 package body Command_Parser_Common is
+   use System.Storage_Elements;
+   use Interfaces;
+
+   function Parse_Color (Color_Name : String;
+                         Color : out Color_Led.Led_Color_Type) return Boolean;
+
+   function Parse_Log_Name (Log_Name : String;
+                            Log : out Runtime_Logs.Log_Type) return Boolean;
 
    --
    --  Maximum number of test lines that are printed on the screen at a time
    --  while dumping a log
    --
    Dump_Log_Max_Screen_Lines : constant Positive := 30;
-
-   -- ** --
-
-   function Parse_Positive_Decimal_Number (
-      Token_String : String;
-      Result : out Positive) return Boolean
-   is
-      Value : Natural := 0;
-   begin
-      for Char_Value of Token_String loop
-         if Char_Value not in '0' .. '9' then
-            return False;
-         end if;
-
-         Value := Value * 10 +
-                  (Character'Pos (Char_Value) - Character'Pos ('0'));
-      end loop;
-
-      if Value = 0 then
-         return False;
-      end if;
-
-      Result := Value;
-      return True;
-   end Parse_Positive_Decimal_Number;
-
-   -- ** --
-
-   procedure Cmd_Print_Stats is
-      Reset_Count : constant Unsigned_32 := Reset_Counter.Get;
-      Reset_Cause : constant Microcontroller.System_Reset_Causes_Type :=
-        Microcontroller.MCU_Specific.Find_System_Reset_Cause;
-      Flash_Used : constant Unsigned_32 := Memory_Utils.Get_Flash_Used;
-      Sram_Used : constant Unsigned_32 := Memory_Utils.Get_Sram_Used;
-   begin
-      Serial_Console.Print_String (
-        "Reset count: " & Reset_Count'Image & ASCII.LF);
-      Serial_Console.Print_String (
-        "Last reset cause: " &
-        Microcontroller.Reset_Cause_Strings (Reset_Cause).all & ASCII.LF);
-
-      Serial_Console.Print_String (
-        "Flash used: " & Flash_Used'Image  & " bytes" & ASCII.LF);
-
-      Serial_Console.Print_String (
-        "SRAM used: " & Sram_Used'Image & " bytes" & ASCII.LF);
-   end Cmd_Print_Stats;
-
-   -- ** --
-
-   function Parse_Log_Name (Log_Name : String;
-                            Log : out Runtime_Logs.Log_Type) return Boolean is
-   begin
-      if Log_Name = "debug" or else Log_Name = "d" then
-         Log := Runtime_Logs.DEBUG_LOG;
-      elsif Log_Name = "error" or else Log_Name = "e" then
-         Log := Runtime_Logs.ERROR_LOG;
-      elsif Log_Name = "info" or else Log_Name = "i" then
-         Log := Runtime_Logs.INFO_LOG;
-      else
-         return False;
-      end if;
-
-      return True;
-   end Parse_Log_Name;
 
    -- ** --
 
@@ -120,21 +66,22 @@ package body Command_Parser_Common is
    begin
       Token_Found := Command_Line.Get_Next_Token (Token);
       if not Token_Found then
-         goto error;
+         goto Error;
       end if;
 
-      Parsing_Ok := Parse_Log_Name (Token.String_Value (1 .. Token.Length), Log);
+      Parsing_Ok := Parse_Log_Name (Token.String_Value (1 .. Token.Length),
+                                    Log);
 
       if not Parsing_Ok then
-         goto error;
+         goto Error;
       end if;
 
       Runtime_Logs.Dump.Dump_Log (Log, Dump_Log_Max_Screen_Lines);
       return;
 
    <<Error>>
-      Serial_Console.Print_String ("Error: Invalid syntax for command 'log-tail'" &
-                                     ASCII.LF);
+      Serial_Console.Print_String (
+         "Error: Invalid syntax for command 'log-tail'" & ASCII.LF);
    end Cmd_Dump_Log;
 
    -- ** --
@@ -151,7 +98,8 @@ package body Command_Parser_Common is
          goto Error;
       end if;
 
-      Parsing_Ok := Parse_Log_Name (Token.String_Value (1 .. Token.Length), Log);
+      Parsing_Ok := Parse_Log_Name (Token.String_Value (1 .. Token.Length),
+                                    Log);
       if not Parsing_Ok then
          goto Error;
       end if;
@@ -168,15 +116,56 @@ package body Command_Parser_Common is
          goto Error;
       end if;
 
-      Runtime_Logs.Dump.Dump_Log_Tail (Log, Num_Tail_Lines, Dump_Log_Max_Screen_Lines);
+      Runtime_Logs.Dump.Dump_Log_Tail (Log, Num_Tail_Lines,
+                                       Dump_Log_Max_Screen_Lines);
       return;
 
    <<Error>>
-      Serial_Console.Print_String ("Error: Invalid syntax for command 'log-tail'" &
-                                   ASCII.LF);
+      Serial_Console.Print_String (
+         "Error: Invalid syntax for command 'log-tail'" & ASCII.LF);
    end Cmd_Dump_Log_Tail;
 
-    -- ** --
+   -- ** --
+
+   procedure Cmd_Print_Stats is
+      Reset_Count : constant Unsigned_32 := Reset_Counter.Get;
+      Reset_Cause : constant Microcontroller.System_Reset_Causes_Type :=
+         Microcontroller.MCU_Specific.Find_System_Reset_Cause;
+      Flash_Used : constant Unsigned_32 := Memory_Utils.Get_Flash_Used;
+      Sram_Used : constant Unsigned_32 := Memory_Utils.Get_Sram_Used;
+      Stack_Start : System.Address;
+      Stack_End : System.Address;
+      Stack_Size : Unsigned_32;
+      Hex_Num_Str : String (1 .. 8);
+   begin
+      Serial_Console.Print_String (
+        "Reset count: " & Reset_Count'Image & ASCII.LF);
+      Serial_Console.Print_String (
+        "Last reset cause: " &
+        Microcontroller.Reset_Cause_Strings (Reset_Cause).all & ASCII.LF);
+
+      Serial_Console.Print_String (
+        "Flash used: " & Flash_Used'Image  & " bytes" & ASCII.LF);
+
+      Serial_Console.Print_String (
+        "SRAM used: " & Sram_Used'Image & " bytes" & ASCII.LF);
+
+      Task_Stack_Info.Get_Current_Task_Stack (Stack_Start, Stack_Size);
+      Stack_End := To_Address (To_Integer (Stack_Start) +
+                               Integer_Address (Stack_Size));
+
+      Number_Conversion_Utils.Unsigned_To_Hexadecimal_String (
+         Unsigned_32 (To_Integer (Stack_Start)), Hex_Num_Str);
+      Serial_Console.Print_String ("Env task stack start address: 0x" &
+                                   Hex_Num_Str & ASCII.LF);
+
+      Number_Conversion_Utils.Unsigned_To_Hexadecimal_String (
+         Unsigned_32 (To_Integer (Stack_End)), Hex_Num_Str);
+      Serial_Console.Print_String ("Env task stack end address: 0x" &
+                                   Hex_Num_Str & ASCII.LF);
+   end Cmd_Print_Stats;
+
+   -- ** --
 
    procedure Cmd_Reset is
    begin
@@ -185,8 +174,37 @@ package body Command_Parser_Common is
 
    -- ** --
 
+   procedure Cmd_Test_Color is
+      Token : Command_Line.Token_Type;
+      Token_Found : Boolean;
+      Color : Color_Led.Led_Color_Type;
+      Old_Color : Color_Led.Led_Color_Type with Unreferenced;
+      Parsing_Ok : Boolean;
+   begin
+      Token_Found := Command_Line.Get_Next_Token (Token);
+      if not Token_Found then
+         goto Error;
+      end if;
+
+      Parsing_Ok := Parse_Color (Token.String_Value (1 .. Token.Length),
+                                 Color);
+      if not Parsing_Ok then
+         goto Error;
+      end if;
+
+      Old_Color := Color_Led.Set_Color (Color);
+      return;
+
+      <<Error>>
+      Serial_Console.Print_String (
+         "Error: Invalid syntax for command 'test color'" & ASCII.LF);
+   end Cmd_Test_Color;
+
+   -- ** --
+
    function Parse_Color (Color_Name : String;
-                         Color : out Color_Led.Led_Color_Type) return Boolean is
+                         Color : out Color_Led.Led_Color_Type) return Boolean
+   is
    begin
       if Color_Name = "black" then
          Color := Color_Led.Black;
@@ -214,29 +232,45 @@ package body Command_Parser_Common is
 
    -- ** --
 
-   procedure Cmd_Test_Color is
-      Token : Command_Line.Token_Type;
-      Token_Found : Boolean;
-      Color : Color_Led.Led_Color_Type;
-      Old_Color : Color_Led.Led_Color_Type with Unreferenced;
-      Parsing_Ok : Boolean;
+   function Parse_Log_Name (Log_Name : String;
+                            Log : out Runtime_Logs.Log_Type) return Boolean is
    begin
-      Token_Found := Command_Line.Get_Next_Token (Token);
-      if not Token_Found then
-         goto Error;
+      if Log_Name = "debug" or else Log_Name = "d" then
+         Log := Runtime_Logs.Debug_Log;
+      elsif Log_Name = "error" or else Log_Name = "e" then
+         Log := Runtime_Logs.Error_Log;
+      elsif Log_Name = "info" or else Log_Name = "i" then
+         Log := Runtime_Logs.Info_Log;
+      else
+         return False;
       end if;
 
-      Parsing_Ok := Parse_Color (Token.String_Value (1 .. Token.Length), Color);
-      if not Parsing_Ok then
-         goto Error;
+      return True;
+   end Parse_Log_Name;
+
+   -- ** --
+
+   function Parse_Positive_Decimal_Number (
+      Token_String : String;
+      Result : out Positive) return Boolean
+   is
+      Value : Natural := 0;
+   begin
+      for Char_Value of Token_String loop
+         if Char_Value not in '0' .. '9' then
+            return False;
+         end if;
+
+         Value := Value * 10 +
+                  (Character'Pos (Char_Value) - Character'Pos ('0'));
+      end loop;
+
+      if Value = 0 then
+         return False;
       end if;
 
-      Old_Color := Color_Led.Set_Color (Color);
-      return;
-
-      <<Error>>
-      Serial_Console.Print_String ("Error: Invalid syntax for command 'test color'" &
-                                     ASCII.LF);
-   end Cmd_Test_Color;
+      Result := Value;
+      return True;
+   end Parse_Positive_Decimal_Number;
 
 end Command_Parser_Common;

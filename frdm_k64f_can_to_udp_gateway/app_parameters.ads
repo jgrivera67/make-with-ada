@@ -25,6 +25,8 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
+pragma Restrictions (No_Elaboration_Code);
+
 --
 --  @summary Application-specific compile-time global parameters and tunables
 --
