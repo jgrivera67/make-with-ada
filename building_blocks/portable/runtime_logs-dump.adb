@@ -43,16 +43,12 @@ package body Runtime_Logs.Dump is
      (Log : Log_Type;
       Max_Screen_Lines : Max_Screen_Lines_Type)
    is
-      Old_Component_Region : Data_Region_Type;
       Runtime_Log_Ptr : constant Runtime_Log_Access_Type :=
          Runtime_Log_Index_To_Log_Var (Log);
       Wrap_Count : Unsigned_32;
       Dump_End_Index : Positive;
       Dump_Start_Index : Positive;
    begin
-      Set_Component_Data_Region (Runtime_Logs_Component_Region,
-                                 Old_Component_Region);
-
       Wrap_Count := Runtime_Log_Ptr.Wrap_Count;
       Dump_End_Index := Runtime_Log_Ptr.Cursor;
       if Wrap_Count = 0 then
@@ -70,8 +66,6 @@ package body Runtime_Logs.Dump is
 
       Dump_Log_Fragment (Runtime_Log_Ptr.all, Dump_Start_Index, Dump_End_Index,
                          Max_Screen_Lines);
-
-      Set_Component_Data_Region (Old_Component_Region);
    end Dump_Log;
 
    -----------------------
@@ -154,16 +148,12 @@ package body Runtime_Logs.Dump is
    is
       Runtime_Log_Ptr : constant Runtime_Log_Access_Type :=
          Runtime_Log_Index_To_Log_Var (Log);
-      Old_Component_Region : Data_Region_Type;
       Wrap_Count : Unsigned_32;
       Dump_End_Index : Positive;
       Dump_Start_Index : Positive;
       Dump_Cursor : Positive;
       Text_Lines_Left : Natural;
    begin
-      Set_Component_Data_Region (Runtime_Logs_Component_Region,
-                                 Old_Component_Region);
-
       Wrap_Count := Runtime_Log_Ptr.Wrap_Count;
       Dump_End_Index := Runtime_Log_Ptr.Cursor;
       Dump_Start_Index := Dump_End_Index;
@@ -220,8 +210,6 @@ package body Runtime_Logs.Dump is
 
       Dump_Log_Fragment (Runtime_Log_Ptr.all, Dump_Start_Index, Dump_End_Index,
                          Max_Screen_Lines);
-
-      Set_Component_Data_Region (Old_Component_Region);
    end Dump_Log_Tail;
 
 end Runtime_Logs.Dump;

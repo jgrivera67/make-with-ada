@@ -29,6 +29,7 @@ with Ada.Real_Time;
 with System;
 private with Gpio_Driver;
 private with Ada.Synchronous_Task_Control;
+private with Memory_Protection;
 
 --
 --  @summary Multi-color LED services
@@ -86,6 +87,7 @@ private
    pragma SPARK_Mode (Off);
    use Gpio_Driver;
    use Ada.Synchronous_Task_Control;
+   use Memory_Protection;
 
    type Rgb_Led_Type;
 
@@ -109,6 +111,6 @@ private
       Blinking_Period : Time_Span := Milliseconds (0) with Volatile;
       Blinking_On_Condvar : Suspension_Object;
       Blinker_Task : Led_Blinker_Task_Type (Rgb_Led_Type'Access);
-   end record;
+   end record with Alignment => MPU_Region_Alignment;
 
 end Color_Led;

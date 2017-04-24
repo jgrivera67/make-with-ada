@@ -26,11 +26,12 @@
 --
 
 with Pin_Mux_Driver;
+private with Devices.MCU_Specific;
+
 --
 --  @summary GPIO driver
 --
 package Gpio_Driver is
-   --pragma Preelaborate;
    use Pin_Mux_Driver;
 
    --
@@ -60,5 +61,9 @@ package Gpio_Driver is
    procedure Disable_Pin_Irq (Gpio_Pin : Gpio_Pin_Type);
 
    procedure Clear_Pin_Irq (Gpio_Pin : Gpio_Pin_Type);
+
+private
+   type GPIO_Registers_Access_Type is
+      access all Devices.MCU_Specific.GPIO.Registers_Type;
 
 end Gpio_Driver;

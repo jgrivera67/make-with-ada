@@ -33,6 +33,7 @@ with Ada.Task_Identification;
 with Ada.Unchecked_Conversion;
 with Interfaces.Bit_Types;
 with Microcontroller.Arm_Cortex_M;
+with System.Text_IO.Extended; -- ???
 
 package body Runtime_Logs is
    use System.Storage_Elements;
@@ -135,14 +136,14 @@ package body Runtime_Logs is
 
    procedure Debug_Print (Msg : String;
                           Code_Address : Address := Null_Address) is
-      Old_Component_Region : Data_Region_Type;
+      Old_Region : Writable_Region_Type;
    begin
-      Set_Component_Data_Region (Runtime_Logs_Component_Region,
-                                 Old_Component_Region);
+      Set_CPU_Writable_Data_Region (Runtime_Logs_Region,
+                                    Old_Region);
 
       Capture_Log_Entry (Runtime_Logs_Var.Debug_Log, Msg, Code_Address);
 
-      Set_Component_Data_Region (Old_Component_Region);
+      Set_CPU_Writable_Data_Region (Old_Region);
    end Debug_Print;
 
    -- ** --
@@ -150,15 +151,15 @@ package body Runtime_Logs is
    procedure Error_Print (Msg : String;
                           Code_Address : Address := Generate_Unique_Error_Code)
    is
-      Old_Component_Region : Data_Region_Type;
+      Old_Region : Writable_Region_Type;
    begin
-      Set_Component_Data_Region (Runtime_Logs_Component_Region,
-                                 Old_Component_Region);
+      Set_CPU_Writable_Data_Region (Runtime_Logs_Region,
+                                    Old_Region);
 
       Capture_Log_Entry (Runtime_Logs_Var.Error_Log, Msg, Code_Address,
                          With_Stack_Trace => True);
 
-      Set_Component_Data_Region (Old_Component_Region);
+      Set_CPU_Writable_Data_Region (Old_Region);
    end Error_Print;
 
    -- ** --
@@ -174,14 +175,13 @@ package body Runtime_Logs is
    -- ** --
 
    procedure Info_Print (Msg : String) is
-      Old_Component_Region : Data_Region_Type;
+      Old_Region : Writable_Region_Type;
    begin
-      Set_Component_Data_Region (Runtime_Logs_Component_Region,
-                                 Old_Component_Region);
+      Set_CPU_Writable_Data_Region (Runtime_Logs_Region, Old_Region);
 
       Capture_Log_Entry (Runtime_Logs_Var.Info_Log, Msg, Null_Address);
 
-      Set_Component_Data_Region (Old_Component_Region);
+      Set_CPU_Writable_Data_Region (Old_Region);
    end Info_Print;
 
    -- ** --
@@ -201,19 +201,23 @@ package body Runtime_Logs is
       -- ** --
 
       Reset_Count : constant Unsigned_32 := Reset_Counter.Get;
-      Old_Component_Region : Data_Region_Type;
+      Old_Region : Writable_Region_Type;
 
    begin -- Initialize
+      System.Text_IO.Extended.Put_String ("*** HERE 1.1" & ASCII.LF); -- ????
       if Reset_Count <= 1 then
-         Set_Component_Data_Region (Runtime_Logs_Component_Region,
-                                    Old_Component_Region);
-
+         System.Text_IO.Extended.Put_String ("*** HERE 1.2" & ASCII.LF); -- ????
+         Set_CPU_Writable_Data_Region (Runtime_Logs_Region, Old_Region);
+System.Text_IO.Extended.Put_String ("*** HERE 1.3" & ASCII.LF); -- ????
          Initialize_Log (Runtime_Logs_Var.Debug_Log);
          Initialize_Log (Runtime_Logs_Var.Error_Log);
          Initialize_Log (Runtime_Logs_Var.Info_Log);
-
-         Set_Component_Data_Region (Old_Component_Region);
+System.Text_IO.Extended.Put_String ("*** HERE 1.4" & ASCII.LF); -- ????
+         Set_CPU_Writable_Data_Region (Old_Region);
+System.Text_IO.Extended.Put_String ("*** HERE 1.5" & ASCII.LF); -- ????
       end if;
+
+      System.Text_IO.Extended.Put_String ("*** HERE 1.6" & ASCII.LF); -- ????
    end Initialize;
 
    -- ** --
@@ -243,16 +247,10 @@ package body Runtime_Logs is
 
    procedure Log_Print_String (Runtime_Log : in out Runtime_Log_Type;
                                Str : String) is
-      Old_Parameter_Region : Data_Region_Type;
    begin
-      Set_Parameter_Data_Region (Str'Address, Str'Length, Read_Only,
-                                 Old_Parameter_Region);
-
       for Char of Str loop
          Log_Put_Char (Runtime_Log, Char);
       end loop;
-
-      Set_Parameter_Data_Region (Old_Parameter_Region);
    end Log_Print_String;
 
    -- ** --

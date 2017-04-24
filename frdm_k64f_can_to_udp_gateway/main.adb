@@ -34,14 +34,17 @@ with Pin_Mux_Driver;
 with Color_Led;
 with Serial_Console;
 with Command_Parser;
-with Nor_Flash_Driver;
-with Networking.API;
+--with Nor_Flash_Driver;
+--with Networking.API;
 with GNAT.Source_Info;
 with Ada.Real_Time;
-with CAN_To_UDP_Gateway;
+--with CAN_To_UDP_Gateway;
 with Last_Chance_Handler;
-with Memory_Protection; --???
+with Memory_Protection;
 with System.Text_IO.Extended; -- ???
+with Microcontroller.Arm_Cortex_M; --???
+with Interfaces.Bit_Types; -- ???
+with System.Storage_Elements; use System.Storage_Elements; -- ???
 
 pragma Unreferenced (Last_Chance_Handler);
 
@@ -84,26 +87,51 @@ procedure Main is
      Ada.Real_Time.Milliseconds (500);
 
    Old_Color : Color_Led.Led_Color_Type with Unreferenced;
-
+   Old_region: Memory_Protection.Writable_Region_Type;
+   Old_Intr_Mask : Interfaces.Bit_Types.Word; -- ???
+   Old_Background_Region_State : Boolean;
 begin -- Main
+   System.Text_IO.Extended.Put_String ("*** HERE 0" & ASCII.LF); -- ????
    Memory_Protection.Enable_MPU;
+   Old_Intr_Mask := Microcontroller.Arm_Cortex_M.Disable_Cpu_Interrupts; --???
+   System.Text_IO.Extended.Put_String ("*** HERE 0.1" & ASCII.LF); -- ????
+   Memory_Protection.Set_CPU_Writable_Background_Region (
+     True, Old_Background_Region_State); -- ???
+   System.Text_IO.Extended.Put_String ("*** HERE 0.2" & ASCII.LF); -- ????
+   Memory_Protection.Set_CPU_Writable_Background_Region (
+     Old_Background_Region_State); -- ???
+    System.Text_IO.Extended.Put_String ("*** HERE 0.3" & ASCII.LF); -- ????
+   --loop
+   --  null;
+   --end loop; --???
+
    Runtime_Logs.Initialize;
+   System.Text_IO.Extended.Put_String ("*** HERE2" & ASCII.LF); -- ????
    Log_Start_Info;
 
+   System.Text_IO.Extended.Put_String ("*** HERE 3" & ASCII.LF); -- ????
    --  Initialize devices used:
    Pin_Mux_Driver.Initialize;
+   System.Text_IO.Extended.Put_String ("*** HERE 4" & ASCII.LF); -- ????
    Color_Led.Initialize;
+   System.Text_IO.Extended.Put_String ("*** HERE 5" & ASCII.LF); -- ????
    Serial_Console.Initialize;
-   Nor_Flash_Driver.Initialize;
+   System.Text_IO.Extended.Put_String ("*** HERE 6" & ASCII.LF); -- ????
+   --Nor_Flash_Driver.Initialize;
+   System.Text_IO.Extended.Put_String ("*** HERE 7" & ASCII.LF); -- ????
 
    Old_Color := Color_Led.Set_Color (Color_Led.Blue);
+   System.Text_IO.Extended.Put_String ("*** HERE 8" & ASCII.LF); -- ????
    Color_Led.Turn_On_Blinker (Heartbeat_Period_Ms);
-
+   System.Text_IO.Extended.Put_String ("*** HERE 9" & ASCII.LF); -- ????
    Print_Greeting;
-
-   Networking.API.Initialize;
-   CAN_To_UDP_Gateway.Initialize;
+   System.Text_IO.Extended.Put_String ("*** HERE 10" & ASCII.LF); -- ????
+   --Networking.API.Initialize;
+   System.Text_IO.Extended.Put_String ("*** HERE 11" & ASCII.LF); -- ????
+   --CAN_To_UDP_Gateway.Initialize;
+   System.Text_IO.Extended.Put_String ("*** HERE 12" & ASCII.LF); -- ????
    Command_Parser.Initialize;
+   System.Text_IO.Extended.Put_String ("*** HERE 13" & ASCII.LF); -- ????
    loop
       Command_Parser.Parse_Command;
    end loop;

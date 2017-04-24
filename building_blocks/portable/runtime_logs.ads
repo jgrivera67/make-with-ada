@@ -92,11 +92,11 @@ private
    Runtime_Logs_Var : Runtime_Logs_Var_Type
       with Linker_Section => ".runtime_logs";
 
-   Runtime_Logs_Component_Region : constant Data_Region_Type :=
+   Runtime_Logs_Region : constant Writable_Region_Type :=
          (First_Address => Runtime_Logs_Var'Address,
           Last_Address => Last_Address (Runtime_Logs_Var'Address,
                                         Runtime_Logs_Var'Size),
-          Permissions => Read_Write);
+          Enabled => True);
 
    function Runtime_Log_Index_To_Log_Var (Log_Index : Log_Type)
        return Runtime_Log_Access_Type is

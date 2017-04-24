@@ -25,9 +25,12 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
+pragma SPARK_Mode (Off);
+
 separate (Pin_Mux_Driver)
    procedure Initialize is
       SCGC5_Value : SIM.SCGC5_Type;
+      Old_Region : Writable_Region_Type;
    begin
       --
       --  Enable all of the GPIO port clocks:
@@ -41,7 +44,18 @@ separate (Pin_Mux_Driver)
       SCGC5_Value.PORTC := 1;
       SCGC5_Value.PORTD := 1;
       SCGC5_Value.PORTE := 1;
+
+      Set_CPU_Writable_Data_Region (
+         SIM.Registers'Address,
+         SIM.Registers'Size,
+         Old_Region);
+
       SIM.Registers.SCGC5 := SCGC5_Value;
 
+      Set_CPU_Writable_Data_Region (
+         Pin_Mux_Initialized'Address,
+         Pin_Mux_Initialized'Size);
+
       Pin_Mux_Initialized := True;
+      Set_CPU_Writable_Data_Region (Old_Region);
    end Initialize;
