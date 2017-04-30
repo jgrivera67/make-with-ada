@@ -233,42 +233,19 @@ package body Serial_Console is
 
    -- ** --
 
-   function Initialized return Boolean is
-      Old_Region : Writable_Region_Type;
-      Result : Boolean;
-   begin
-      Set_CPU_Writable_Data_Region (My_Writable_Region,
-                                    Old_Region);
-      Result := Console_Var.Initialized;
-      Set_CPU_Writable_Data_Region (Old_Region);
-      return Result;
-   end Initialized;
+   function Initialized return Boolean is (Console_Var.Initialized);
 
    -- ** --
 
    function Is_Input_Available return Boolean is
-      Result : Boolean;
-      Old_Region : Writable_Region_Type;
-   begin
-      Set_CPU_Writable_Data_Region (My_Writable_Region,
-                                    Old_Region);
-      Result := Uart_Driver.Can_Receive_Char (Console_Var.Uart);
-      Set_CPU_Writable_Data_Region (Old_Region);
-      return Result;
-   end Is_Input_Available;
+      (Uart_Driver.Can_Receive_Char (Console_Var.Uart));
 
    -- ** --
 
    function Is_Lock_Mine return Boolean is
-      Result : Boolean;
-      Old_Region : Writable_Region_Type;
       Current_Task_Id : constant Task_Id := Current_Task;
    begin
-      Set_CPU_Writable_Data_Region (My_Writable_Region,
-                                    Old_Region);
-      Result := Console_Var.Lock_Owner_Task_Id = Current_Task_Id;
-      Set_CPU_Writable_Data_Region (Old_Region);
-      return Result;
+      return Console_Var.Lock_Owner_Task_Id = Current_Task_Id;
    end Is_Lock_Mine;
 
    -- ** --
@@ -503,8 +480,6 @@ package body Serial_Console is
       Byte_Read : Byte;
       Char : Character;
    begin
-      System.Text_IO.Extended.Put_String ("Console_Output_Task_Type started" &
-         ASCII.LF); -- ???
       Set_CPU_Writable_Data_Region (My_Writable_Region);
       Suspend_Until_True (Console_Ptr.Initialized_Condvar);
       Runtime_Logs.Info_Print ("Console output task started");

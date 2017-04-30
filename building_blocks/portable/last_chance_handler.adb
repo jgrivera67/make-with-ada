@@ -33,12 +33,14 @@ with Interfaces.Bit_Types;
 with System.Storage_Elements;
 with Stack_Trace_Capture;
 with Number_Conversion_Utils;
+with Memory_Protection;
 
 package body Last_Chance_Handler is
    use Microcontroller.Arm_Cortex_M;
    use Interfaces.Bit_Types;
    use Interfaces;
    use System.Storage_Elements;
+   use Memory_Protection;
 
    procedure Print_Stack_Trace (Num_Entries_To_Skip : Natural);
 
@@ -64,6 +66,7 @@ package body Last_Chance_Handler is
         Return_Address_To_Call_Address (Get_LR_Register);
       Msg_Length : Natural := 0;
       Old_Interrupt_Mask : Word with Unreferenced;
+      Old_Region : Writable_Region_Type;
    begin
 
       --
@@ -83,7 +86,12 @@ package body Last_Chance_Handler is
          end loop;
       end if;
 
+      Set_CPU_Writable_Data_Region (Last_Chance_Handler_Running'Address,
+                                    Last_Chance_Handler_Running'Size,
+                                    Old_Region);
+
       Last_Chance_Handler_Running := True;
+      Set_CPU_Writable_Data_Region (Old_Region);
 
       --
       --  Print exception message to error log and UART0:
@@ -101,7 +109,7 @@ package body Last_Chance_Handler is
       else
          Ada.Text_IO.New_Line;
          Ada.Text_IO.Put_Line ("*** Exception: '" &
-                                 Msg_Text (1 .. Msg_Length) & "'");
+                               Msg_Text (1 .. Msg_Length) & "'");
          Print_Stack_Trace (Num_Entries_To_Skip => 0);
 
          Runtime_Logs.Error_Print ("Exception: '" &

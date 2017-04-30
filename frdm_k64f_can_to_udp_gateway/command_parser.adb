@@ -35,6 +35,7 @@ with CAN_To_UDP_Gateway;
 with Number_Conversion_Utils;
 with App_Configuration;
 with Ada.Real_Time;
+with Memory_Protection;
 
 --
 --  Application-specific command parser implementation
@@ -47,6 +48,7 @@ package body Command_Parser is
    use Interfaces;
    use Number_Conversion_Utils;
    use Ada.Real_Time;
+   use Memory_Protection;
 
    procedure Cmd_Ping;
 
@@ -556,9 +558,15 @@ package body Command_Parser is
    -- ** --
 
    procedure Initialize is
+      Old_Region : Writable_Region_Type;
    begin
       Command_Line.Initialize (Prompt'Access);
+      Set_CPU_Writable_Data_Region (Command_Parser_Var'Address,
+                                    Command_Parser_Var'Size,
+                                    Old_Region);
+
       Command_Parser_Var.Initialized := True;
+      Set_CPU_Writable_Data_Region (Old_Region);
    end Initialize;
 
    -- ** --

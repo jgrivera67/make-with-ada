@@ -241,8 +241,6 @@ package body Color_Led is
       use Address_To_Rgb_Led_Pointer;
       Next_Time : Time := Clock;
    begin
-      System.Text_IO.Extended.Put_String ("*** Led_Blinker_Task_Type started" &
-         ASCII.LF); -- ???
       Set_CPU_Writable_Data_Region (
          To_Address (Object_Pointer (Rgb_Led_Ptr)),
          Rgb_Led_Ptr.all'Size);
