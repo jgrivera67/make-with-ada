@@ -558,15 +558,16 @@ package body Command_Parser is
    -- ** --
 
    procedure Initialize is
-      Old_Region : Writable_Region_Type;
+      Old_Region : Data_Region_Type;
    begin
       Command_Line.Initialize (Prompt'Access);
-      Set_CPU_Writable_Data_Region (Command_Parser_Var'Address,
-                                    Command_Parser_Var'Size,
-                                    Old_Region);
+      Set_Private_Object_Data_Region (Command_Parser_Var'Address,
+                                      Command_Parser_Var'Size,
+                                      Read_Write,
+                                      Old_Region);
 
       Command_Parser_Var.Initialized := True;
-      Set_CPU_Writable_Data_Region (Old_Region);
+      Restore_Private_Object_Data_Region (Old_Region);
    end Initialize;
 
    -- ** --

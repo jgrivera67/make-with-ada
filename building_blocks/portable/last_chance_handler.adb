@@ -66,7 +66,7 @@ package body Last_Chance_Handler is
         Return_Address_To_Call_Address (Get_LR_Register);
       Msg_Length : Natural := 0;
       Old_Interrupt_Mask : Word with Unreferenced;
-      Old_Region : Writable_Region_Type;
+      Old_Region : Data_Region_Type;
    begin
 
       --
@@ -86,12 +86,13 @@ package body Last_Chance_Handler is
          end loop;
       end if;
 
-      Set_CPU_Writable_Data_Region (Last_Chance_Handler_Running'Address,
-                                    Last_Chance_Handler_Running'Size,
-                                    Old_Region);
+      Set_Private_Object_Data_Region (Last_Chance_Handler_Running'Address,
+                                      Last_Chance_Handler_Running'Size,
+                                      Read_Write,
+                                      Old_Region);
 
       Last_Chance_Handler_Running := True;
-      Set_CPU_Writable_Data_Region (Old_Region);
+      Restore_Private_Object_Data_Region (Old_Region);
 
       --
       --  Print exception message to error log and UART0:

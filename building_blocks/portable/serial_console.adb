@@ -33,7 +33,6 @@ with Ada.Synchronous_Task_Control;
 with Ada.Task_Identification;
 with System;
 with Memory_Protection;
-with System.Text_IO.Extended; -- ???
 
 package body Serial_Console is
    pragma SPARK_Mode (Off);
@@ -85,12 +84,6 @@ package body Serial_Console is
      "Console Output Buffer";
 
    Console_Var : aliased Console_Type (UART0);
-
-   My_Writable_Region : constant Writable_Region_Type :=
-      (First_Address => Console_Var'Address,
-       Last_Address => Last_Address (Console_Var'Address,
-                                     Console_Var'Size),
-       Enabled => True);
 
    -- ** --
 
@@ -216,10 +209,12 @@ package body Serial_Console is
    -- ** --
 
    procedure Initialize is
-      Old_Region : Writable_Region_Type;
+      Old_Region : Data_Region_Type;
    begin
-      Set_CPU_Writable_Data_Region (My_Writable_Region,
-                                    Old_Region);
+      Set_Private_Object_Data_Region (Console_Var'Address,
+                                      Console_Var'Size,
+                                      Read_Write,
+                                      Old_Region);
 
       Uart_Driver.Initialize (Console_Var.Uart, Console_Uart_Baud_Rate);
       Byte_Ring_Buffers.Initialize (Console_Var.Output_Buffer,
@@ -228,7 +223,7 @@ package body Serial_Console is
       Console_Var.Initialized := True;
       Set_True (Console_Var.Initialized_Condvar);
 
-      Set_CPU_Writable_Data_Region (Old_Region);
+      Restore_Private_Object_Data_Region (Old_Region);
    end Initialize;
 
    -- ** --
@@ -251,20 +246,22 @@ package body Serial_Console is
    -- ** --
 
    procedure Lock is
-      Old_Region : Writable_Region_Type;
+      Old_Region : Data_Region_Type;
    begin
       --
       --  TODO: This is not going to work if there are more than one waiter
       --  (i.e. more than two tasks using the serial console).
       --
-      Set_CPU_Writable_Data_Region (My_Writable_Region,
-                                    Old_Region);
+      Set_Private_Object_Data_Region (Console_Var'Address,
+                                      Console_Var'Size,
+                                      Read_Write,
+                                      Old_Region);
 
       Suspend_Until_True (Console_Var.Lock);
       pragma Assert (Console_Var.Lock_Owner_Task_Id = Null_Task_Id);
       Console_Var.Lock_Owner_Task_Id := Current_Task;
 
-      Set_CPU_Writable_Data_Region (Old_Region);
+      Restore_Private_Object_Data_Region (Old_Region);
    end Lock;
 
    -- ** --
@@ -284,39 +281,45 @@ package body Serial_Console is
    -- ** --
 
    procedure Print_String (S : String) is
-      Old_Region : Writable_Region_Type;
+      Old_Region : Data_Region_Type;
    begin
-      Set_CPU_Writable_Data_Region (My_Writable_Region,
-                                    Old_Region);
+      Set_Private_Object_Data_Region (Console_Var'Address,
+                                      Console_Var'Size,
+                                      Read_Write,
+                                      Old_Region);
 
       for C of S loop
          Byte_Ring_Buffers.Write (Console_Var.Output_Buffer,
                                   Byte (Character'Pos (C)));
       end loop;
 
-      Set_CPU_Writable_Data_Region (Old_Region);
+      Restore_Private_Object_Data_Region (Old_Region);
    end Print_String;
 
    -- ** --
    procedure Put_Char (C : Character) is
-      Old_Region : Writable_Region_Type;
+      Old_Region : Data_Region_Type;
    begin
-      Set_CPU_Writable_Data_Region (My_Writable_Region,
-                                    Old_Region);
+      Set_Private_Object_Data_Region (Console_Var'Address,
+                                      Console_Var'Size,
+                                      Read_Write,
+                                      Old_Region);
 
       Byte_Ring_Buffers.Write (Console_Var.Output_Buffer,
                                Byte (Character'Pos (C)));
 
-      Set_CPU_Writable_Data_Region (Old_Region);
+      Restore_Private_Object_Data_Region (Old_Region);
    end Put_Char;
 
    -- ** --
 
    procedure Restore_Cursor_and_Attributes is
-      Old_Region : Writable_Region_Type;
+      Old_Region : Data_Region_Type;
    begin
-      Set_CPU_Writable_Data_Region (My_Writable_Region,
-                                    Old_Region);
+      Set_Private_Object_Data_Region (Console_Var'Address,
+                                      Console_Var'Size,
+                                      Read_Write,
+                                      Old_Region);
 
       pragma Assert (Console_Var.Attributes_Were_Saved);
 
@@ -326,24 +329,26 @@ package body Serial_Console is
       Console_Var.Current_Attributes := Console_Var.Saved_Attributes;
       Console_Var.Attributes_Were_Saved := False;
 
-      Set_CPU_Writable_Data_Region (Old_Region);
+      Restore_Private_Object_Data_Region (Old_Region);
    end Restore_Cursor_and_Attributes;
 
    -- ** --
 
    procedure Save_Cursor_and_Attributes is
-      Old_Region : Writable_Region_Type;
+      Old_Region : Data_Region_Type;
    begin
       --  Send VT100 control sequence to save current cursor and attributes:
       Print_String (ASCII.ESC & "7");
 
-      Set_CPU_Writable_Data_Region (My_Writable_Region,
-                                    Old_Region);
+      Set_Private_Object_Data_Region (Console_Var'Address,
+                                      Console_Var'Size,
+                                      Read_Write,
+                                      Old_Region);
 
       Console_Var.Saved_Attributes := Console_Var.Current_Attributes;
       Console_Var.Attributes_Were_Saved := True;
 
-      Set_CPU_Writable_Data_Region (Old_Region);
+      Restore_Private_Object_Data_Region (Old_Region);
    end Save_Cursor_and_Attributes;
 
    -- ** --
@@ -356,7 +361,7 @@ package body Serial_Console is
       Line_Str_Length : Natural;
       Col_Str : String (1 .. 3);
       Col_Str_Length : Natural;
-      Old_Region : Writable_Region_Type;
+      Old_Region : Data_Region_Type;
    begin
       if Save_Old then
          Save_Cursor_and_Attributes;
@@ -373,8 +378,10 @@ package body Serial_Console is
       Print_String (ASCII.ESC & "[" & Line_Str (1 .. Line_Str_Length) & ";" &
                     Col_Str (1 .. Col_Str_Length) & "H");
 
-      Set_CPU_Writable_Data_Region (My_Writable_Region,
-                                    Old_Region);
+      Set_Private_Object_Data_Region (Console_Var'Address,
+                                      Console_Var'Size,
+                                      Read_Write,
+                                      Old_Region);
 
       if Attributes /= Console_Var.Current_Attributes then
          Console_Var.Current_Attributes := Attributes;
@@ -401,7 +408,7 @@ package body Serial_Console is
          end if;
       end if;
 
-      Set_CPU_Writable_Data_Region (Old_Region);
+      Restore_Private_Object_Data_Region (Old_Region);
    end Set_Cursor_And_Attributes;
 
    -- ** --
@@ -460,15 +467,17 @@ package body Serial_Console is
    -- ** --
 
    procedure Unlock is
-      Old_Region : Writable_Region_Type;
+      Old_Region : Data_Region_Type;
    begin
-      Set_CPU_Writable_Data_Region (My_Writable_Region,
-                                    Old_Region);
+      Set_Private_Object_Data_Region (Console_Var'Address,
+                                      Console_Var'Size,
+                                      Read_Write,
+                                      Old_Region);
 
       Console_Var.Lock_Owner_Task_Id := Null_Task_Id;
       Set_True (Console_Var.Lock);
 
-      Set_CPU_Writable_Data_Region (Old_Region);
+      Restore_Private_Object_Data_Region (Old_Region);
    end Unlock;
 
    -- ** --
@@ -480,7 +489,10 @@ package body Serial_Console is
       Byte_Read : Byte;
       Char : Character;
    begin
-      Set_CPU_Writable_Data_Region (My_Writable_Region);
+      Set_Private_Object_Data_Region (Console_Var'Address,
+                                      Console_Var'Size,
+                                      Read_Write);
+
       Suspend_Until_True (Console_Ptr.Initialized_Condvar);
       Runtime_Logs.Info_Print ("Console output task started");
 

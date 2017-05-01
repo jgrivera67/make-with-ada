@@ -28,7 +28,6 @@
 with Color_Led.Board_Specific_Private;
 with Runtime_Logs;
 with System.Address_To_Access_Conversions;
-with System.Text_IO.Extended; -- ???
 
 package body Color_Led is
    pragma SPARK_Mode (Off);
@@ -94,7 +93,7 @@ package body Color_Led is
    ----------------
 
    procedure Initialize is
-      Old_Region : Writable_Region_Type;
+      Old_Region : Data_Region_Type;
    begin
       --
       --  Configure Red pin:
@@ -126,13 +125,14 @@ package body Color_Led is
 
       Deactivate_Output_Pin (Rgb_Led.Pins_Ptr.Blue_Pin);
 
-      Set_CPU_Writable_Data_Region (Rgb_Led'Address,
-                                    Rgb_Led'Size,
-                                    Old_Region);
+      Set_Private_Object_Data_Region (Rgb_Led'Address,
+                                      Rgb_Led'Size,
+                                      Read_Write,
+                                      Old_Region);
 
       Rgb_Led.Current_Color := Black;
       Rgb_Led.Initialized := True;
-      Set_CPU_Writable_Data_Region (Old_Region);
+      Restore_Private_Object_Data_Region (Old_Region);
       Set_True (Rgb_Led.Initialized_Condvar);
    end Initialize;
 
@@ -147,17 +147,18 @@ package body Color_Led is
    ---------------
 
    function Set_Color (New_Color : Led_Color_Type) return Led_Color_Type is
-      Old_Region : Writable_Region_Type;
+      Old_Region : Data_Region_Type;
       Old_Color : Led_Color_Type;
    begin
-      Set_CPU_Writable_Data_Region (Rgb_Led'Address,
-                                    Rgb_Led'Size,
-                                    Old_Region);
+      Set_Private_Object_Data_Region (Rgb_Led'Address,
+                                      Rgb_Led'Size,
+                                      Read_Write,
+                                      Old_Region);
 
       Old_Color := Rgb_Led.Current_Color;
       Do_Set_Color (New_Color);
       Rgb_Led.Current_Color := New_Color;
-      Set_CPU_Writable_Data_Region (Old_Region);
+      Restore_Private_Object_Data_Region (Old_Region);
       return Old_Color;
    end Set_Color;
 
@@ -166,11 +167,12 @@ package body Color_Led is
    ------------------
 
    procedure Toggle_Color (Color : Led_Color_Type) is
-      Old_Region : Writable_Region_Type;
+      Old_Region : Data_Region_Type;
    begin
-      Set_CPU_Writable_Data_Region (Rgb_Led'Address,
-                                    Rgb_Led'Size,
-                                    Old_Region);
+      Set_Private_Object_Data_Region (Rgb_Led'Address,
+                                      Rgb_Led'Size,
+                                      Read_Write,
+                                      Old_Region);
 
       if Rgb_Led.Current_Color = Color then
          if Rgb_Colors (Color).Red then
@@ -192,7 +194,7 @@ package body Color_Led is
          Rgb_Led.Current_Toggle := False;
       end if;
 
-      Set_CPU_Writable_Data_Region (Old_Region);
+      Restore_Private_Object_Data_Region (Old_Region);
    end Toggle_Color;
 
    ----------------------
@@ -201,15 +203,16 @@ package body Color_Led is
 
    procedure Turn_Off_Blinker
    is
-      Old_Region : Writable_Region_Type;
+      Old_Region : Data_Region_Type;
    begin
-      Set_CPU_Writable_Data_Region (Rgb_Led'Address,
-                                    Rgb_Led'Size,
-                                    Old_Region);
+      Set_Private_Object_Data_Region (Rgb_Led'Address,
+                                      Rgb_Led'Size,
+                                      Read_Write,
+                                      Old_Region);
 
       Rgb_Led.Blinking_Period := Milliseconds (0);
       Set_False (Rgb_Led.Blinking_On_Condvar);
-      Set_CPU_Writable_Data_Region (Old_Region);
+      Restore_Private_Object_Data_Region (Old_Region);
    end Turn_Off_Blinker;
 
    ---------------------
@@ -218,15 +221,16 @@ package body Color_Led is
 
    procedure Turn_On_Blinker (Period : Time_Span)
    is
-      Old_Region : Writable_Region_Type;
+      Old_Region : Data_Region_Type;
    begin
-      Set_CPU_Writable_Data_Region (Rgb_Led'Address,
-                                    Rgb_Led'Size,
-                                    Old_Region);
+      Set_Private_Object_Data_Region (Rgb_Led'Address,
+                                      Rgb_Led'Size,
+                                      Read_Write,
+                                      Old_Region);
 
       Rgb_Led.Blinking_Period := Period;
       Set_True (Rgb_Led.Blinking_On_Condvar);
-      Set_CPU_Writable_Data_Region (Old_Region);
+      Restore_Private_Object_Data_Region (Old_Region);
    end Turn_On_Blinker;
 
    -- ** --
@@ -241,9 +245,10 @@ package body Color_Led is
       use Address_To_Rgb_Led_Pointer;
       Next_Time : Time := Clock;
    begin
-      Set_CPU_Writable_Data_Region (
+      Set_Private_Object_Data_Region (
          To_Address (Object_Pointer (Rgb_Led_Ptr)),
-         Rgb_Led_Ptr.all'Size);
+         Rgb_Led_Ptr.all'Size,
+         Read_Write);
 
       Suspend_Until_True (Rgb_Led_Ptr.Initialized_Condvar);
       Runtime_Logs.Info_Print ("LED Blinker task started");

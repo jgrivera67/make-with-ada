@@ -53,14 +53,15 @@ package body Gpio_Driver is
       PDDR_Value : Pin_Array_Type;
       Pin_Array_Value : Pin_Array_Type := (others => 0);
       Pin_Index : Pin_Index_Type renames Gpio_Pin.Pin_Info.Pin_Index;
-      Old_IO_Region : Writable_Region_Type;
+      Old_IO_Region : Data_Region_Type;
    begin
       PDDR_Value := Gpio_Registers.PDDR;
       pragma Assert (PDDR_Value (Pin_Index) /= 0);
 
-      Set_CPU_Writable_Data_Region (
+      Set_Private_Object_Data_Region (
          To_Address (Object_Pointer (Gpio_Registers)),
          GPIO.Registers_Type'Object_Size,
+         Read_Write,
          Old_IO_Region);
 
       Pin_Array_Value (Pin_Index) := 1;
@@ -70,7 +71,7 @@ package body Gpio_Driver is
          Gpio_Registers.PCOR := Pin_Array_Value;
       end if;
 
-      Set_CPU_Writable_Data_Region (Old_IO_Region);
+      Restore_Private_Object_Data_Region (Old_IO_Region);
    end Activate_Output_Pin;
 
    -------------------
@@ -96,23 +97,24 @@ package body Gpio_Driver is
       Gpio_Registers : GPIO_Registers_Access_Type renames
         Gpio_Ports (Gpio_Pin.Pin_Info.Pin_Port);
       PDDR_Value : Pin_Array_Type;
-      Old_IO_Region : Writable_Region_Type;
+      Old_IO_Region : Data_Region_Type;
    begin
       Old_Primask := Disable_Cpu_Interrupts;
 
       Pin_Mux_Driver.Set_Pin_Function (Gpio_Pin.Pin_Info,
                                        Drive_Strength_Enable, Pullup_Resistor);
 
-      Set_CPU_Writable_Data_Region (
+      Set_Private_Object_Data_Region (
          To_Address (Object_Pointer (Gpio_Registers)),
          GPIO.Registers_Type'Object_Size,
+         Read_Write,
          Old_IO_Region);
 
       PDDR_Value := Gpio_Registers.PDDR;
       PDDR_Value (Gpio_Pin.Pin_Info.Pin_Index) := Boolean'Pos (Is_Output_Pin);
       Gpio_Registers.PDDR := PDDR_Value;
 
-      Set_CPU_Writable_Data_Region (Old_IO_Region);
+      Restore_Private_Object_Data_Region (Old_IO_Region);
 
       Restore_Cpu_Interrupts (Old_Primask);
    end Configure_Pin;
@@ -127,14 +129,15 @@ package body Gpio_Driver is
       PDDR_Value : Pin_Array_Type;
       Pin_Array_Value : Pin_Array_Type := (others => 0);
       Pin_Index : Pin_Index_Type renames Gpio_Pin.Pin_Info.Pin_Index;
-      Old_IO_Region : Writable_Region_Type;
+      Old_IO_Region : Data_Region_Type;
    begin
       PDDR_Value := Gpio_Registers.PDDR;
       pragma Assert (PDDR_Value (Pin_Index) /= 0);
 
-      Set_CPU_Writable_Data_Region (
+      Set_Private_Object_Data_Region (
          To_Address (Object_Pointer (Gpio_Registers)),
          GPIO.Registers_Type'Object_Size,
+         Read_Write,
          Old_IO_Region);
 
       Pin_Array_Value (Pin_Index) := 1;
@@ -144,7 +147,7 @@ package body Gpio_Driver is
          Gpio_Registers.PSOR := Pin_Array_Value;
       end if;
 
-      Set_CPU_Writable_Data_Region (Old_IO_Region);
+      Restore_Private_Object_Data_Region (Old_IO_Region);
    end Deactivate_Output_Pin;
 
    ---------------------
@@ -192,20 +195,21 @@ package body Gpio_Driver is
       PDDR_Value : Pin_Array_Type;
       Pin_Array_Value : Pin_Array_Type := (others => 0);
       Pin_Index : Pin_Index_Type renames Gpio_Pin.Pin_Info.Pin_Index;
-      Old_IO_Region : Writable_Region_Type;
+      Old_IO_Region : Data_Region_Type;
    begin
       PDDR_Value := Gpio_Registers.PDDR;
       pragma Assert (PDDR_Value (Pin_Index) /= 0);
 
-      Set_CPU_Writable_Data_Region (
+      Set_Private_Object_Data_Region (
          To_Address (Object_Pointer (Gpio_Registers)),
          GPIO.Registers_Type'Object_Size,
+         Read_Write,
          Old_IO_Region);
 
       Pin_Array_Value (Pin_Index) := 1;
       Gpio_Registers.PTOR := Pin_Array_Value;
 
-      Set_CPU_Writable_Data_Region (Old_IO_Region);
+      Restore_Private_Object_Data_Region (Old_IO_Region);
    end Toggle_Output_Pin;
 
 end Gpio_Driver;

@@ -103,13 +103,14 @@ package body Command_Line is
       Cursor : Positive;
       Length : Positive;
       Token_Start_Index : Buffer_Index_Type;
-      Old_Region : Writable_Region_Type;
+      Old_Region : Data_Region_Type;
 
    begin -- Get_Next_Token
 
-      Set_CPU_Writable_Data_Region (Command_Line_Var'Address,
-                                    Command_Line_Var'Size,
-                                    Old_Region);
+      Set_Private_Object_Data_Region (Command_Line_Var'Address,
+                                      Command_Line_Var'Size,
+                                      Read_Write,
+                                      Old_Region);
 
       case Command_Line_Var.State is
          when Command_Line_Empty =>
@@ -166,12 +167,12 @@ package body Command_Line is
          Command_Line_Var.State := Last_Token_Found;
       end if;
 
-      Set_CPU_Writable_Data_Region (Old_Region);
+      Restore_Private_Object_Data_Region (Old_Region);
       return True;
 
    <<No_More_Tokens>>
       Command_Line_Var.State := Command_Line_Empty;
-      Set_CPU_Writable_Data_Region (Old_Region);
+      Restore_Private_Object_Data_Region (Old_Region);
       return False;
    end Get_Next_Token;
 
@@ -182,17 +183,18 @@ package body Command_Line is
    -- ** --
 
    procedure Initialize (Prompt : not null access constant String) is
-      Old_Region : Writable_Region_Type;
+      Old_Region : Data_Region_Type;
    begin
       pragma Assert (Command_Line_Var.State = Command_Line_Empty);
 
-      Set_CPU_Writable_Data_Region (Command_Line_Var'Address,
-                                    Command_Line_Var'Size,
-                                    Old_Region);
+      Set_Private_Object_Data_Region (Command_Line_Var'Address,
+                                      Command_Line_Var'Size,
+                                      Read_Write,
+                                      Old_Region);
 
       Command_Line_Var.Prompt := Prompt;
       Command_Line_Var.Initialized := True;
-      Set_CPU_Writable_Data_Region (Old_Region);
+      Restore_Private_Object_Data_Region (Old_Region);
    end Initialize;
 
    -- ** --

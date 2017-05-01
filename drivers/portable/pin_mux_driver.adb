@@ -54,16 +54,17 @@ package body Pin_Mux_Driver is
       Port_Registers : access PORT.Registers_Type renames
         Ports (Pin_Info.Pin_Port);
       ISFR_Value : PORT.Pin_Array_Type := (others => 0);
-      Old_IO_Region : Writable_Region_Type;
+      Old_IO_Region : Data_Region_Type;
    begin
-      Set_CPU_Writable_Data_Region (
+      Set_Private_Object_Data_Region (
          To_Address (Object_Pointer (Port_Registers)),
          PORT.Registers_Type'Object_Size,
+         Read_Write,
          Old_IO_Region);
 
       ISFR_Value (Pin_Info.Pin_Index) := 1;
       Port_Registers.all.ISFR := ISFR_Value;
-      Set_CPU_Writable_Data_Region (Old_IO_Region);
+      Restore_Private_Object_Data_Region (Old_IO_Region);
    end Clear_Pin_Irq;
 
    --------------------
@@ -74,17 +75,18 @@ package body Pin_Mux_Driver is
       Port_Registers : access PORT.Registers_Type renames
         Ports (Pin_Info.Pin_Port);
       PCR_Value : PORT.PCR_Type;
-      Old_IO_Region : Writable_Region_Type;
+      Old_IO_Region : Data_Region_Type;
    begin
-      Set_CPU_Writable_Data_Region (
+      Set_Private_Object_Data_Region (
          To_Address (Object_Pointer (Port_Registers)),
          PORT.Registers_Type'Object_Size,
+         Read_Write,
          Old_IO_Region);
 
       PCR_Value := Port_Registers.all.PCR (Pin_Info.Pin_Index);
       PCR_Value.IRQC := Pin_Irq_None'Enum_Rep;
       Port_Registers.all.PCR (Pin_Info.Pin_Index) := PCR_Value;
-      Set_CPU_Writable_Data_Region (Old_IO_Region);
+      Restore_Private_Object_Data_Region (Old_IO_Region);
    end Disable_Pin_Irq;
 
    --------------------
@@ -96,17 +98,18 @@ package body Pin_Mux_Driver is
       Port_Registers : access PORT.Registers_Type renames
         Ports (Pin_Info.Pin_Port);
       PCR_Value : PORT.PCR_Type;
-      Old_IO_Region : Writable_Region_Type;
+      Old_IO_Region : Data_Region_Type;
    begin
-      Set_CPU_Writable_Data_Region (
+      Set_Private_Object_Data_Region (
          To_Address (Object_Pointer (Port_Registers)),
          PORT.Registers_Type'Object_Size,
+         Read_Write,
          Old_IO_Region);
 
       PCR_Value := Port_Registers.all.PCR (Pin_Info.Pin_Index);
       PCR_Value.IRQC := Pin_Irq_Mode'Enum_Rep;
       Port_Registers.all.PCR (Pin_Info.Pin_Index) := PCR_Value;
-      Set_CPU_Writable_Data_Region (Old_IO_Region);
+      Restore_Private_Object_Data_Region (Old_IO_Region);
    end Enable_Pin_Irq;
 
    ----------------

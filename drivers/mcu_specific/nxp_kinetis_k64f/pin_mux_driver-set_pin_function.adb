@@ -39,7 +39,7 @@ separate (Pin_Mux_Driver)
       Port_Registers : access PORT.Registers_Type renames
         Ports (Pin_Info.Pin_Port);
       PCR_Value : PORT.PCR_Type;
-      Old_Region : Writable_Region_Type;
+      Old_Region : Data_Region_Type;
    begin
       pragma Assert (not Pins_In_Use_Entry);
       PCR_Value :=
@@ -50,18 +50,20 @@ separate (Pin_Mux_Driver)
          IRQC => 0,
          others => 0);
 
-      Set_CPU_Writable_Data_Region (
+      Set_Private_Object_Data_Region (
          To_Address (Object_Pointer (Port_Registers)),
          PORT.Registers_Type'Object_Size,
+         Read_Write,
          Old_Region);
 
       Port_Registers.all.PCR (Pin_Info.Pin_Index) := PCR_Value;
 
-      Set_CPU_Writable_Data_Region (
+      Set_Private_Object_Data_Region (
          Pins_In_Use_Map'Address,
-         Pins_In_Use_Map'Size);
+         Pins_In_Use_Map'Size,
+         Read_Write);
 
       Pins_In_Use_Entry := True;
 
-      Set_CPU_Writable_Data_Region (Old_Region);
+      Restore_Private_Object_Data_Region (Old_Region);
    end Set_Pin_Function;

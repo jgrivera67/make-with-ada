@@ -30,7 +30,7 @@ pragma SPARK_Mode (Off);
 separate (Pin_Mux_Driver)
    procedure Initialize is
       SCGC5_Value : SIM.SCGC5_Type;
-      Old_Region : Writable_Region_Type;
+      Old_Region : Data_Region_Type;
    begin
       --
       --  Enable all of the GPIO port clocks:
@@ -45,17 +45,19 @@ separate (Pin_Mux_Driver)
       SCGC5_Value.PORTD := 1;
       SCGC5_Value.PORTE := 1;
 
-      Set_CPU_Writable_Data_Region (
+      Set_Private_Object_Data_Region (
          SIM.Registers'Address,
          SIM.Registers'Size,
+         Read_Write,
          Old_Region);
 
       SIM.Registers.SCGC5 := SCGC5_Value;
 
-      Set_CPU_Writable_Data_Region (
+      Set_Private_Object_Data_Region (
          Pin_Mux_Initialized'Address,
-         Pin_Mux_Initialized'Size);
+         Pin_Mux_Initialized'Size,
+         Read_Write);
 
       Pin_Mux_Initialized := True;
-      Set_CPU_Writable_Data_Region (Old_Region);
+      Restore_Private_Object_Data_Region (Old_Region);
    end Initialize;

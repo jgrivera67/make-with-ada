@@ -86,7 +86,7 @@ package body Nor_Flash_Driver is
    --
 
    function Execute_Nor_Flash_Command return Boolean
-      with Linker_Section => ".ram_code";
+      with Linker_Section => ".ram_text";
    --
    --  Execute NOR flash command currently loaded in the FCCOBx registers.
    --
@@ -121,7 +121,7 @@ package body Nor_Flash_Driver is
       FSTAT_Value : FTFE_FSTAT_Register;
       Sector_Addr_Value : constant Unsigned_32 :=
          Unsigned_32 (To_Integer (Sector_Address));
-      Old_Region : Writable_Region_Type;
+      Old_Region : Data_Region_Type;
    begin
       pragma Assert (Sector_Addr_Value < 16#01000000#);
 
@@ -131,9 +131,10 @@ package body Nor_Flash_Driver is
       FSTAT_Value := Nor_Flash_Const.Registers_Ptr.FSTAT;
       pragma Assert (FSTAT_Value.CCIF = FSTAT_CCIF_Field_1);
 
-      Set_CPU_Writable_Data_Region (
+      Set_Private_Object_Data_Region (
          To_Address (Object_Pointer (Nor_Flash_Const.Registers_Ptr)),
          NOR.FTFE_Peripheral'Object_Size,
+         Read_Write,
          Old_Region);
 
       if FSTAT_Value.ACCERR = FSTAT_ACCERR_Field_1 or else
@@ -156,7 +157,7 @@ package body Nor_Flash_Driver is
       Nor_Flash_Const.Registers_Ptr.FCCOB.FCCOB3 :=
          Unsigned_8 (Sector_Addr_Value and 16#ff#);
 
-      Set_CPU_Writable_Data_Region (Old_Region);
+      Restore_Private_Object_Data_Region (Old_Region);
       return Execute_Nor_Flash_Command;
    end Erase_Sector;
 
@@ -170,11 +171,12 @@ package body Nor_Flash_Driver is
       use MK64F12;
       Int_Mask : constant Unsigned_32 := Disable_Cpu_Interrupts;
       FSTAT_Value : FTFE_FSTAT_Register;
-      Old_Region : Writable_Region_Type;
+      Old_Region : Data_Region_Type;
    begin
-      Set_CPU_Writable_Data_Region (
+      Set_Private_Object_Data_Region (
          To_Address (Object_Pointer (Nor_Flash_Const.Registers_Ptr)),
          NOR.FTFE_Peripheral'Object_Size,
+         Read_Write,
          Old_Region);
 
       --
@@ -188,7 +190,7 @@ package body Nor_Flash_Driver is
          exit when FSTAT_Value.CCIF /= NOR.FSTAT_CCIF_Field_0;
       end loop;
 
-      Set_CPU_Writable_Data_Region (Old_Region);
+      Restore_Private_Object_Data_Region (Old_Region);
       Restore_Cpu_Interrupts (Int_Mask);
 
       if FSTAT_Value.ACCERR = FSTAT_ACCERR_Field_1 or else
@@ -208,14 +210,15 @@ package body Nor_Flash_Driver is
 
    procedure Initialize
    is
-      Old_Region : Writable_Region_Type;
+      Old_Region : Data_Region_Type;
    begin
-      Set_CPU_Writable_Data_Region (Nor_Flash_Var'Address,
-                                    Nor_Flash_Var'Size,
-                                    Old_Region);
+      Set_Private_Object_Data_Region (Nor_Flash_Var'Address,
+                                      Nor_Flash_Var'Size,
+                                      Read_Write,
+                                      Old_Region);
 
       Nor_Flash_Var.Initialized := True;
-      Set_CPU_Writable_Data_Region (Old_Region);
+      Restore_Private_Object_Data_Region (Old_Region);
    end Initialize;
 
    -----------------
@@ -306,16 +309,17 @@ package body Nor_Flash_Driver is
       FSTAT_Value : FTFE_FSTAT_Register;
       Dest_Addr_Value : constant Unsigned_32 :=
          Unsigned_32 (To_Integer (Dest_Address));
-      Old_Region : Writable_Region_Type;
+      Old_Region : Data_Region_Type;
    begin
       --
       --  Copy source section to the NOR flash programming acceleration buffer:
       --
       Dest_Words := Src_Words;
 
-      Set_CPU_Writable_Data_Region (
+      Set_Private_Object_Data_Region (
          To_Address (Object_Pointer (Nor_Flash_Const.Registers_Ptr)),
          NOR.FTFE_Peripheral'Object_Size,
+         Read_Write,
          Old_Region);
 
       --
@@ -348,7 +352,7 @@ package body Nor_Flash_Driver is
       Nor_Flash_Const.Registers_Ptr.FCCOB.FCCOB5 :=
          Unsigned_8 (Num_128bit_Chunks and 16#ff#);
 
-      Set_CPU_Writable_Data_Region (Old_Region);
+      Restore_Private_Object_Data_Region (Old_Region);
       return Execute_Nor_Flash_Command;
    end Write_Section;
 

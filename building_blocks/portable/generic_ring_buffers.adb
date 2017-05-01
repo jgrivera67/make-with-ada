@@ -25,7 +25,6 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with System.Text_IO.Extended; -- ???
 package body Generic_Ring_Buffers is
 
    function Initialized (Ring_Buffer : Ring_Buffer_Type) return Boolean is
