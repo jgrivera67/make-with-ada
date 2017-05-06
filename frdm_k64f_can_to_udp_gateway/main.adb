@@ -42,6 +42,12 @@ with Ada.Real_Time;
 with Last_Chance_Handler;
 with Memory_Protection;
 
+--  ???
+with Kinetis_K64F.SCS;
+with System.Storage_Elements; use System.Storage_Elements;
+use System;
+--  ???
+
 pragma Unreferenced (Last_Chance_Handler);
 
 procedure Main is
@@ -85,6 +91,9 @@ procedure Main is
    Old_Color : Color_Led.Led_Color_Type with Unreferenced;
 
 begin -- Main
+
+   pragma Assert (Kinetis_K64F.SCS.SCS_Registers.ACTLR'Address =
+                  System.Storage_Elements.To_Address (16#E000E008#));
 
    Memory_Protection.Enable_MPU;
    Runtime_Logs.Initialize;

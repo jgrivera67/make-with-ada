@@ -36,6 +36,7 @@ with Number_Conversion_Utils;
 with App_Configuration;
 with Ada.Real_Time;
 with Memory_Protection;
+with MPU_Tests;
 
 --
 --  Application-specific command parser implementation
@@ -74,6 +75,8 @@ package body Command_Parser is
 
    procedure Cmd_Test_Hang;
 
+   procedure Cmd_Test_MPU;
+
    -- ** --
 
    --
@@ -104,6 +107,18 @@ package body Command_Parser is
      "magenta, cyan, white)> - Test LED color" & ASCII.LF &
      ASCII.HT & "test assert - Test assert failure" & ASCII.LF &
      ASCII.HT & "test hang - Cause an artificial hang" & ASCII.LF &
+     ASCII.HT & "test mpu write1 - Test forbidden write to global data" &
+     ASCII.LF &
+     ASCII.HT & "test mpu write2 - Test forbidden write to secret data" &
+     ASCII.LF &
+     ASCII.HT & "test mpu read - Test forbidden read to secret data" &
+     ASCII.LF &
+     ASCII.HT & "test mpu exe1 - Test forbidden execute to secret flash code" &
+     ASCII.LF &
+     ASCII.HT & "test mpu exe2 - Test forbidden execute to secret RAM code" &
+     ASCII.LF &
+     ASCII.HT & "test mpu stko - Test stack overrun" & ASCII.LF &
+     ASCII.HT & "test mpu valid - Test valid accesses" & ASCII.LF &
      ASCII.HT & "help (or h) - Prints this message" & ASCII.LF;
 
    --
@@ -512,6 +527,8 @@ package body Command_Parser is
             pragma Assert (False);
          elsif Command = "hang" then
             Cmd_Test_Hang;
+         elsif Command = "mpu" then
+            Cmd_Test_MPU;
          else
             return False;
          end if;
@@ -554,6 +571,61 @@ package body Command_Parser is
          null;
       end loop;
    end Cmd_Test_Hang;
+
+   -- ** --
+
+   procedure Cmd_Test_MPU is
+      function Parse_Test_Command (Command : String) return Boolean;
+
+      -- ** --
+
+      function Parse_Test_Command (Command : String) return Boolean is
+      begin
+         if Command = "write1" then
+            MPU_Tests.Test_Forbidden_Write_To_Global_Data;
+         elsif Command = "write2" then
+            MPU_Tests.Test_Forbidden_Write_To_Secret_Data;
+         elsif Command = "read" then
+            MPU_Tests.Test_Forbidden_Read_To_Secret_Data;
+         elsif Command = "exe1" then
+            MPU_Tests.Test_Forbidden_Execute_To_Secret_Flash_Code;
+         elsif Command = "exe2" then
+            MPU_Tests.Test_Forbidden_Execute_To_Secret_RAM_Code;
+         elsif Command = "stko" then
+            MPU_Tests.Test_Stack_Overrun;
+         elsif Command = "valid" then
+            MPU_Tests.Test_Valid_Accesses;
+         else
+            return False;
+         end if;
+
+         return True;
+      end Parse_Test_Command;
+
+      -- ** --
+
+      Token : Command_Line.Token_Type;
+      Token_Found : Boolean;
+      Parsing_Ok : Boolean;
+   begin
+      Token_Found := Command_Line.Get_Next_Token (Token);
+      if not Token_Found then
+         goto Error;
+
+      end if;
+
+      Parsing_Ok :=
+        Parse_Test_Command (Token.String_Value (1 .. Token.Length));
+      if not Parsing_Ok then
+         goto Error;
+      end if;
+
+      return;
+
+   <<Error>>
+      Serial_Console.Print_String (
+         "Error: Invalid syntax for command 'test mpu'" &  ASCII.LF);
+   end Cmd_Test_MPU;
 
    -- ** --
 
