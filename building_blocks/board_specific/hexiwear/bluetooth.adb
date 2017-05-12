@@ -32,6 +32,8 @@ with Ada.Synchronous_Task_Control;
 with System;
 with Interfaces.Bit_Types;
 with Bluetooth.FSCI;
+with Memory_Protection;
+with System.Address_To_Access_Conversions;
 
 package body Bluetooth is
    pragma SPARK_Mode (Off);
@@ -42,6 +44,7 @@ package body Bluetooth is
    use Interfaces;
    use Bluetooth.FSCI;
    use System;
+   use Memory_Protection;
 
    procedure Compute_FSCI_Packet_Checksum (
       Packet_Buffer : in out Bytes_Array_Type);
@@ -70,6 +73,11 @@ package body Bluetooth is
 
    Bluetooth_Serial_Interface_Var :
       aliased Bluetooth_Serial_Interface_Type (UART4);
+
+   package Address_To_Bluetooth_Serial_Interface_Pointer is new
+      System.Address_To_Access_Conversions (Bluetooth_Serial_Interface_Type);
+
+   use Address_To_Bluetooth_Serial_Interface_Pointer;
 
    -----------------
    -- Initialized --
@@ -101,12 +109,19 @@ package body Bluetooth is
 
    procedure Initialize
    is
+      Old_Region : Data_Region_Type;
    begin
       Uart_Driver.Initialize (Bluetooth_Serial_Interface_Var.Uart,
                               Bluetooth_Uart_Baud_Rate);
 
+      Set_Private_Object_Data_Region (Bluetooth_Serial_Interface_Var'Address,
+                                      Bluetooth_Serial_Interface_Var'Size,
+                                      Read_Write,
+                                      Old_Region);
+
       Bluetooth_Serial_Interface_Var.Initialized := True;
       Set_True (Bluetooth_Serial_Interface_Var.Initialized_Condvar);
+      Restore_Private_Object_Data_Region (Old_Region);
    end Initialize;
 
    ------------------------------------------------
@@ -121,6 +136,11 @@ package body Bluetooth is
       Packet_Size : Positive;
       Data : Byte;
    begin
+      Set_Private_Object_Data_Region (
+         To_Address (Object_Pointer (Bluetooth_Serial_Interface_Ptr)),
+         Bluetooth_Serial_Interface_Type'Object_Size,
+         Read_Write);
+
       Suspend_Until_True (Bluetooth_Serial_Interface_Ptr.Initialized_Condvar);
       Runtime_Logs.Info_Print ("Bluetooth input task started");
 

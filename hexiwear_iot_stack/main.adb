@@ -38,6 +38,9 @@ with Command_Parser;
 with GNAT.Source_Info;
 with Ada.Real_Time;
 with Last_Chance_Handler;
+with Memory_Protection;
+with Nor_Flash_Driver;
+
 pragma Unreferenced (Last_Chance_Handler);
 
 procedure Main is
@@ -78,6 +81,8 @@ procedure Main is
    -- ** --
 
 begin -- Hexiwear_Iot_Stack
+   Memory_Protection.Enable_MPU;
+
    Runtime_Logs.Initialize;
    Log_Start_Info;
 
@@ -85,6 +90,7 @@ begin -- Hexiwear_Iot_Stack
    Pin_Mux_Driver.Initialize;
    Color_Led.Initialize;
    Serial_Console.Initialize;
+   Nor_Flash_Driver.Initialize;
 
    Old_Color := Color_Led.Set_Color (Color_Led.Blue);
    Color_Led.Turn_On_Blinker (Heartbeat_Period_Ms);

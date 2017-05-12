@@ -28,11 +28,26 @@
 with Command_Line;
 with Serial_Console;
 with Command_Parser_Common;
+with Memory_Protection;
+with MPU_Tests;
+with Interfaces.Bit_Types;
+with Microcontroller.Arm_Cortex_M;
 
 --
 --  Application-specific command parser implementation
 --
 package body Command_Parser is
+   use Memory_Protection;
+   use Interfaces.Bit_Types;
+   use Microcontroller.Arm_Cortex_M;
+
+   procedure Cmd_Print_Help with Pre => Serial_Console.Is_Lock_Mine;
+
+   procedure Cmd_Test;
+
+   procedure Cmd_Test_Hang;
+
+   procedure Cmd_Test_MPU;
 
    --
    --  Help message string
@@ -47,6 +62,18 @@ package body Command_Parser is
      ASCII.HT & "reset - Reset microcontroller" & ASCII.LF &
      ASCII.HT & "test color <color: black, red, green, yellow, blue, magenta, cyan, white)> - Test LED color" & ASCII.LF &
      ASCII.HT & "test assert - Test assert failure" & ASCII.LF &
+     ASCII.HT & "test mpu write1 - Test forbidden write to global data" &
+     ASCII.LF &
+     ASCII.HT & "test mpu write2 - Test forbidden write to secret data" &
+     ASCII.LF &
+     ASCII.HT & "test mpu read - Test forbidden read to secret data" &
+     ASCII.LF &
+     ASCII.HT & "test mpu exe1 - Test forbidden execute to secret flash code" &
+     ASCII.LF &
+     ASCII.HT & "test mpu exe2 - Test forbidden execute to secret RAM code" &
+     ASCII.LF &
+     ASCII.HT & "test mpu stko - Test stack overrun" & ASCII.LF &
+     ASCII.HT & "test mpu valid - Test valid accesses" & ASCII.LF &
      ASCII.HT & "help (or h) - Prints this message" & ASCII.LF;
 
    --
@@ -65,42 +92,56 @@ package body Command_Parser is
 
    -- ** --
 
-   function Initialized return Boolean is (Command_Parser_Var.Initialized);
-
-   -- ** --
-
-   procedure Initialize is
-   begin
-      Command_Line.Initialize (Prompt'Access);
-      Command_Parser_Var.Initialized := True;
-   end Initialize;
-
-   -- ** --
-
-   procedure Cmd_Print_Help
-     with Pre => Serial_Console.Is_Lock_Mine is
+   procedure Cmd_Print_Help is
    begin
       Serial_Console.Print_String(Help_Msg);
    end Cmd_Print_Help;
 
    -- ** --
 
-   function Parse_Test_Command (Command : String) return Boolean is
+   procedure Initialize is
+      Old_Region : Data_Region_Type;
    begin
-      if Command = "color" then
-         Command_Parser_Common.Cmd_Test_Color;
-      elsif Command = "assert" then
-         pragma Assert (False);
-      else
-         return False;
-      end if;
+      Command_Line.Initialize (Prompt'Access);
+      Set_Private_Object_Data_Region (Command_Parser_Var'Address,
+                                      Command_Parser_Var'Size,
+                                      Read_Write,
+                                      Old_Region);
 
-      return True;
-   end Parse_Test_Command;
+      Command_Parser_Var.Initialized := True;
+      Restore_Private_Object_Data_Region (Old_Region);
+   end Initialize;
+
+   -- ** --
+
+   function Initialized return Boolean is (Command_Parser_Var.Initialized);
 
    -- ** --
 
    procedure Cmd_Test is
+      function Parse_Test_Command (Command : String) return Boolean;
+
+      -- ** --
+
+      function Parse_Test_Command (Command : String) return Boolean is
+      begin
+         if Command = "color" then
+            Command_Parser_Common.Cmd_Test_Color;
+         elsif Command = "assert" then
+            pragma Assert (False);
+         elsif Command = "hang" then
+            Cmd_Test_Hang;
+         elsif Command = "mpu" then
+            Cmd_Test_MPU;
+         else
+            return False;
+         end if;
+
+         return True;
+      end Parse_Test_Command;
+
+      -- ** --
+
       Token : Command_Line.Token_Type;
       Token_Found : Boolean;
       Parsing_Ok : Boolean;
@@ -111,40 +152,8 @@ package body Command_Parser is
 
       end if;
 
-      Parsing_Ok := Parse_Test_Command (Token.String_Value (1 .. Token.Length));
-      if not Parsing_Ok then
-         goto Error;
-      end if;
-
-      return;
-
-      <<Error>>
-      Serial_Console.Print_String ("Error: Invalid syntax for command 'test'" &
-                                     ASCII.LF);
-   end Cmd_Test;
-
-   -- ** --
-
-   function Parse_Set_Command (Set_Command : String) return Boolean is
-   begin
-      Serial_Console.Print_String ("set command not implemented yet" & ASCII.LF);
-      return True;
-   end Parse_Set_Command;
-
-   -- ** --
-
-   procedure Cmd_Set is
-      Token : Command_Line.Token_Type;
-      Token_Found : Boolean;
-      Parsing_Ok : Boolean;
-   begin
-      Token_Found := Command_Line.Get_Next_Token (Token);
-      if not Token_Found then
-         goto Error;
-
-      end if;
-
-      Parsing_Ok := Parse_Set_Command (Token.String_Value (1 .. Token.Length));
+      Parsing_Ok :=
+        Parse_Test_Command (Token.String_Value (1 .. Token.Length));
       if not Parsing_Ok then
          goto Error;
       end if;
@@ -152,51 +161,100 @@ package body Command_Parser is
       return;
 
    <<Error>>
-      Serial_Console.Print_String ("Error: Invalid syntax for command 'set'" &
-                                   ASCII.LF);
-   end Cmd_Set;
+      Serial_Console.Print_String ("Error: Invalid syntax for command 'test'" &
+                                     ASCII.LF);
+   end Cmd_Test;
 
    -- ** --
 
-   procedure Cmd_Print_Config_Params is
+   procedure Cmd_Test_Hang is
+      Old_Interrupts_Mask : Word with Unreferenced;
    begin
-      Serial_Console.Print_String("Not implemented yet" & ASCII.LF);
-   end Cmd_Print_Config_Params;
+      Old_Interrupts_Mask := Disable_Cpu_Interrupts;
+      loop
+         null;
+      end loop;
+   end Cmd_Test_Hang;
 
    -- ** --
-   --
-   procedure Cmd_Save_Config_Params is
+
+   procedure Cmd_Test_MPU is
+      function Parse_Test_Command (Command : String) return Boolean;
+
+      -- ** --
+
+      function Parse_Test_Command (Command : String) return Boolean is
+      begin
+         if Command = "write1" then
+            MPU_Tests.Test_Forbidden_Write_To_Global_Data;
+         elsif Command = "write2" then
+            MPU_Tests.Test_Forbidden_Write_To_Secret_Data;
+         elsif Command = "read" then
+            MPU_Tests.Test_Forbidden_Read_To_Secret_Data;
+         elsif Command = "exe1" then
+            MPU_Tests.Test_Forbidden_Execute_To_Secret_Flash_Code;
+         elsif Command = "exe2" then
+            MPU_Tests.Test_Forbidden_Execute_To_Secret_RAM_Code;
+         elsif Command = "stko" then
+            MPU_Tests.Test_Stack_Overrun;
+         elsif Command = "valid" then
+            MPU_Tests.Test_Valid_Accesses;
+         else
+            return False;
+         end if;
+
+         return True;
+      end Parse_Test_Command;
+
+      -- ** --
+
+      Token : Command_Line.Token_Type;
+      Token_Found : Boolean;
+      Parsing_Ok : Boolean;
    begin
-      Serial_Console.Print_String("Not implemented yet" & ASCII.LF);
-   end Cmd_Save_Config_Params;
+      Token_Found := Command_Line.Get_Next_Token (Token);
+      if not Token_Found then
+         goto Error;
+
+      end if;
+
+      Parsing_Ok :=
+        Parse_Test_Command (Token.String_Value (1 .. Token.Length));
+      if not Parsing_Ok then
+         goto Error;
+      end if;
+
+      return;
+
+   <<Error>>
+      Serial_Console.Print_String (
+         "Error: Invalid syntax for command 'test mpu'" &  ASCII.LF);
+   end Cmd_Test_MPU;
 
    -- ** --
 
-   procedure Parse_Command is
+      procedure Parse_Command is
+      procedure Command_Dispatcher (Command : String);
+
+      -- ** --
 
       procedure Command_Dispatcher (Command : String) is
       begin
          if Command = "help" or else Command = "h" then
             Cmd_Print_Help;
          elsif Command = "stats" or else Command = "st" then
-           Command_Parser_Common.Cmd_Print_Stats;
+            Command_Parser_Common.Cmd_Print_Stats;
          elsif Command = "log" then
             Command_Parser_Common.Cmd_Dump_Log;
          elsif Command = "log-tail" then
             Command_Parser_Common.Cmd_Dump_Log_Tail;
-         elsif Command = "set" then
-            Cmd_Set;
-         elsif Command = "print-config"  or else Command = "pc" then
-            Cmd_Print_Config_Params;
-         elsif Command = "save-config"  or else Command = "sc" then
-            Cmd_Save_Config_Params;
          elsif Command = "reset" then
             Command_Parser_Common.Cmd_Reset;
          elsif Command = "test" then
             Cmd_Test;
          else
-            Serial_Console.Print_String (
-               "Command '" & Command & "' is not recognized" & ASCII.LF);
+            Serial_Console.Print_String ("Command '" & Command &
+                                         "' is not recognized" & ASCII.LF);
          end if;
       end Command_Dispatcher;
 
@@ -214,7 +272,7 @@ package body Command_Parser is
       Serial_Console.Lock;
       Serial_Console.Put_Char (ASCII.LF);
       Command_Dispatcher (Token.String_Value (1 .. Token.Length));
-      Serial_Console.UnLock;
+      Serial_Console.Unlock;
    end Parse_Command;
 
 end Command_Parser;
