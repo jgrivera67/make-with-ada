@@ -1,5 +1,5 @@
 --
---  Copyright (c) 2016, German Rivera
+--  Copyright (c) 2017, German Rivera
 --  All rights reserved.
 --
 --  Redistribution and use in source and binary forms, with or without
@@ -25,34 +25,52 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
+with Memory_Protection;
+with Interfaces.Bit_Types;
+with SPI_Driver;
 with Devices.MCU_Specific;
-with Pin_Mux_Driver;
 
-private package SPI_Driver.MCU_Specific_Private is
-   pragma SPARK_Mode (Off);
-   use Pin_Mux_Driver;
-
-   type Fifo_Size_Type is range 1 .. 4;
+--
+--  LCD display services implementation
+--
+package body LCD_Display is
+   use Memory_Protection;
+   use Interfaces.Bit_Types;
 
    --
-   --  Type for the constant portion of a SPI device object
+   --  State variables of the LCD display
    --
-   --  @field Registers_Ptr Pointer to I/O registers for the SPI peripheral
-   --  @field Chip_Select0_Pin  Chip select0 signal pin (board specific)
-   --  @field Sck_Pin_Info SCK signal pin (board specific)
-   --  @field Mosi_Pin_Info MOSI signal pin (board specific)
-   --  @field Miso_Pin_Info MISO signal pin (board specific)
-   --  @field Tx_Fifo_Size Transmit FIFO size in bytes
-   --  @field Rx_Fifo_Size Receive FIFO size in bytes
-   --
-   type SPI_Device_Const_Type is limited record
-      Registers_Ptr : not null access Devices.MCU_Specific.SPI.SPI_Peripheral;
-      Chip_Select0_Pin_Info : Pin_Info_Type;
-      Sck_Pin_Info : Pin_Info_Type;
-      Mosi_Pin_Info : Pin_Info_Type;
-      Miso_Pin_Info : Pin_Info_Type;
-      Tx_Fifo_Size : Fifo_Size_Type;
-      Rx_Fifo_Size : Fifo_Size_Type;
-   end record;
+   type LCD_Display_Type is limited record
+      Initialized : Boolean := False;
+   end record with Alignment => MPU_Region_Alignment,
+                   Size => MPU_Region_Alignment * Byte'Size;
 
-end SPI_Driver.MCU_Specific_Private;
+   LCD_Display_Var : LCD_Display_Type;
+
+   -- ** --
+
+
+   procedure Initialize is
+      Old_Region : Data_Region_Type;
+   begin
+      SPI_Driver.Initialize (SPI_Device_Id => Devices.MCU_Specific.SPI2,
+                             Master_Mode => True,
+                             Frame_Size => 1,
+                             Sck_Frequency_Hz => 8_000_000);
+
+      Set_Private_Object_Data_Region (LCD_Display_Var'Address,
+                                      LCD_Display_Var'Size,
+                                      Read_Write,
+                                      Old_Region);
+
+      LCD_Display_Var.Initialized := True;
+      Restore_Private_Object_Data_Region (Old_Region);
+   end Initialize;
+
+   -- ** --
+
+   function Initialized return Boolean is (LCD_Display_Var.Initialized);
+
+   -- ** --
+
+end LCD_Display;

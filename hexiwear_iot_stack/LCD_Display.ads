@@ -1,5 +1,5 @@
 --
---  Copyright (c) 2016, German Rivera
+--  Copyright (c) 2017, German Rivera
 --  All rights reserved.
 --
 --  Redistribution and use in source and binary forms, with or without
@@ -25,34 +25,14 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with Devices.MCU_Specific;
-with Pin_Mux_Driver;
+--
+--  @summary LCD display services
+--
+package LCD_Display is
+   function Initialized return Boolean
+     with Inline;
 
-private package SPI_Driver.MCU_Specific_Private is
-   pragma SPARK_Mode (Off);
-   use Pin_Mux_Driver;
+   procedure Initialize
+     with Pre => not Initialized;
 
-   type Fifo_Size_Type is range 1 .. 4;
-
-   --
-   --  Type for the constant portion of a SPI device object
-   --
-   --  @field Registers_Ptr Pointer to I/O registers for the SPI peripheral
-   --  @field Chip_Select0_Pin  Chip select0 signal pin (board specific)
-   --  @field Sck_Pin_Info SCK signal pin (board specific)
-   --  @field Mosi_Pin_Info MOSI signal pin (board specific)
-   --  @field Miso_Pin_Info MISO signal pin (board specific)
-   --  @field Tx_Fifo_Size Transmit FIFO size in bytes
-   --  @field Rx_Fifo_Size Receive FIFO size in bytes
-   --
-   type SPI_Device_Const_Type is limited record
-      Registers_Ptr : not null access Devices.MCU_Specific.SPI.SPI_Peripheral;
-      Chip_Select0_Pin_Info : Pin_Info_Type;
-      Sck_Pin_Info : Pin_Info_Type;
-      Mosi_Pin_Info : Pin_Info_Type;
-      Miso_Pin_Info : Pin_Info_Type;
-      Tx_Fifo_Size : Fifo_Size_Type;
-      Rx_Fifo_Size : Fifo_Size_Type;
-   end record;
-
-end SPI_Driver.MCU_Specific_Private;
+end LCD_Display;

@@ -30,6 +30,7 @@ with Interfaces.Bit_Types;
 private with Generic_Ring_Buffers;
 private with Pin_Mux_Driver;
 private with Microcontroller_Clocks;
+private with Memory_Protection;
 
 --
 --  @summary UART serial port driver
@@ -134,6 +135,7 @@ private
    pragma SPARK_Mode (Off);
    use Microcontroller_Clocks;
    use Pin_Mux_Driver;
+   use Memory_Protection;
 
    --
    --  Size of a UART's ring buffer in bytes
@@ -175,7 +177,7 @@ private
       Received_Bytes_Dropped : Natural := 0;
       Errors : Natural := 0;
       Receive_Queue : Byte_Ring_Buffers.Ring_Buffer_Type;
-   end record;
+   end record with Alignment => MPU_Region_Alignment;
 
    --
    --  Array of UART device objects

@@ -40,8 +40,8 @@ private package SPI_Driver.Board_Specific_Private is
    --  Array of SPI device constant objects to be placed on
    --  flash:
    --
-   SPI_Const_Devices :
-     constant array (SPI_Device_Id_Type) of SPI_Const_Type :=
+   SPI_Devices_Const :
+     constant array (SPI_Device_Id_Type) of SPI_Device_Const_Type :=
      (SPI0 =>
         (Registers_Ptr => SPI.SPI0_Periph'Access,
          Chip_Select0_Pin_Info =>
@@ -118,7 +118,7 @@ private package SPI_Driver.Board_Specific_Private is
 
          Tx_Fifo_Size => 1, --  see RM section 3.9.4.4
          Rx_Fifo_Size => 1  --  see RM section 3.9.4.5
-        ),
+        )
      );
 
 end SPI_Driver.Board_Specific_Private;

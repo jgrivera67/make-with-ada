@@ -26,27 +26,84 @@
 --
 
 with Devices.MCU_Specific;
-with Interfaces;
+with Interfaces.Bit_Types;
+with Microcontroller_Clocks;
+private with Generic_Ring_Buffers;
+private with Memory_Protection;
 
 --
 --  @summary SPI driver
 --
 package SPI_Driver is
    use Devices.MCU_Specific;
-   use Devices.MCU_Specific.SPI;
+   use Interfaces.Bit_Types;
    use Interfaces;
+   use Microcontroller_Clocks;
+
+   --
+   --  SPI transfer frame size: 1 or 2 bytes
+   --
+   type SPI_Frame_Size_Type is range 1 .. 2;
 
    function Initialized (
       SPI_Device_Id : SPI_Device_Id_Type) return Boolean;
    --  @private (Used only in contracts)
 
-   procedure Initialize (SPI_Device_Id : SPI_Device_Id_Type)
-     with Pre => not Initialized (SPI_Device_Id);
+   procedure Initialize (SPI_Device_Id : SPI_Device_Id_Type;
+                         Master_Mode : Boolean;
+                         Frame_Size : SPI_Frame_Size_Type;
+                         Sck_Frequency_Hz : Hertz_Type)
+     with Pre => not Initialized (SPI_Device_Id) and
+                 Sck_Frequency_Hz < Bus_Clock_Frequency;
    --
    --  Initialize the given SPI device
    --
    --  @param SPI_Device_Id SPI device Id
-   --  @param SPI_Resolution SPI conversion resolution in bits
+   --  @param Master_Mode       Flag indicating if master mode is wanted (true)
+   --  @param Frame_Size        SPI frame size in bytes (1 or 2)
+   --  @param Sck_Frequency_Hz  Wanted SPI protocol frequency in HZ
    --
+
+private
+   pragma SPARK_Mode (Off);
+   use Memory_Protection;
+
+   --
+   --  Ring buffer of bytes
+   --
+   package Byte_Ring_Buffers is
+     new Generic_Ring_Buffers (Element_Type => Byte,
+                               Max_Num_Elements => 16);
+
+   --
+   --  State variables of a SPI device object
+   --
+   --  @field Initialized Flag indicating if this device has been initialized
+   --  @field Master_Mode Flag indicating if this device is in master mode
+   --  (true) or slave mode (false)
+   --  @field Frame_Size SPI transfer frame size
+   --  @field Rx_Buffer_Ptr Pointer to the Rx buffer for the SPI transfer
+   --  currently in progress
+   --  @field Rx_SPI_Frames_Expected Number of SPI frames still expected for
+   --  the
+   --  SPI transfer currently in progress
+   --
+   type SPI_Device_Var_Type is limited record
+      Initialized : Boolean := False;
+      Master_Mode : Boolean;
+      Frame_Size : SPI_Frame_Size_Type;
+      Rx_Buffer_Ptr : Byte_Ring_Buffers.Ring_Buffer_Access_Type := null;
+      Rx_SPI_Frames_Expected : Unsigned_32;
+   end record with Alignment => MPU_Region_Alignment,
+                   Size => MPU_Region_Alignment * Byte'Size;
+
+   --
+   --  Array of SPI device objects
+   --
+   SPI_Devices_Var :
+     array (SPI_Device_Id_Type) of aliased SPI_Device_Var_Type;
+
+   function Initialized (SPI_Device_Id : SPI_Device_Id_Type) return Boolean is
+     (SPI_Devices_Var (SPI_Device_Id).Initialized);
 
 end SPI_Driver;

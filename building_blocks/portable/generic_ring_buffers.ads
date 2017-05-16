@@ -42,6 +42,8 @@ package Generic_Ring_Buffers is
 
    type Ring_Buffer_Type is limited private;
 
+   type Ring_Buffer_Access_Type is access all Ring_Buffer_Type;
+
    function Initialized (Ring_Buffer : Ring_Buffer_Type) return Boolean
      with Inline;
    --  @private (Used only in contracts)
@@ -81,7 +83,7 @@ private
    --
    --  Buffer protected type
    --
-   protected type Buffer_Type is
+   protected type Buffer_Protected_Type is
       pragma Interrupt_Priority (System.Interrupt_Priority'Last);
 
       procedure Write (Element : Element_Type;
@@ -99,7 +101,7 @@ private
       Write_Cursor : Buffer_Index_Type := Buffer_Index_Type'First;
       Read_Cursor : Buffer_Index_Type := Buffer_Index_Type'First;
       Num_Elements_Filled : Natural range 0 .. Max_Num_Elements := 0;
-   end Buffer_Type;
+   end Buffer_Protected_Type;
 
    --
    --  Ring buffer type
@@ -107,7 +109,7 @@ private
    type Ring_Buffer_Type is limited record
       Initialized : Boolean := False;
       Name : access constant String;
-      Buffer : Buffer_Type;
+      Buffer : Buffer_Protected_Type;
       Not_Empty_Condvar : Suspension_Object;
       Not_Full_Condvar : Suspension_Object;
    end record;

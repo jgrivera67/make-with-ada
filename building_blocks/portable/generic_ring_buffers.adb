@@ -88,7 +88,7 @@ package body Generic_Ring_Buffers is
 
    -- ** --
 
-   protected body Buffer_Type is
+   protected body Buffer_Protected_Type is
 
       procedure Read (Element : out Element_Type;
                       Read_Ok : out Boolean;
@@ -136,6 +136,6 @@ package body Generic_Ring_Buffers is
          end if;
       end Write;
 
-   end Buffer_Type;
+   end Buffer_Protected_Type;
 
 end Generic_Ring_Buffers;
