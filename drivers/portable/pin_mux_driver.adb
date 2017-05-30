@@ -30,6 +30,7 @@ with Memory_Protection;
 with System.Address_To_Access_Conversions;
 
 package body Pin_Mux_Driver is
+   pragma SPARK_Mode (Off);
    use Pin_Mux_Driver.MCU_Specific_Private;
    use Memory_Protection;
 
@@ -54,7 +55,7 @@ package body Pin_Mux_Driver is
       Port_Registers : access PORT.Registers_Type renames
         Ports (Pin_Info.Pin_Port);
       ISFR_Value : PORT.Pin_Array_Type := (others => 0);
-      Old_IO_Region : Data_Region_Type;
+      Old_IO_Region : MPU_Region_Descriptor_Type;
    begin
       Set_Private_Object_Data_Region (
          To_Address (Object_Pointer (Port_Registers)),
@@ -75,7 +76,7 @@ package body Pin_Mux_Driver is
       Port_Registers : access PORT.Registers_Type renames
         Ports (Pin_Info.Pin_Port);
       PCR_Value : PORT.PCR_Type;
-      Old_IO_Region : Data_Region_Type;
+      Old_IO_Region : MPU_Region_Descriptor_Type;
    begin
       Set_Private_Object_Data_Region (
          To_Address (Object_Pointer (Port_Registers)),
@@ -98,7 +99,7 @@ package body Pin_Mux_Driver is
       Port_Registers : access PORT.Registers_Type renames
         Ports (Pin_Info.Pin_Port);
       PCR_Value : PORT.PCR_Type;
-      Old_IO_Region : Data_Region_Type;
+      Old_IO_Region : MPU_Region_Descriptor_Type;
    begin
       Set_Private_Object_Data_Region (
          To_Address (Object_Pointer (Port_Registers)),

@@ -34,6 +34,7 @@ with Devices.MCU_Specific;
 --  LCD display services implementation
 --
 package body LCD_Display is
+   pragma SPARK_Mode (Off);
    use Memory_Protection;
    use Interfaces.Bit_Types;
 
@@ -51,7 +52,7 @@ package body LCD_Display is
 
 
    procedure Initialize is
-      Old_Region : Data_Region_Type;
+      Old_Region : MPU_Region_Descriptor_Type;
    begin
       SPI_Driver.Initialize (SPI_Device_Id => Devices.MCU_Specific.SPI2,
                              Master_Mode => True,

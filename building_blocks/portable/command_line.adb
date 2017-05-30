@@ -28,6 +28,7 @@ with Serial_Console;
 with Memory_Protection;
 
 package body Command_Line is
+   pragma SPARK_Mode (Off);
    use Memory_Protection;
 
    subtype Buffer_Index_Type is Positive range 1 .. 128;
@@ -103,7 +104,7 @@ package body Command_Line is
       Cursor : Positive;
       Length : Positive;
       Token_Start_Index : Buffer_Index_Type;
-      Old_Region : Data_Region_Type;
+      Old_Region : MPU_Region_Descriptor_Type;
 
    begin -- Get_Next_Token
 
@@ -183,7 +184,7 @@ package body Command_Line is
    -- ** --
 
    procedure Initialize (Prompt : not null access constant String) is
-      Old_Region : Data_Region_Type;
+      Old_Region : MPU_Region_Descriptor_Type;
    begin
       pragma Assert (Command_Line_Var.State = Command_Line_Empty);
 

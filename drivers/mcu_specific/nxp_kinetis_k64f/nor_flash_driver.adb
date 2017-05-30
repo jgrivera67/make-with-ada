@@ -121,7 +121,7 @@ package body Nor_Flash_Driver is
       FSTAT_Value : FTFE_FSTAT_Register;
       Sector_Addr_Value : constant Unsigned_32 :=
          Unsigned_32 (To_Integer (Sector_Address));
-      Old_Region : Data_Region_Type;
+      Old_Region : MPU_Region_Descriptor_Type;
    begin
       pragma Assert (Sector_Addr_Value < 16#01000000#);
 
@@ -171,7 +171,7 @@ package body Nor_Flash_Driver is
       use MK64F12;
       Int_Mask : constant Unsigned_32 := Disable_Cpu_Interrupts;
       FSTAT_Value : FTFE_FSTAT_Register;
-      Old_Region : Data_Region_Type;
+      Old_Region : MPU_Region_Descriptor_Type;
    begin
       Set_Private_Object_Data_Region (
          To_Address (Object_Pointer (Nor_Flash_Const.Registers_Ptr)),
@@ -210,7 +210,7 @@ package body Nor_Flash_Driver is
 
    procedure Initialize
    is
-      Old_Region : Data_Region_Type;
+      Old_Region : MPU_Region_Descriptor_Type;
    begin
       Set_Private_Object_Data_Region (Nor_Flash_Var'Address,
                                       Nor_Flash_Var'Size,
@@ -309,7 +309,7 @@ package body Nor_Flash_Driver is
       FSTAT_Value : FTFE_FSTAT_Register;
       Dest_Addr_Value : constant Unsigned_32 :=
          Unsigned_32 (To_Integer (Dest_Address));
-      Old_Region : Data_Region_Type;
+      Old_Region : MPU_Region_Descriptor_Type;
    begin
       --
       --  Copy source section to the NOR flash programming acceleration buffer:

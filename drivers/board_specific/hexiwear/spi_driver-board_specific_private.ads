@@ -97,23 +97,23 @@ private package SPI_Driver.Board_Specific_Private is
       SPI2 =>
         (Registers_Ptr => SPI.SPI2_Periph'Access,
          Chip_Select0_Pin_Info =>
-            (Pin_Port => PIN_PORT_D,
-             Pin_Index => 11,
+            (Pin_Port => PIN_PORT_B,
+             Pin_Index => 20,
              Pin_Function => PIN_FUNCTION_ALT2),
 
          Sck_Pin_Info =>
-            (Pin_Port => PIN_PORT_D,
-             Pin_Index => 12,
+            (Pin_Port => PIN_PORT_B,
+             Pin_Index => 21,
              Pin_Function => PIN_FUNCTION_ALT2),
 
          Mosi_Pin_Info =>
-            (Pin_Port => PIN_PORT_D,
-             Pin_Index => 13,
+            (Pin_Port => PIN_PORT_B,
+             Pin_Index => 22,
              Pin_Function => PIN_FUNCTION_ALT2),
 
          Miso_Pin_Info =>
-            (Pin_Port => PIN_PORT_D,
-             Pin_Index => 14,
+            (Pin_Port => PIN_PORT_B,
+             Pin_Index => 23,
              Pin_Function => PIN_FUNCTION_ALT2),
 
          Tx_Fifo_Size => 1, --  see RM section 3.9.4.4

@@ -209,7 +209,7 @@ package body Serial_Console is
    -- ** --
 
    procedure Initialize is
-      Old_Region : Data_Region_Type;
+      Old_Region : MPU_Region_Descriptor_Type;
    begin
       Set_Private_Object_Data_Region (Console_Var'Address,
                                       Console_Var'Size,
@@ -246,7 +246,7 @@ package body Serial_Console is
    -- ** --
 
    procedure Lock is
-      Old_Region : Data_Region_Type;
+      Old_Region : MPU_Region_Descriptor_Type;
    begin
       --
       --  TODO: This is not going to work if there are more than one waiter
@@ -281,7 +281,7 @@ package body Serial_Console is
    -- ** --
 
    procedure Print_String (S : String) is
-      Old_Region : Data_Region_Type;
+      Old_Region : MPU_Region_Descriptor_Type;
    begin
       Set_Private_Object_Data_Region (Console_Var'Address,
                                       Console_Var'Size,
@@ -298,7 +298,7 @@ package body Serial_Console is
 
    -- ** --
    procedure Put_Char (C : Character) is
-      Old_Region : Data_Region_Type;
+      Old_Region : MPU_Region_Descriptor_Type;
    begin
       Set_Private_Object_Data_Region (Console_Var'Address,
                                       Console_Var'Size,
@@ -314,7 +314,7 @@ package body Serial_Console is
    -- ** --
 
    procedure Restore_Cursor_and_Attributes is
-      Old_Region : Data_Region_Type;
+      Old_Region : MPU_Region_Descriptor_Type;
    begin
       Set_Private_Object_Data_Region (Console_Var'Address,
                                       Console_Var'Size,
@@ -335,7 +335,7 @@ package body Serial_Console is
    -- ** --
 
    procedure Save_Cursor_and_Attributes is
-      Old_Region : Data_Region_Type;
+      Old_Region : MPU_Region_Descriptor_Type;
    begin
       --  Send VT100 control sequence to save current cursor and attributes:
       Print_String (ASCII.ESC & "7");
@@ -361,7 +361,7 @@ package body Serial_Console is
       Line_Str_Length : Natural;
       Col_Str : String (1 .. 3);
       Col_Str_Length : Natural;
-      Old_Region : Data_Region_Type;
+      Old_Region : MPU_Region_Descriptor_Type;
    begin
       if Save_Old then
          Save_Cursor_and_Attributes;
@@ -467,7 +467,7 @@ package body Serial_Console is
    -- ** --
 
    procedure Unlock is
-      Old_Region : Data_Region_Type;
+      Old_Region : MPU_Region_Descriptor_Type;
    begin
       Set_Private_Object_Data_Region (Console_Var'Address,
                                       Console_Var'Size,

@@ -32,6 +32,7 @@ with Memory_Protection;
 with System.Address_To_Access_Conversions;
 
 package body Gpio_Driver is
+   pragma SPARK_Mode (Off);
    use Interfaces.Bit_Types;
    use Microcontroller.Arm_Cortex_M;
    use Gpio_Driver.MCU_Specific_Private;
@@ -53,7 +54,7 @@ package body Gpio_Driver is
       PDDR_Value : Pin_Array_Type;
       Pin_Array_Value : Pin_Array_Type := (others => 0);
       Pin_Index : Pin_Index_Type renames Gpio_Pin.Pin_Info.Pin_Index;
-      Old_IO_Region : Data_Region_Type;
+      Old_IO_Region : MPU_Region_Descriptor_Type;
    begin
       PDDR_Value := Gpio_Registers.PDDR;
       pragma Assert (PDDR_Value (Pin_Index) /= 0);
@@ -97,7 +98,7 @@ package body Gpio_Driver is
       Gpio_Registers : GPIO_Registers_Access_Type renames
         Gpio_Ports (Gpio_Pin.Pin_Info.Pin_Port);
       PDDR_Value : Pin_Array_Type;
-      Old_IO_Region : Data_Region_Type;
+      Old_IO_Region : MPU_Region_Descriptor_Type;
    begin
       Old_Primask := Disable_Cpu_Interrupts;
 
@@ -129,7 +130,7 @@ package body Gpio_Driver is
       PDDR_Value : Pin_Array_Type;
       Pin_Array_Value : Pin_Array_Type := (others => 0);
       Pin_Index : Pin_Index_Type renames Gpio_Pin.Pin_Info.Pin_Index;
-      Old_IO_Region : Data_Region_Type;
+      Old_IO_Region : MPU_Region_Descriptor_Type;
    begin
       PDDR_Value := Gpio_Registers.PDDR;
       pragma Assert (PDDR_Value (Pin_Index) /= 0);
@@ -195,7 +196,7 @@ package body Gpio_Driver is
       PDDR_Value : Pin_Array_Type;
       Pin_Array_Value : Pin_Array_Type := (others => 0);
       Pin_Index : Pin_Index_Type renames Gpio_Pin.Pin_Info.Pin_Index;
-      Old_IO_Region : Data_Region_Type;
+      Old_IO_Region : MPU_Region_Descriptor_Type;
    begin
       PDDR_Value := Gpio_Registers.PDDR;
       pragma Assert (PDDR_Value (Pin_Index) /= 0);

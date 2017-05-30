@@ -36,6 +36,7 @@ with Number_Conversion_Utils;
 with Memory_Protection;
 
 package body Last_Chance_Handler is
+   pragma SPARK_Mode (Off);
    use Microcontroller.Arm_Cortex_M;
    use Interfaces.Bit_Types;
    use Interfaces;
@@ -66,7 +67,7 @@ package body Last_Chance_Handler is
         Return_Address_To_Call_Address (Get_LR_Register);
       Msg_Length : Natural := 0;
       Old_Interrupt_Mask : Word with Unreferenced;
-      Old_Region : Data_Region_Type;
+      Old_Region : MPU_Region_Descriptor_Type;
    begin
 
       --

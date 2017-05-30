@@ -30,7 +30,7 @@ pragma SPARK_Mode (Off);
 separate (Pin_Mux_Driver)
    procedure Initialize is
       SCGC5_Value : SIM.SCGC5_Type;
-      Old_Region : Data_Region_Type;
+      Old_Region : MPU_Region_Descriptor_Type;
    begin
       --
       --  Enable all of the GPIO port clocks:

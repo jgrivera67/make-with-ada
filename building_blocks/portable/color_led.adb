@@ -93,7 +93,7 @@ package body Color_Led is
    ----------------
 
    procedure Initialize is
-      Old_Region : Data_Region_Type;
+      Old_Region : MPU_Region_Descriptor_Type;
    begin
       --
       --  Configure Red pin:
@@ -147,7 +147,7 @@ package body Color_Led is
    ---------------
 
    function Set_Color (New_Color : Led_Color_Type) return Led_Color_Type is
-      Old_Region : Data_Region_Type;
+      Old_Region : MPU_Region_Descriptor_Type;
       Old_Color : Led_Color_Type;
    begin
       Set_Private_Object_Data_Region (Rgb_Led'Address,
@@ -167,7 +167,7 @@ package body Color_Led is
    ------------------
 
    procedure Toggle_Color (Color : Led_Color_Type) is
-      Old_Region : Data_Region_Type;
+      Old_Region : MPU_Region_Descriptor_Type;
    begin
       Set_Private_Object_Data_Region (Rgb_Led'Address,
                                       Rgb_Led'Size,
@@ -203,7 +203,7 @@ package body Color_Led is
 
    procedure Turn_Off_Blinker
    is
-      Old_Region : Data_Region_Type;
+      Old_Region : MPU_Region_Descriptor_Type;
    begin
       Set_Private_Object_Data_Region (Rgb_Led'Address,
                                       Rgb_Led'Size,
@@ -221,7 +221,7 @@ package body Color_Led is
 
    procedure Turn_On_Blinker (Period : Time_Span)
    is
-      Old_Region : Data_Region_Type;
+      Old_Region : MPU_Region_Descriptor_Type;
    begin
       Set_Private_Object_Data_Region (Rgb_Led'Address,
                                       Rgb_Led'Size,

@@ -33,6 +33,7 @@ with System.Storage_Elements;
 with System.Address_To_Access_Conversions;
 
 package body MPU_Tests is
+   pragma SPARK_Mode (Off);
    use Memory_Protection;
    use Interfaces.Bit_Types;
    use Interfaces;
@@ -73,7 +74,7 @@ package body MPU_Tests is
    ------------------------
 
    procedure My_Public_RAM_Code is
-      Old_Region : Data_Region_Type;
+      Old_Region : MPU_Region_Descriptor_Type;
    begin
       pragma Assert (not My_Global_Data.Public_RAM_Code_Executed);
       Set_Private_Object_Data_Region (My_Global_Data'Address,
@@ -91,7 +92,7 @@ package body MPU_Tests is
    --------------------------
 
    procedure My_Secret_Flash_Code is
-      Old_Region : Data_Region_Type;
+      Old_Region : MPU_Region_Descriptor_Type;
    begin
       Set_Private_Object_Data_Region (My_Secret_Data'Address,
                                       My_Secret_Data'Size,
@@ -109,7 +110,7 @@ package body MPU_Tests is
    ------------------------
 
    procedure My_Secret_RAM_Code is
-      Old_Region : Data_Region_Type;
+      Old_Region : MPU_Region_Descriptor_Type;
    begin
       Set_Private_Object_Data_Region (My_Secret_Data'Address,
                                       My_Secret_Data'Size,
@@ -213,8 +214,8 @@ package body MPU_Tests is
    -------------------------
 
    procedure Test_Valid_Accesses is
-      Old_Region : Data_Region_Type;
-      Old_Code_Region : Code_Region_Type;
+      Old_Region : MPU_Region_Descriptor_Type;
+      Old_Code_Region : MPU_Region_Descriptor_Type;
    begin
       --
       --  Test valid read from global data:

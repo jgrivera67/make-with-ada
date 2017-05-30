@@ -109,7 +109,7 @@ package body Bluetooth is
 
    procedure Initialize
    is
-      Old_Region : Data_Region_Type;
+      Old_Region : MPU_Region_Descriptor_Type;
    begin
       Uart_Driver.Initialize (Bluetooth_Serial_Interface_Var.Uart,
                               Bluetooth_Uart_Baud_Rate);
@@ -130,7 +130,7 @@ package body Bluetooth is
 
    task body Bluetooth_Serial_Interface_Input_Task_Type is
       Packet_Buffer : Bytes_Array_Type (1 .. FSCI_Packet_Header_Size + 1);
-       Packet_Header_Ptr : access FSCI_Packet_Header_Type :=
+       Packet_Header_Ptr : constant access FSCI_Packet_Header_Type :=
          Packet_First_Byte_Ptr_To_Packet_Header_Ptr (
             Packet_Buffer (1)'Unchecked_Access);
       Packet_Size : Positive;

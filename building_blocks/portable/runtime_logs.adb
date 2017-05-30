@@ -35,6 +35,7 @@ with Interfaces.Bit_Types;
 with Microcontroller.Arm_Cortex_M;
 
 package body Runtime_Logs is
+   pragma SPARK_Mode (Off);
    use System.Storage_Elements;
    use Interfaces.Bit_Types;
    use Microcontroller.Arm_Cortex_M;
@@ -135,7 +136,7 @@ package body Runtime_Logs is
 
    procedure Debug_Print (Msg : String;
                           Code_Address : Address := Null_Address) is
-      Old_Region : Data_Region_Type;
+      Old_Region : MPU_Region_Descriptor_Type;
    begin
       Set_Private_Object_Data_Region (Runtime_Logs_Var'Address,
                                       Runtime_Logs_Var'Size,
@@ -152,7 +153,7 @@ package body Runtime_Logs is
    procedure Error_Print (Msg : String;
                           Code_Address : Address := Generate_Unique_Error_Code)
    is
-      Old_Region : Data_Region_Type;
+      Old_Region : MPU_Region_Descriptor_Type;
    begin
       Set_Private_Object_Data_Region (Runtime_Logs_Var'Address,
                                       Runtime_Logs_Var'Size,
@@ -178,7 +179,7 @@ package body Runtime_Logs is
    -- ** --
 
    procedure Info_Print (Msg : String) is
-      Old_Region : Data_Region_Type;
+      Old_Region : MPU_Region_Descriptor_Type;
    begin
       Set_Private_Object_Data_Region (Runtime_Logs_Var'Address,
                                       Runtime_Logs_Var'Size,
@@ -207,7 +208,7 @@ package body Runtime_Logs is
       -- ** --
 
       Reset_Count : constant Unsigned_32 := Reset_Counter.Get;
-      Old_Region : Data_Region_Type;
+      Old_Region : MPU_Region_Descriptor_Type;
 
    begin -- Initialize
       if Reset_Count <= 1 then

@@ -63,7 +63,7 @@ package body SPI_Driver is
       procedure Enable_Clock (SPI_Device_Id : SPI_Device_Id_Type) is
          SCGC3_Value : SIM_SCGC3_Register := SIM_Periph.SCGC3;
          SCGC6_Value : SIM_SCGC6_Register := SIM_Periph.SCGC6;
-         Old_Region : Data_Region_Type;
+         Old_Region : MPU_Region_Descriptor_Type;
       begin
          Set_Private_Object_Data_Region (SIM_Periph'Address,
                                          SIM_Periph'Size,
@@ -94,7 +94,7 @@ package body SPI_Driver is
       MCR_Value : SPI0_MCR_Register;
       SR_Value : SPI0_SR_Register;
       CTAR_Value : SPI0_CTAR_Register;
-      Old_Region : Data_Region_Type;
+      Old_Region : MPU_Region_Descriptor_Type;
       Frame_Size_Field : CTAR_FMSZ_Field;
 
    begin

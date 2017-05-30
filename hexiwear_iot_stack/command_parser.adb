@@ -37,6 +37,7 @@ with Microcontroller.Arm_Cortex_M;
 --  Application-specific command parser implementation
 --
 package body Command_Parser is
+   pragma SPARK_Mode (Off);
    use Memory_Protection;
    use Interfaces.Bit_Types;
    use Microcontroller.Arm_Cortex_M;
@@ -100,7 +101,7 @@ package body Command_Parser is
    -- ** --
 
    procedure Initialize is
-      Old_Region : Data_Region_Type;
+      Old_Region : MPU_Region_Descriptor_Type;
    begin
       Command_Line.Initialize (Prompt'Access);
       Set_Private_Object_Data_Region (Command_Parser_Var'Address,

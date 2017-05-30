@@ -39,7 +39,7 @@ separate (Pin_Mux_Driver)
       Port_Registers : access PORT.Registers_Type renames
         Ports (Pin_Info.Pin_Port);
       PCR_Value : PORT.PCR_Type;
-      Old_Region : Data_Region_Type;
+      Old_Region : MPU_Region_Descriptor_Type;
    begin
       pragma Assert (not Pins_In_Use_Entry);
       PCR_Value :=

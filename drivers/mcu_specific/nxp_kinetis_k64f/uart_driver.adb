@@ -29,7 +29,6 @@ with Ada.Interrupts.Names;
 with System;
 with Uart_Driver.Board_Specific_Private;
 with Microcontroller.Arm_Cortex_M;
-with Memory_Protection;
 with System.Address_To_Access_Conversions;
 
 package body Uart_Driver is
@@ -37,7 +36,6 @@ package body Uart_Driver is
    use Ada.Interrupts;
    use Uart_Driver.Board_Specific_Private;
    use Microcontroller.Arm_Cortex_M;
-   use Memory_Protection;
 
    package Address_To_UART_Registers_Pointer is new
       System.Address_To_Access_Conversions (UART.Registers_Type);
@@ -102,7 +100,7 @@ package body Uart_Driver is
       Uart_Device_Var : Uart_Device_Var_Type renames
         Uart_Devices_Var (Uart_Device_Id);
       Byte_Read : Byte;
-      Old_Region : Data_Region_Type;
+      Old_Region : MPU_Region_Descriptor_Type;
    begin
       Set_Private_Object_Data_Region (Uart_Device_Var'Address,
                                       Uart_Device_Var'Size,
@@ -142,7 +140,7 @@ package body Uart_Driver is
       procedure Enable_Clock is
          SCGC4_Value : SIM.SCGC4_Type := SIM.Registers.SCGC4;
          SCGC1_Value : SIM.SCGC1_Type := SIM.Registers.SCGC1;
-         Old_Region : Data_Region_Type;
+         Old_Region : MPU_Region_Descriptor_Type;
       begin
          Set_Private_Object_Data_Region (SIM.Registers'Address,
                                          SIM.Registers'Size,
@@ -201,7 +199,7 @@ package body Uart_Driver is
 
       C2_Value : UART.C2_Type;
       C1_Value : UART.C1_Type;
-      Old_Region : Data_Region_Type;
+      Old_Region : MPU_Region_Descriptor_Type;
 
    begin -- Initialize
       pragma Assert (not Uart_Device_Var.Initialized);
@@ -291,7 +289,7 @@ package body Uart_Driver is
 
    procedure Put_Byte (Uart_Device_Id : Uart_Device_Id_Type;
                        Data : Byte) is
-      Old_Region : Data_Region_Type;
+      Old_Region : MPU_Region_Descriptor_Type;
       Uart_Registers_Ptr : access UART.Registers_Type renames
         Uart_Devices (Uart_Device_Id).Registers_Ptr;
    begin
@@ -374,7 +372,7 @@ package body Uart_Driver is
          S1_Value : UART.S1_Type;
          D_Value : Byte;
          Byte_Was_Stored : Boolean;
-         Old_Region : Data_Region_Type;
+         Old_Region : MPU_Region_Descriptor_Type;
       begin
          S1_Value := Uart_Registers_Ptr.S1;
          --  The only interrupt source we are expecting is "Receive data
