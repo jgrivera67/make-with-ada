@@ -87,13 +87,13 @@ package body Last_Chance_Handler is
          end loop;
       end if;
 
-      Set_Private_Object_Data_Region (Last_Chance_Handler_Running'Address,
-                                      Last_Chance_Handler_Running'Size,
-                                      Read_Write,
-                                      Old_Region);
+      Set_Private_Data_Region (Last_Chance_Handler_Running'Address,
+                               Last_Chance_Handler_Running'Size,
+                               Read_Write,
+                               Old_Region);
 
       Last_Chance_Handler_Running := True;
-      Restore_Private_Object_Data_Region (Old_Region);
+      Restore_Private_Data_Region (Old_Region);
 
       --
       --  Print exception message to error log and UART0:

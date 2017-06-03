@@ -138,14 +138,14 @@ package body Runtime_Logs is
                           Code_Address : Address := Null_Address) is
       Old_Region : MPU_Region_Descriptor_Type;
    begin
-      Set_Private_Object_Data_Region (Runtime_Logs_Var'Address,
-                                      Runtime_Logs_Var'Size,
-                                      Read_Write,
-                                      Old_Region);
+      Set_Private_Data_Region (Runtime_Logs_Var'Address,
+                               Runtime_Logs_Var'Size,
+                               Read_Write,
+                               Old_Region);
 
       Capture_Log_Entry (Runtime_Logs_Var.Debug_Log, Msg, Code_Address);
 
-      Restore_Private_Object_Data_Region (Old_Region);
+      Restore_Private_Data_Region (Old_Region);
    end Debug_Print;
 
    -- ** --
@@ -155,15 +155,15 @@ package body Runtime_Logs is
    is
       Old_Region : MPU_Region_Descriptor_Type;
    begin
-      Set_Private_Object_Data_Region (Runtime_Logs_Var'Address,
-                                      Runtime_Logs_Var'Size,
-                                      Read_Write,
-                                      Old_Region);
+      Set_Private_Data_Region (Runtime_Logs_Var'Address,
+                               Runtime_Logs_Var'Size,
+                               Read_Write,
+                               Old_Region);
 
       Capture_Log_Entry (Runtime_Logs_Var.Error_Log, Msg, Code_Address,
                          With_Stack_Trace => True);
 
-      Restore_Private_Object_Data_Region (Old_Region);
+      Restore_Private_Data_Region (Old_Region);
    end Error_Print;
 
    -- ** --
@@ -181,14 +181,14 @@ package body Runtime_Logs is
    procedure Info_Print (Msg : String) is
       Old_Region : MPU_Region_Descriptor_Type;
    begin
-      Set_Private_Object_Data_Region (Runtime_Logs_Var'Address,
-                                      Runtime_Logs_Var'Size,
-                                      Read_Write,
-                                      Old_Region);
+      Set_Private_Data_Region (Runtime_Logs_Var'Address,
+                               Runtime_Logs_Var'Size,
+                               Read_Write,
+                               Old_Region);
 
       Capture_Log_Entry (Runtime_Logs_Var.Info_Log, Msg, Null_Address);
 
-      Restore_Private_Object_Data_Region (Old_Region);
+      Restore_Private_Data_Region (Old_Region);
    end Info_Print;
 
    -- ** --
@@ -212,15 +212,15 @@ package body Runtime_Logs is
 
    begin -- Initialize
       if Reset_Count <= 1 then
-         Set_Private_Object_Data_Region (Runtime_Logs_Var'Address,
-                                         Runtime_Logs_Var'Size,
+         Set_Private_Data_Region (Runtime_Logs_Var'Address,
+                                  Runtime_Logs_Var'Size,
                                          Read_Write,
                                          Old_Region);
 
          Initialize_Log (Runtime_Logs_Var.Debug_Log);
          Initialize_Log (Runtime_Logs_Var.Error_Log);
          Initialize_Log (Runtime_Logs_Var.Info_Log);
-         Restore_Private_Object_Data_Region (Old_Region);
+         Restore_Private_Data_Region (Old_Region);
       end if;
    end Initialize;
 

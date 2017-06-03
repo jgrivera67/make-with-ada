@@ -57,7 +57,7 @@ package body Pin_Mux_Driver is
       ISFR_Value : PORT.Pin_Array_Type := (others => 0);
       Old_IO_Region : MPU_Region_Descriptor_Type;
    begin
-      Set_Private_Object_Data_Region (
+      Set_Private_Data_Region (
          To_Address (Object_Pointer (Port_Registers)),
          PORT.Registers_Type'Object_Size,
          Read_Write,
@@ -65,7 +65,7 @@ package body Pin_Mux_Driver is
 
       ISFR_Value (Pin_Info.Pin_Index) := 1;
       Port_Registers.all.ISFR := ISFR_Value;
-      Restore_Private_Object_Data_Region (Old_IO_Region);
+      Restore_Private_Data_Region (Old_IO_Region);
    end Clear_Pin_Irq;
 
    --------------------
@@ -78,7 +78,7 @@ package body Pin_Mux_Driver is
       PCR_Value : PORT.PCR_Type;
       Old_IO_Region : MPU_Region_Descriptor_Type;
    begin
-      Set_Private_Object_Data_Region (
+      Set_Private_Data_Region (
          To_Address (Object_Pointer (Port_Registers)),
          PORT.Registers_Type'Object_Size,
          Read_Write,
@@ -87,7 +87,7 @@ package body Pin_Mux_Driver is
       PCR_Value := Port_Registers.all.PCR (Pin_Info.Pin_Index);
       PCR_Value.IRQC := Pin_Irq_None'Enum_Rep;
       Port_Registers.all.PCR (Pin_Info.Pin_Index) := PCR_Value;
-      Restore_Private_Object_Data_Region (Old_IO_Region);
+      Restore_Private_Data_Region (Old_IO_Region);
    end Disable_Pin_Irq;
 
    --------------------
@@ -101,7 +101,7 @@ package body Pin_Mux_Driver is
       PCR_Value : PORT.PCR_Type;
       Old_IO_Region : MPU_Region_Descriptor_Type;
    begin
-      Set_Private_Object_Data_Region (
+      Set_Private_Data_Region (
          To_Address (Object_Pointer (Port_Registers)),
          PORT.Registers_Type'Object_Size,
          Read_Write,
@@ -110,7 +110,7 @@ package body Pin_Mux_Driver is
       PCR_Value := Port_Registers.all.PCR (Pin_Info.Pin_Index);
       PCR_Value.IRQC := Pin_Irq_Mode'Enum_Rep;
       Port_Registers.all.PCR (Pin_Info.Pin_Index) := PCR_Value;
-      Restore_Private_Object_Data_Region (Old_IO_Region);
+      Restore_Private_Data_Region (Old_IO_Region);
    end Enable_Pin_Irq;
 
    ----------------

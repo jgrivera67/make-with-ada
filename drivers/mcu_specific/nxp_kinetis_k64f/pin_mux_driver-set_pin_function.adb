@@ -50,7 +50,7 @@ separate (Pin_Mux_Driver)
          IRQC => 0,
          others => 0);
 
-      Set_Private_Object_Data_Region (
+      Set_Private_Data_Region (
          To_Address (Object_Pointer (Port_Registers)),
          PORT.Registers_Type'Object_Size,
          Read_Write,
@@ -58,12 +58,12 @@ separate (Pin_Mux_Driver)
 
       Port_Registers.all.PCR (Pin_Info.Pin_Index) := PCR_Value;
 
-      Set_Private_Object_Data_Region (
+      Set_Private_Data_Region (
          Pins_In_Use_Map'Address,
          Pins_In_Use_Map'Size,
          Read_Write);
 
       Pins_In_Use_Entry := True;
 
-      Restore_Private_Object_Data_Region (Old_Region);
+      Restore_Private_Data_Region (Old_Region);
    end Set_Pin_Function;

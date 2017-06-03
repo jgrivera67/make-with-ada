@@ -211,10 +211,10 @@ package body Serial_Console is
    procedure Initialize is
       Old_Region : MPU_Region_Descriptor_Type;
    begin
-      Set_Private_Object_Data_Region (Console_Var'Address,
-                                      Console_Var'Size,
-                                      Read_Write,
-                                      Old_Region);
+      Set_Private_Data_Region (Console_Var'Address,
+                               Console_Var'Size,
+                               Read_Write,
+                               Old_Region);
 
       Uart_Driver.Initialize (Console_Var.Uart, Console_Uart_Baud_Rate);
       Byte_Ring_Buffers.Initialize (Console_Var.Output_Buffer,
@@ -223,7 +223,7 @@ package body Serial_Console is
       Console_Var.Initialized := True;
       Set_True (Console_Var.Initialized_Condvar);
 
-      Restore_Private_Object_Data_Region (Old_Region);
+      Restore_Private_Data_Region (Old_Region);
    end Initialize;
 
    -- ** --
@@ -252,16 +252,16 @@ package body Serial_Console is
       --  TODO: This is not going to work if there are more than one waiter
       --  (i.e. more than two tasks using the serial console).
       --
-      Set_Private_Object_Data_Region (Console_Var'Address,
-                                      Console_Var'Size,
-                                      Read_Write,
-                                      Old_Region);
+      Set_Private_Data_Region (Console_Var'Address,
+                               Console_Var'Size,
+                               Read_Write,
+                               Old_Region);
 
       Suspend_Until_True (Console_Var.Lock);
       pragma Assert (Console_Var.Lock_Owner_Task_Id = Null_Task_Id);
       Console_Var.Lock_Owner_Task_Id := Current_Task;
 
-      Restore_Private_Object_Data_Region (Old_Region);
+      Restore_Private_Data_Region (Old_Region);
    end Lock;
 
    -- ** --
@@ -283,32 +283,32 @@ package body Serial_Console is
    procedure Print_String (S : String) is
       Old_Region : MPU_Region_Descriptor_Type;
    begin
-      Set_Private_Object_Data_Region (Console_Var'Address,
-                                      Console_Var'Size,
-                                      Read_Write,
-                                      Old_Region);
+      Set_Private_Data_Region (Console_Var'Address,
+                               Console_Var'Size,
+                               Read_Write,
+                               Old_Region);
 
       for C of S loop
          Byte_Ring_Buffers.Write (Console_Var.Output_Buffer,
                                   Byte (Character'Pos (C)));
       end loop;
 
-      Restore_Private_Object_Data_Region (Old_Region);
+      Restore_Private_Data_Region (Old_Region);
    end Print_String;
 
    -- ** --
    procedure Put_Char (C : Character) is
       Old_Region : MPU_Region_Descriptor_Type;
    begin
-      Set_Private_Object_Data_Region (Console_Var'Address,
-                                      Console_Var'Size,
-                                      Read_Write,
-                                      Old_Region);
+      Set_Private_Data_Region (Console_Var'Address,
+                               Console_Var'Size,
+                               Read_Write,
+                               Old_Region);
 
       Byte_Ring_Buffers.Write (Console_Var.Output_Buffer,
                                Byte (Character'Pos (C)));
 
-      Restore_Private_Object_Data_Region (Old_Region);
+      Restore_Private_Data_Region (Old_Region);
    end Put_Char;
 
    -- ** --
@@ -316,10 +316,10 @@ package body Serial_Console is
    procedure Restore_Cursor_and_Attributes is
       Old_Region : MPU_Region_Descriptor_Type;
    begin
-      Set_Private_Object_Data_Region (Console_Var'Address,
-                                      Console_Var'Size,
-                                      Read_Write,
-                                      Old_Region);
+      Set_Private_Data_Region (Console_Var'Address,
+                               Console_Var'Size,
+                               Read_Write,
+                               Old_Region);
 
       pragma Assert (Console_Var.Attributes_Were_Saved);
 
@@ -329,7 +329,7 @@ package body Serial_Console is
       Console_Var.Current_Attributes := Console_Var.Saved_Attributes;
       Console_Var.Attributes_Were_Saved := False;
 
-      Restore_Private_Object_Data_Region (Old_Region);
+      Restore_Private_Data_Region (Old_Region);
    end Restore_Cursor_and_Attributes;
 
    -- ** --
@@ -340,15 +340,15 @@ package body Serial_Console is
       --  Send VT100 control sequence to save current cursor and attributes:
       Print_String (ASCII.ESC & "7");
 
-      Set_Private_Object_Data_Region (Console_Var'Address,
-                                      Console_Var'Size,
-                                      Read_Write,
-                                      Old_Region);
+      Set_Private_Data_Region (Console_Var'Address,
+                               Console_Var'Size,
+                               Read_Write,
+                               Old_Region);
 
       Console_Var.Saved_Attributes := Console_Var.Current_Attributes;
       Console_Var.Attributes_Were_Saved := True;
 
-      Restore_Private_Object_Data_Region (Old_Region);
+      Restore_Private_Data_Region (Old_Region);
    end Save_Cursor_and_Attributes;
 
    -- ** --
@@ -378,10 +378,10 @@ package body Serial_Console is
       Print_String (ASCII.ESC & "[" & Line_Str (1 .. Line_Str_Length) & ";" &
                     Col_Str (1 .. Col_Str_Length) & "H");
 
-      Set_Private_Object_Data_Region (Console_Var'Address,
-                                      Console_Var'Size,
-                                      Read_Write,
-                                      Old_Region);
+      Set_Private_Data_Region (Console_Var'Address,
+                               Console_Var'Size,
+                               Read_Write,
+                               Old_Region);
 
       if Attributes /= Console_Var.Current_Attributes then
          Console_Var.Current_Attributes := Attributes;
@@ -408,7 +408,7 @@ package body Serial_Console is
          end if;
       end if;
 
-      Restore_Private_Object_Data_Region (Old_Region);
+      Restore_Private_Data_Region (Old_Region);
    end Set_Cursor_And_Attributes;
 
    -- ** --
@@ -469,15 +469,15 @@ package body Serial_Console is
    procedure Unlock is
       Old_Region : MPU_Region_Descriptor_Type;
    begin
-      Set_Private_Object_Data_Region (Console_Var'Address,
-                                      Console_Var'Size,
-                                      Read_Write,
-                                      Old_Region);
+      Set_Private_Data_Region (Console_Var'Address,
+                               Console_Var'Size,
+                               Read_Write,
+                               Old_Region);
 
       Console_Var.Lock_Owner_Task_Id := Null_Task_Id;
       Set_True (Console_Var.Lock);
 
-      Restore_Private_Object_Data_Region (Old_Region);
+      Restore_Private_Data_Region (Old_Region);
    end Unlock;
 
    -- ** --
@@ -489,9 +489,9 @@ package body Serial_Console is
       Byte_Read : Byte;
       Char : Character;
    begin
-      Set_Private_Object_Data_Region (Console_Var'Address,
-                                      Console_Var'Size,
-                                      Read_Write);
+      Set_Private_Data_Region (Console_Var'Address,
+                               Console_Var'Size,
+                               Read_Write);
 
       Suspend_Until_True (Console_Ptr.Initialized_Condvar);
       Runtime_Logs.Info_Print ("Console output task started");

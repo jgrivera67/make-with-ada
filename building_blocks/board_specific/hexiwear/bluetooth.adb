@@ -114,14 +114,14 @@ package body Bluetooth is
       Uart_Driver.Initialize (Bluetooth_Serial_Interface_Var.Uart,
                               Bluetooth_Uart_Baud_Rate);
 
-      Set_Private_Object_Data_Region (Bluetooth_Serial_Interface_Var'Address,
-                                      Bluetooth_Serial_Interface_Var'Size,
-                                      Read_Write,
-                                      Old_Region);
+      Set_Private_Data_Region (Bluetooth_Serial_Interface_Var'Address,
+                               Bluetooth_Serial_Interface_Var'Size,
+                               Read_Write,
+                               Old_Region);
 
       Bluetooth_Serial_Interface_Var.Initialized := True;
       Set_True (Bluetooth_Serial_Interface_Var.Initialized_Condvar);
-      Restore_Private_Object_Data_Region (Old_Region);
+      Restore_Private_Data_Region (Old_Region);
    end Initialize;
 
    ------------------------------------------------
@@ -136,7 +136,7 @@ package body Bluetooth is
       Packet_Size : Positive;
       Data : Byte;
    begin
-      Set_Private_Object_Data_Region (
+      Set_Private_Data_Region (
          To_Address (Object_Pointer (Bluetooth_Serial_Interface_Ptr)),
          Bluetooth_Serial_Interface_Type'Object_Size,
          Read_Write);

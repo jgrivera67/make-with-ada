@@ -59,13 +59,13 @@ package body LCD_Display is
                              Frame_Size => 1,
                              Sck_Frequency_Hz => 8_000_000);
 
-      Set_Private_Object_Data_Region (LCD_Display_Var'Address,
-                                      LCD_Display_Var'Size,
-                                      Read_Write,
-                                      Old_Region);
+      Set_Private_Data_Region (LCD_Display_Var'Address,
+                               LCD_Display_Var'Size,
+                               Read_Write,
+                               Old_Region);
 
       LCD_Display_Var.Initialized := True;
-      Restore_Private_Object_Data_Region (Old_Region);
+      Restore_Private_Data_Region (Old_Region);
    end Initialize;
 
    -- ** --

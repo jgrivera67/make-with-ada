@@ -77,14 +77,14 @@ package body MPU_Tests is
       Old_Region : MPU_Region_Descriptor_Type;
    begin
       pragma Assert (not My_Global_Data.Public_RAM_Code_Executed);
-      Set_Private_Object_Data_Region (My_Global_Data'Address,
-                                      My_Global_Data'Size,
-                                      Read_Write,
-                                      Old_Region);
+      Set_Private_Data_Region (My_Global_Data'Address,
+                               My_Global_Data'Size,
+                               Read_Write,
+                               Old_Region);
 
       My_Global_Data.Public_RAM_Code_Executed := True;
 
-      Restore_Private_Object_Data_Region (Old_Region);
+      Restore_Private_Data_Region (Old_Region);
    end My_Public_RAM_Code;
 
    --------------------------
@@ -94,15 +94,15 @@ package body MPU_Tests is
    procedure My_Secret_Flash_Code is
       Old_Region : MPU_Region_Descriptor_Type;
    begin
-      Set_Private_Object_Data_Region (My_Secret_Data'Address,
-                                      My_Secret_Data'Size,
-                                      Read_Write,
-                                      Old_Region);
+      Set_Private_Data_Region (My_Secret_Data'Address,
+                               My_Secret_Data'Size,
+                               Read_Write,
+                               Old_Region);
 
       pragma Assert (not My_Secret_Data.Secret_Flash_Code_Executed);
       My_Secret_Data.Secret_Flash_Code_Executed := True;
 
-      Restore_Private_Object_Data_Region (Old_Region);
+      Restore_Private_Data_Region (Old_Region);
    end My_Secret_Flash_Code;
 
    ------------------------
@@ -112,15 +112,15 @@ package body MPU_Tests is
    procedure My_Secret_RAM_Code is
       Old_Region : MPU_Region_Descriptor_Type;
    begin
-      Set_Private_Object_Data_Region (My_Secret_Data'Address,
-                                      My_Secret_Data'Size,
-                                      Read_Write,
-                                      Old_Region);
+      Set_Private_Data_Region (My_Secret_Data'Address,
+                               My_Secret_Data'Size,
+                               Read_Write,
+                               Old_Region);
 
       pragma Assert (not My_Secret_Data.Secret_RAM_Code_Executed);
       My_Secret_Data.Secret_RAM_Code_Executed := True;
 
-      Restore_Private_Object_Data_Region (Old_Region);
+      Restore_Private_Data_Region (Old_Region);
    end My_Secret_RAM_Code;
 
    -------------------------------------------------
@@ -226,10 +226,10 @@ package body MPU_Tests is
       --  Test valid write to global data:
       --
       pragma Assert (Size_Is_MPU_Region_Aligned (My_Global_Data'Size));
-      Set_Private_Object_Data_Region (My_Global_Data'Address,
-                                      My_Global_Data'Size,
-                                      Read_Write,
-                                      Old_Region);
+      Set_Private_Data_Region (My_Global_Data'Address,
+                               My_Global_Data'Size,
+                               Read_Write,
+                               Old_Region);
       My_Global_Data.Value := 88;
       pragma Assert (My_Global_Data.Value = 88);
       My_Global_Data.Value := 0;
@@ -249,17 +249,17 @@ package body MPU_Tests is
       --
       --  Test valid read to secret data:
       --
-      Set_Private_Object_Data_Region (My_Secret_Data'Address,
-                                      My_Secret_Data'Size,
-                                      Read_Only);
+      Set_Private_Data_Region (My_Secret_Data'Address,
+                               My_Secret_Data'Size,
+                               Read_Only);
       pragma Assert (My_Secret_Data.Secret_Value = 0);
 
       --
       --  Test valid write to secret data:
       --
-      Set_Private_Object_Data_Region (My_Secret_Data'Address,
-                                      My_Secret_Data'Size,
-                                      Read_Write);
+      Set_Private_Data_Region (My_Secret_Data'Address,
+                               My_Secret_Data'Size,
+                               Read_Write);
       My_Secret_Data.Secret_Value := 67;
       pragma Assert (My_Secret_Data.Secret_Value = 67);
       My_Secret_Data.Secret_Value := 0;
@@ -284,7 +284,7 @@ package body MPU_Tests is
       My_Secret_Data.Secret_RAM_Code_Executed := False;
 
       Restore_Private_Code_Region (Old_Code_Region);
-      Restore_Private_Object_Data_Region (Old_Region);
+      Restore_Private_Data_Region (Old_Region);
       Serial_Console.Print_String ("*** test passed ***" & ASCII.LF);
    end Test_Valid_Accesses;
 

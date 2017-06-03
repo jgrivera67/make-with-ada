@@ -45,7 +45,7 @@ separate (Pin_Mux_Driver)
       SCGC5_Value.PORTD := 1;
       SCGC5_Value.PORTE := 1;
 
-      Set_Private_Object_Data_Region (
+      Set_Private_Data_Region (
          SIM.Registers'Address,
          SIM.Registers'Size,
          Read_Write,
@@ -53,11 +53,11 @@ separate (Pin_Mux_Driver)
 
       SIM.Registers.SCGC5 := SCGC5_Value;
 
-      Set_Private_Object_Data_Region (
+      Set_Private_Data_Region (
          Pin_Mux_Initialized'Address,
          Pin_Mux_Initialized'Size,
          Read_Write);
 
       Pin_Mux_Initialized := True;
-      Restore_Private_Object_Data_Region (Old_Region);
+      Restore_Private_Data_Region (Old_Region);
    end Initialize;

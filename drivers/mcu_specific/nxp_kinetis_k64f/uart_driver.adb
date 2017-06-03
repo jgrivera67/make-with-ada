@@ -102,13 +102,13 @@ package body Uart_Driver is
       Byte_Read : Byte;
       Old_Region : MPU_Region_Descriptor_Type;
    begin
-      Set_Private_Object_Data_Region (Uart_Device_Var'Address,
-                                      Uart_Device_Var'Size,
-                                      Read_Write,
-                                      Old_Region);
+      Set_Private_Data_Region (Uart_Device_Var'Address,
+                               Uart_Device_Var'Size,
+                               Read_Write,
+                               Old_Region);
 
       Byte_Ring_Buffers.Read (Uart_Device_Var.Receive_Queue, Byte_Read);
-      Restore_Private_Object_Data_Region (Old_Region);
+      Restore_Private_Data_Region (Old_Region);
       return Byte_Read;
    end Get_Byte;
 
@@ -142,10 +142,10 @@ package body Uart_Driver is
          SCGC1_Value : SIM.SCGC1_Type := SIM.Registers.SCGC1;
          Old_Region : MPU_Region_Descriptor_Type;
       begin
-         Set_Private_Object_Data_Region (SIM.Registers'Address,
-                                         SIM.Registers'Size,
-                                         Read_Write,
-                                         Old_Region);
+         Set_Private_Data_Region (SIM.Registers'Address,
+                                  SIM.Registers'Size,
+                                  Read_Write,
+                                  Old_Region);
          case Uart_Device_Id is
             when UART0 =>
                SCGC4_Value.UART0 := 1;
@@ -167,7 +167,7 @@ package body Uart_Driver is
                SIM.Registers.SCGC1 := SCGC1_Value;
          end case;
 
-         Restore_Private_Object_Data_Region (Old_Region);
+         Restore_Private_Data_Region (Old_Region);
       end Enable_Clock;
 
       -- ** --
@@ -204,7 +204,7 @@ package body Uart_Driver is
    begin -- Initialize
       pragma Assert (not Uart_Device_Var.Initialized);
 
-      Set_Private_Object_Data_Region (
+      Set_Private_Data_Region (
          To_Address (Object_Pointer (Uart_Registers_Ptr)),
          UART.Registers_Type'Object_Size,
          Read_Write,
@@ -248,15 +248,15 @@ package body Uart_Driver is
       --  Configure baud rate:
       Set_Baud_Rate;
 
-      Set_Private_Object_Data_Region (Uart_Device_Var'Address,
-                                      Uart_Device_Var'Size,
-                                      Read_Write);
+      Set_Private_Data_Region (Uart_Device_Var'Address,
+                               Uart_Device_Var'Size,
+                               Read_Write);
 
       --  Initialize receive queue:
       Byte_Ring_Buffers.Initialize (Uart_Device_Var.Receive_Queue,
                                     Uart_Receive_Queue_Name'Access);
 
-      Set_Private_Object_Data_Region (
+      Set_Private_Data_Region (
          To_Address (Object_Pointer (Uart_Registers_Ptr)),
          UART.Registers_Type'Object_Size,
          Read_Write);
@@ -277,12 +277,12 @@ package body Uart_Driver is
       C2_Value.RE := 1;
       Uart_Registers_Ptr.all.C2 := C2_Value;
 
-      Set_Private_Object_Data_Region (Uart_Device_Var'Address,
-                                      Uart_Device_Var'Size,
-                                      Read_Write);
+      Set_Private_Data_Region (Uart_Device_Var'Address,
+                               Uart_Device_Var'Size,
+                               Read_Write);
 
       Uart_Device_Var.Initialized := True;
-      Restore_Private_Object_Data_Region (Old_Region);
+      Restore_Private_Data_Region (Old_Region);
    end Initialize;
 
    -- ** --
@@ -297,14 +297,14 @@ package body Uart_Driver is
          exit when Uart_Registers_Ptr.all.S1.TDRE = 1;
       end loop;
 
-      Set_Private_Object_Data_Region (
+      Set_Private_Data_Region (
          To_Address (Object_Pointer (Uart_Registers_Ptr)),
          UART.Registers_Type'Object_Size,
          Read_Write,
          Old_Region);
 
       Uart_Registers_Ptr.all.D := Data;
-      Restore_Private_Object_Data_Region (Old_Region);
+      Restore_Private_Data_Region (Old_Region);
    end Put_Byte;
 
    -- ** --
@@ -382,10 +382,10 @@ package body Uart_Driver is
          --  Read the first byte received to clear the interrupt source.
          D_Value := Uart_Registers_Ptr.D;
 
-         Set_Private_Object_Data_Region (Uart_Device_Var'Address,
-                                         Uart_Device_Var'Size,
-                                         Read_Write,
-                                         Old_Region);
+         Set_Private_Data_Region (Uart_Device_Var'Address,
+                                  Uart_Device_Var'Size,
+                                  Read_Write,
+                                  Old_Region);
 
          Byte_Ring_Buffers.Write_Non_Blocking (Uart_Device_Var.Receive_Queue,
                                                D_Value, Byte_Was_Stored);
@@ -394,7 +394,7 @@ package body Uart_Driver is
               Uart_Device_Var.Received_Bytes_Dropped + 1;
          end if;
 
-         Set_Private_Object_Data_Region (
+         Set_Private_Data_Region (
             To_Address (Object_Pointer (Uart_Registers_Ptr)),
             UART.Registers_Type'Object_Size,
             Read_Write);
@@ -416,7 +416,7 @@ package body Uart_Driver is
             Uart_Registers_Ptr.S1 := S1_Value;
          end if;
 
-         Restore_Private_Object_Data_Region (Old_Region);
+         Restore_Private_Data_Region (Old_Region);
       end Uart_Irq_Common_Handler;
 
    end Uart_Interrupts_Object;

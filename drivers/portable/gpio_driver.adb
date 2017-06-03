@@ -59,7 +59,7 @@ package body Gpio_Driver is
       PDDR_Value := Gpio_Registers.PDDR;
       pragma Assert (PDDR_Value (Pin_Index) /= 0);
 
-      Set_Private_Object_Data_Region (
+      Set_Private_Data_Region (
          To_Address (Object_Pointer (Gpio_Registers)),
          GPIO.Registers_Type'Object_Size,
          Read_Write,
@@ -72,7 +72,7 @@ package body Gpio_Driver is
          Gpio_Registers.PCOR := Pin_Array_Value;
       end if;
 
-      Restore_Private_Object_Data_Region (Old_IO_Region);
+      Restore_Private_Data_Region (Old_IO_Region);
    end Activate_Output_Pin;
 
    -------------------
@@ -105,7 +105,7 @@ package body Gpio_Driver is
       Pin_Mux_Driver.Set_Pin_Function (Gpio_Pin.Pin_Info,
                                        Drive_Strength_Enable, Pullup_Resistor);
 
-      Set_Private_Object_Data_Region (
+      Set_Private_Data_Region (
          To_Address (Object_Pointer (Gpio_Registers)),
          GPIO.Registers_Type'Object_Size,
          Read_Write,
@@ -115,7 +115,7 @@ package body Gpio_Driver is
       PDDR_Value (Gpio_Pin.Pin_Info.Pin_Index) := Boolean'Pos (Is_Output_Pin);
       Gpio_Registers.PDDR := PDDR_Value;
 
-      Restore_Private_Object_Data_Region (Old_IO_Region);
+      Restore_Private_Data_Region (Old_IO_Region);
 
       Restore_Cpu_Interrupts (Old_Primask);
    end Configure_Pin;
@@ -135,7 +135,7 @@ package body Gpio_Driver is
       PDDR_Value := Gpio_Registers.PDDR;
       pragma Assert (PDDR_Value (Pin_Index) /= 0);
 
-      Set_Private_Object_Data_Region (
+      Set_Private_Data_Region (
          To_Address (Object_Pointer (Gpio_Registers)),
          GPIO.Registers_Type'Object_Size,
          Read_Write,
@@ -148,7 +148,7 @@ package body Gpio_Driver is
          Gpio_Registers.PSOR := Pin_Array_Value;
       end if;
 
-      Restore_Private_Object_Data_Region (Old_IO_Region);
+      Restore_Private_Data_Region (Old_IO_Region);
    end Deactivate_Output_Pin;
 
    ---------------------
@@ -201,7 +201,7 @@ package body Gpio_Driver is
       PDDR_Value := Gpio_Registers.PDDR;
       pragma Assert (PDDR_Value (Pin_Index) /= 0);
 
-      Set_Private_Object_Data_Region (
+      Set_Private_Data_Region (
          To_Address (Object_Pointer (Gpio_Registers)),
          GPIO.Registers_Type'Object_Size,
          Read_Write,
@@ -210,7 +210,7 @@ package body Gpio_Driver is
       Pin_Array_Value (Pin_Index) := 1;
       Gpio_Registers.PTOR := Pin_Array_Value;
 
-      Restore_Private_Object_Data_Region (Old_IO_Region);
+      Restore_Private_Data_Region (Old_IO_Region);
    end Toggle_Output_Pin;
 
 end Gpio_Driver;

@@ -65,10 +65,10 @@ package body SPI_Driver is
          SCGC6_Value : SIM_SCGC6_Register := SIM_Periph.SCGC6;
          Old_Region : MPU_Region_Descriptor_Type;
       begin
-         Set_Private_Object_Data_Region (SIM_Periph'Address,
-                                         SIM_Periph'Size,
-                                         Read_Write,
-                                         Old_Region);
+         Set_Private_Data_Region (SIM_Periph'Address,
+                                  SIM_Periph'Size,
+                                  Read_Write,
+                                  Old_Region);
 
          case SPI_Device_Id is
             when SPI0 =>
@@ -82,7 +82,7 @@ package body SPI_Driver is
                SIM_Periph.SCGC3 := SCGC3_Value;
          end case;
 
-         Restore_Private_Object_Data_Region (Old_Region);
+         Restore_Private_Data_Region (Old_Region);
       end Enable_Clock;
 
       SPI_Device : SPI_Device_Const_Type renames
@@ -100,7 +100,7 @@ package body SPI_Driver is
    begin
       Enable_Clock (SPI_Device_Id);
 
-      Set_Private_Object_Data_Region (
+      Set_Private_Data_Region (
          To_Address (Object_Pointer (SPI_Registers_Ptr)),
          SPI_Peripheral'Object_Size,
          Read_Write,
@@ -231,9 +231,9 @@ package body SPI_Driver is
                         Drive_Strength_Enable => True);
       Set_Pin_Function (SPI_Device.Miso_Pin_Info);
 
-      Set_Private_Object_Data_Region (SPI_Device_Var'Address,
-                                      SPI_Device_Var'Size,
-                                      Read_Write);
+      Set_Private_Data_Region (SPI_Device_Var'Address,
+                               SPI_Device_Var'Size,
+                               Read_Write);
 
       SPI_Device_Var.Master_Mode := Master_Mode;
       SPI_Device_Var.Frame_Size := Frame_Size;
@@ -242,7 +242,7 @@ package body SPI_Driver is
       --
       --  Enable SPI module:
       --
-      Set_Private_Object_Data_Region (
+      Set_Private_Data_Region (
          To_Address (Object_Pointer (SPI_Registers_Ptr)),
          SPI_Peripheral'Object_Size,
          Read_Write);
@@ -255,7 +255,7 @@ package body SPI_Driver is
 
       SPI_Registers_Ptr.MCR := MCR_Value;
 
-      Restore_Private_Object_Data_Region (Old_Region);
+      Restore_Private_Data_Region (Old_Region);
    end Initialize;
 
 end SPI_Driver;

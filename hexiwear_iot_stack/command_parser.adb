@@ -104,13 +104,13 @@ package body Command_Parser is
       Old_Region : MPU_Region_Descriptor_Type;
    begin
       Command_Line.Initialize (Prompt'Access);
-      Set_Private_Object_Data_Region (Command_Parser_Var'Address,
-                                      Command_Parser_Var'Size,
-                                      Read_Write,
-                                      Old_Region);
+      Set_Private_Data_Region (Command_Parser_Var'Address,
+                               Command_Parser_Var'Size,
+                               Read_Write,
+                               Old_Region);
 
       Command_Parser_Var.Initialized := True;
-      Restore_Private_Object_Data_Region (Old_Region);
+      Restore_Private_Data_Region (Old_Region);
    end Initialize;
 
    -- ** --

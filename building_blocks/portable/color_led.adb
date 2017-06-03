@@ -125,14 +125,14 @@ package body Color_Led is
 
       Deactivate_Output_Pin (Rgb_Led.Pins_Ptr.Blue_Pin);
 
-      Set_Private_Object_Data_Region (Rgb_Led'Address,
-                                      Rgb_Led'Size,
-                                      Read_Write,
-                                      Old_Region);
+      Set_Private_Data_Region (Rgb_Led'Address,
+                               Rgb_Led'Size,
+                               Read_Write,
+                               Old_Region);
 
       Rgb_Led.Current_Color := Black;
       Rgb_Led.Initialized := True;
-      Restore_Private_Object_Data_Region (Old_Region);
+      Restore_Private_Data_Region (Old_Region);
       Set_True (Rgb_Led.Initialized_Condvar);
    end Initialize;
 
@@ -150,15 +150,15 @@ package body Color_Led is
       Old_Region : MPU_Region_Descriptor_Type;
       Old_Color : Led_Color_Type;
    begin
-      Set_Private_Object_Data_Region (Rgb_Led'Address,
-                                      Rgb_Led'Size,
-                                      Read_Write,
-                                      Old_Region);
+      Set_Private_Data_Region (Rgb_Led'Address,
+                               Rgb_Led'Size,
+                               Read_Write,
+                               Old_Region);
 
       Old_Color := Rgb_Led.Current_Color;
       Do_Set_Color (New_Color);
       Rgb_Led.Current_Color := New_Color;
-      Restore_Private_Object_Data_Region (Old_Region);
+      Restore_Private_Data_Region (Old_Region);
       return Old_Color;
    end Set_Color;
 
@@ -169,10 +169,10 @@ package body Color_Led is
    procedure Toggle_Color (Color : Led_Color_Type) is
       Old_Region : MPU_Region_Descriptor_Type;
    begin
-      Set_Private_Object_Data_Region (Rgb_Led'Address,
-                                      Rgb_Led'Size,
-                                      Read_Write,
-                                      Old_Region);
+      Set_Private_Data_Region (Rgb_Led'Address,
+                               Rgb_Led'Size,
+                               Read_Write,
+                               Old_Region);
 
       if Rgb_Led.Current_Color = Color then
          if Rgb_Colors (Color).Red then
@@ -194,7 +194,7 @@ package body Color_Led is
          Rgb_Led.Current_Toggle := False;
       end if;
 
-      Restore_Private_Object_Data_Region (Old_Region);
+      Restore_Private_Data_Region (Old_Region);
    end Toggle_Color;
 
    ----------------------
@@ -205,14 +205,14 @@ package body Color_Led is
    is
       Old_Region : MPU_Region_Descriptor_Type;
    begin
-      Set_Private_Object_Data_Region (Rgb_Led'Address,
-                                      Rgb_Led'Size,
-                                      Read_Write,
-                                      Old_Region);
+      Set_Private_Data_Region (Rgb_Led'Address,
+                               Rgb_Led'Size,
+                               Read_Write,
+                               Old_Region);
 
       Rgb_Led.Blinking_Period := Milliseconds (0);
       Set_False (Rgb_Led.Blinking_On_Condvar);
-      Restore_Private_Object_Data_Region (Old_Region);
+      Restore_Private_Data_Region (Old_Region);
    end Turn_Off_Blinker;
 
    ---------------------
@@ -223,14 +223,14 @@ package body Color_Led is
    is
       Old_Region : MPU_Region_Descriptor_Type;
    begin
-      Set_Private_Object_Data_Region (Rgb_Led'Address,
-                                      Rgb_Led'Size,
-                                      Read_Write,
-                                      Old_Region);
+      Set_Private_Data_Region (Rgb_Led'Address,
+                               Rgb_Led'Size,
+                               Read_Write,
+                               Old_Region);
 
       Rgb_Led.Blinking_Period := Period;
       Set_True (Rgb_Led.Blinking_On_Condvar);
-      Restore_Private_Object_Data_Region (Old_Region);
+      Restore_Private_Data_Region (Old_Region);
    end Turn_On_Blinker;
 
    -- ** --
@@ -245,7 +245,7 @@ package body Color_Led is
       use Address_To_Rgb_Led_Pointer;
       Next_Time : Time := Clock;
    begin
-      Set_Private_Object_Data_Region (
+      Set_Private_Data_Region (
          To_Address (Object_Pointer (Rgb_Led_Ptr)),
          Rgb_Led_Ptr.all'Size,
          Read_Write);

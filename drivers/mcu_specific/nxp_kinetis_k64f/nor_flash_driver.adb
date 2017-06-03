@@ -131,7 +131,7 @@ package body Nor_Flash_Driver is
       FSTAT_Value := Nor_Flash_Const.Registers_Ptr.FSTAT;
       pragma Assert (FSTAT_Value.CCIF = FSTAT_CCIF_Field_1);
 
-      Set_Private_Object_Data_Region (
+      Set_Private_Data_Region (
          To_Address (Object_Pointer (Nor_Flash_Const.Registers_Ptr)),
          NOR.FTFE_Peripheral'Object_Size,
          Read_Write,
@@ -157,7 +157,7 @@ package body Nor_Flash_Driver is
       Nor_Flash_Const.Registers_Ptr.FCCOB.FCCOB3 :=
          Unsigned_8 (Sector_Addr_Value and 16#ff#);
 
-      Restore_Private_Object_Data_Region (Old_Region);
+      Restore_Private_Data_Region (Old_Region);
       return Execute_Nor_Flash_Command;
    end Erase_Sector;
 
@@ -173,7 +173,7 @@ package body Nor_Flash_Driver is
       FSTAT_Value : FTFE_FSTAT_Register;
       Old_Region : MPU_Region_Descriptor_Type;
    begin
-      Set_Private_Object_Data_Region (
+      Set_Private_Data_Region (
          To_Address (Object_Pointer (Nor_Flash_Const.Registers_Ptr)),
          NOR.FTFE_Peripheral'Object_Size,
          Read_Write,
@@ -190,7 +190,7 @@ package body Nor_Flash_Driver is
          exit when FSTAT_Value.CCIF /= NOR.FSTAT_CCIF_Field_0;
       end loop;
 
-      Restore_Private_Object_Data_Region (Old_Region);
+      Restore_Private_Data_Region (Old_Region);
       Restore_Cpu_Interrupts (Int_Mask);
 
       if FSTAT_Value.ACCERR = FSTAT_ACCERR_Field_1 or else
@@ -212,13 +212,13 @@ package body Nor_Flash_Driver is
    is
       Old_Region : MPU_Region_Descriptor_Type;
    begin
-      Set_Private_Object_Data_Region (Nor_Flash_Var'Address,
-                                      Nor_Flash_Var'Size,
-                                      Read_Write,
-                                      Old_Region);
+      Set_Private_Data_Region (Nor_Flash_Var'Address,
+                               Nor_Flash_Var'Size,
+                               Read_Write,
+                               Old_Region);
 
       Nor_Flash_Var.Initialized := True;
-      Restore_Private_Object_Data_Region (Old_Region);
+      Restore_Private_Data_Region (Old_Region);
    end Initialize;
 
    -----------------
@@ -316,7 +316,7 @@ package body Nor_Flash_Driver is
       --
       Dest_Words := Src_Words;
 
-      Set_Private_Object_Data_Region (
+      Set_Private_Data_Region (
          To_Address (Object_Pointer (Nor_Flash_Const.Registers_Ptr)),
          NOR.FTFE_Peripheral'Object_Size,
          Read_Write,
@@ -352,7 +352,7 @@ package body Nor_Flash_Driver is
       Nor_Flash_Const.Registers_Ptr.FCCOB.FCCOB5 :=
          Unsigned_8 (Num_128bit_Chunks and 16#ff#);
 
-      Restore_Private_Object_Data_Region (Old_Region);
+      Restore_Private_Data_Region (Old_Region);
       return Execute_Nor_Flash_Command;
    end Write_Section;
 
