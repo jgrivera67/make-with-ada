@@ -52,6 +52,11 @@ package body MPU_Tests is
    end record with Alignment => MPU_Region_Alignment,
                    Size => 2 * MPU_Region_Alignment * Byte'Size;
 
+   type My_Param_Data_Type is record
+      Value : Unsigned_32 := 0;
+   end record with Alignment => MPU_Region_Alignment,
+                   Size => MPU_Region_Alignment * Byte'Size;
+
    type My_Secret_Data_Type is record
       Secret_Value : Unsigned_32 := 0;
       Secret_Flash_Code_Executed : Boolean := False;
@@ -60,6 +65,8 @@ package body MPU_Tests is
                    Size => MPU_Region_Alignment * Byte'Size;
 
    My_Global_Data : My_Global_Data_Type;
+
+   My_Param_Data : My_Param_Data_Type;
 
    My_Secret_Data : My_Secret_Data_Type with Linker_Section => ".secret_data";
 
@@ -214,6 +221,20 @@ package body MPU_Tests is
    -------------------------
 
    procedure Test_Valid_Accesses is
+      procedure Test_Valid_Write_To_Out_Param (Param : out My_Param_Data_Type);
+
+      procedure Test_Valid_Write_To_Out_Param (Param : out My_Param_Data_Type)
+      is
+         Old_Region : MPU_Region_Descriptor_Type;
+      begin
+         Set_Private_Data_Region (Param'Address,
+                                  Param'Size,
+                                  Read_Write,
+                                  Old_Region);
+         Param.Value := 8;
+         Restore_Private_Data_Region (Old_Region);
+      end Test_Valid_Write_To_Out_Param;
+
       Old_Region : MPU_Region_Descriptor_Type;
       Old_Code_Region : MPU_Region_Descriptor_Type;
    begin
@@ -245,6 +266,13 @@ package body MPU_Tests is
       My_Public_RAM_Code;
       pragma Assert (My_Global_Data.Public_RAM_Code_Executed);
       My_Global_Data.Public_RAM_Code_Executed := False;
+
+      --
+      --  Test valid write to output parameter:
+      --
+      pragma Assert (My_Param_Data.Value /= 8);
+      Test_Valid_Write_To_Out_Param (My_Param_Data);
+      pragma Assert (My_Param_Data.Value = 8);
 
       --
       --  Test valid read to secret data:
