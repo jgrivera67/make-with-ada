@@ -28,6 +28,7 @@
 with Devices.MCU_Specific;
 with Interfaces.Bit_Types;
 with Microcontroller_Clocks;
+with Devices;
 private with Generic_Ring_Buffers;
 private with Memory_Protection;
 
@@ -39,6 +40,7 @@ package SPI_Driver is
    use Interfaces.Bit_Types;
    use Interfaces;
    use Microcontroller_Clocks;
+   use Devices;
 
    --
    --  SPI transfer frame size: 1 or 2 bytes
@@ -62,6 +64,29 @@ package SPI_Driver is
    --  @param Master_Mode       Flag indicating if master mode is wanted (true)
    --  @param Frame_Size        SPI frame size in bytes (1 or 2)
    --  @param Sck_Frequency_Hz  Wanted SPI protocol frequency in HZ
+   --
+
+   function Is_Master (SPI_Device_Id : SPI_Device_Id_Type) return Boolean
+     with Inline;
+
+   procedure Master_Transmit_Receive (SPI_Device_Id : S__PI_Device_Id_Type;
+                                      Tx_Data_Buffer : Bytes_Array_Type;
+                                      Rx_Data_Buffer : out Bytes_Array_Type)
+     with Pre => Initialized (SPI_Device_Id) and
+                 Is_Master (SPI_Device_Id) and
+                 Tx_Data_Buffer'Length /= 0 and
+                 Rx_Data_Buffer'Length = Tx_Data_Buffer'Length;
+   --
+   --  Transmit and receive a block of data over SPI, from the MCU (master)
+   --  to a peripheral chip (salve)
+   --
+   --  @param SPI_Device_Id SPI device Id
+   --  @param tx_data_buffer_p  Transmit data buffer. It contains
+   --                           the data to be transmitted to the SPI slave,
+   --                           LSByte first.
+   --  @param rx_data_buffer_p  Receive data buffer. Upon return, it contains
+   --                           the data received from the SPI slave, LSByte
+   --                           first.
    --
 
 private
@@ -105,5 +130,8 @@ private
 
    function Initialized (SPI_Device_Id : SPI_Device_Id_Type) return Boolean is
      (SPI_Devices_Var (SPI_Device_Id).Initialized);
+
+   function Is_Master (SPI_Device_Id : SPI_Device_Id_Type) return Boolean is
+     (SPI_Devices_Var (SPI_Device_Id).Master_Mode);
 
 end SPI_Driver;

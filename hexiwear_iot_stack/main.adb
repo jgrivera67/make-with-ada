@@ -40,7 +40,7 @@ with Ada.Real_Time;
 with Last_Chance_Handler;
 with Memory_Protection;
 with Nor_Flash_Driver;
-with LCD_Display;
+--with LCD_Display;
 
 pragma Unreferenced (Last_Chance_Handler);
 
@@ -92,7 +92,7 @@ begin -- Hexiwear_Iot_Stack
    Color_Led.Initialize;
    Serial_Console.Initialize;
    Nor_Flash_Driver.Initialize;
-   LCD_Display.Initialize;
+   --LCD_Display.Initialize;
 
    Old_Color := Color_Led.Set_Color (Color_Led.Blue);
    Color_Led.Turn_On_Blinker (Heartbeat_Period_Ms);
