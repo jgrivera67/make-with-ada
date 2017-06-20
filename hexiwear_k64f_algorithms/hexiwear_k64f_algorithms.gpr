@@ -1,0 +1,56 @@
+with "../../embedded-runtimes/ravenscar-kinetis_k64f_hexiwear/ravenscar_build.gpr";
+
+project hexiwear_k64f_algorithms is
+
+   for Languages use ("ada");
+
+   for Main use ("hexiwear_k64f_algorithms.adb");
+   for Source_Dirs use (".",
+                        "../building_blocks/portable",
+                        "../building_blocks/cpu_specific/arm_cortex_m4",
+                        "../building_blocks/mcu_specific/nxp_kinetis_k64f",
+                        "../building_blocks/board_specific/hexiwear",
+                        "../drivers/portable",
+                        "../drivers/mcu_specific/nxp_kinetis_k64f",
+                        "../drivers/board_specific/hexiwear",
+                        "../SVD/nxp_kinetis_k64f");
+
+   for Object_Dir use "obj";
+
+   package Compiler is
+      for Default_Switches ("ada") use (
+             "-g", "-gnatwa", "-gnatQ", "-gnat12",
+             -- "-fstack-check", --  Generate stack checking code (part of Ada)
+             "-gnata",        --  Enable assertions            (part of Ada)
+             "-gnato13",      --  Overflow checking            (part of Ada)
+             "-gnatn",        --  Inline subprograms marked for inlining
+             "-gnatf",                      --  Full, verbose error messages
+             "-gnatwa",                     --  All optional warnings
+             "-gnatVa",                     --  All validity checks
+             -- "-gnaty3abcdefhiklmnoOprstux", --  Style checks
+             -- "-gnatwe",                     --  Treat warnings as errors
+             "-gnat2012",                   --  Use Ada 2012
+             "-Wall",                       --  All GCC warnings
+             --"-Wstack-usage=256",           -- check stack usage per subprogram
+             "-fno-omit-frame-pointer",     -- To be able to unwind the stack
+             -- "-E",                          --  Generate stack trace for exceptions
+             "-O2");                        --  Optimise (level 2/3)
+
+      for Local_Configuration_Pragmas use "gnat_pragmas.adc";
+   end Compiler;
+
+   package Builder is
+      for Default_Switches ("ada") use ("-g", "-O0");
+   end Builder;
+
+   --for Runtime ("Ada") use "ravenscar-sfp-kinetis_k64f_hexiwear";
+   for Runtime ("Ada") use Ravenscar_Build'Runtime ("Ada");
+   for Target use "arm-eabi";
+
+   package Ide is
+      for Program_Host use "localhost:4242";
+      for Communication_Protocol use "remote";
+   end Ide;
+
+end hexiwear_k64f_algorithms;
+

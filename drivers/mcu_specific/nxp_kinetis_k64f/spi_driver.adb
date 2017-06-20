@@ -36,6 +36,7 @@ package body SPI_Driver is
    use SPI_Driver.MCU_Specific_Private;
    use SPI_Driver.Board_Specific_Private;
    use MK64F12.SIM;
+   --use MK64F12;
    use Devices.MCU_Specific.SPI;
    use Pin_Mux_Driver;
 
@@ -266,331 +267,156 @@ package body SPI_Driver is
                                       Tx_Data_Buffer : Bytes_Array_Type;
                                       Rx_Data_Buffer : out Bytes_Array_Type)
    is
+      SPI_Device : SPI_Device_Const_Type renames
+	SPI_Devices_Const (SPI_Device_Id);
+      SPI_Device_Var : SPI_Device_Var_Type renames
+        SPI_Devices_Var (SPI_Device_Id);
+      SPI_Registers_Ptr : access SPI_Peripheral renames
+        SPI_Device.Registers_Ptr;
+      SR_Value : SPI0_SR_Register;
+      PUSHR_Value : SPI0_PUSHR_Register;
+      POPR_Value : MK64F12.Word;
+      Tx_Buffer_Cursor : Positive range Tx_Data_Buffer'Range;
+      Rx_Buffer_Cursor : Positive range Rx_Data_Buffer'Range;
+      Next_Index : Positive;
+      SPI_Frame : PUSHR_TXDATA_Field;
+      Frame_Size : constant Positive := Positive (SPI_Device_Var.Frame_Size);
+
    begin
-{
-    uint32_t reg_value;
-    //???uint32_t mcr_value;
-    uint32_t pushr_value;
-    const uint8_t *tx_buffer_cursor_p;
-    struct spi_device_var *const spi_var_p = spi_device_p->var_p;
-    SPI_Type *const spi_regs_p = spi_device_p->mmio_regs_p;
-    uint_fast8_t frame_size = spi_var_p->frame_size;
-    const uint8_t *const tx_buffer_end_p = (uint8_t *)tx_data_buffer_p + data_size;
-    const uint8_t *rx_buffer_end_p = NULL;
+      pragma Assert (SPI_Device_Var.Master_Mode);
+      pragma Assert(SPI_Device.Tx_Fifo_Size = SPI_Device.Rx_Fifo_Size);
+      pragma Assert (Tx_Data_Buffer'Length mod Frame_Size = 0);
 
+      --
+      --  Clear status register (status bits are w1c):
+      --
+      SR_Value := (TCF => SR_TCF_Field_1,
+                   TXRXS => SR_TXRXS_Field_1,
+                   EOQF => SR_EOQF_Field_1,
+                   TFUF => SR_TFUF_Field_1,
+                   TFFF => SR_TFFF_Field_1,
+                   RFOF => SR_RFOF_Field_1,
+                   RFDF => SR_RFDF_Field_1,
+                   others => <>);
 
-    D_ASSERT(spi_var_p->master_mode);
-    D_ASSERT(frame_size == 1 || frame_size == 2);
-    D_ASSERT(data_size != 0 && data_size % frame_size == 0);
-    D_ASSERT(VALID_RAM_POINTER(tx_data_buffer_p, sizeof(uint8_t)));
-    D_ASSERT(tx_buffer_end_p > (uint8_t *)tx_data_buffer_p);
-    if (rx_data_buffer_p != NULL) {
-        D_ASSERT(VALID_RAM_POINTER(tx_data_buffer_p, sizeof(uint8_t)));
-        rx_buffer_end_p = (uint8_t *)rx_data_buffer_p + data_size;
-        D_ASSERT(rx_buffer_end_p > (uint8_t *)rx_data_buffer_p);
-    }
+      SPI_Registers_Ptr.SR := SR_Value;
 
-    rtos_mutex_lock(&spi_var_p->mutex);
+      --
+      --  Both the Tx and Rx FIFOs are empty:
+      --
+      SR_Value := SPI_Registers_Ptr.SR;
+      pragma Assert (SR_Value.TFFF /= SR_TFFF_Field_0);
+      pragma Assert (SR_Value.RFDF = SR_RFDF_Field_0);
+      pragma Assert (Byte (SR_Value.TXCTR) = 0);
+      pragma Assert (Byte (SR_Value.RXCTR) = 0);
 
-#if 0 //???
-    /*
-     * Reset SPI transfer state, before starting a new transfer:
-     */
-    mcr_value = READ_MMIO_REGISTER(&spi_regs_p->MCR);
-    D_ASSERT((mcr_value &
-              (SPI_MCR_MDIS_MASK|SPI_MCR_DIS_TXF_MASK|SPI_MCR_DIS_RXF_MASK)) == 0);
-    D_ASSERT((mcr_value & (SPI_MCR_HALT_MASK|SPI_MCR_MSTR_MASK)) ==
-            (SPI_MCR_HALT_MASK|SPI_MCR_MSTR_MASK));
-    mcr_value |= SPI_MCR_CLR_TXF_MASK | SPI_MCR_CLR_RXF_MASK;
-    WRITE_MMIO_REGISTER(&spi_regs_p->MCR, mcr_value);
-    WRITE_MMIO_REGISTER(&spi_regs_p->TCR, 0);
-#endif
+      --
+      --  The SPI controller is in "Running state":
+      --
+      SR_Value := SPI_Registers_Ptr.SR;
+      pragma Assert (SR_Value.TXRXS /= SR_TXRXS_Field_0);
 
-    /*
-     * Clear status register (status bits are w1c):
-     */
-    WRITE_MMIO_REGISTER(&spi_regs_p->SR, ALL_SPI_SR_FLAGS_MASK);
+      --
+      --  Configure PUSHR command bits:
+      --  - Continuous Peripheral Chip Select (PCS) (for all SPI frames but the last one)
+      --  - Use CTAR[0] for SPI transfers
+      --  - Assert chip select PCS0 for SPI transfers (asserted low)
+      --
+      PUSHR_Value := (CTCNT => PUSHR_CTCNT_Field_1,
+                      CTAS => PUSHR_CTAS_Field_000,
+                      PCS => PUSHR_PCS_Field_1,
+                      others => <>);
 
-    /*
-     * Both the Tx and Rx FIFOs are empty:
-     */
-    reg_value = READ_MMIO_REGISTER(&spi_regs_p->SR);
-    D_ASSERT((reg_value & SPI_SR_TFFF_MASK) != 0);
-    D_ASSERT((reg_value & SPI_SR_RFDF_MASK) == 0);
-    D_ASSERT(GET_BIT_FIELD(reg_value, SPI_SR_TXCTR_MASK, SPI_SR_TXCTR_SHIFT) == 0);
-    D_ASSERT(GET_BIT_FIELD(reg_value, SPI_SR_RXCTR_MASK, SPI_SR_RXCTR_SHIFT) == 0);
+      Tx_Buffer_Cursor := Tx_Data_Buffer'First;
+      Rx_Buffer_Cursor := Rx_Data_Buffer'First;
+      loop
+	 SR_Value := SPI_Registers_Ptr.SR;
+	 pragma Assert (SR_Value.RFDF = SR_RFDF_Field_0);
 
-#if 0 //??
-    /*
-     * Enable SPI transfers:
-     */
-    mcr_value = READ_MMIO_REGISTER(&spi_regs_p->MCR);
-    D_ASSERT((mcr_value & (SPI_MCR_CLR_TXF_MASK | SPI_MCR_CLR_RXF_MASK)) == 0);
-    mcr_value &= ~SPI_MCR_HALT_MASK;
-    WRITE_MMIO_REGISTER(&spi_regs_p->MCR, mcr_value);
-#endif
+         --
+         --  Fill next SPI frame to send, LSByte first:
+         --
+         --  NOTE: Since we are running little endian the LSByte goes to the
+         --  lower address and the the MSByte goes to the higher address.
+         --
+         if Frame_Size = 2 then
+            SPI_Frame :=
+              Unsigned_16 (Tx_Data_Buffer (Tx_Buffer_Cursor)) or
+              Shift_Left (Unsigned_16 (Tx_Data_Buffer (Tx_Buffer_Cursor + 1)),
+                          8);
+         else
+	    SPI_Frame := Unsigned_16 (Tx_Data_Buffer (Tx_Buffer_Cursor));
+	 end if;
 
-    /*
-     * The SPI controller is in "Running state":
-     */
-    reg_value = READ_MMIO_REGISTER(&spi_regs_p->SR);
-    D_ASSERT((reg_value & SPI_SR_TXRXS_MASK) != 0);
+         --
+         --  Make sure there is room in the Tx FIFO:
+         --
+         loop
+	    SR_Value := (TFFF => SR_TFFF_Field_1, others => <>);
+	    SPI_Registers_Ptr.SR := SR_Value;
+	    SR_Value := SPI_Registers_Ptr.SR;
+	    exit when (SR_Value.TFFF /= SR_TFFF_Field_0);
+         end loop;
 
-    /*
-     * Configure PUSHR command bits:
-     * - Continuous Peripheral Chip Select (PCS) (for all SPI frames but the last one)
-     * - Use CTAR[0] for SPI transfers
-     * - Assert chip select PCS0 for SPI transfers (asserted low)
-     */
-    pushr_value = SPI_PUSHR_CONT_MASK;
-    SET_BIT_FIELD(pushr_value, SPI_PUSHR_CTAS_MASK, SPI_PUSHR_CTAS_SHIFT, 0);
-    //SET_BIT_FIELD(pushr_value, SPI_PUSHR_PCS_MASK, SPI_PUSHR_PCS_SHIFT,
-    //              spi_var_p->pcs_pin_mask);
-    pushr_value |= SPI_PUSHR_PCS(0x1); //???
+         --
+         --  Transfer next SPI frame to the Tx FIFO:
+         --
+         --  NOTE: For the last frame transfer, we need to turn off
+         --  "Continuous PCS", so that PCS is de-asserted after the
+         --  last transfer.
+         --
+	 PUSHR_Value.TXDATA := SPI_Frame;
+         if Tx_Buffer_Cursor + Frame_Size > Tx_Data_Buffer'Last then
+	    PUSHR_Value.CTCNT := PUSHR_CTCNT_Field_0;
+	 end if;
 
+         pragma Assert (PUSHR_Value.PCS = PUSHR_PCS_Field_1);
+	 SPI_Registers_Ptr.PUSHR := PUSHR_Value;
 
-#if 0 //???
-    uint32_t  remaining_tx_frames = data_size / frame_size;
+         --
+         --  Wait until the Rx FIFO is not empty:
+         --
+	 loop
+	    SR_Value := (RFDF => SR_RFDF_Field_1, others => <>);
+	    SPI_Registers_Ptr.SR := SR_Value;
+	    SR_Value := SPI_Registers_Ptr.SR;
+	    exit when (SR_Value.RFDF /= SR_RFDF_Field_0);
+         end loop;
 
-    D_ASSERT(spi_var_p->rx_buffer_cursor_p == NULL);
-    spi_var_p->rx_buffer_cursor_p = rx_data_buffer_p;
-    spi_var_p->rx_spi_frames_expected = remaining_tx_frames;
+         --
+         --  Receive next SPI frame from the Rx FIFO:
+         --
+         POPR_Value := SPI_Registers_Ptr.POPR;
+         if Frame_Size = 2 then
+            pragma Assert (POPR_Value <= Word (Unsigned_16'Last));
+	    Rx_Data_Buffer (Rx_Buffer_Cursor) :=
+	       Byte (POPR_Value and 16#ff#);
+	    Rx_Data_Buffer (Rx_Buffer_Cursor + 1) :=
+	       Byte (Shift_Right (POPR_Value, 8));
+            Rx_Buffer_Cursor := Rx_Buffer_Cursor + 2;
+         else
+            pragma Assert (POPR_Value <= Word (Unsigned_8'Last));
+	    Rx_Data_Buffer (Rx_Buffer_Cursor) := Byte (POPR_Value);
+            Rx_Buffer_Cursor := Rx_Buffer_Cursor + 1;
+	 end if;
 
-    /*
-     * Enable generation of Rx interrupts:
-     */
-    uint32_t rser_value = READ_MMIO_REGISTER(&spi_regs_p->RSER);
-    D_ASSERT((rser_value & (SPI_RSER_TFFF_RE_MASK | SPI_RSER_RFDF_RE_MASK |
-    		                SPI_RSER_TCF_RE_MASK | SPI_RSER_RFOF_RE_MASK)) == 0);
-    rser_value |= SPI_RSER_RFDF_RE_MASK | SPI_RSER_TCF_RE_MASK |
-    		      SPI_RSER_RFOF_RE_MASK;
-    WRITE_MMIO_REGISTER(&spi_regs_p->RSER, rser_value);
+	 SR_Value := (RFDF => SR_RFDF_Field_1, others => <>);
+	 SPI_Registers_Ptr.SR := SR_Value;
 
-    for (tx_buffer_cursor_p = tx_data_buffer_p;
-         tx_buffer_cursor_p != tx_buffer_end_p;
-         tx_buffer_cursor_p += frame_size) {
-    	uint32_t int_mask;
-        uint_fast16_t spi_frame;
+	 Next_Index := Tx_Buffer_Cursor + Frame_Size;
+	 exit when Next_Index > Tx_Data_Buffer'Last;
+	 Tx_Buffer_Cursor := Next_Index;
+      end loop;
 
-        D_ASSERT(spi_var_p->rx_spi_frames_expected >= remaining_tx_frames);
-        if (spi_var_p->rx_spi_frames_expected - remaining_tx_frames ==
-        	spi_device_p->rx_fifo_size) {
-			/*
-			 * Wait for at least one expected SPI frames to be received:
-			 *
-        	 * NOTE: This is to avoid causing an Rx FIFO overflow, which can
-        	 * happenif the slave is sending Rx frames too fast, as a result of
-        	 * us sending Tx frames too fast:
-			 */
-			rtos_semaphore_wait(&spi_var_p->rx_fifo_not_empty_semaphore);
-        }
-
-        D_ASSERT(spi_var_p->rx_spi_frames_expected - remaining_tx_frames <
-        	     spi_device_p->rx_fifo_size);
-
-        /*
-         * Fill next SPI frame to send, LSByte first:
-         *
-         * NOTE: Since we are running little endian the LSByte goes to the
-         * lower address and the the MSByte goes to the higher address.
-         */
-        if (frame_size == 2) {
-            spi_frame = tx_buffer_cursor_p[0] |
-                        ((uint16_t)tx_buffer_cursor_p[1] << 8);
-
-            if (g_spi_driver_var.tracing_on) {
-            	int_mask = disable_cpu_interrupts();
-                DEBUG_PRINTF("Tx SPI: %#04x\n", spi_frame);
-                restore_cpu_interrupts(int_mask);
-            }
-        } else {
-            spi_frame = tx_buffer_cursor_p[0];
-            if (g_spi_driver_var.tracing_on) {
-            	int_mask = disable_cpu_interrupts();
-                DEBUG_PRINTF("Tx SPI: %#02x\n", spi_frame);
-                restore_cpu_interrupts(int_mask);
-            }
-        }
-
-        /*
-         * Make sure there is room in the Tx FIFO:
-         *
-         * NOTE: In non-DMA mode, the TFFF flag is not cleared automatically
-         * when the the Tx FIFO becomes full. So, to get the SPI controller to
-         * update the TFFF flag in the status register, we need to attempt to
-         * clear it first.
-         * Clearing the TFFF flag will only succeed if the Tx FIFO
-         * is indeed full. That is, trying to clear the TFFF flag when
-         * the Tx FIFO is not full is a "nop".
-         */
-		WRITE_MMIO_REGISTER(&spi_regs_p->SR, SPI_SR_TFFF_MASK);
-		reg_value = READ_MMIO_REGISTER(&spi_regs_p->SR);
-        while ((reg_value & SPI_SR_TFFF_MASK) == 0) {
-			rtos_semaphore_wait(&spi_var_p->tx_completion_semaphore);
-			WRITE_MMIO_REGISTER(&spi_regs_p->SR, SPI_SR_TFFF_MASK);
-			reg_value = READ_MMIO_REGISTER(&spi_regs_p->SR);
-        }
-
-        /*
-         * Transfer next SPI frame to the Tx FIFO:
-         *
-         * NOTE: For the last frame transfer, we need to turn off
-         * "Continuous PCS", so that PCS is de-asserted after the
-         * last transfer.
-         */
-        SET_BIT_FIELD(pushr_value, SPI_PUSHR_TXDATA_MASK, SPI_PUSHR_TXDATA_SHIFT,
-                      spi_frame);
-        if (tx_buffer_cursor_p + frame_size == tx_buffer_end_p) {
-            pushr_value &= ~SPI_PUSHR_CONT_MASK;
-        }
-        WRITE_MMIO_REGISTER(&spi_regs_p->PUSHR, pushr_value);
-        remaining_tx_frames --;
-    }
-
-    D_ASSERT(tx_buffer_cursor_p >= spi_var_p->rx_buffer_cursor_p);
-
-    while (spi_var_p->rx_spi_frames_expected != 0) {
-        /*
-         * Wait for remaining expected SPI frames to be received:
-         */
-        rtos_semaphore_wait(&spi_var_p->rx_fifo_not_empty_semaphore);
-
-        reg_value = READ_MMIO_REGISTER(&spi_regs_p->SR);
-        D_ASSERT((reg_value & SPI_SR_RFDF_MASK) == 0);
-    }
-
-    D_ASSERT(spi_var_p->rx_buffer_cursor_p == rx_buffer_end_p);
-    spi_var_p->rx_buffer_cursor_p = NULL;
-
-    /*
-     * Disable generation of Rx interrupts:
-     */
-    rser_value = READ_MMIO_REGISTER(&spi_regs_p->RSER);
-    rser_value &= ~(SPI_RSER_RFDF_RE_MASK | SPI_RSER_TCF_RE_MASK | SPI_RSER_RFOF_RE_MASK);
-    WRITE_MMIO_REGISTER(&spi_regs_p->RSER, rser_value);
-#else
-    uint8_t *rx_buffer_cursor_p = rx_data_buffer_p;
-
-    D_ASSERT(spi_device_p->rx_fifo_size == spi_device_p->tx_fifo_size);
-
-    for (tx_buffer_cursor_p = tx_data_buffer_p;
-         tx_buffer_cursor_p != tx_buffer_end_p;
-         tx_buffer_cursor_p += frame_size) {
-         uint_fast16_t spi_frame;
-
-        reg_value = READ_MMIO_REGISTER(&spi_regs_p->SR);
-        D_ASSERT((reg_value & SPI_SR_RFDF_MASK) == 0);
-
-         /*
-          * Fill next SPI frame to send, LSByte first:
-          *
-          * NOTE: Since we are running little endian the LSByte goes to the
-          * lower address and the the MSByte goes to the higher address.
-          */
-         if (frame_size == 2) {
-             spi_frame = tx_buffer_cursor_p[0] |
-                         ((uint16_t)tx_buffer_cursor_p[1] << 8);
-
-             if (g_spi_driver_var.tracing_on) {
-                 DEBUG_PRINTF("Tx SPI: %#04x\n", spi_frame);
-             }
-         } else {
-             spi_frame = tx_buffer_cursor_p[0];
-             if (g_spi_driver_var.tracing_on) {
-                 DEBUG_PRINTF("Tx SPI: %#02x\n", spi_frame);
-             }
-         }
-
-         /*
-          * Make sure there is room in the Tx FIFO:
-          */
-         do {
-             WRITE_MMIO_REGISTER(&spi_regs_p->SR, SPI_SR_TFFF_MASK);
-             reg_value = READ_MMIO_REGISTER(&spi_regs_p->SR);
-         } while ((reg_value & SPI_SR_TFFF_MASK) == 0);
-
-         /*
-          * Transfer next SPI frame to the Tx FIFO:
-          *
-          * NOTE: For the last frame transfer, we need to turn off
-          * "Continuous PCS", so that PCS is de-asserted after the
-          * last transfer.
-          */
-         SET_BIT_FIELD(pushr_value, SPI_PUSHR_TXDATA_MASK, SPI_PUSHR_TXDATA_SHIFT,
-                       spi_frame);
-         if (tx_buffer_cursor_p + frame_size == tx_buffer_end_p) {
-             pushr_value &= ~SPI_PUSHR_CONT_MASK;
-         }
-
-         D_ASSERT((pushr_value & SPI_PUSHR_PCS(0x1)) == SPI_PUSHR_PCS(0x1)); //???
-         WRITE_MMIO_REGISTER(&spi_regs_p->PUSHR, pushr_value);
-
-        //???
-#if 0
-        reg_value = READ_MMIO_REGISTER(&spi_regs_p->PUSHR);
-        D_ASSERT(reg_value == pushr_value);
-#endif
-        //???
-
-        /*
-         * Wait until the Rx FIFO is not empty:
-         */
-        do {
-            //???WRITE_MMIO_REGISTER(&spi_regs_p->SR, SPI_SR_RFDF_MASK);
-            reg_value = READ_MMIO_REGISTER(&spi_regs_p->SR);
-        } while ((reg_value & SPI_SR_RFDF_MASK) == 0);
-
-        /*
-         * Receive next SPI frame from the Rx FIFO:
-         */
-        reg_value = READ_MMIO_REGISTER(&spi_regs_p->POPR);
-        if (frame_size == 2) {
-            D_ASSERT(reg_value <= UINT16_MAX);
-            if (g_spi_driver_var.tracing_on) {
-                DEBUG_PRINTF("Rx SPI: %#04x\n", reg_value);
-            }
-
-            if (rx_buffer_cursor_p != NULL) {
-                rx_buffer_cursor_p[0] = (uint8_t)reg_value;
-                rx_buffer_cursor_p[1] = (uint8_t)(reg_value >> 8);
-                rx_buffer_cursor_p += 2;
-            }
-        } else {
-            D_ASSERT(reg_value <= UINT8_MAX);
-            if (g_spi_driver_var.tracing_on) {
-                DEBUG_PRINTF("Rx SPI: %#02x\n", reg_value);
-            }
-
-            if (rx_buffer_cursor_p != NULL) {
-                rx_buffer_cursor_p[0] = (uint8_t)reg_value;
-                rx_buffer_cursor_p ++;
-            }
-        }
-
-        WRITE_MMIO_REGISTER(&spi_regs_p->SR, SPI_SR_RFDF_MASK);
-     }
-#endif
-
-    /*
-     * Both the Tx and Rx FIFOs are empty:
-     */
-    reg_value = READ_MMIO_REGISTER(&spi_regs_p->SR);
-    D_ASSERT((reg_value & SPI_SR_TFFF_MASK) != 0);
-    D_ASSERT((reg_value & SPI_SR_RFDF_MASK) == 0);
-    D_ASSERT(GET_BIT_FIELD(reg_value, SPI_SR_TXCTR_MASK, SPI_SR_TXCTR_SHIFT) == 0);
-    D_ASSERT(GET_BIT_FIELD(reg_value, SPI_SR_RXCTR_MASK, SPI_SR_RXCTR_SHIFT) == 0);
-    D_ASSERT((reg_value & SPI_SR_TXRXS_MASK) != 0);
-
-#if 0 //???
-    /*
-     * Disable SPI transfers:
-     */
-    mcr_value |= SPI_MCR_HALT_MASK;
-    WRITE_MMIO_REGISTER(&spi_regs_p->MCR, mcr_value);
-#endif
-
-    rtos_mutex_unlock(&spi_var_p->mutex);
-}
+      --
+      --  Both the Tx and Rx FIFOs are empty:
+      --
+      SR_Value := SPI_Registers_Ptr.SR;
+      pragma Assert (SR_Value.TFFF = SR_TFFF_Field_1);
+      pragma Assert (SR_Value.RFDF = SR_RFDF_Field_0);
+      pragma Assert (Byte (SR_Value.TXCTR) = 0);
+      pragma Assert (Byte (SR_Value.RXCTR) = 0);
+      pragma Assert (SR_Value.TXRXS = SR_TXRXS_Field_0);
    end Master_Transmit_Receive;
 
 end SPI_Driver;

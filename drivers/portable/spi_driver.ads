@@ -69,7 +69,7 @@ package SPI_Driver is
    function Is_Master (SPI_Device_Id : SPI_Device_Id_Type) return Boolean
      with Inline;
 
-   procedure Master_Transmit_Receive (SPI_Device_Id : S__PI_Device_Id_Type;
+   procedure Master_Transmit_Receive (SPI_Device_Id : SPI_Device_Id_Type;
                                       Tx_Data_Buffer : Bytes_Array_Type;
                                       Rx_Data_Buffer : out Bytes_Array_Type)
      with Pre => Initialized (SPI_Device_Id) and
@@ -106,7 +106,7 @@ private
    --  @field Initialized Flag indicating if this device has been initialized
    --  @field Master_Mode Flag indicating if this device is in master mode
    --  (true) or slave mode (false)
-   --  @field Frame_Size SPI transfer frame size
+   --  @field Frame_Size SPI transfer frame size in bytes
    --  @field Rx_Buffer_Ptr Pointer to the Rx buffer for the SPI transfer
    --  currently in progress
    --  @field Rx_SPI_Frames_Expected Number of SPI frames still expected for
