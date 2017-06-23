@@ -36,7 +36,6 @@ package body SPI_Driver is
    use SPI_Driver.MCU_Specific_Private;
    use SPI_Driver.Board_Specific_Private;
    use MK64F12.SIM;
-   --use MK64F12;
    use Devices.MCU_Specific.SPI;
    use Pin_Mux_Driver;
 

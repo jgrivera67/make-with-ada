@@ -59,7 +59,7 @@ package body CAN_Driver is
    --  Protected object to define Interrupt handlers for the ENET interrupts
    --
    protected CAN_Interrupts_Object is
-      pragma Interrupt_Priority (System.Interrupt_Priority'Last);
+      pragma Interrupt_Priority (Microcontroller.CAN_Interrupt_Priority);
    private
       procedure CAN0_ORed_Message_Buffer_Irq_Handler
          with Unreferenced,

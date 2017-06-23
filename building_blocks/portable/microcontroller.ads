@@ -114,6 +114,36 @@ package Microcontroller is
 
    -- ** --
 
+   --
+   --  Interrupt priorities
+   --
+
+   ADC_Interrupt_Priority  : constant System.Interrupt_Priority :=
+      System.Interrupt_Priority'First; --  highest
+
+   I2C_Interrupt_Priority : constant System.Interrupt_Priority :=
+      System.Interrupt_Priority'First; --  highest
+
+   DMA_Interrupt_Priority : constant System.Interrupt_Priority :=
+      System.Interrupt_Priority'First; --  highest
+
+   Timer_Interrupt_Priority : constant System.Interrupt_Priority :=
+      System.Interrupt_Priority'First + 1;
+
+   Periodic_Timer_Interrupt_Priority : constant System.Interrupt_Priority :=
+      System.Interrupt_Priority'First + 1;
+
+   Accelerometer_Interrupt_Priority : constant System.Interrupt_Priority :=
+      System.Interrupt_Priority'First + 2;
+
+   CAN_Interrupt_Priority : constant System.Interrupt_Priority :=
+      System.Interrupt_Priority'Last; --  lowest
+
+   UART_Interrupt_Priority : constant System.Interrupt_Priority :=
+      System.Interrupt_Priority'Last; --  lowest
+
+   -- ** --
+
    generic
       Mcu_Peripheral_Bridge_Min_Addr : Integer_Address;
       Mcu_Peripheral_Bridge_Max_Addr : Integer_Address;

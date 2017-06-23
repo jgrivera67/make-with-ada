@@ -25,10 +25,12 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 with Interfaces;
+with System.Storage_Elements;
 
 package Memory_Utils is
    pragma Pure;
    use Interfaces;
+   use System.Storage_Elements;
 
    function Get_Flash_Used return Unsigned_32;
 
@@ -52,5 +54,21 @@ package Memory_Utils is
    --
    --  @return calculated CRC value
    --
+
+   function Address_Overlap (Block1_Start_Addr : System.Address;
+                             Block1_Size : Integer_Address;
+                             Block2_Start_Addr : System.Address;
+                             Block2_Size : Integer_Address) return Boolean is
+   --
+   --  Tell if two address ranges overaap
+   --
+   (if To_Integer (Block1_Start_Addr) < To_Integer (Block2_Start_Addr) then
+       To_Integer (Block1_Start_Addr) + Block1_Size >=
+       To_Integer (Block2_Start_Addr)
+    elsif To_Integer (Block1_Start_Addr) > To_Integer (Block2_Start_Addr) then
+       To_Integer (Block2_Start_Addr) + Block2_Size >=
+       To_Integer (Block1_Start_Addr)
+    else
+       True);
 
 end Memory_Utils;

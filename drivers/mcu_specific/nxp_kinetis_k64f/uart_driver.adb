@@ -46,7 +46,7 @@ package body Uart_Driver is
    --  Protected object to define Interrupt handlers for all UARTs
    --
    protected Uart_Interrupts_Object is
-      pragma Interrupt_Priority (System.Interrupt_Priority'Last);
+      pragma Interrupt_Priority (Microcontroller.UART_Interrupt_Priority);
    private
       procedure Uart_Irq_Common_Handler (Uart_Device_Id : Uart_Device_Id_Type)
          with Pre => not Are_Cpu_Interrupts_Disabled;

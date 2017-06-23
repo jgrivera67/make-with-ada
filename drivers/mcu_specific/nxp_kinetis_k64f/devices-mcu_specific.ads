@@ -33,6 +33,8 @@ with MK64F12.ENET;
 with MK64F12.CAN0;
 with MK64F12.FTFE;
 with MK64F12.SPI;
+with MK64F12.DMA;
+with MK64F12.DMAMUX;
 
 --
 --  @summary Devices in the Kinetis K64F MCU
@@ -84,5 +86,7 @@ package Devices.MCU_Specific is
    package CAN  renames MK64F12.CAN0;
    package NOR renames MK64F12.FTFE;
    package SPI renames MK64F12.SPI;
+   package DMA renames MK64F12.DMA;
+   package DMAMUX renames MK64F12.DMAMUX;
 
 end Devices.MCU_Specific;

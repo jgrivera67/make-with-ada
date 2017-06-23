@@ -29,6 +29,7 @@ with System;
 --  DMA channel multiplexor
 package MK64F12.DMAMUX is
    pragma Preelaborate;
+   pragma SPARK_Mode (Off);
 
    ---------------
    -- Registers --

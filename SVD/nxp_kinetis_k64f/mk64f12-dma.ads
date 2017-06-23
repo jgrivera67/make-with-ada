@@ -29,6 +29,7 @@ with System;
 --  Enhanced direct memory access controller
 package MK64F12.DMA is
    pragma Preelaborate;
+   pragma SPARK_Mode (Off);
 
    ---------------
    -- Registers --
@@ -1290,7 +1291,28 @@ package MK64F12.DMA is
    end record;
 
    --  Channel n Priority Register
-   type DMA_DCHPRI_Registers is array (0 .. 15) of DMA_DCHPRI_Register;
+   type DMA_DCHPRI_Registers is record
+      DCHPRI3 : DMA_DCHPRI_Register;
+      DCHPRI2 : DMA_DCHPRI_Register;
+      DCHPRI1 : DMA_DCHPRI_Register;
+      DCHPRI0 : DMA_DCHPRI_Register;
+
+      DCHPRI7 : DMA_DCHPRI_Register;
+      DCHPRI6 : DMA_DCHPRI_Register;
+      DCHPRI5 : DMA_DCHPRI_Register;
+      DCHPRI4 : DMA_DCHPRI_Register;
+
+      DCHPRI11 : DMA_DCHPRI_Register;
+      DCHPRI10 : DMA_DCHPRI_Register;
+      DCHPRI9  : DMA_DCHPRI_Register;
+      DCHPRI8  : DMA_DCHPRI_Register;
+
+      DCHPRI15 : DMA_DCHPRI_Register;
+      DCHPRI14 : DMA_DCHPRI_Register;
+      DCHPRI13 : DMA_DCHPRI_Register;
+      DCHPRI12 : DMA_DCHPRI_Register;
+   end record
+      with Size => 16 * Byte'Size;
 
    subtype TCD_ATTR0_DSIZE_Field is MK64F12.UInt3;
    subtype TCD_ATTR0_DMOD_Field is MK64F12.UInt5;
@@ -1726,77 +1748,105 @@ package MK64F12.DMA is
    -- Peripherals --
    -----------------
 
-   type DMA_Disc is
-     (
-      No0,
-      Offno0,
-      Offyes0,
-      Yes0,
-      No1,
-      Offno1,
-      Offyes1,
-      Yes1,
-      No2,
-      Offno2,
-      Offyes2,
-      Yes2,
-      No3,
-      Offno3,
-      Offyes3,
-      Yes3,
-      No4,
-      Offno4,
-      Offyes4,
-      Yes4,
-      No5,
-      Offno5,
-      Offyes5,
-      Yes5,
-      No6,
-      Offno6,
-      Offyes6,
-      Yes6,
-      No7,
-      Offno7,
-      Offyes7,
-      Yes7,
-      No8,
-      Offno8,
-      Offyes8,
-      Yes8,
-      No9,
-      Offno9,
-      Offyes9,
-      Yes9,
-      No10,
-      Offno10,
-      Offyes10,
-      Yes10,
-      No11,
-      Offno11,
-      Offyes11,
-      Yes11,
-      No12,
-      Offno12,
-      Offyes12,
-      Yes12,
-      No13,
-      Offno13,
-      Offyes13,
-      Yes13,
-      No14,
-      Offno14,
-      Offyes14,
-      Yes14,
-      No15,
-      Offno15,
-      Offyes15,
-      Yes15);
+   type TCD_Minor_Loop_Discriminant_Type is
+     (MLNO,
+      MLOFFNO,
+      MLOFFYES);
+
+   type TCD_NBYTES_Type (
+           Discriminant : TCD_Minor_Loop_Discriminant_Type := MLNO) is record
+      case Discriminant is
+         when MLNO =>
+            --  TCD Current Minor Loop Link, Major Loop Count (Channel Linking
+            --  Disabled)
+            NBYTES_MLNO : MK64F12.Word := 0;
+         when MLOFFNO =>
+            --  TCD Signed Minor Loop Offset (Minor Loop Enabled and Offset
+            --  Disabled)
+            TCD_NBYTES_MLOFFNO : TCD_NBYTES_MLOFFNO_Register;
+         when MLOFFYES =>
+            --  TCD Signed Minor Loop Offset (Minor Loop and Offset Enabled)
+            TCD_NBYTES_MLOFFYES : TCD_NBYTES_MLOFFYES_Register;
+       end case;
+      end record with Unchecked_Union, Size => 32;
+
+   type TCD_Minor_Loop_Link_Discriminant_Type is
+     (ELINKNO,
+      ELINKYES);
+
+   type TCD_CITER_Type (
+           Discriminant : TCD_Minor_Loop_Link_Discriminant_Type := ELINKNO) is
+   record
+      case Discriminant is
+         when ELINKNO =>
+            --  TCD Current Minor Loop Link, Major Loop Count (Channel Linking
+            --  Disabled)
+            TCD_CITER_ELINKNO : TCD_CITER_ELINKNO_Register;
+          when ELINKYES =>
+            --  TCD Current Minor Loop Link, Major Loop Count (Channel Linking
+            --  Enabled)
+            TCD_CITER_ELINKYES : TCD_CITER_ELINKYES_Register;
+       end case;
+      end record with Unchecked_Union, Size => 16;
+
+   type TCD_BITER_Type (
+           Discriminant : TCD_Minor_Loop_Link_Discriminant_Type := ELINKNO) is
+   record
+      case Discriminant is
+         when ELINKNO =>
+            --  TCD Beginning Minor Loop Link, Major Loop Count (Channel
+            --  Linking Disabled)
+            TCD_BITER_ELINKNO : TCD_BITER_ELINKNO_Register;
+         when ELINKYES =>
+            --  TCD Beginning Minor Loop Link, Major Loop Count (Channel
+            --  Linking Enabled)
+            TCD_BITER_ELINKYES : TCD_BITER_ELINKYES_Register;
+       end case;
+      end record with Unchecked_Union, Size => 16;
+
+   type TCD_Type is record
+      --  TCD Source Address
+      TCD_SADDR            : MK64F12.Word := 0;
+      --  TCD Signed Source Address Offset
+      TCD_SOFF             : MK64F12.Short := 0;
+      --  TCD Transfer Attributes
+      TCD_ATTR             : TCD_ATTR_Register;
+      --  TCD minor loop register
+      TCD_NBYTES           : TCD_NBYTES_Type;
+      --  TCD Last Source Address Adjustment
+      TCD_SLAST            : MK64F12.Word := 0;
+      --  TCD Destination Address
+      TCD_DADDR            : MK64F12.Word := 0;
+      --  TCD Signed Destination Address Offset
+      TCD_DOFF             : MK64F12.Short := 0;
+      --  TCD Current Minor Loop Link
+      TCD_CITER            : TCD_CITER_Type;
+      --  TCD Last Destination Address Adjustment/Scatter Gather Address
+      TCD_DLASTSGA         : MK64F12.Word := 0;
+      --  TCD Control and Status
+      TCD_CSR              : TCD_CSR_Register;
+      --  TCD Beginning Minor Loop Link
+      TCD_BITER            : TCD_BITER_Type;
+   end record with Size => 32 * Byte'Size;
+
+   for TCD_Type use record
+      TCD_SADDR            at 0 range 0 .. 31;
+      TCD_SOFF             at 4 range 0 .. 15;
+      TCD_ATTR             at 6 range 0 .. 15;
+      TCD_NBYTES           at 8 range 0 .. 31;
+      TCD_SLAST            at 12 range 0 .. 31;
+      TCD_DADDR            at 16 range 0 .. 31;
+      TCD_DOFF             at 20 range 0 .. 15;
+      TCD_CITER            at 22 range 0 .. 15;
+      TCD_DLASTSGA         at 24 range 0 .. 31;
+      TCD_CSR              at 28 range 0 .. 15;
+      TCD_BITER            at 30 range 0 .. 15;
+   end record;
+
+   type TCD_Array_Type is array (0 .. 15) of TCD_Type;
 
    --  Enhanced direct memory access controller
-   type DMA_Peripheral
-     (Discriminent : DMA_Disc := No0)
-   is record
+   type DMA_Peripheral is record
       --  Control Register
       CR                    : DMA_CR_Register;
       --  Error Status Register
@@ -1829,634 +1879,10 @@ package MK64F12.DMA is
       HRS                   : DMA_HRS_Register;
       --  Channel n Priority Register
       DCHPRI                : DMA_DCHPRI_Registers;
-      --  TCD Source Address
-      TCD_SADDR0            : MK64F12.Word;
-      --  TCD Signed Source Address Offset
-      TCD_SOFF0             : MK64F12.Short;
-      --  TCD Transfer Attributes
-      TCD_ATTR0             : TCD_ATTR_Register;
-      --  TCD Last Source Address Adjustment
-      TCD_SLAST0            : MK64F12.Word;
-      --  TCD Destination Address
-      TCD_DADDR0            : MK64F12.Word;
-      --  TCD Signed Destination Address Offset
-      TCD_DOFF0             : MK64F12.Short;
-      --  TCD Last Destination Address Adjustment/Scatter Gather Address
-      TCD_DLASTSGA0         : MK64F12.Word;
-      --  TCD Control and Status
-      TCD_CSR0              : TCD_CSR_Register;
-      --  TCD Source Address
-      TCD_SADDR1            : MK64F12.Word;
-      --  TCD Signed Source Address Offset
-      TCD_SOFF1             : MK64F12.Short;
-      --  TCD Transfer Attributes
-      TCD_ATTR1             : TCD_ATTR_Register;
-      --  TCD Last Source Address Adjustment
-      TCD_SLAST1            : MK64F12.Word;
-      --  TCD Destination Address
-      TCD_DADDR1            : MK64F12.Word;
-      --  TCD Signed Destination Address Offset
-      TCD_DOFF1             : MK64F12.Short;
-      --  TCD Last Destination Address Adjustment/Scatter Gather Address
-      TCD_DLASTSGA1         : MK64F12.Word;
-      --  TCD Control and Status
-      TCD_CSR1              : TCD_CSR_Register;
-      --  TCD Source Address
-      TCD_SADDR2            : MK64F12.Word;
-      --  TCD Signed Source Address Offset
-      TCD_SOFF2             : MK64F12.Short;
-      --  TCD Transfer Attributes
-      TCD_ATTR2             : TCD_ATTR_Register;
-      --  TCD Last Source Address Adjustment
-      TCD_SLAST2            : MK64F12.Word;
-      --  TCD Destination Address
-      TCD_DADDR2            : MK64F12.Word;
-      --  TCD Signed Destination Address Offset
-      TCD_DOFF2             : MK64F12.Short;
-      --  TCD Last Destination Address Adjustment/Scatter Gather Address
-      TCD_DLASTSGA2         : MK64F12.Word;
-      --  TCD Control and Status
-      TCD_CSR2              : TCD_CSR_Register;
-      --  TCD Source Address
-      TCD_SADDR3            : MK64F12.Word;
-      --  TCD Signed Source Address Offset
-      TCD_SOFF3             : MK64F12.Short;
-      --  TCD Transfer Attributes
-      TCD_ATTR3             : TCD_ATTR_Register;
-      --  TCD Last Source Address Adjustment
-      TCD_SLAST3            : MK64F12.Word;
-      --  TCD Destination Address
-      TCD_DADDR3            : MK64F12.Word;
-      --  TCD Signed Destination Address Offset
-      TCD_DOFF3             : MK64F12.Short;
-      --  TCD Last Destination Address Adjustment/Scatter Gather Address
-      TCD_DLASTSGA3         : MK64F12.Word;
-      --  TCD Control and Status
-      TCD_CSR3              : TCD_CSR_Register;
-      --  TCD Source Address
-      TCD_SADDR4            : MK64F12.Word;
-      --  TCD Signed Source Address Offset
-      TCD_SOFF4             : MK64F12.Short;
-      --  TCD Transfer Attributes
-      TCD_ATTR4             : TCD_ATTR_Register;
-      --  TCD Last Source Address Adjustment
-      TCD_SLAST4            : MK64F12.Word;
-      --  TCD Destination Address
-      TCD_DADDR4            : MK64F12.Word;
-      --  TCD Signed Destination Address Offset
-      TCD_DOFF4             : MK64F12.Short;
-      --  TCD Last Destination Address Adjustment/Scatter Gather Address
-      TCD_DLASTSGA4         : MK64F12.Word;
-      --  TCD Control and Status
-      TCD_CSR4              : TCD_CSR_Register;
-      --  TCD Source Address
-      TCD_SADDR5            : MK64F12.Word;
-      --  TCD Signed Source Address Offset
-      TCD_SOFF5             : MK64F12.Short;
-      --  TCD Transfer Attributes
-      TCD_ATTR5             : TCD_ATTR_Register;
-      --  TCD Last Source Address Adjustment
-      TCD_SLAST5            : MK64F12.Word;
-      --  TCD Destination Address
-      TCD_DADDR5            : MK64F12.Word;
-      --  TCD Signed Destination Address Offset
-      TCD_DOFF5             : MK64F12.Short;
-      --  TCD Last Destination Address Adjustment/Scatter Gather Address
-      TCD_DLASTSGA5         : MK64F12.Word;
-      --  TCD Control and Status
-      TCD_CSR5              : TCD_CSR_Register;
-      --  TCD Source Address
-      TCD_SADDR6            : MK64F12.Word;
-      --  TCD Signed Source Address Offset
-      TCD_SOFF6             : MK64F12.Short;
-      --  TCD Transfer Attributes
-      TCD_ATTR6             : TCD_ATTR_Register;
-      --  TCD Last Source Address Adjustment
-      TCD_SLAST6            : MK64F12.Word;
-      --  TCD Destination Address
-      TCD_DADDR6            : MK64F12.Word;
-      --  TCD Signed Destination Address Offset
-      TCD_DOFF6             : MK64F12.Short;
-      --  TCD Last Destination Address Adjustment/Scatter Gather Address
-      TCD_DLASTSGA6         : MK64F12.Word;
-      --  TCD Control and Status
-      TCD_CSR6              : TCD_CSR_Register;
-      --  TCD Source Address
-      TCD_SADDR7            : MK64F12.Word;
-      --  TCD Signed Source Address Offset
-      TCD_SOFF7             : MK64F12.Short;
-      --  TCD Transfer Attributes
-      TCD_ATTR7             : TCD_ATTR_Register;
-      --  TCD Last Source Address Adjustment
-      TCD_SLAST7            : MK64F12.Word;
-      --  TCD Destination Address
-      TCD_DADDR7            : MK64F12.Word;
-      --  TCD Signed Destination Address Offset
-      TCD_DOFF7             : MK64F12.Short;
-      --  TCD Last Destination Address Adjustment/Scatter Gather Address
-      TCD_DLASTSGA7         : MK64F12.Word;
-      --  TCD Control and Status
-      TCD_CSR7              : TCD_CSR_Register;
-      --  TCD Source Address
-      TCD_SADDR8            : MK64F12.Word;
-      --  TCD Signed Source Address Offset
-      TCD_SOFF8             : MK64F12.Short;
-      --  TCD Transfer Attributes
-      TCD_ATTR8             : TCD_ATTR_Register;
-      --  TCD Last Source Address Adjustment
-      TCD_SLAST8            : MK64F12.Word;
-      --  TCD Destination Address
-      TCD_DADDR8            : MK64F12.Word;
-      --  TCD Signed Destination Address Offset
-      TCD_DOFF8             : MK64F12.Short;
-      --  TCD Last Destination Address Adjustment/Scatter Gather Address
-      TCD_DLASTSGA8         : MK64F12.Word;
-      --  TCD Control and Status
-      TCD_CSR8              : TCD_CSR_Register;
-      --  TCD Source Address
-      TCD_SADDR9            : MK64F12.Word;
-      --  TCD Signed Source Address Offset
-      TCD_SOFF9             : MK64F12.Short;
-      --  TCD Transfer Attributes
-      TCD_ATTR9             : TCD_ATTR_Register;
-      --  TCD Last Source Address Adjustment
-      TCD_SLAST9            : MK64F12.Word;
-      --  TCD Destination Address
-      TCD_DADDR9            : MK64F12.Word;
-      --  TCD Signed Destination Address Offset
-      TCD_DOFF9             : MK64F12.Short;
-      --  TCD Last Destination Address Adjustment/Scatter Gather Address
-      TCD_DLASTSGA9         : MK64F12.Word;
-      --  TCD Control and Status
-      TCD_CSR9              : TCD_CSR_Register;
-      --  TCD Source Address
-      TCD_SADDR10           : MK64F12.Word;
-      --  TCD Signed Source Address Offset
-      TCD_SOFF10            : MK64F12.Short;
-      --  TCD Transfer Attributes
-      TCD_ATTR10            : TCD_ATTR_Register;
-      --  TCD Last Source Address Adjustment
-      TCD_SLAST10           : MK64F12.Word;
-      --  TCD Destination Address
-      TCD_DADDR10           : MK64F12.Word;
-      --  TCD Signed Destination Address Offset
-      TCD_DOFF10            : MK64F12.Short;
-      --  TCD Last Destination Address Adjustment/Scatter Gather Address
-      TCD_DLASTSGA10        : MK64F12.Word;
-      --  TCD Control and Status
-      TCD_CSR10             : TCD_CSR_Register;
-      --  TCD Source Address
-      TCD_SADDR11           : MK64F12.Word;
-      --  TCD Signed Source Address Offset
-      TCD_SOFF11            : MK64F12.Short;
-      --  TCD Transfer Attributes
-      TCD_ATTR11            : TCD_ATTR_Register;
-      --  TCD Last Source Address Adjustment
-      TCD_SLAST11           : MK64F12.Word;
-      --  TCD Destination Address
-      TCD_DADDR11           : MK64F12.Word;
-      --  TCD Signed Destination Address Offset
-      TCD_DOFF11            : MK64F12.Short;
-      --  TCD Last Destination Address Adjustment/Scatter Gather Address
-      TCD_DLASTSGA11        : MK64F12.Word;
-      --  TCD Control and Status
-      TCD_CSR11             : TCD_CSR_Register;
-      --  TCD Source Address
-      TCD_SADDR12           : MK64F12.Word;
-      --  TCD Signed Source Address Offset
-      TCD_SOFF12            : MK64F12.Short;
-      --  TCD Transfer Attributes
-      TCD_ATTR12            : TCD_ATTR_Register;
-      --  TCD Last Source Address Adjustment
-      TCD_SLAST12           : MK64F12.Word;
-      --  TCD Destination Address
-      TCD_DADDR12           : MK64F12.Word;
-      --  TCD Signed Destination Address Offset
-      TCD_DOFF12            : MK64F12.Short;
-      --  TCD Last Destination Address Adjustment/Scatter Gather Address
-      TCD_DLASTSGA12        : MK64F12.Word;
-      --  TCD Control and Status
-      TCD_CSR12             : TCD_CSR_Register;
-      --  TCD Source Address
-      TCD_SADDR13           : MK64F12.Word;
-      --  TCD Signed Source Address Offset
-      TCD_SOFF13            : MK64F12.Short;
-      --  TCD Transfer Attributes
-      TCD_ATTR13            : TCD_ATTR_Register;
-      --  TCD Last Source Address Adjustment
-      TCD_SLAST13           : MK64F12.Word;
-      --  TCD Destination Address
-      TCD_DADDR13           : MK64F12.Word;
-      --  TCD Signed Destination Address Offset
-      TCD_DOFF13            : MK64F12.Short;
-      --  TCD Last Destination Address Adjustment/Scatter Gather Address
-      TCD_DLASTSGA13        : MK64F12.Word;
-      --  TCD Control and Status
-      TCD_CSR13             : TCD_CSR_Register;
-      --  TCD Source Address
-      TCD_SADDR14           : MK64F12.Word;
-      --  TCD Signed Source Address Offset
-      TCD_SOFF14            : MK64F12.Short;
-      --  TCD Transfer Attributes
-      TCD_ATTR14            : TCD_ATTR_Register;
-      --  TCD Last Source Address Adjustment
-      TCD_SLAST14           : MK64F12.Word;
-      --  TCD Destination Address
-      TCD_DADDR14           : MK64F12.Word;
-      --  TCD Signed Destination Address Offset
-      TCD_DOFF14            : MK64F12.Short;
-      --  TCD Last Destination Address Adjustment/Scatter Gather Address
-      TCD_DLASTSGA14        : MK64F12.Word;
-      --  TCD Control and Status
-      TCD_CSR14             : TCD_CSR_Register;
-      --  TCD Source Address
-      TCD_SADDR15           : MK64F12.Word;
-      --  TCD Signed Source Address Offset
-      TCD_SOFF15            : MK64F12.Short;
-      --  TCD Transfer Attributes
-      TCD_ATTR15            : TCD_ATTR_Register;
-      --  TCD Last Source Address Adjustment
-      TCD_SLAST15           : MK64F12.Word;
-      --  TCD Destination Address
-      TCD_DADDR15           : MK64F12.Word;
-      --  TCD Signed Destination Address Offset
-      TCD_DOFF15            : MK64F12.Short;
-      --  TCD Last Destination Address Adjustment/Scatter Gather Address
-      TCD_DLASTSGA15        : MK64F12.Word;
-      --  TCD Control and Status
-      TCD_CSR15             : TCD_CSR_Register;
-      case Discriminent is
-         when No0 =>
-            --  TCD Minor Byte Count (Minor Loop Disabled)
-            TCD_NBYTES_MLNO0 : MK64F12.Word;
-            --  TCD Current Minor Loop Link, Major Loop Count (Channel Linking
-            --  Disabled)
-            TCD_CITER_ELINKNO0 : TCD_CITER_ELINKNO_Register;
-            --  TCD Beginning Minor Loop Link, Major Loop Count (Channel
-            --  Linking Disabled)
-            TCD_BITER_ELINKNO0 : TCD_BITER_ELINKNO_Register;
-         when Offno0 =>
-            --  TCD Signed Minor Loop Offset (Minor Loop Enabled and Offset
-            --  Disabled)
-            TCD_NBYTES_MLOFFNO0 : TCD_NBYTES_MLOFFNO_Register;
-         when Offyes0 =>
-            --  TCD Signed Minor Loop Offset (Minor Loop and Offset Enabled)
-            TCD_NBYTES_MLOFFYES0 : TCD_NBYTES_MLOFFYES_Register;
-         when Yes0 =>
-            --  TCD Current Minor Loop Link, Major Loop Count (Channel Linking
-            --  Enabled)
-            TCD_CITER_ELINKYES0 : TCD_CITER_ELINKYES_Register;
-            --  TCD Beginning Minor Loop Link, Major Loop Count (Channel
-            --  Linking Enabled)
-            TCD_BITER_ELINKYES0 : TCD_BITER_ELINKYES_Register;
-         when No1 =>
-            --  TCD Minor Byte Count (Minor Loop Disabled)
-            TCD_NBYTES_MLNO1 : MK64F12.Word;
-            --  TCD Current Minor Loop Link, Major Loop Count (Channel Linking
-            --  Disabled)
-            TCD_CITER_ELINKNO1 : TCD_CITER_ELINKNO_Register;
-            --  TCD Beginning Minor Loop Link, Major Loop Count (Channel
-            --  Linking Disabled)
-            TCD_BITER_ELINKNO1 : TCD_BITER_ELINKNO_Register;
-         when Offno1 =>
-            --  TCD Signed Minor Loop Offset (Minor Loop Enabled and Offset
-            --  Disabled)
-            TCD_NBYTES_MLOFFNO1 : TCD_NBYTES_MLOFFNO_Register;
-         when Offyes1 =>
-            --  TCD Signed Minor Loop Offset (Minor Loop and Offset Enabled)
-            TCD_NBYTES_MLOFFYES1 : TCD_NBYTES_MLOFFYES_Register;
-         when Yes1 =>
-            --  TCD Current Minor Loop Link, Major Loop Count (Channel Linking
-            --  Enabled)
-            TCD_CITER_ELINKYES1 : TCD_CITER_ELINKYES_Register;
-            --  TCD Beginning Minor Loop Link, Major Loop Count (Channel
-            --  Linking Enabled)
-            TCD_BITER_ELINKYES1 : TCD_BITER_ELINKYES_Register;
-         when No2 =>
-            --  TCD Minor Byte Count (Minor Loop Disabled)
-            TCD_NBYTES_MLNO2 : MK64F12.Word;
-            --  TCD Current Minor Loop Link, Major Loop Count (Channel Linking
-            --  Disabled)
-            TCD_CITER_ELINKNO2 : TCD_CITER_ELINKNO_Register;
-            --  TCD Beginning Minor Loop Link, Major Loop Count (Channel
-            --  Linking Disabled)
-            TCD_BITER_ELINKNO2 : TCD_BITER_ELINKNO_Register;
-         when Offno2 =>
-            --  TCD Signed Minor Loop Offset (Minor Loop Enabled and Offset
-            --  Disabled)
-            TCD_NBYTES_MLOFFNO2 : TCD_NBYTES_MLOFFNO_Register;
-         when Offyes2 =>
-            --  TCD Signed Minor Loop Offset (Minor Loop and Offset Enabled)
-            TCD_NBYTES_MLOFFYES2 : TCD_NBYTES_MLOFFYES_Register;
-         when Yes2 =>
-            --  TCD Current Minor Loop Link, Major Loop Count (Channel Linking
-            --  Enabled)
-            TCD_CITER_ELINKYES2 : TCD_CITER_ELINKYES_Register;
-            --  TCD Beginning Minor Loop Link, Major Loop Count (Channel
-            --  Linking Enabled)
-            TCD_BITER_ELINKYES2 : TCD_BITER_ELINKYES_Register;
-         when No3 =>
-            --  TCD Minor Byte Count (Minor Loop Disabled)
-            TCD_NBYTES_MLNO3 : MK64F12.Word;
-            --  TCD Current Minor Loop Link, Major Loop Count (Channel Linking
-            --  Disabled)
-            TCD_CITER_ELINKNO3 : TCD_CITER_ELINKNO_Register;
-            --  TCD Beginning Minor Loop Link, Major Loop Count (Channel
-            --  Linking Disabled)
-            TCD_BITER_ELINKNO3 : TCD_BITER_ELINKNO_Register;
-         when Offno3 =>
-            --  TCD Signed Minor Loop Offset (Minor Loop Enabled and Offset
-            --  Disabled)
-            TCD_NBYTES_MLOFFNO3 : TCD_NBYTES_MLOFFNO_Register;
-         when Offyes3 =>
-            --  TCD Signed Minor Loop Offset (Minor Loop and Offset Enabled)
-            TCD_NBYTES_MLOFFYES3 : TCD_NBYTES_MLOFFYES_Register;
-         when Yes3 =>
-            --  TCD Current Minor Loop Link, Major Loop Count (Channel Linking
-            --  Enabled)
-            TCD_CITER_ELINKYES3 : TCD_CITER_ELINKYES_Register;
-            --  TCD Beginning Minor Loop Link, Major Loop Count (Channel
-            --  Linking Enabled)
-            TCD_BITER_ELINKYES3 : TCD_BITER_ELINKYES_Register;
-         when No4 =>
-            --  TCD Minor Byte Count (Minor Loop Disabled)
-            TCD_NBYTES_MLNO4 : MK64F12.Word;
-            --  TCD Current Minor Loop Link, Major Loop Count (Channel Linking
-            --  Disabled)
-            TCD_CITER_ELINKNO4 : TCD_CITER_ELINKNO_Register;
-            --  TCD Beginning Minor Loop Link, Major Loop Count (Channel
-            --  Linking Disabled)
-            TCD_BITER_ELINKNO4 : TCD_BITER_ELINKNO_Register;
-         when Offno4 =>
-            --  TCD Signed Minor Loop Offset (Minor Loop Enabled and Offset
-            --  Disabled)
-            TCD_NBYTES_MLOFFNO4 : TCD_NBYTES_MLOFFNO_Register;
-         when Offyes4 =>
-            --  TCD Signed Minor Loop Offset (Minor Loop and Offset Enabled)
-            TCD_NBYTES_MLOFFYES4 : TCD_NBYTES_MLOFFYES_Register;
-         when Yes4 =>
-            --  TCD Current Minor Loop Link, Major Loop Count (Channel Linking
-            --  Enabled)
-            TCD_CITER_ELINKYES4 : TCD_CITER_ELINKYES_Register;
-            --  TCD Beginning Minor Loop Link, Major Loop Count (Channel
-            --  Linking Enabled)
-            TCD_BITER_ELINKYES4 : TCD_BITER_ELINKYES_Register;
-         when No5 =>
-            --  TCD Minor Byte Count (Minor Loop Disabled)
-            TCD_NBYTES_MLNO5 : MK64F12.Word;
-            --  TCD Current Minor Loop Link, Major Loop Count (Channel Linking
-            --  Disabled)
-            TCD_CITER_ELINKNO5 : TCD_CITER_ELINKNO_Register;
-            --  TCD Beginning Minor Loop Link, Major Loop Count (Channel
-            --  Linking Disabled)
-            TCD_BITER_ELINKNO5 : TCD_BITER_ELINKNO_Register;
-         when Offno5 =>
-            --  TCD Signed Minor Loop Offset (Minor Loop Enabled and Offset
-            --  Disabled)
-            TCD_NBYTES_MLOFFNO5 : TCD_NBYTES_MLOFFNO_Register;
-         when Offyes5 =>
-            --  TCD Signed Minor Loop Offset (Minor Loop and Offset Enabled)
-            TCD_NBYTES_MLOFFYES5 : TCD_NBYTES_MLOFFYES_Register;
-         when Yes5 =>
-            --  TCD Current Minor Loop Link, Major Loop Count (Channel Linking
-            --  Enabled)
-            TCD_CITER_ELINKYES5 : TCD_CITER_ELINKYES_Register;
-            --  TCD Beginning Minor Loop Link, Major Loop Count (Channel
-            --  Linking Enabled)
-            TCD_BITER_ELINKYES5 : TCD_BITER_ELINKYES_Register;
-         when No6 =>
-            --  TCD Minor Byte Count (Minor Loop Disabled)
-            TCD_NBYTES_MLNO6 : MK64F12.Word;
-            --  TCD Current Minor Loop Link, Major Loop Count (Channel Linking
-            --  Disabled)
-            TCD_CITER_ELINKNO6 : TCD_CITER_ELINKNO_Register;
-            --  TCD Beginning Minor Loop Link, Major Loop Count (Channel
-            --  Linking Disabled)
-            TCD_BITER_ELINKNO6 : TCD_BITER_ELINKNO_Register;
-         when Offno6 =>
-            --  TCD Signed Minor Loop Offset (Minor Loop Enabled and Offset
-            --  Disabled)
-            TCD_NBYTES_MLOFFNO6 : TCD_NBYTES_MLOFFNO_Register;
-         when Offyes6 =>
-            --  TCD Signed Minor Loop Offset (Minor Loop and Offset Enabled)
-            TCD_NBYTES_MLOFFYES6 : TCD_NBYTES_MLOFFYES_Register;
-         when Yes6 =>
-            --  TCD Current Minor Loop Link, Major Loop Count (Channel Linking
-            --  Enabled)
-            TCD_CITER_ELINKYES6 : TCD_CITER_ELINKYES_Register;
-            --  TCD Beginning Minor Loop Link, Major Loop Count (Channel
-            --  Linking Enabled)
-            TCD_BITER_ELINKYES6 : TCD_BITER_ELINKYES_Register;
-         when No7 =>
-            --  TCD Minor Byte Count (Minor Loop Disabled)
-            TCD_NBYTES_MLNO7 : MK64F12.Word;
-            --  TCD Current Minor Loop Link, Major Loop Count (Channel Linking
-            --  Disabled)
-            TCD_CITER_ELINKNO7 : TCD_CITER_ELINKNO_Register;
-            --  TCD Beginning Minor Loop Link, Major Loop Count (Channel
-            --  Linking Disabled)
-            TCD_BITER_ELINKNO7 : TCD_BITER_ELINKNO_Register;
-         when Offno7 =>
-            --  TCD Signed Minor Loop Offset (Minor Loop Enabled and Offset
-            --  Disabled)
-            TCD_NBYTES_MLOFFNO7 : TCD_NBYTES_MLOFFNO_Register;
-         when Offyes7 =>
-            --  TCD Signed Minor Loop Offset (Minor Loop and Offset Enabled)
-            TCD_NBYTES_MLOFFYES7 : TCD_NBYTES_MLOFFYES_Register;
-         when Yes7 =>
-            --  TCD Current Minor Loop Link, Major Loop Count (Channel Linking
-            --  Enabled)
-            TCD_CITER_ELINKYES7 : TCD_CITER_ELINKYES_Register;
-            --  TCD Beginning Minor Loop Link, Major Loop Count (Channel
-            --  Linking Enabled)
-            TCD_BITER_ELINKYES7 : TCD_BITER_ELINKYES_Register;
-         when No8 =>
-            --  TCD Minor Byte Count (Minor Loop Disabled)
-            TCD_NBYTES_MLNO8 : MK64F12.Word;
-            --  TCD Current Minor Loop Link, Major Loop Count (Channel Linking
-            --  Disabled)
-            TCD_CITER_ELINKNO8 : TCD_CITER_ELINKNO_Register;
-            --  TCD Beginning Minor Loop Link, Major Loop Count (Channel
-            --  Linking Disabled)
-            TCD_BITER_ELINKNO8 : TCD_BITER_ELINKNO_Register;
-         when Offno8 =>
-            --  TCD Signed Minor Loop Offset (Minor Loop Enabled and Offset
-            --  Disabled)
-            TCD_NBYTES_MLOFFNO8 : TCD_NBYTES_MLOFFNO_Register;
-         when Offyes8 =>
-            --  TCD Signed Minor Loop Offset (Minor Loop and Offset Enabled)
-            TCD_NBYTES_MLOFFYES8 : TCD_NBYTES_MLOFFYES_Register;
-         when Yes8 =>
-            --  TCD Current Minor Loop Link, Major Loop Count (Channel Linking
-            --  Enabled)
-            TCD_CITER_ELINKYES8 : TCD_CITER_ELINKYES_Register;
-            --  TCD Beginning Minor Loop Link, Major Loop Count (Channel
-            --  Linking Enabled)
-            TCD_BITER_ELINKYES8 : TCD_BITER_ELINKYES_Register;
-         when No9 =>
-            --  TCD Minor Byte Count (Minor Loop Disabled)
-            TCD_NBYTES_MLNO9 : MK64F12.Word;
-            --  TCD Current Minor Loop Link, Major Loop Count (Channel Linking
-            --  Disabled)
-            TCD_CITER_ELINKNO9 : TCD_CITER_ELINKNO_Register;
-            --  TCD Beginning Minor Loop Link, Major Loop Count (Channel
-            --  Linking Disabled)
-            TCD_BITER_ELINKNO9 : TCD_BITER_ELINKNO_Register;
-         when Offno9 =>
-            --  TCD Signed Minor Loop Offset (Minor Loop Enabled and Offset
-            --  Disabled)
-            TCD_NBYTES_MLOFFNO9 : TCD_NBYTES_MLOFFNO_Register;
-         when Offyes9 =>
-            --  TCD Signed Minor Loop Offset (Minor Loop and Offset Enabled)
-            TCD_NBYTES_MLOFFYES9 : TCD_NBYTES_MLOFFYES_Register;
-         when Yes9 =>
-            --  TCD Current Minor Loop Link, Major Loop Count (Channel Linking
-            --  Enabled)
-            TCD_CITER_ELINKYES9 : TCD_CITER_ELINKYES_Register;
-            --  TCD Beginning Minor Loop Link, Major Loop Count (Channel
-            --  Linking Enabled)
-            TCD_BITER_ELINKYES9 : TCD_BITER_ELINKYES_Register;
-         when No10 =>
-            --  TCD Minor Byte Count (Minor Loop Disabled)
-            TCD_NBYTES_MLNO10 : MK64F12.Word;
-            --  TCD Current Minor Loop Link, Major Loop Count (Channel Linking
-            --  Disabled)
-            TCD_CITER_ELINKNO10 : TCD_CITER_ELINKNO_Register;
-            --  TCD Beginning Minor Loop Link, Major Loop Count (Channel
-            --  Linking Disabled)
-            TCD_BITER_ELINKNO10 : TCD_BITER_ELINKNO_Register;
-         when Offno10 =>
-            --  TCD Signed Minor Loop Offset (Minor Loop Enabled and Offset
-            --  Disabled)
-            TCD_NBYTES_MLOFFNO10 : TCD_NBYTES_MLOFFNO_Register;
-         when Offyes10 =>
-            --  TCD Signed Minor Loop Offset (Minor Loop and Offset Enabled)
-            TCD_NBYTES_MLOFFYES10 : TCD_NBYTES_MLOFFYES_Register;
-         when Yes10 =>
-            --  TCD Current Minor Loop Link, Major Loop Count (Channel Linking
-            --  Enabled)
-            TCD_CITER_ELINKYES10 : TCD_CITER_ELINKYES_Register;
-            --  TCD Beginning Minor Loop Link, Major Loop Count (Channel
-            --  Linking Enabled)
-            TCD_BITER_ELINKYES10 : TCD_BITER_ELINKYES_Register;
-         when No11 =>
-            --  TCD Minor Byte Count (Minor Loop Disabled)
-            TCD_NBYTES_MLNO11 : MK64F12.Word;
-            --  TCD Current Minor Loop Link, Major Loop Count (Channel Linking
-            --  Disabled)
-            TCD_CITER_ELINKNO11 : TCD_CITER_ELINKNO_Register;
-            --  TCD Beginning Minor Loop Link, Major Loop Count (Channel
-            --  Linking Disabled)
-            TCD_BITER_ELINKNO11 : TCD_BITER_ELINKNO_Register;
-         when Offno11 =>
-            --  TCD Signed Minor Loop Offset (Minor Loop Enabled and Offset
-            --  Disabled)
-            TCD_NBYTES_MLOFFNO11 : TCD_NBYTES_MLOFFNO_Register;
-         when Offyes11 =>
-            --  TCD Signed Minor Loop Offset (Minor Loop and Offset Enabled)
-            TCD_NBYTES_MLOFFYES11 : TCD_NBYTES_MLOFFYES_Register;
-         when Yes11 =>
-            --  TCD Current Minor Loop Link, Major Loop Count (Channel Linking
-            --  Enabled)
-            TCD_CITER_ELINKYES11 : TCD_CITER_ELINKYES_Register;
-            --  TCD Beginning Minor Loop Link, Major Loop Count (Channel
-            --  Linking Enabled)
-            TCD_BITER_ELINKYES11 : TCD_BITER_ELINKYES_Register;
-         when No12 =>
-            --  TCD Minor Byte Count (Minor Loop Disabled)
-            TCD_NBYTES_MLNO12 : MK64F12.Word;
-            --  TCD Current Minor Loop Link, Major Loop Count (Channel Linking
-            --  Disabled)
-            TCD_CITER_ELINKNO12 : TCD_CITER_ELINKNO_Register;
-            --  TCD Beginning Minor Loop Link, Major Loop Count (Channel
-            --  Linking Disabled)
-            TCD_BITER_ELINKNO12 : TCD_BITER_ELINKNO_Register;
-         when Offno12 =>
-            --  TCD Signed Minor Loop Offset (Minor Loop Enabled and Offset
-            --  Disabled)
-            TCD_NBYTES_MLOFFNO12 : TCD_NBYTES_MLOFFNO_Register;
-         when Offyes12 =>
-            --  TCD Signed Minor Loop Offset (Minor Loop and Offset Enabled)
-            TCD_NBYTES_MLOFFYES12 : TCD_NBYTES_MLOFFYES_Register;
-         when Yes12 =>
-            --  TCD Current Minor Loop Link, Major Loop Count (Channel Linking
-            --  Enabled)
-            TCD_CITER_ELINKYES12 : TCD_CITER_ELINKYES_Register;
-            --  TCD Beginning Minor Loop Link, Major Loop Count (Channel
-            --  Linking Enabled)
-            TCD_BITER_ELINKYES12 : TCD_BITER_ELINKYES_Register;
-         when No13 =>
-            --  TCD Minor Byte Count (Minor Loop Disabled)
-            TCD_NBYTES_MLNO13 : MK64F12.Word;
-            --  TCD Current Minor Loop Link, Major Loop Count (Channel Linking
-            --  Disabled)
-            TCD_CITER_ELINKNO13 : TCD_CITER_ELINKNO_Register;
-            --  TCD Beginning Minor Loop Link, Major Loop Count (Channel
-            --  Linking Disabled)
-            TCD_BITER_ELINKNO13 : TCD_BITER_ELINKNO_Register;
-         when Offno13 =>
-            --  TCD Signed Minor Loop Offset (Minor Loop Enabled and Offset
-            --  Disabled)
-            TCD_NBYTES_MLOFFNO13 : TCD_NBYTES_MLOFFNO_Register;
-         when Offyes13 =>
-            --  TCD Signed Minor Loop Offset (Minor Loop and Offset Enabled)
-            TCD_NBYTES_MLOFFYES13 : TCD_NBYTES_MLOFFYES_Register;
-         when Yes13 =>
-            --  TCD Current Minor Loop Link, Major Loop Count (Channel Linking
-            --  Enabled)
-            TCD_CITER_ELINKYES13 : TCD_CITER_ELINKYES_Register;
-            --  TCD Beginning Minor Loop Link, Major Loop Count (Channel
-            --  Linking Enabled)
-            TCD_BITER_ELINKYES13 : TCD_BITER_ELINKYES_Register;
-         when No14 =>
-            --  TCD Minor Byte Count (Minor Loop Disabled)
-            TCD_NBYTES_MLNO14 : MK64F12.Word;
-            --  TCD Current Minor Loop Link, Major Loop Count (Channel Linking
-            --  Disabled)
-            TCD_CITER_ELINKNO14 : TCD_CITER_ELINKNO_Register;
-            --  TCD Beginning Minor Loop Link, Major Loop Count (Channel
-            --  Linking Disabled)
-            TCD_BITER_ELINKNO14 : TCD_BITER_ELINKNO_Register;
-         when Offno14 =>
-            --  TCD Signed Minor Loop Offset (Minor Loop Enabled and Offset
-            --  Disabled)
-            TCD_NBYTES_MLOFFNO14 : TCD_NBYTES_MLOFFNO_Register;
-         when Offyes14 =>
-            --  TCD Signed Minor Loop Offset (Minor Loop and Offset Enabled)
-            TCD_NBYTES_MLOFFYES14 : TCD_NBYTES_MLOFFYES_Register;
-         when Yes14 =>
-            --  TCD Current Minor Loop Link, Major Loop Count (Channel Linking
-            --  Enabled)
-            TCD_CITER_ELINKYES14 : TCD_CITER_ELINKYES_Register;
-            --  TCD Beginning Minor Loop Link, Major Loop Count (Channel
-            --  Linking Enabled)
-            TCD_BITER_ELINKYES14 : TCD_BITER_ELINKYES_Register;
-         when No15 =>
-            --  TCD Minor Byte Count (Minor Loop Disabled)
-            TCD_NBYTES_MLNO15 : MK64F12.Word;
-            --  TCD Current Minor Loop Link, Major Loop Count (Channel Linking
-            --  Disabled)
-            TCD_CITER_ELINKNO15 : TCD_CITER_ELINKNO_Register;
-            --  TCD Beginning Minor Loop Link, Major Loop Count (Channel
-            --  Linking Disabled)
-            TCD_BITER_ELINKNO15 : TCD_BITER_ELINKNO_Register;
-         when Offno15 =>
-            --  TCD Signed Minor Loop Offset (Minor Loop Enabled and Offset
-            --  Disabled)
-            TCD_NBYTES_MLOFFNO15 : TCD_NBYTES_MLOFFNO_Register;
-         when Offyes15 =>
-            --  TCD Signed Minor Loop Offset (Minor Loop and Offset Enabled)
-            TCD_NBYTES_MLOFFYES15 : TCD_NBYTES_MLOFFYES_Register;
-         when Yes15 =>
-            --  TCD Current Minor Loop Link, Major Loop Count (Channel Linking
-            --  Enabled)
-            TCD_CITER_ELINKYES15 : TCD_CITER_ELINKYES_Register;
-            --  TCD Beginning Minor Loop Link, Major Loop Count (Channel
-            --  Linking Enabled)
-            TCD_BITER_ELINKYES15 : TCD_BITER_ELINKYES_Register;
-      end case;
-   end record
-     with Unchecked_Union, Volatile;
+      --  TCD per channel
+      TCD_Array : TCD_Array_Type;
+    end record
+     with Volatile;
 
    for DMA_Peripheral use record
       CR                    at 0 range 0 .. 31;
@@ -2475,247 +1901,8 @@ package MK64F12.DMA is
       ERR                   at 44 range 0 .. 31;
       HRS                   at 52 range 0 .. 31;
       DCHPRI                at 256 range 0 .. 127;
-      TCD_SADDR0            at 4096 range 0 .. 31;
-      TCD_SOFF0             at 4100 range 0 .. 15;
-      TCD_ATTR0             at 4102 range 0 .. 15;
-      TCD_SLAST0            at 4108 range 0 .. 31;
-      TCD_DADDR0            at 4112 range 0 .. 31;
-      TCD_DOFF0             at 4116 range 0 .. 15;
-      TCD_DLASTSGA0         at 4120 range 0 .. 31;
-      TCD_CSR0              at 4124 range 0 .. 15;
-      TCD_SADDR1            at 4128 range 0 .. 31;
-      TCD_SOFF1             at 4132 range 0 .. 15;
-      TCD_ATTR1             at 4134 range 0 .. 15;
-      TCD_SLAST1            at 4140 range 0 .. 31;
-      TCD_DADDR1            at 4144 range 0 .. 31;
-      TCD_DOFF1             at 4148 range 0 .. 15;
-      TCD_DLASTSGA1         at 4152 range 0 .. 31;
-      TCD_CSR1              at 4156 range 0 .. 15;
-      TCD_SADDR2            at 4160 range 0 .. 31;
-      TCD_SOFF2             at 4164 range 0 .. 15;
-      TCD_ATTR2             at 4166 range 0 .. 15;
-      TCD_SLAST2            at 4172 range 0 .. 31;
-      TCD_DADDR2            at 4176 range 0 .. 31;
-      TCD_DOFF2             at 4180 range 0 .. 15;
-      TCD_DLASTSGA2         at 4184 range 0 .. 31;
-      TCD_CSR2              at 4188 range 0 .. 15;
-      TCD_SADDR3            at 4192 range 0 .. 31;
-      TCD_SOFF3             at 4196 range 0 .. 15;
-      TCD_ATTR3             at 4198 range 0 .. 15;
-      TCD_SLAST3            at 4204 range 0 .. 31;
-      TCD_DADDR3            at 4208 range 0 .. 31;
-      TCD_DOFF3             at 4212 range 0 .. 15;
-      TCD_DLASTSGA3         at 4216 range 0 .. 31;
-      TCD_CSR3              at 4220 range 0 .. 15;
-      TCD_SADDR4            at 4224 range 0 .. 31;
-      TCD_SOFF4             at 4228 range 0 .. 15;
-      TCD_ATTR4             at 4230 range 0 .. 15;
-      TCD_SLAST4            at 4236 range 0 .. 31;
-      TCD_DADDR4            at 4240 range 0 .. 31;
-      TCD_DOFF4             at 4244 range 0 .. 15;
-      TCD_DLASTSGA4         at 4248 range 0 .. 31;
-      TCD_CSR4              at 4252 range 0 .. 15;
-      TCD_SADDR5            at 4256 range 0 .. 31;
-      TCD_SOFF5             at 4260 range 0 .. 15;
-      TCD_ATTR5             at 4262 range 0 .. 15;
-      TCD_SLAST5            at 4268 range 0 .. 31;
-      TCD_DADDR5            at 4272 range 0 .. 31;
-      TCD_DOFF5             at 4276 range 0 .. 15;
-      TCD_DLASTSGA5         at 4280 range 0 .. 31;
-      TCD_CSR5              at 4284 range 0 .. 15;
-      TCD_SADDR6            at 4288 range 0 .. 31;
-      TCD_SOFF6             at 4292 range 0 .. 15;
-      TCD_ATTR6             at 4294 range 0 .. 15;
-      TCD_SLAST6            at 4300 range 0 .. 31;
-      TCD_DADDR6            at 4304 range 0 .. 31;
-      TCD_DOFF6             at 4308 range 0 .. 15;
-      TCD_DLASTSGA6         at 4312 range 0 .. 31;
-      TCD_CSR6              at 4316 range 0 .. 15;
-      TCD_SADDR7            at 4320 range 0 .. 31;
-      TCD_SOFF7             at 4324 range 0 .. 15;
-      TCD_ATTR7             at 4326 range 0 .. 15;
-      TCD_SLAST7            at 4332 range 0 .. 31;
-      TCD_DADDR7            at 4336 range 0 .. 31;
-      TCD_DOFF7             at 4340 range 0 .. 15;
-      TCD_DLASTSGA7         at 4344 range 0 .. 31;
-      TCD_CSR7              at 4348 range 0 .. 15;
-      TCD_SADDR8            at 4352 range 0 .. 31;
-      TCD_SOFF8             at 4356 range 0 .. 15;
-      TCD_ATTR8             at 4358 range 0 .. 15;
-      TCD_SLAST8            at 4364 range 0 .. 31;
-      TCD_DADDR8            at 4368 range 0 .. 31;
-      TCD_DOFF8             at 4372 range 0 .. 15;
-      TCD_DLASTSGA8         at 4376 range 0 .. 31;
-      TCD_CSR8              at 4380 range 0 .. 15;
-      TCD_SADDR9            at 4384 range 0 .. 31;
-      TCD_SOFF9             at 4388 range 0 .. 15;
-      TCD_ATTR9             at 4390 range 0 .. 15;
-      TCD_SLAST9            at 4396 range 0 .. 31;
-      TCD_DADDR9            at 4400 range 0 .. 31;
-      TCD_DOFF9             at 4404 range 0 .. 15;
-      TCD_DLASTSGA9         at 4408 range 0 .. 31;
-      TCD_CSR9              at 4412 range 0 .. 15;
-      TCD_SADDR10           at 4416 range 0 .. 31;
-      TCD_SOFF10            at 4420 range 0 .. 15;
-      TCD_ATTR10            at 4422 range 0 .. 15;
-      TCD_SLAST10           at 4428 range 0 .. 31;
-      TCD_DADDR10           at 4432 range 0 .. 31;
-      TCD_DOFF10            at 4436 range 0 .. 15;
-      TCD_DLASTSGA10        at 4440 range 0 .. 31;
-      TCD_CSR10             at 4444 range 0 .. 15;
-      TCD_SADDR11           at 4448 range 0 .. 31;
-      TCD_SOFF11            at 4452 range 0 .. 15;
-      TCD_ATTR11            at 4454 range 0 .. 15;
-      TCD_SLAST11           at 4460 range 0 .. 31;
-      TCD_DADDR11           at 4464 range 0 .. 31;
-      TCD_DOFF11            at 4468 range 0 .. 15;
-      TCD_DLASTSGA11        at 4472 range 0 .. 31;
-      TCD_CSR11             at 4476 range 0 .. 15;
-      TCD_SADDR12           at 4480 range 0 .. 31;
-      TCD_SOFF12            at 4484 range 0 .. 15;
-      TCD_ATTR12            at 4486 range 0 .. 15;
-      TCD_SLAST12           at 4492 range 0 .. 31;
-      TCD_DADDR12           at 4496 range 0 .. 31;
-      TCD_DOFF12            at 4500 range 0 .. 15;
-      TCD_DLASTSGA12        at 4504 range 0 .. 31;
-      TCD_CSR12             at 4508 range 0 .. 15;
-      TCD_SADDR13           at 4512 range 0 .. 31;
-      TCD_SOFF13            at 4516 range 0 .. 15;
-      TCD_ATTR13            at 4518 range 0 .. 15;
-      TCD_SLAST13           at 4524 range 0 .. 31;
-      TCD_DADDR13           at 4528 range 0 .. 31;
-      TCD_DOFF13            at 4532 range 0 .. 15;
-      TCD_DLASTSGA13        at 4536 range 0 .. 31;
-      TCD_CSR13             at 4540 range 0 .. 15;
-      TCD_SADDR14           at 4544 range 0 .. 31;
-      TCD_SOFF14            at 4548 range 0 .. 15;
-      TCD_ATTR14            at 4550 range 0 .. 15;
-      TCD_SLAST14           at 4556 range 0 .. 31;
-      TCD_DADDR14           at 4560 range 0 .. 31;
-      TCD_DOFF14            at 4564 range 0 .. 15;
-      TCD_DLASTSGA14        at 4568 range 0 .. 31;
-      TCD_CSR14             at 4572 range 0 .. 15;
-      TCD_SADDR15           at 4576 range 0 .. 31;
-      TCD_SOFF15            at 4580 range 0 .. 15;
-      TCD_ATTR15            at 4582 range 0 .. 15;
-      TCD_SLAST15           at 4588 range 0 .. 31;
-      TCD_DADDR15           at 4592 range 0 .. 31;
-      TCD_DOFF15            at 4596 range 0 .. 15;
-      TCD_DLASTSGA15        at 4600 range 0 .. 31;
-      TCD_CSR15             at 4604 range 0 .. 15;
-      TCD_NBYTES_MLNO0      at 4104 range 0 .. 31;
-      TCD_CITER_ELINKNO0    at 4118 range 0 .. 15;
-      TCD_BITER_ELINKNO0    at 4126 range 0 .. 15;
-      TCD_NBYTES_MLOFFNO0   at 4104 range 0 .. 31;
-      TCD_NBYTES_MLOFFYES0  at 4104 range 0 .. 31;
-      TCD_CITER_ELINKYES0   at 4118 range 0 .. 15;
-      TCD_BITER_ELINKYES0   at 4126 range 0 .. 15;
-      TCD_NBYTES_MLNO1      at 4136 range 0 .. 31;
-      TCD_CITER_ELINKNO1    at 4150 range 0 .. 15;
-      TCD_BITER_ELINKNO1    at 4158 range 0 .. 15;
-      TCD_NBYTES_MLOFFNO1   at 4136 range 0 .. 31;
-      TCD_NBYTES_MLOFFYES1  at 4136 range 0 .. 31;
-      TCD_CITER_ELINKYES1   at 4150 range 0 .. 15;
-      TCD_BITER_ELINKYES1   at 4158 range 0 .. 15;
-      TCD_NBYTES_MLNO2      at 4168 range 0 .. 31;
-      TCD_CITER_ELINKNO2    at 4182 range 0 .. 15;
-      TCD_BITER_ELINKNO2    at 4190 range 0 .. 15;
-      TCD_NBYTES_MLOFFNO2   at 4168 range 0 .. 31;
-      TCD_NBYTES_MLOFFYES2  at 4168 range 0 .. 31;
-      TCD_CITER_ELINKYES2   at 4182 range 0 .. 15;
-      TCD_BITER_ELINKYES2   at 4190 range 0 .. 15;
-      TCD_NBYTES_MLNO3      at 4200 range 0 .. 31;
-      TCD_CITER_ELINKNO3    at 4214 range 0 .. 15;
-      TCD_BITER_ELINKNO3    at 4222 range 0 .. 15;
-      TCD_NBYTES_MLOFFNO3   at 4200 range 0 .. 31;
-      TCD_NBYTES_MLOFFYES3  at 4200 range 0 .. 31;
-      TCD_CITER_ELINKYES3   at 4214 range 0 .. 15;
-      TCD_BITER_ELINKYES3   at 4222 range 0 .. 15;
-      TCD_NBYTES_MLNO4      at 4232 range 0 .. 31;
-      TCD_CITER_ELINKNO4    at 4246 range 0 .. 15;
-      TCD_BITER_ELINKNO4    at 4254 range 0 .. 15;
-      TCD_NBYTES_MLOFFNO4   at 4232 range 0 .. 31;
-      TCD_NBYTES_MLOFFYES4  at 4232 range 0 .. 31;
-      TCD_CITER_ELINKYES4   at 4246 range 0 .. 15;
-      TCD_BITER_ELINKYES4   at 4254 range 0 .. 15;
-      TCD_NBYTES_MLNO5      at 4264 range 0 .. 31;
-      TCD_CITER_ELINKNO5    at 4278 range 0 .. 15;
-      TCD_BITER_ELINKNO5    at 4286 range 0 .. 15;
-      TCD_NBYTES_MLOFFNO5   at 4264 range 0 .. 31;
-      TCD_NBYTES_MLOFFYES5  at 4264 range 0 .. 31;
-      TCD_CITER_ELINKYES5   at 4278 range 0 .. 15;
-      TCD_BITER_ELINKYES5   at 4286 range 0 .. 15;
-      TCD_NBYTES_MLNO6      at 4296 range 0 .. 31;
-      TCD_CITER_ELINKNO6    at 4310 range 0 .. 15;
-      TCD_BITER_ELINKNO6    at 4318 range 0 .. 15;
-      TCD_NBYTES_MLOFFNO6   at 4296 range 0 .. 31;
-      TCD_NBYTES_MLOFFYES6  at 4296 range 0 .. 31;
-      TCD_CITER_ELINKYES6   at 4310 range 0 .. 15;
-      TCD_BITER_ELINKYES6   at 4318 range 0 .. 15;
-      TCD_NBYTES_MLNO7      at 4328 range 0 .. 31;
-      TCD_CITER_ELINKNO7    at 4342 range 0 .. 15;
-      TCD_BITER_ELINKNO7    at 4350 range 0 .. 15;
-      TCD_NBYTES_MLOFFNO7   at 4328 range 0 .. 31;
-      TCD_NBYTES_MLOFFYES7  at 4328 range 0 .. 31;
-      TCD_CITER_ELINKYES7   at 4342 range 0 .. 15;
-      TCD_BITER_ELINKYES7   at 4350 range 0 .. 15;
-      TCD_NBYTES_MLNO8      at 4360 range 0 .. 31;
-      TCD_CITER_ELINKNO8    at 4374 range 0 .. 15;
-      TCD_BITER_ELINKNO8    at 4382 range 0 .. 15;
-      TCD_NBYTES_MLOFFNO8   at 4360 range 0 .. 31;
-      TCD_NBYTES_MLOFFYES8  at 4360 range 0 .. 31;
-      TCD_CITER_ELINKYES8   at 4374 range 0 .. 15;
-      TCD_BITER_ELINKYES8   at 4382 range 0 .. 15;
-      TCD_NBYTES_MLNO9      at 4392 range 0 .. 31;
-      TCD_CITER_ELINKNO9    at 4406 range 0 .. 15;
-      TCD_BITER_ELINKNO9    at 4414 range 0 .. 15;
-      TCD_NBYTES_MLOFFNO9   at 4392 range 0 .. 31;
-      TCD_NBYTES_MLOFFYES9  at 4392 range 0 .. 31;
-      TCD_CITER_ELINKYES9   at 4406 range 0 .. 15;
-      TCD_BITER_ELINKYES9   at 4414 range 0 .. 15;
-      TCD_NBYTES_MLNO10     at 4424 range 0 .. 31;
-      TCD_CITER_ELINKNO10   at 4438 range 0 .. 15;
-      TCD_BITER_ELINKNO10   at 4446 range 0 .. 15;
-      TCD_NBYTES_MLOFFNO10  at 4424 range 0 .. 31;
-      TCD_NBYTES_MLOFFYES10 at 4424 range 0 .. 31;
-      TCD_CITER_ELINKYES10  at 4438 range 0 .. 15;
-      TCD_BITER_ELINKYES10  at 4446 range 0 .. 15;
-      TCD_NBYTES_MLNO11     at 4456 range 0 .. 31;
-      TCD_CITER_ELINKNO11   at 4470 range 0 .. 15;
-      TCD_BITER_ELINKNO11   at 4478 range 0 .. 15;
-      TCD_NBYTES_MLOFFNO11  at 4456 range 0 .. 31;
-      TCD_NBYTES_MLOFFYES11 at 4456 range 0 .. 31;
-      TCD_CITER_ELINKYES11  at 4470 range 0 .. 15;
-      TCD_BITER_ELINKYES11  at 4478 range 0 .. 15;
-      TCD_NBYTES_MLNO12     at 4488 range 0 .. 31;
-      TCD_CITER_ELINKNO12   at 4502 range 0 .. 15;
-      TCD_BITER_ELINKNO12   at 4510 range 0 .. 15;
-      TCD_NBYTES_MLOFFNO12  at 4488 range 0 .. 31;
-      TCD_NBYTES_MLOFFYES12 at 4488 range 0 .. 31;
-      TCD_CITER_ELINKYES12  at 4502 range 0 .. 15;
-      TCD_BITER_ELINKYES12  at 4510 range 0 .. 15;
-      TCD_NBYTES_MLNO13     at 4520 range 0 .. 31;
-      TCD_CITER_ELINKNO13   at 4534 range 0 .. 15;
-      TCD_BITER_ELINKNO13   at 4542 range 0 .. 15;
-      TCD_NBYTES_MLOFFNO13  at 4520 range 0 .. 31;
-      TCD_NBYTES_MLOFFYES13 at 4520 range 0 .. 31;
-      TCD_CITER_ELINKYES13  at 4534 range 0 .. 15;
-      TCD_BITER_ELINKYES13  at 4542 range 0 .. 15;
-      TCD_NBYTES_MLNO14     at 4552 range 0 .. 31;
-      TCD_CITER_ELINKNO14   at 4566 range 0 .. 15;
-      TCD_BITER_ELINKNO14   at 4574 range 0 .. 15;
-      TCD_NBYTES_MLOFFNO14  at 4552 range 0 .. 31;
-      TCD_NBYTES_MLOFFYES14 at 4552 range 0 .. 31;
-      TCD_CITER_ELINKYES14  at 4566 range 0 .. 15;
-      TCD_BITER_ELINKYES14  at 4574 range 0 .. 15;
-      TCD_NBYTES_MLNO15     at 4584 range 0 .. 31;
-      TCD_CITER_ELINKNO15   at 4598 range 0 .. 15;
-      TCD_BITER_ELINKNO15   at 4606 range 0 .. 15;
-      TCD_NBYTES_MLOFFNO15  at 4584 range 0 .. 31;
-      TCD_NBYTES_MLOFFYES15 at 4584 range 0 .. 31;
-      TCD_CITER_ELINKYES15  at 4598 range 0 .. 15;
-      TCD_BITER_ELINKYES15  at 4606 range 0 .. 15;
-   end record;
+      TCD_Array             at 4096 range 0 .. 4095;
+    end record;
 
    --  Enhanced direct memory access controller
    DMA_Periph : aliased DMA_Peripheral
