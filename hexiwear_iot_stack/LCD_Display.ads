@@ -28,11 +28,73 @@
 --
 --  @summary LCD display services
 --
+with Interfaces;
+
 package LCD_Display is
+
+   type Color_Type is (Black,
+                       Red,
+                       Cyan,
+                       Blue,
+                       Magenta,
+                       Gray,
+                       Green,
+                       Yellow,
+                       Light_Blue,
+                       White) with Size => Interfaces.Unsigned_16'Size;
+
+   --
+   --  NOTE: Byte order of values have been swaped for transmission
+   --
+   for Color_Type use (Black => 16#0000#,
+                       Red => 16#00F8#,
+                       Cyan => 16#07FF#,
+                       Blue => 16#1F00#,
+                       Magenta => 16#1FF8#,
+                       Gray => 16#8A52#,
+                       Green => 16#E007#,
+                       Yellow => 16#E0FF#,
+                       Light_Blue => 16#FF06#,
+                       White => 16#FFFF#);
+
+   Display_Width : constant Positive := 96 + 16;  --  in pixels
+   Display_Height : constant Positive := 96; --  in pixels
+
+   type X_Coordinate_Type is range 1 .. Display_Width;
+   type Y_Coordinate_Type is range 1 .. Display_Height;
+
+   type Dot_Size_Type is
+      range 1 .. Positive'Min (Display_Width, Display_Height);
+
+   type Border_Thickness_Type is
+      range 0 .. Positive'Min (Display_Width, Display_Height);
+
    function Initialized return Boolean
      with Inline;
 
    procedure Initialize
      with Pre => not Initialized;
+
+   procedure Clear_Screen (Color : Color_Type);
+
+   procedure Draw_Rectangle (
+      X : X_Coordinate_Type;
+      Y : Y_Coordinate_Type;
+      Width_In_Pixels : X_Coordinate_Type;
+      Height_In_Pixels : Y_Coordinate_Type;
+      Color : Color_Type;
+      Border_Thickness : Border_Thickness_Type := 0;
+      Border_Color : Color_Type := Color_Type'First)
+      with Pre => Natural (Border_Thickness) <
+                  Positive'Min (Positive (Width_In_Pixels),
+                                Positive (Height_In_Pixels));
+
+   procedure Print_String (X : X_Coordinate_Type;
+                           Y : Y_Coordinate_Type;
+                           Text : String;
+                           Foreground_Color : Color_Type;
+                           Background_Color : Color_Type;
+                           Dot_Size : Dot_Size_Type := Dot_Size_Type'First)
+     with Pre => Text'Length /= 0;
 
 end LCD_Display;

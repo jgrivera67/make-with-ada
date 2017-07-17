@@ -327,7 +327,10 @@ package body SPI_Driver is
                       others => <>);
 
       Tx_Buffer_Cursor := Tx_Data_Buffer'First;
-      Rx_Buffer_Cursor := Rx_Data_Buffer'First;
+      if Rx_Data_Buffer'Length /= 0 then
+         Rx_Buffer_Cursor := Rx_Data_Buffer'First;
+      end if;
+
       loop
 	 SR_Value := SPI_Registers_Ptr.SR;
 	 pragma Assert (SR_Value.RFDF = SR_RFDF_Field_0);
@@ -386,17 +389,19 @@ package body SPI_Driver is
          --  Receive next SPI frame from the Rx FIFO:
          --
          POPR_Value := SPI_Registers_Ptr.POPR;
-         if Frame_Size = 2 then
-            pragma Assert (POPR_Value <= Word (Unsigned_16'Last));
-	    Rx_Data_Buffer (Rx_Buffer_Cursor) :=
-	       Byte (POPR_Value and 16#ff#);
-	    Rx_Data_Buffer (Rx_Buffer_Cursor + 1) :=
-	       Byte (Shift_Right (POPR_Value, 8));
-            Rx_Buffer_Cursor := Rx_Buffer_Cursor + 2;
-         else
-            pragma Assert (POPR_Value <= Word (Unsigned_8'Last));
-	    Rx_Data_Buffer (Rx_Buffer_Cursor) := Byte (POPR_Value);
-            Rx_Buffer_Cursor := Rx_Buffer_Cursor + 1;
+         if Rx_Data_Buffer'Length /= 0 then
+            if Frame_Size = 2 then
+               pragma Assert (POPR_Value <= Word (Unsigned_16'Last));
+   	       Rx_Data_Buffer (Rx_Buffer_Cursor) :=
+	          Byte (POPR_Value and 16#ff#);
+	       Rx_Data_Buffer (Rx_Buffer_Cursor + 1) :=
+	          Byte (Shift_Right (POPR_Value, 8));
+               Rx_Buffer_Cursor := Rx_Buffer_Cursor + 2;
+            else
+               pragma Assert (POPR_Value <= Word (Unsigned_8'Last));
+	       Rx_Data_Buffer (Rx_Buffer_Cursor) := Byte (POPR_Value);
+               Rx_Buffer_Cursor := Rx_Buffer_Cursor + 1;
+            end if;
 	 end if;
 
 	 SR_Value := (RFDF => SR_RFDF_Field_1, others => <>);
@@ -415,7 +420,7 @@ package body SPI_Driver is
       pragma Assert (SR_Value.RFDF = SR_RFDF_Field_0);
       pragma Assert (Byte (SR_Value.TXCTR) = 0);
       pragma Assert (Byte (SR_Value.RXCTR) = 0);
-      pragma Assert (SR_Value.TXRXS = SR_TXRXS_Field_0);
+      pragma Assert (SR_Value.TXRXS = SR_TXRXS_Field_1);
    end Master_Transmit_Receive;
 
 end SPI_Driver;

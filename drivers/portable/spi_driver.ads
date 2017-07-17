@@ -75,7 +75,8 @@ package SPI_Driver is
      with Pre => Initialized (SPI_Device_Id) and
                  Is_Master (SPI_Device_Id) and
                  Tx_Data_Buffer'Length /= 0 and
-                 Rx_Data_Buffer'Length = Tx_Data_Buffer'Length;
+                 (Rx_Data_Buffer'Length = 0 or else
+                  Rx_Data_Buffer'Length = Tx_Data_Buffer'Length);
    --
    --  Transmit and receive a block of data over SPI, from the MCU (master)
    --  to a peripheral chip (salve)
