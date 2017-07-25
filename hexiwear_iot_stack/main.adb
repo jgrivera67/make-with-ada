@@ -41,6 +41,7 @@ with Last_Chance_Handler;
 with Memory_Protection;
 with Nor_Flash_Driver;
 with LCD_Display;
+with DMA_Driver;
 
 pragma Unreferenced (Last_Chance_Handler);
 
@@ -92,6 +93,7 @@ begin -- Hexiwear_Iot_Stack
    Color_Led.Initialize;
    Serial_Console.Initialize;
    Nor_Flash_Driver.Initialize;
+   DMA_Driver.Initialize;
    LCD_Display.Initialize;
    LCD_Display.Clear_Screen (LCD_Display.Blue);
    LCD_Display.Print_String (16, 8, "Luzmila",

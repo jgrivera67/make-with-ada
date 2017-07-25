@@ -26,7 +26,6 @@
 --
 
 with System; use System;
-with System.Storage_Elements; use System.Storage_Elements;
 
 package body Memory_Utils is
    --

@@ -44,6 +44,9 @@ private package SPI_Driver.MCU_Specific_Private is
    --  @field Miso_Pin_Info MISO signal pin (board specific)
    --  @field Tx_Fifo_Size Transmit FIFO size in bytes
    --  @field Rx_Fifo_Size Receive FIFO size in bytes
+   --  @field Tx_DMA_Channel DMA channel for transmitting data
+   --  @field Rx_DMA_Channel DMA channel for receiving data
+   --  @field Rx_DMA_Request_Source DMA request source for receiving data
    --
    type SPI_Device_Const_Type is limited record
       Registers_Ptr : not null access Devices.MCU_Specific.SPI.SPI_Peripheral;
@@ -53,6 +56,9 @@ private package SPI_Driver.MCU_Specific_Private is
       Miso_Pin_Info : Pin_Info_Type;
       Tx_Fifo_Size : Fifo_Size_Type;
       Rx_Fifo_Size : Fifo_Size_Type;
+      Tx_DMA_Channel : DMA_Channel_Type := DMA_Channel_None;
+      Rx_DMA_Channel : DMA_Channel_Type := DMA_Channel_None;
+      Rx_DMA_Request_Source : DMA_Request_Sources_Type := DMA_No_Source;
    end record;
 
 end SPI_Driver.MCU_Specific_Private;

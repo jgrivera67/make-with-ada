@@ -31,6 +31,7 @@ with Microcontroller_Clocks;
 with Devices;
 private with Generic_Ring_Buffers;
 private with Memory_Protection;
+private with DMA_Driver;
 
 --
 --  @summary SPI driver
@@ -54,7 +55,8 @@ package SPI_Driver is
    procedure Initialize (SPI_Device_Id : SPI_Device_Id_Type;
                          Master_Mode : Boolean;
                          Frame_Size : SPI_Frame_Size_Type;
-                         Sck_Frequency_Hz : Hertz_Type)
+                         Sck_Frequency_Hz : Hertz_Type;
+                         LSB_First : Boolean := False)
      with Pre => not Initialized (SPI_Device_Id) and
                  Sck_Frequency_Hz < Bus_Clock_Frequency;
    --
@@ -64,22 +66,27 @@ package SPI_Driver is
    --  @param Master_Mode       Flag indicating if master mode is wanted (true)
    --  @param Frame_Size        SPI frame size in bytes (1 or 2)
    --  @param Sck_Frequency_Hz  Wanted SPI protocol frequency in HZ
+   --  @param LSB_First         Flag indicating if LSB bit is to be transmitted
+   --                           first.
    --
 
    function Is_Master (SPI_Device_Id : SPI_Device_Id_Type) return Boolean
      with Inline;
 
-   procedure Master_Transmit_Receive (SPI_Device_Id : SPI_Device_Id_Type;
-                                      Tx_Data_Buffer : Bytes_Array_Type;
-                                      Rx_Data_Buffer : out Bytes_Array_Type)
+   procedure Master_Transmit_Receive_Polling (
+      SPI_Device_Id : SPI_Device_Id_Type;
+      Tx_Data_Buffer : Bytes_Array_Type;
+      Rx_Data_Buffer : out Bytes_Array_Type)
      with Pre => Initialized (SPI_Device_Id) and
                  Is_Master (SPI_Device_Id) and
-                 Tx_Data_Buffer'Length /= 0 and
-                 (Rx_Data_Buffer'Length = 0 or else
-                  Rx_Data_Buffer'Length = Tx_Data_Buffer'Length);
+                 (Tx_Data_Buffer'Length /= 0 or else
+                  Rx_Data_Buffer'Length /= 0) and
+                 (Rx_Data_Buffer'Length = Tx_Data_Buffer'Length or else
+                  Rx_Data_Buffer'Length = 0 or else
+                  Tx_Data_Buffer'Length = 0);
    --
    --  Transmit and receive a block of data over SPI, from the MCU (master)
-   --  to a peripheral chip (salve)
+   --  to a peripheral chip (salve), using CPU polling.
    --
    --  @param SPI_Device_Id SPI device Id
    --  @param tx_data_buffer_p  Transmit data buffer. It contains
@@ -90,9 +97,32 @@ package SPI_Driver is
    --                           first.
    --
 
+   procedure Master_Transmit_Receive_DMA (
+      SPI_Device_Id : SPI_Device_Id_Type;
+      Tx_Data_Buffer : Bytes_Array_Type;
+      Rx_Data_Buffer : out Bytes_Array_Type)
+     with Pre => Initialized (SPI_Device_Id) and
+                 Is_Master (SPI_Device_Id) and
+                 (Tx_Data_Buffer'Length /= 0 or else
+                  Rx_Data_Buffer'Length /= 0) and
+                 (Rx_Data_Buffer'Length = Tx_Data_Buffer'Length or else
+                  Rx_Data_Buffer'Length = 0 or else
+                  Tx_Data_Buffer'Length = 0);
+   --
+   --  Transmit a block of data over SPI, from the MCU (master)
+   --  to a peripheral chip (salve), using DMA.
+   --
+   --  @param SPI_Device_Id SPI device Id
+   --  @param tx_data_buffer_p  Transmit data buffer. It contains
+   --                           the data to be transmitted to the SPI slave,
+   --                           LSByte first.
+   --
+
 private
    pragma SPARK_Mode (Off);
    use Memory_Protection;
+   use Devices.MCU_Specific.SPI;
+   use DMA_Driver;
 
    --
    --  Ring buffer of bytes
@@ -100,6 +130,10 @@ private
    package Byte_Ring_Buffers is
      new Generic_Ring_Buffers (Element_Type => Byte,
                                Max_Num_Elements => 16);
+
+   type DMA_Staging_Buffer_Type is
+      array (1 .. Max_DMA_Transactions_per_DMA_Transfer_With_Channel_Linking)
+        of SPI0_PUSHR_Register;
 
    --
    --  State variables of a SPI device object
@@ -111,8 +145,9 @@ private
    --  @field Rx_Buffer_Ptr Pointer to the Rx buffer for the SPI transfer
    --  currently in progress
    --  @field Rx_SPI_Frames_Expected Number of SPI frames still expected for
-   --  the
-   --  SPI transfer currently in progress
+   --  the SPI transfer currently in progress
+   --  @filed PUSHR_Value_For_DMA Temporary buffer for storing PUSHR values
+   --  during DMA transfers
    --
    type SPI_Device_Var_Type is limited record
       Initialized : Boolean := False;
@@ -120,8 +155,9 @@ private
       Frame_Size : SPI_Frame_Size_Type;
       Rx_Buffer_Ptr : Byte_Ring_Buffers.Ring_Buffer_Access_Type := null;
       Rx_SPI_Frames_Expected : Unsigned_32;
+      DMA_Staging_Buffer : DMA_Staging_Buffer_Type;
    end record with Alignment => MPU_Region_Alignment,
-                   Size => MPU_Region_Alignment * Byte'Size;
+                   Size => 65 * MPU_Region_Alignment * Byte'Size;
 
    --
    --  Array of SPI device objects

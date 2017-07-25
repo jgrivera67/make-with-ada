@@ -43,7 +43,12 @@ package DMA_Driver is
    --
    DMA_Max_Num_Channels : constant := 16;
 
-   subtype DMA_Channel_Type is Natural range 0 .. DMA_Max_Num_Channels - 1;
+   subtype DMA_Channel_Type is Natural range 0 .. DMA_Max_Num_Channels;
+
+   subtype Valid_DMA_Channel_Type is DMA_Channel_Type
+      range DMA_Channel_Type'First .. DMA_Channel_Type'Last - 1;
+
+   DMA_Channel_None : constant DMA_Channel_Type := DMA_Channel_Type'Last;
 
    --
    --  Maximum DMA transfer size (in bytes) supported by the DMA controller
@@ -118,6 +123,14 @@ package DMA_Driver is
    DMA_IEEE_1588_Timer2 : constant DMA_Request_Sources_Type := CHCFG_SOURCE_Field_56;
    DMA_IEEE_1588_Timer3 : constant DMA_Request_Sources_Type := CHCFG_SOURCE_Field_57;
 
+   --
+   --  DMA channel assignment
+   --
+   DMA_Channel_SPI2_Tx : constant DMA_Channel_Type :=
+     DMA_Channel_Type'First;
+   DMA_Channel_SPI2_Rx : constant DMA_Channel_Type :=
+     DMA_Channel_Type'First + 1;
+
    function Initialized return Boolean with Inline;
    --  @private (Used only in contracts)
 
@@ -127,7 +140,7 @@ package DMA_Driver is
    --  Initialize the DMA engine
    --
 
-   procedure Enable_DMA_Channel (DMA_Channel : DMA_Channel_Type;
+   procedure Enable_DMA_Channel (DMA_Channel : Valid_DMA_Channel_Type;
 				 DMA_Request_Source : DMA_Request_Sources_Type;
 				 Periodic_Trigger : Boolean := False)
      with Pre => Initialized;
@@ -140,14 +153,11 @@ package DMA_Driver is
   --                          periodically.
   --
 
-   procedure Disable_DMA_Channel (DMA_Channel : DMA_Channel_Type)
+   procedure Disable_DMA_Channel (DMA_Channel : Valid_DMA_Channel_Type)
      with Pre => Initialized;
    --
    --  Disable a given DMA channel
    --
-
-   type DMA_Completion_Callback_Access_Type is
-       access procedure (DMA_Channel : DMA_Channel_Type; Successful : Boolean);
 
    --
    --  Transfer size (in bytes) per bus cycle
@@ -156,47 +166,87 @@ package DMA_Driver is
      with Static_Predicate =>
         DMA_Per_Bus_Cycle_Transfer_Size_Type in 1 | 2 | 4 | 16 | 32;
 
-   procedure Start_DMA_Transfer (
-      DMA_Channel : DMA_Channel_Type;
+   Max_DMA_Transactions_per_DMA_Transfer_No_Channel_Linking :
+      constant Integer_Address := (2 ** 15) - 1;
+
+   Max_DMA_Transactions_per_DMA_Transfer_With_Channel_Linking :
+      constant Integer_Address := (2 ** 9) - 1;
+
+
+   procedure Prepare_DMA_Transfer (
+      DMA_Channel : Valid_DMA_Channel_Type;
       Dest_Address : System.Address;
+      Increment_Dest_Address : Boolean;
       Src_Address : System.Address;
+      Increment_Source_Address : Boolean;
       Total_Transfer_Size : DMA_Transfer_Size_Type;
+      Per_DMA_Transaction_Transfer_Size : DMA_Transfer_Size_Type;
       Per_Bus_Cycle_Transfer_Size : DMA_Per_Bus_Cycle_Transfer_Size_Type;
-      Completion_Callback_Ptr : DMA_Completion_Callback_Access_Type)
-     with Pre => Initialized
-                 and
-                 (Memory_Map.Valid_RAM_Address (Dest_Address) or else
-                  Memory_Map.Valid_MMIO_Address (Dest_Address))
-                 and
-                 (Memory_Map.Valid_RAM_Address (Src_Address) or else
-                  Memory_Map.Valid_MMIO_Address (Src_Address) or else
-                  Memory_Map.Valid_Flash_Address (Src_Address))
-                 and
-                 not Memory_Utils.Address_Overlap (Src_Address,
-                                                   Total_Transfer_Size,
-                                                   Dest_Address,
-                                                   Total_Transfer_Size)
-                 and
-                 Total_Transfer_Size mod Per_Bus_Cycle_Transfer_Size = 0;
+      Enable_Transfer_Completion_Interrupt : Boolean := False;
+      Per_DMA_Transaction_Linked_Channel : DMA_Channel_Type :=
+         DMA_Channel_None;
+      Transfer_Completion_Linked_Channel : DMA_Channel_Type :=
+         DMA_Channel_None)
+     with Pre =>
+        Initialized
+        and
+        (Memory_Map.Valid_RAM_Address (Dest_Address) or else
+         Memory_Map.Valid_MMIO_Address (Dest_Address))
+        and
+        (Memory_Map.Valid_RAM_Address (Src_Address) or else
+         Memory_Map.Valid_MMIO_Address (Src_Address) or else
+         Memory_Map.Valid_Flash_Address (Src_Address))
+        and
+        not Memory_Utils.Address_Overlap (Src_Address,
+                                          Total_Transfer_Size,
+                                          Dest_Address,
+                                          Total_Transfer_Size)
+        and
+        Total_Transfer_Size mod Per_DMA_Transaction_Transfer_Size = 0
+        and
+        Per_DMA_Transaction_Transfer_Size mod Per_Bus_Cycle_Transfer_Size = 0
+        and
+        (if Per_DMA_Transaction_Linked_Channel = DMA_Channel_None then
+            Total_Transfer_Size / Per_DMA_Transaction_Transfer_Size <=
+            Max_DMA_Transactions_per_DMA_Transfer_No_Channel_Linking
+         else
+            Total_Transfer_Size / Per_DMA_Transaction_Transfer_Size <=
+            Max_DMA_Transactions_per_DMA_Transfer_With_Channel_Linking);
    --
-   --  Start a DMA transfer
+   --  Prepare a DMA transfer
    --
    --  @param DMA_Channel DMA channel ID to use
    --  @param Dest_Address destination address for the DMA transfer
    --  @param Src_Address source address for the DMA transfer
    --  @param Total_Transfer_Size Size of the DMA transfer in bytes
-   --  @param Per_Bus_Cycle_Transfer_Size per-bus-cycle transfer size (bytes)
-   --  @param Completion_Callback_Ptr Pointer to completion callback
-   --  @param Cycle_Stealing_Mode Flag indicating if cycle-stealing mode is to
-   --         be used
+   --  @param Per_DMA_Transaction_Transfer_Size per-DMA-transaction size in
+   --          bytes
+   --  @param Per_Bus_Cycle_Transfer_Size per-bus-cycle transfer size in
+   --         bytes (size of each read bus access and of each write bus access)
+   --  @param Enable_Transfer_Completion_Interrupt Flag to enaable generation
+   --         of an interrupt when the whole DMA transfer is complete
+   --  @param Per_DMA_Transaction_Linked_Channel DMA channel on which another
+   --         DMA transfer is to be started automatically upon completion of a
+   --         each DMA transaction on the 'DMA_Channel' channel.
+   --  @param Transfer_Completion_Linked_Channel DMA channel on which another
+   --         DMA transfer is to be started automatically upon completion of
+   --         the whole DMA transfer on the 'DMA_Channel' channel.
    --
 
-   procedure Stop_DMA_Transfer (DMA_Channel : DMA_Channel_Type)
+   procedure Start_DMA_Transfer (DMA_Channel : Valid_DMA_Channel_Type)
      with Pre => Initialized;
    --
-   --  Stop a DMA transfer
+   --  Start a DMA transfer by software
    --
-   --  @param DMA_Channel DMA channel ID for the transfer to stop
+   --  @param DMA_Channel DMA channel ID to use
+   --
+
+   procedure Wait_Until_DMA_Completed (DMA_Channel : Valid_DMA_Channel_Type)
+     with Pre => Initialized;
+   --
+   --  Wait until the current DMA transfer on the given channel completes
+   --
+   --  @param DMA_Channel DMA channel ID
    --
 
 end DMA_Driver;

@@ -93,7 +93,7 @@ package body LCD_Display is
       Initialized : Boolean := False;
       Staging_Buffer : Display_Staging_Buffer_Type;
    end record with Alignment => MPU_Region_Alignment,
-                   Size => 673 * MPU_Region_Alignment * Byte'Size;
+                   Size => 577 * MPU_Region_Alignment * Byte'Size;
 
    LCD_Display_Var : LCD_Display_Type;
 
@@ -183,8 +183,13 @@ package body LCD_Display is
    --
    Arg_Unlock_Interface : constant Byte := 16#12#;
    Arg_Access_To_Commands_Yes : constant Byte := 16#B1#;
-   Arg_Remap_Settings : constant Byte := Shift_Left (1, 5) or
-                                         Shift_Left (1, 6);
+   Remap_Com_Split_Odd_Even_En : constant Byte :=
+      Shift_Left (Byte (1), 5);
+   Remap_Color_RGB565 : constant Byte :=
+      Shift_Left (Byte (1), 6);
+
+   Arg_Remap_Settings : constant Byte :=
+      Remap_Com_Split_Odd_Even_En or Remap_Color_RGB565;
 
    Empty_Args_Buffer : constant Bytes_Array_Type (1 .. 0) := (others => 0);
 
@@ -200,7 +205,8 @@ package body LCD_Display is
 
    procedure Send_Display_Command (
       Command : LCD_Command_Codes_Type;
-      Arguments_Buffer : Bytes_Array_Type := Empty_Args_Buffer);
+      Arguments_Buffer : Bytes_Array_Type;
+      DC_Pin_On_For_Cmd_Args : Boolean := True);
 
    procedure Send_Display_Data (Data_Buffer : Bytes_Array_Type)
      with Pre => Data_Buffer'Length /= 0;
@@ -350,7 +356,8 @@ package body LCD_Display is
       SPI_Driver.Initialize (SPI_Device_Id => Devices.MCU_Specific.SPI2,
                              Master_Mode => True,
                              Frame_Size => 1,
-                             Sck_Frequency_Hz => 8_000_000);
+                             Sck_Frequency_Hz => 8_000_000,
+                             LSB_First => False);
 
       --
       --  Power on sequence
@@ -397,10 +404,12 @@ package body LCD_Display is
                             (1 => 16#60#));
 
       Send_Display_Command (Cmd_Set_Reset_And_Precharge_Period,
-                            (1 => 16#32#));
+                            (1 => 16#32#),
+                            DC_Pin_On_For_Cmd_Args => False);
 
       Send_Display_Command (Cmd_Vcomh,
-                            (1 => 16#05#));
+                            (1 => 16#05#),
+                            DC_Pin_On_For_Cmd_Args => False);
 
       Send_Display_Command (Cmd_Set_Display_Mode_Normal, Empty_Args_Buffer);
 
@@ -549,7 +558,8 @@ package body LCD_Display is
 
    procedure Send_Display_Command (
       Command : LCD_Command_Codes_Type;
-      Arguments_Buffer : Bytes_Array_Type := Empty_Args_Buffer)
+      Arguments_Buffer : Bytes_Array_Type;
+      DC_Pin_On_For_Cmd_Args : Boolean := True)
    is
       Command_Buffer : constant Bytes_Array_Type (1 .. 1) :=
          (1 => Command'Enum_Rep);
@@ -557,14 +567,16 @@ package body LCD_Display is
    begin
       Deactivate_Output_Pin (LCD_Display_Const.DC_Pin);
 
-      SPI_Driver.Master_Transmit_Receive (
+      SPI_Driver.Master_Transmit_Receive_Polling (
          SPI_Device_Id => Devices.MCU_Specific.SPI2,
          Tx_Data_Buffer => Command_Buffer,
          Rx_Data_Buffer => Dummy_SPI_Rx_Buffer);
 
       if Arguments_Buffer'Length /= 0 then
-         Activate_Output_Pin (LCD_Display_Const.DC_Pin);
-         SPI_Driver.Master_Transmit_Receive (
+         if DC_Pin_On_For_Cmd_Args then
+            Activate_Output_Pin (LCD_Display_Const.DC_Pin);
+         end if;
+         SPI_Driver.Master_Transmit_Receive_Polling (
             SPI_Device_Id => Devices.MCU_Specific.SPI2,
             Tx_Data_Buffer => Arguments_Buffer,
             Rx_Data_Buffer => Dummy_SPI_Rx_Buffer);
@@ -577,12 +589,6 @@ package body LCD_Display is
 
    procedure Send_Display_Data (Data_Buffer : Bytes_Array_Type)
    is
-      SPI_Tx_Chunk_Size : constant Positive := 511; --  in bytes
-      Num_Whole_Tx_Chunks : constant Natural :=
-         Data_Buffer'Length / SPI_Tx_Chunk_Size;
-      Last_Tx_Chunk_Size : constant Natural :=
-         Data_Buffer'Length mod SPI_Tx_Chunk_Size;
-      Chunk_Start_Index : Positive range Data_Buffer'Range;
       Dummy_SPI_Rx_Buffer : Bytes_Array_Type (1 .. 0);
    begin
       Send_Display_Command (Cmd_Write_Ram, Empty_Args_Buffer);
@@ -591,25 +597,11 @@ package body LCD_Display is
       --  Sending data -> set DC pin
       --
       Activate_Output_Pin (LCD_Display_Const.DC_Pin);
-      Chunk_Start_Index := Data_Buffer'First;
-      for I in 1 .. Num_Whole_Tx_Chunks loop
-         SPI_Driver.Master_Transmit_Receive (
-            SPI_Device_Id => Devices.MCU_Specific.SPI2,
-            Tx_Data_Buffer =>
-               Data_Buffer (Chunk_Start_Index ..
-                            Chunk_Start_Index + SPI_Tx_Chunk_Size - 1),
-            Rx_Data_Buffer => Dummy_SPI_Rx_Buffer);
 
-         Chunk_Start_Index := Chunk_Start_Index + SPI_Tx_Chunk_Size;
-      end loop;
-
-      if Last_Tx_Chunk_Size /= 0 then
-         SPI_Driver.Master_Transmit_Receive (
-            SPI_Device_Id => Devices.MCU_Specific.SPI2,
-            Tx_Data_Buffer =>
-               Data_Buffer (Chunk_Start_Index .. Data_Buffer'Last),
-            Rx_Data_Buffer => Dummy_SPI_Rx_Buffer);
-      end if;
+      SPI_Driver.Master_Transmit_Receive_DMA (
+         SPI_Device_Id => Devices.MCU_Specific.SPI2,
+          Tx_Data_Buffer => Data_Buffer,
+          Rx_Data_Buffer => Dummy_SPI_Rx_Buffer);
    end Send_Display_Data;
 
    --------------------
@@ -621,9 +613,10 @@ package body LCD_Display is
                              Width_In_Pixels : X_Coordinate_Type;
                              Height_In_Pixels : Y_Coordinate_Type)
    is
-      Start_Column : constant Byte := Byte (X);
+      Column_Base_Offset : constant := 16;
+      Start_Column : constant Byte := Byte (X) - 1 + Column_Base_Offset;
       End_Column : constant Byte := Start_Column + Byte (Width_In_Pixels) - 1;
-      Start_Row : constant Byte := Byte (Y);
+      Start_Row : constant Byte := Byte (Y) - 1;
       End_Row : constant Byte := Start_Row + Byte (Height_In_Pixels) - 1;
       Total_Bytes : constant Positive :=
         Positive (Width_In_Pixels) * Positive (Height_In_Pixels) *

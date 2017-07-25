@@ -31,6 +31,7 @@ with Ada.Interrupts.Names;
 with Memory_Protection;
 with Interfaces.Bit_Types;
 with Runtime_Logs;
+with Ada.Synchronous_Task_Control;
 
 package body DMA_Driver is
    pragma SPARK_Mode (Off);
@@ -41,19 +42,20 @@ package body DMA_Driver is
    use Ada.Interrupts.Names;
    use Memory_Protection;
    use Interfaces.Bit_Types;
+   use Ada.Synchronous_Task_Control;
 
    --
    --  State information kept for a DMA channel
    --
    type DMA_Channel_State_Type is limited record
       Enabled : Boolean := False;
-      Transfer_Started : Boolean := False;
+      Transfer_Triggered_By_Peripheral : Boolean := False;
       Transfer_Error_Count : Unsigned_32 := 0;
-      Completion_Callback_Ptr : DMA_Completion_Callback_Access_Type := null;
+      Transfer_Completed : Suspension_Object;
    end record;
 
    type DMA_Channel_Array_Type is
-     array (DMA_Channel_Type) of DMA_Channel_State_Type;
+     array (Valid_DMA_Channel_Type) of DMA_Channel_State_Type;
 
    --
    --  Global state of the DMA engine
@@ -61,8 +63,7 @@ package body DMA_Driver is
    type DMA_Engine_Type is limited record
       Initialized : Boolean := False;
       DMA_Channels : DMA_Channel_Array_Type;
-   end record with Alignment => MPU_Region_Alignment,
-                   Size => 7 * MPU_Region_Alignment * Byte'Size;
+   end record with Alignment => MPU_Region_Alignment;
 
    DMA_Engine_Var : DMA_Engine_Type;
 
@@ -72,7 +73,7 @@ package body DMA_Driver is
    protected DMA_Interrupts_Object is
       pragma Interrupt_Priority (Microcontroller.DMA_Interrupt_Priority);
    private
-      procedure DMA_Irq_Common_Handler (DMA_Channel : DMA_Channel_Type)
+      procedure DMA_Irq_Common_Handler (DMA_Channel : Valid_DMA_Channel_Type)
          with Pre => not Are_Cpu_Interrupts_Disabled;
 
       procedure DMA0_Irq_Handler;
@@ -182,18 +183,34 @@ package body DMA_Driver is
          --
       end loop;
 
+      Set_Private_Data_Region (DMA_Periph'Address,
+                               DMA_Periph'Size,
+                               Read_Write);
+
+      --
+      --  Disable DMA module before doing global configuration:
+      --
+      DMA_CR_Value.HALT := CR_HALT_Field_1;
+      DMA_Periph.CR := DMA_CR_Value;
+
+      --
+      --  Do global configuration of DMA module:
+      --  - Enable minor loop mapping for TDC word2
+      --  - Select round robin arbitration of DMA channels instead of fixed
+      --    prioritiy
+      --  - Enable DMA module
+      --
+      DMA_CR_Value.EMLM := CR_EMLM_Field_1;
+      DMA_CR_Value.ERCA := CR_ERCA_Field_0;
+      DMA_CR_Value.HALT := CR_HALT_Field_0;
+      DMA_Periph.CR := DMA_CR_Value;
+
       Set_Private_Data_Region (DMA_Engine_Var'Address,
                                DMA_Engine_Var'Size,
                                Read_Write);
 
       DMA_Engine_Var.Initialized := True;
 
-      Set_Private_Data_Region (DMA_Periph'Address,
-                               DMA_Periph'Size,
-                               Read_Write);
-
-      DMA_CR_Value.HALT := CR_HALT_Field_1;
-      DMA_Periph.CR := DMA_CR_Value;
       Restore_Private_Data_Region (Old_Region);
    end Initialize;
 
@@ -202,7 +219,7 @@ package body DMA_Driver is
    ------------------------
 
    procedure Enable_DMA_Channel
-     (DMA_Channel : DMA_Channel_Type;
+     (DMA_Channel : Valid_DMA_Channel_Type;
       DMA_Request_Source : DMA_Request_Sources_Type;
       Periodic_Trigger : Boolean := False)
    is
@@ -213,12 +230,11 @@ package body DMA_Driver is
       Old_Region : MPU_Region_Descriptor_Type;
    begin
       pragma Assert (not DMA_Channel_State.Enabled);
-      pragma Assert (not DMA_Channel_State.Transfer_Started);
 
       DMAMUX_CHCFG_Value := DMAMUX_Periph.CHCFG (DMA_Channel);
       pragma Assert (DMAMUX_CHCFG_Value.ENBL = CHCFG_ENBL_Field_0);
       pragma Assert (DMAMUX_CHCFG_Value.TRIG = CHCFG_TRIG_Field_0);
-      pragma Assert (DMAMUX_CHCFG_Value.SOURCE = CHCFG_SOURCE_Field_0);
+      pragma Assert (DMAMUX_CHCFG_Value.SOURCE = DMA_No_Source);
 
       DMAMUX_CHCFG_Value.ENBL := CHCFG_ENBL_Field_1;
       if Periodic_Trigger then
@@ -249,6 +265,9 @@ package body DMA_Driver is
                                Read_Write);
 
       DMA_Channel_State.Enabled := True;
+      DMA_Channel_State.Transfer_Triggered_By_Peripheral :=
+         (DMA_Request_Source /= DMA_No_Source);
+
       Restore_Private_Data_Region (Old_Region);
    end Enable_DMA_Channel;
 
@@ -257,20 +276,19 @@ package body DMA_Driver is
    -------------------------
 
    procedure Disable_DMA_Channel
-     (DMA_Channel : DMA_Channel_Type)
+     (DMA_Channel : Valid_DMA_Channel_Type)
    is
       DMA_Channel_State : DMA_Channel_State_Type renames
         DMA_Engine_Var.DMA_Channels (DMA_Channel);
       DMAMUX_CHCFG_Value : DMAMUX_CHCFG_Register;
       CEEI_Value : DMA_CEEI_Register;
+      CERQ_Value : DMA_CERQ_Register;
       Old_Region : MPU_Region_Descriptor_Type;
    begin
       pragma Assert (DMA_Channel_State.Enabled);
-      pragma Assert (not DMA_Channel_State.Transfer_Started);
 
       DMAMUX_CHCFG_Value := DMAMUX_Periph.CHCFG (DMA_Channel);
       pragma Assert (DMAMUX_CHCFG_Value.ENBL = CHCFG_ENBL_Field_1);
-      pragma Assert (DMAMUX_CHCFG_Value.SOURCE /= DMA_No_Source);
       DMAMUX_CHCFG_Value.ENBL := CHCFG_ENBL_Field_0;
       DMAMUX_CHCFG_Value.TRIG := CHCFG_TRIG_Field_0;
       DMAMUX_CHCFG_Value.SOURCE := DMA_No_Source;
@@ -287,6 +305,14 @@ package body DMA_Driver is
                                Read_Write);
 
       --
+      --  Disable triggering of DMA requests from peripheral:
+      --
+      if DMA_Channel_State.Transfer_Triggered_By_Peripheral then
+         CERQ_Value.CERQ := CERQ_CERQ_Field (DMA_Channel);
+         DMA_Periph.CERQ := CERQ_Value;
+      end if;
+
+      --
       --  Disable DMA error interrupt for the channel:
       --
       CEEI_Value.CEEI := CEEI_CEEI_Field (DMA_Channel);
@@ -301,27 +327,28 @@ package body DMA_Driver is
       Restore_Private_Data_Region (Old_Region);
    end Disable_DMA_Channel;
 
-   ------------------------
-   -- Start_DMA_Transfer --
-   ------------------------
+   --------------------------
+   -- Prepare_DMA_Transfer --
+   --------------------------
 
-   procedure Start_DMA_Transfer
-     (DMA_Channel : DMA_Channel_Type;
+   procedure Prepare_DMA_Transfer (
+      DMA_Channel : Valid_DMA_Channel_Type;
       Dest_Address : System.Address;
+      Increment_Dest_Address : Boolean;
       Src_Address : System.Address;
+      Increment_Source_Address : Boolean;
       Total_Transfer_Size : DMA_Transfer_Size_Type;
+      Per_DMA_Transaction_Transfer_Size : DMA_Transfer_Size_Type;
       Per_Bus_Cycle_Transfer_Size : DMA_Per_Bus_Cycle_Transfer_Size_Type;
-      Completion_Callback_Ptr : DMA_Completion_Callback_Access_Type)
+      Enable_Transfer_Completion_Interrupt : Boolean := False;
+      Per_DMA_Transaction_Linked_Channel : DMA_Channel_Type :=
+         DMA_Channel_None;
+      Transfer_Completion_Linked_Channel : DMA_Channel_Type :=
+         DMA_Channel_None)
    is
       function Encode_Per_Bus_Cycle_Transfer_Size (
          Per_Bus_Cycle_Transfer_Size : DMA_Per_Bus_Cycle_Transfer_Size_Type)
          return Natural;
-
-      DMA_Channel_State : DMA_Channel_State_Type renames
-        DMA_Engine_Var.DMA_Channels (DMA_Channel);
-      Old_Region : MPU_Region_Descriptor_Type;
-      TCD_Value : TCD_Type;
-      SERQ_Value : DMA_SERQ_Register;
 
       ----------------------------------------
       -- Encode_Per_Bus_Cycle_Transfer_Size --
@@ -345,20 +372,26 @@ package body DMA_Driver is
          end case;
       end Encode_Per_Bus_Cycle_Transfer_Size;
 
+      Old_Region : MPU_Region_Descriptor_Type;
+      TCD_Value : TCD_Type;
+      SERQ_Value : DMA_SERQ_Register;
+      CDNE_Value : DMA_CDNE_Register;
+      DMA_Channel_State : DMA_Channel_State_Type renames
+        DMA_Engine_Var.DMA_Channels (DMA_Channel);
    begin
       pragma Assert (DMA_Channel_State.Enabled);
-      pragma Assert (not DMA_Channel_State.Transfer_Started);
-
-      Set_Private_Data_Region (DMA_Engine_Var'Address,
-                               DMA_Engine_Var'Size,
-                               Read_Write,
-                               Old_Region);
-
-      DMA_Channel_State.Completion_Callback_Ptr := Completion_Callback_Ptr;
+      pragma Assert (not Current_State (DMA_Channel_State.Transfer_Completed));
 
       Set_Private_Data_Region (DMA_Periph'Address,
                                DMA_Periph'Size,
-                               Read_Write);
+                               Read_Write,
+                               Old_Region);
+
+      --
+      --  Clear DONE Bit for the channel, before setting the channel's TCD:
+      --
+      CDNE_Value.CDNE := CDNE_CDNE_Field (DMA_Channel);
+      DMA_Periph.CDNE := CDNE_Value;
 
       --
       --  Reset TCD before populating it:
@@ -372,76 +405,138 @@ package body DMA_Driver is
       TCD_Value.TCD_DADDR := Word (To_Integer (Dest_Address));
       TCD_Value.TCD_ATTR.SSIZE := TCD_ATTR0_SSIZE_Field'Enum_Val (
          Encode_Per_Bus_Cycle_Transfer_Size (Per_Bus_Cycle_Transfer_Size));
-      TCD_Value.TCD_ATTR.DSIZE := TCD_Value.TCD_ATTR.SSIZE'Enum_Rep;
-      TCD_Value.TCD_NBYTES.NBYTES_MLNO := Word (Per_Bus_Cycle_Transfer_Size);
-      if Memory_Map.Valid_MMIO_Address (Src_Address) then
-         TCD_Value.TCD_SOFF := 0;
-      else
+      TCD_Value.TCD_ATTR.DSIZE :=
+         TCD_ATTR0_DSIZE_Field (TCD_Value.TCD_ATTR.SSIZE'Enum_Rep);
+
+      TCD_Value.TCD_NBYTES.TCD_NBYTES_MLOFFNO :=
+        (SMLOE => TCD_NBYTES_MLOFFNO0_SMLOE_Field_0,
+         DMLOE => TCD_NBYTES_MLOFFNO0_DMLOE_Field_0,
+         NBYTES =>
+            TCD_NBYTES_MLOFFNO0_NBYTES_Field (
+               Per_DMA_Transaction_Transfer_Size));
+
+      --
+      --  Set source address increment after every read bus access
+      --
+      if Increment_Source_Address then
          TCD_Value.TCD_SOFF := Short (Per_Bus_Cycle_Transfer_Size);
-      end if;
-
-      if Memory_Map.Valid_MMIO_Address (Dest_Address) then
-         TCD_Value.TCD_DOFF := 0;
       else
-         TCD_Value.TCD_DOFF := Short (Per_Bus_Cycle_Transfer_Size);
+         TCD_Value.TCD_SOFF := 0;
       end if;
 
-      TCD_Value.TCD_CITER.TCD_CITER_ELINKNO.CITER :=
-         TCD_CITER_ELINKNO0_CITER_Field (
-            Total_Transfer_Size / Per_Bus_Cycle_Transfer_Size);
-      TCD_Value.TCD_BITER.TCD_BITER_ELINKNO.BITER :=
-         TCD_Value.TCD_CITER.TCD_CITER_ELINKNO.CITER;
+      --
+      --  Set destination address increment after every write bus access
+      --
+      if Increment_Dest_Address then
+         TCD_Value.TCD_DOFF := Short (Per_Bus_Cycle_Transfer_Size);
+      else
+         TCD_Value.TCD_DOFF := 0;
+      end if;
 
-      TCD_Value.TCD_CSR.DREQ := TCD_CSR0_DREQ_Field_1;
-      TCD_Value.TCD_CSR.INTMAJOR := TCD_CSR0_INTMAJOR_Field_1;
+      if Per_DMA_Transaction_Linked_Channel /= DMA_Channel_None then
+         TCD_Value.TCD_CITER.TCD_CITER_ELINKYES.ELINK :=
+            TCD_CITER_ELINKYES0_ELINK_Field_1;
+         TCD_Value.TCD_CITER.TCD_CITER_ELINKYES.LINKCH :=
+            TCD_CITER_ELINKYES0_LINKCH_Field (
+               Per_DMA_Transaction_Linked_Channel);
+         TCD_Value.TCD_CITER.TCD_CITER_ELINKYES.CITER :=
+            TCD_CITER_ELINKYES0_CITER_Field (
+               Total_Transfer_Size / Per_DMA_Transaction_Transfer_Size);
+         TCD_Value.TCD_BITER.TCD_BITER_ELINKYES.ELINK :=
+            TCD_BITER_ELINKYES0_ELINK_Field_1;
+         TCD_Value.TCD_BITER.TCD_BITER_ELINKYES.LINKCH :=
+            TCD_BITER_ELINKYES0_LINKCH_Field (
+               Per_DMA_Transaction_Linked_Channel);
+         TCD_Value.TCD_BITER.TCD_BITER_ELINKYES.BITER :=
+            TCD_Value.TCD_CITER.TCD_CITER_ELINKYES.CITER;
+      else
+         TCD_Value.TCD_CITER.TCD_CITER_ELINKNO.ELINK :=
+            TCD_CITER_ELINKNO0_ELINK_Field_0;
+         TCD_Value.TCD_CITER.TCD_CITER_ELINKNO.CITER :=
+            TCD_CITER_ELINKNO0_CITER_Field (
+               Total_Transfer_Size / Per_DMA_Transaction_Transfer_Size);
+         TCD_Value.TCD_BITER.TCD_BITER_ELINKNO.ELINK :=
+            TCD_BITER_ELINKNO0_ELINK_Field_0;
+         TCD_Value.TCD_BITER.TCD_BITER_ELINKNO.BITER :=
+            TCD_Value.TCD_CITER.TCD_CITER_ELINKNO.CITER;
+      end if;
+
+      if Transfer_Completion_Linked_Channel /= DMA_Channel_None then
+         TCD_Value.TCD_CSR.MAJORELINK := TCD_CSR0_MAJORELINK_Field_1;
+         TCD_Value.TCD_CSR.MAJORLINKCH :=
+            TCD_CSR0_MAJORLINKCH_Field (Transfer_Completion_Linked_Channel);
+      end if;
+
+      --
+      --  Enable automatic disabling of REQ upon completion of major loop
+      --  for peripheral triggered DMA transfers
+      --
+      if DMA_Channel_State.Transfer_Triggered_By_Peripheral then
+         TCD_Value.TCD_CSR.DREQ := TCD_CSR0_DREQ_Field_1;
+      end if;
+
+      --
+      --  Enable generation of interrupts on major loop completion
+      --
+      if Enable_Transfer_Completion_Interrupt then
+         TCD_Value.TCD_CSR.INTMAJOR := TCD_CSR0_INTMAJOR_Field_1;
+      end if;
+
+      --
+      --  Update TCD in the DMA module:
+      --
       DMA_Periph.TCD_Array (DMA_Channel) := TCD_Value;
 
-      --
-      --  Start DMA transfer in the DMA controller:
-      --
-      SERQ_Value.SERQ := SERQ_SERQ_Field (DMA_Channel);
-      DMA_Periph.SERQ := SERQ_Value;
+      if DMA_Channel_State.Transfer_Triggered_By_Peripheral then
+         --
+         --  Enable DMA requests triggered from a peripheral (DMA request
+         --  source peripheral):
+         --
+         SERQ_Value.SERQ := SERQ_SERQ_Field (DMA_Channel);
+         DMA_Periph.SERQ := SERQ_Value;
+      end if;
 
-      Set_Private_Data_Region (DMA_Engine_Var'Address,
-                               DMA_Engine_Var'Size,
-                               Read_Write);
-
-      DMA_Channel_State.Transfer_Started := True;
       Restore_Private_Data_Region (Old_Region);
-   end Start_DMA_Transfer;
+   end Prepare_DMA_Transfer;
 
-   -----------------------
-   -- Stop_DMA_Transfer --
-   -----------------------
+   ------------------------
+   -- Start_DMA_Transfer --
+   ------------------------
 
-   procedure Stop_DMA_Transfer
-     (DMA_Channel : DMA_Channel_Type)
+   procedure Start_DMA_Transfer (DMA_Channel : Valid_DMA_Channel_Type)
    is
-       CERQ_Value : DMA_CERQ_Register;
-       Old_Region : MPU_Region_Descriptor_Type;
-       DMA_Channel_State : DMA_Channel_State_Type renames
-          DMA_Engine_Var.DMA_Channels (DMA_Channel);
+      Old_Region : MPU_Region_Descriptor_Type;
+      SSRT_Value : DMA_SSRT_Register;
+      DMA_Channel_State : DMA_Channel_State_Type renames
+        DMA_Engine_Var.DMA_Channels (DMA_Channel);
    begin
+      pragma Assert (not DMA_Channel_State.Transfer_Triggered_By_Peripheral);
+
       Set_Private_Data_Region (DMA_Periph'Address,
                                DMA_Periph'Size,
                                Read_Write,
                                Old_Region);
 
-      CERQ_Value.CERQ := SERQ_SERQ_Field (DMA_Channel);
-      DMA_Periph.CERQ := CERQ_Value;
-
-      pragma Assert (DMA_Channel_State.Enabled);
-      if DMA_Channel_State.Transfer_Started then
-         Set_Private_Data_Region (DMA_Engine_Var'Address,
-                                  DMA_Engine_Var'Size,
-                                  Read_Write);
-         DMA_Channel_State.Transfer_Started := False;
-         Runtime_Logs.Error_Print ("DMA transfer aborted for channel" &
-                                   DMA_Channel'Image);
-      end if;
+      --
+      --  Start DMA transfer in the DMA controller:
+      --
+      SSRT_Value.SSRT := SSRT_SSRT_Field (DMA_Channel);
+      DMA_Periph.SSRT := SSRT_Value;
 
       Restore_Private_Data_Region (Old_Region);
-   end Stop_DMA_Transfer;
+   end Start_DMA_Transfer;
+
+   ------------------------------
+   -- Wait_Until_DMA_Completed --
+   ------------------------------
+
+   procedure Wait_Until_DMA_Completed (DMA_Channel : Valid_DMA_Channel_Type)
+   is
+      DMA_Channel_State : DMA_Channel_State_Type renames
+          DMA_Engine_Var.DMA_Channels (DMA_Channel);
+   begin
+      Suspend_Until_True (DMA_Channel_State.Transfer_Completed);
+   end Wait_Until_DMA_Completed;
 
    --
    --  Interrupt handlers
@@ -533,7 +628,7 @@ package body DMA_Driver is
       ----------------------------
 
       procedure DMA_Irq_Common_Handler
-        (DMA_Channel : DMA_Channel_Type)
+        (DMA_Channel : Valid_DMA_Channel_Type)
       is
          CINT_Value : DMA_CINT_Register;
          ERR_Value : DMA_ERR_Register;
@@ -550,9 +645,8 @@ package body DMA_Driver is
          DMA_Periph.CINT := CINT_Value;
          ERR_Value := DMA_Periph.ERR;
          pragma Assert (ERR_Value.ERR.Arr (DMA_Channel) = ERR_ERR0_Field_0);
-         if DMA_Channel_State.Completion_Callback_Ptr /= null then
-            DMA_Channel_State.Completion_Callback_Ptr (DMA_Channel, True);
-         end if;
+         Set_True (DMA_Channel_State.Transfer_Completed);
+
          Restore_Private_Data_Region (Old_Region);
       end DMA_Irq_Common_Handler;
 
@@ -571,7 +665,7 @@ package body DMA_Driver is
                                   Old_Region);
 
          ERR_Value := DMA_Periph.ERR;
-         for Channel in DMA_Channel_Type loop
+         for Channel in Valid_DMA_Channel_Type loop
              if ERR_Value.ERR.Arr (Channel) = ERR_ERR0_Field_1 then
                 Runtime_Logs.Error_Print ("DMA error happened for channel" &
                                           Channel'Image);
@@ -588,7 +682,7 @@ package body DMA_Driver is
                                   DMA_Engine_Var'Size,
                                   Read_Write);
 
-         for Channel in DMA_Channel_Type loop
+         for Channel in Valid_DMA_Channel_Type loop
             if ERR_Value.ERR.Arr (Channel) = ERR_ERR0_Field_1 then
                declare
                   DMA_Channel_State : DMA_Channel_State_Type renames

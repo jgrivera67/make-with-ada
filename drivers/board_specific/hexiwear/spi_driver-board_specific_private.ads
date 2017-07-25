@@ -65,7 +65,8 @@ private package SPI_Driver.Board_Specific_Private is
              Pin_Function => PIN_FUNCTION_ALT2),
 
          Tx_Fifo_Size => 4, --  see RM section 3.9.4.4
-         Rx_Fifo_Size => 4  --  see RM section 3.9.4.5
+         Rx_Fifo_Size => 4, --  see RM section 3.9.4.5
+         others => <>
         ),
 
       SPI1 =>
@@ -91,7 +92,8 @@ private package SPI_Driver.Board_Specific_Private is
              Pin_Function => PIN_FUNCTION_ALT7),
 
          Tx_Fifo_Size => 1, --  see RM section 3.9.4.4
-         Rx_Fifo_Size => 1  --  see RM section 3.9.4.5
+         Rx_Fifo_Size => 1, --  see RM section 3.9.4.5
+         others => <>
         ),
 
       SPI2 =>
@@ -117,7 +119,10 @@ private package SPI_Driver.Board_Specific_Private is
              Pin_Function => PIN_FUNCTION_ALT2),
 
          Tx_Fifo_Size => 1, --  see RM section 3.9.4.4
-         Rx_Fifo_Size => 1  --  see RM section 3.9.4.5
+         Rx_Fifo_Size => 1, --  see RM section 3.9.4.5
+         Tx_DMA_Channel => DMA_Channel_SPI2_Tx,
+         Rx_DMA_Channel => DMA_Channel_SPI2_Rx,
+         Rx_DMA_Request_Source => DMA_SPI2_Transmit_Receive
         )
      );
 

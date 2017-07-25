@@ -29,6 +29,7 @@ with SPI_Driver.MCU_Specific_Private;
 with SPI_Driver.Board_Specific_Private;
 with MK64F12.SIM;
 with System.Address_To_Access_Conversions;
+with System.Storage_Elements;
 with Pin_Mux_Driver;
 
 package body SPI_Driver is
@@ -36,7 +37,7 @@ package body SPI_Driver is
    use SPI_Driver.MCU_Specific_Private;
    use SPI_Driver.Board_Specific_Private;
    use MK64F12.SIM;
-   use Devices.MCU_Specific.SPI;
+   use System.Storage_Elements;
    use Pin_Mux_Driver;
 
    package Address_To_SPI_Registers_Pointer is new
@@ -52,7 +53,8 @@ package body SPI_Driver is
      (SPI_Device_Id : SPI_Device_Id_Type;
       Master_Mode : Boolean;
       Frame_Size : SPI_Frame_Size_Type;
-      Sck_Frequency_Hz : Hertz_Type)
+      Sck_Frequency_Hz : Hertz_Type;
+      LSB_First : Boolean := False)
    is
       procedure Enable_Clock (SPI_Device_Id : SPI_Device_Id_Type);
 
@@ -190,7 +192,7 @@ package body SPI_Driver is
       --
       --  Set baud rate (frequency for SCK signal) for CTAR[0]
       --  registers:
-      --  - Set DBR to 0: No double baud rate
+      --  - Set DBR to 0: no double baud rate
       --  - Set CPHA to 1: data captured on the second edge
       --  - Set CPOL to 1: Clock active low
       --  - Set PBR to 0: Prescale divider is 2
@@ -207,6 +209,8 @@ package body SPI_Driver is
       CTAR_Value.CPOL := CTAR_CPOL_Field_1;
       Frame_Size_Field := CTAR_FMSZ_Field ((8 * Frame_Size) - 1);
       CTAR_Value.FMSZ := Frame_Size_Field;
+      CTAR_Value.LSBFE := (if LSB_First then CTAR_LSBFE_Field_1
+                                        else CTAR_LSBFE_Field_0);
 
       --
       --  TODO Calculate appropriate PBR and BR to match sck_frrequency_hz
@@ -214,9 +218,6 @@ package body SPI_Driver is
       pragma Assert (Sck_Frequency_Hz = 8_000_000);
       CTAR_Value.PBR := CTAR_PBR_Field_00;
       CTAR_Value.BR := 1;
-      CTAR_Value.CSSCK := 16#f#;
-      CTAR_Value.ASC := 16#f#;
-      CTAR_Value.DT := 16#f#;
 
       SPI_Registers_Ptr.CTAR (0) := CTAR_Value;
 
@@ -254,17 +255,396 @@ package body SPI_Driver is
       MCR_Value.HALT := MCR_HALT_Field_0;
 
       SPI_Registers_Ptr.MCR := MCR_Value;
-
       Restore_Private_Data_Region (Old_Region);
    end Initialize;
 
-   -----------------------------
-   -- Master_Transmit_Receive --
-   -----------------------------
+   ---------------------------------
+   -- Master_Transmit_Receive_DMA --
+   ---------------------------------
 
-   procedure Master_Transmit_Receive (SPI_Device_Id : SPI_Device_Id_Type;
-                                      Tx_Data_Buffer : Bytes_Array_Type;
-                                      Rx_Data_Buffer : out Bytes_Array_Type)
+   procedure Master_Transmit_Receive_DMA (
+      SPI_Device_Id : SPI_Device_Id_Type;
+      Tx_Data_Buffer : Bytes_Array_Type;
+      Rx_Data_Buffer : out Bytes_Array_Type)
+   is
+      SPI_Device : SPI_Device_Const_Type renames
+	   SPI_Devices_Const (SPI_Device_Id);
+      SPI_Device_Var : SPI_Device_Var_Type renames
+          SPI_Devices_Var (SPI_Device_Id);
+      Frame_Size : constant Integer_Address :=
+         Integer_Address (SPI_Device_Var.Frame_Size);
+      Total_DMA_Transfer_Size : constant Integer_Address :=
+         Integer_Address'Max (Tx_Data_Buffer'Length, Rx_Data_Buffer'Length) -
+         Frame_size;
+      Num_DMA_Transactions_Per_DMA_Transfer : constant Integer_Address :=
+         Total_DMA_Transfer_Size / Frame_Size;
+      Num_Largest_DMA_Transfers : constant Integer_Address :=
+         Num_DMA_Transactions_Per_DMA_Transfer /
+         Max_DMA_Transactions_per_DMA_Transfer_With_Channel_Linking;
+      Largest_DMA_Transfer_Size : constant Integer_Address :=
+         Max_DMA_Transactions_per_DMA_Transfer_With_Channel_Linking *
+         Frame_Size;
+      Last_Transfer_Remaining_DMA_transactions : constant Integer_Address :=
+         Num_DMA_Transactions_Per_DMA_Transfer mod
+         Max_DMA_Transactions_per_DMA_Transfer_With_Channel_Linking;
+      Last_DMA_Transfer_Size : constant Integer_Address :=
+         (Last_Transfer_Remaining_DMA_transactions * Frame_Size);
+
+     procedure Master_Transmit_Receive_DMA_Internal (
+         Tx_Data_Buffer : Bytes_Array_Type;
+         Rx_Data_Buffer : out Bytes_Array_Type)
+         with Pre => Tx_Data_Buffer'Length <= Largest_DMA_Transfer_Size
+                     and
+                     Rx_Data_Buffer'Length <= Largest_DMA_Transfer_Size
+                     and
+                     ((Tx_Data_Buffer'Length >= 2 * Frame_Size
+                       and then
+                       Tx_Data_Buffer'Length mod Frame_size = 0)
+                       or else
+                       (Rx_Data_Buffer'Length >= 2 * Frame_Size
+                        and then
+                        Rx_Data_Buffer'Length mod Frame_Size = 0));
+
+      ------------------------------------------
+      -- Master_Transmit_Receive_DMA_Internal --
+      ------------------------------------------
+
+      procedure Master_Transmit_Receive_DMA_Internal (
+      Tx_Data_Buffer : Bytes_Array_Type;
+      Rx_Data_Buffer : out Bytes_Array_Type)
+      is
+         SPI_Registers_Ptr : access SPI_Peripheral renames
+           SPI_Device.Registers_Ptr;
+         DMA_Transfer_Size : constant DMA_Transfer_Size_Type :=
+            DMA_Transfer_Size_Type'Max (Tx_Data_Buffer'Length,
+                                        Rx_Data_Buffer'Length);
+         SR_Value : SPI0_SR_Register;
+         MCR_Value : SPI0_MCR_Register;
+         RSER_Value : SPI0_RSER_Register;
+         Dummy_Buffer : Bytes_Array_Type (1 .. Positive (Frame_Size));
+         Old_Region : MPU_Region_Descriptor_Type;
+         SPI_Frame : PUSHR_TXDATA_Field;
+         Tx_Buffer_Index : Positive;
+         Remaining_SPI_Frames : Integer_Address;
+      begin
+         pragma Assert (DMA_Transfer_Size mod Frame_Size = 0);
+
+         --
+         --  Clear status register (status bits are w1c):
+         --
+         SR_Value := (TCF => SR_TCF_Field_1,
+                      TXRXS => SR_TXRXS_Field_1,
+                      EOQF => SR_EOQF_Field_1,
+                      TFUF => SR_TFUF_Field_1,
+                      TFFF => SR_TFFF_Field_1,
+                      RFOF => SR_RFOF_Field_1,
+                      RFDF => SR_RFDF_Field_1,
+                      others => <>);
+
+         SPI_Registers_Ptr.SR := SR_Value;
+
+         --
+         --  Flush Tx and Rx FIFOs
+         --
+         MCR_Value := SPI_Registers_Ptr.MCR;
+         MCR_Value.CLR_TXF := MCR_CLR_TXF_Field_1;
+         MCR_Value.CLR_RXF := MCR_CLR_RXF_Field_1;
+         SPI_Registers_Ptr.MCR := MCR_Value;
+
+         --
+         --  Both the Tx and Rx FIFOs are empty:
+         --
+         SR_Value := SPI_Registers_Ptr.SR;
+         pragma Assert (SR_Value.TFFF /= SR_TFFF_Field_0);
+         pragma Assert (SR_Value.RFDF = SR_RFDF_Field_0);
+         pragma Assert (Byte (SR_Value.TXCTR) = 0);
+         pragma Assert (Byte (SR_Value.RXCTR) = 0);
+
+         --
+         --  The SPI controller is in "Running state":
+         --
+         SR_Value := SPI_Registers_Ptr.SR;
+         pragma Assert (SR_Value.TXRXS /= SR_TXRXS_Field_0);
+
+         --
+         --  Set MPU region for the DMA engine to cover the entire address
+         --  space, as  the DMA engine needs to access the following:
+         --  Tx_Data_Buffer, Rx_Data_Buffer, SPI PUSHR and POPR registers,
+         --  SPI_Device_Var.PUSHR_Value_For_DMA
+         --
+         Set_DMA_Region (DMA_Region_DMA_Engine,
+                         DMA_Device_DMA_Engine,
+                         To_Address (Integer_Address'First),
+                         Size_In_Bits => 0,
+                         Permissions => Read_Write);
+
+         Set_Private_Data_Region (SPI_Device_Var'Address,
+                                  SPI_Device_Var'Size,
+                                  Read_Write,
+                                  Old_Region);
+
+
+         if Tx_Data_Buffer'Length /= 0 then
+            Tx_Buffer_Index := Tx_Data_Buffer'First;
+            Remaining_SPI_Frames := Tx_Data_Buffer'Length / Frame_Size;
+            for PUSHR_Value_Entry of SPI_Device_Var.DMA_Staging_Buffer loop
+               --
+               --  Configure PUSHR command bits:
+               --  - Continuous Peripheral Chip Select (PCS) (for all SPI
+               --    frames but the last one)
+               --  - Use CTAR[0] for SPI transfers
+               --  - Assert chip select PCS0 for SPI transfers (asserted low)
+               --
+               if Frame_Size = 2 then
+                  --
+                  --  Assume little endian byte order (LSByte in lowest
+                  --  address)
+                  --
+                  SPI_Frame := Unsigned_16 (Tx_Data_Buffer (Tx_Buffer_Index))
+                               or
+                               Shift_Left (
+                                  Unsigned_16 (
+                                     Tx_Data_Buffer (Tx_Buffer_Index + 1)),
+                                  8);
+               else
+	          SPI_Frame := Unsigned_16 (Tx_Data_Buffer (Tx_Buffer_Index));
+	       end if;
+
+               PUSHR_Value_Entry := (CONT => PUSHR_CONT_Field_1,
+                                     CTAS => PUSHR_CTAS_Field_000,
+                                     PCS => PUSHR_PCS_Field_1,
+                                     TXDATA => SPI_Frame,
+                                     others => <>);
+
+               Remaining_SPI_Frames := Remaining_SPI_Frames - 1;
+               exit when Remaining_SPI_Frames = 0;
+
+               Tx_Buffer_Index := Tx_Buffer_Index + Positive (Frame_Size);
+            end loop;
+         end if;
+
+         Prepare_DMA_Transfer (
+            DMA_Channel => SPI_Device.Tx_DMA_Channel,
+            Dest_Address => SPI_Registers_Ptr.PUSHR'Address,
+            Increment_Dest_Address => False,
+            Src_Address => SPI_Device_Var.DMA_Staging_Buffer'Address,
+            Increment_Source_Address => Tx_Data_Buffer'Length /= 0,
+            Total_Transfer_Size =>
+               (DMA_Transfer_Size / Frame_Size) *
+               (SPI_Registers_Ptr.PUSHR'Size / Byte'Size),
+            Per_DMA_Transaction_Transfer_Size =>
+               SPI_Registers_Ptr.PUSHR'Size / Byte'Size,
+            Per_Bus_Cycle_Transfer_Size =>
+               SPI_Registers_Ptr.PUSHR'Size / Byte'Size);
+
+         Prepare_DMA_Transfer (
+            DMA_Channel => SPI_Device.Rx_DMA_Channel,
+            Dest_Address =>
+               (if Rx_Data_Buffer'Length /= 0 then
+                   Rx_Data_Buffer'Address
+                else
+                   Dummy_Buffer'Address),
+            Increment_Dest_Address => Rx_Data_Buffer'Length /= 0,
+            Src_Address => SPI_Registers_Ptr.POPR'Address,
+            Increment_Source_Address => False,
+            Total_Transfer_Size => DMA_Transfer_Size,
+            Per_DMA_Transaction_Transfer_Size => Frame_Size,
+            Per_Bus_Cycle_Transfer_Size => Frame_Size,
+            Enable_Transfer_Completion_Interrupt => True,
+            Per_DMA_Transaction_Linked_Channel =>
+               SPI_Device.Tx_DMA_Channel);
+
+         --
+         --  Enable automatic generation of DMA request from the SPI module
+         --  when RFDF is set (SPI Rx FIFO not empty)
+         --
+         RSER_Value := SPI_Registers_Ptr.RSER;
+         RSER_Value.RFDF_RE := RSER_RFDF_RE_Field_1;
+         RSER_Value.RFDF_DIRS := RSER_RFDF_DIRS_Field_1;
+         SPI_Registers_Ptr.RSER := RSER_Value;
+
+         --
+         --  Kick off pipeline of DMA channels by starting the
+         --  'Tx_DMA_Channel' channel:
+         --
+         Start_DMA_Transfer (SPI_Device.Tx_DMA_Channel);
+
+         --
+         --  Wait for the whole DMA transfer pipeline to complete:
+         --
+         Wait_Until_DMA_Completed (SPI_Device.Rx_DMA_Channel);
+
+         --
+         --  Disable automatic generation of DMA request from the SPI module
+         --  when RFDF is set (SPI Rx FIFO not empty)
+         --
+         RSER_Value.RFDF_RE := RSER_RFDF_RE_Field_0;
+         RSER_Value.RFDF_DIRS := RSER_RFDF_DIRS_Field_0;
+         SPI_Registers_Ptr.RSER := RSER_Value;
+
+         Unset_DMA_Region (DMA_Region_DMA_Engine);
+
+         --
+         --  Both the Tx and Rx FIFOs are empty:
+         --
+         SR_Value := SPI_Registers_Ptr.SR;
+         pragma Assert (SR_Value.TFFF = SR_TFFF_Field_1);
+         pragma Assert (SR_Value.RFDF = SR_RFDF_Field_0);
+         pragma Assert (Byte (SR_Value.TXCTR) = 0);
+         pragma Assert (Byte (SR_Value.RXCTR) = 0);
+         pragma Assert (SR_Value.TXRXS = SR_TXRXS_Field_1);
+
+         Restore_Private_Data_Region (Old_Region);
+      end Master_Transmit_Receive_DMA_Internal;
+
+      -- ** --
+
+      Chunk_Start_Index :
+         Positive range 1 .. Positive (Total_DMA_Transfer_Size) :=
+         (if Tx_Data_Buffer'Length /= 0 then Tx_Data_Buffer'First
+                                        else Rx_Data_Buffer'First);
+   begin
+      pragma Assert (SPI_Device.Tx_DMA_Channel /= DMA_Channel_None);
+      pragma Assert (SPI_Device.Tx_DMA_Channel /= DMA_Channel_None);
+      pragma Assert (SPI_Device.Rx_DMA_Channel /= DMA_Channel_None);
+      pragma Assert (SPI_Device.Tx_DMA_Channel /= SPI_Device.Rx_DMA_Channel);
+      pragma Assert (SPI_Device.Rx_DMA_Channel /=
+                     SPI_Device.Tx_DMA_Channel);
+
+      DMA_Driver.Enable_DMA_Channel (
+         SPI_Device.Tx_DMA_Channel,
+         DMA_No_Source);
+
+      DMA_Driver.Enable_DMA_Channel (
+         SPI_Device.Rx_DMA_Channel,
+         SPI_Device.Rx_DMA_Request_Source);
+
+      if Num_Largest_DMA_Transfers /= 0 then
+         for I in 1 .. Num_Largest_DMA_Transfers loop
+            if Tx_Data_Buffer'Length /= 0 then
+               if Rx_Data_Buffer'Length /= 0 then
+                  Master_Transmit_Receive_DMA_Internal (
+                     Tx_Data_Buffer (
+                         Chunk_Start_Index ..
+                         Chunk_Start_Index +
+                            Positive (Largest_DMA_Transfer_Size) - 1),
+                     Rx_Data_Buffer (
+                        Chunk_Start_Index ..
+                        Chunk_Start_Index +
+                           Positive (Largest_DMA_Transfer_Size) - 1));
+               else
+                  Master_Transmit_Receive_DMA_Internal (
+                     Tx_Data_Buffer (
+                         Chunk_Start_Index ..
+                         Chunk_Start_Index +
+                            Positive (Largest_DMA_Transfer_Size) - 1),
+                     Rx_Data_Buffer);
+               end if;
+            else
+               pragma Assert (Rx_Data_Buffer'Length /= 0);
+               Master_Transmit_Receive_DMA_Internal (
+                  Tx_Data_Buffer,
+                  Rx_Data_Buffer (
+                     Chunk_Start_Index ..
+                     Chunk_Start_Index +
+                        Positive (Largest_DMA_Transfer_Size) - 1));
+            end if;
+
+            Chunk_Start_Index := Chunk_Start_Index +
+                                 Positive (Largest_DMA_Transfer_Size);
+         end loop;
+      else
+         pragma Assert (Last_DMA_Transfer_Size /= 0);
+      end if;
+
+      if Last_DMA_Transfer_Size /= 0 then
+         if Last_DMA_Transfer_Size < 2 * Frame_Size then
+            if Tx_Data_Buffer'Length /= 0 then
+               if Rx_Data_Buffer'Length /= 0 then
+                  Master_Transmit_Receive_Polling (
+                    SPI_Device_Id,
+                    Tx_Data_Buffer (Chunk_Start_Index .. Tx_Data_Buffer'Last),
+                    Rx_Data_Buffer (Chunk_Start_Index .. Rx_Data_Buffer'Last));
+               else
+                  Master_Transmit_Receive_Polling (
+                    SPI_Device_Id,
+                    Tx_Data_Buffer (Chunk_Start_Index .. Tx_Data_Buffer'Last),
+                    Rx_Data_Buffer);
+               end if;
+            else
+               pragma Assert (Rx_Data_Buffer'Length /= 0);
+               Master_Transmit_Receive_Polling (
+                  SPI_Device_Id,
+                  Tx_Data_Buffer,
+                  Rx_Data_Buffer (Chunk_Start_Index .. Rx_Data_Buffer'Last));
+            end if;
+         else
+            if Tx_Data_Buffer'Length /= 0 then
+               if Rx_Data_Buffer'Length /= 0 then
+                  Master_Transmit_Receive_DMA_Internal (
+                    Tx_Data_Buffer (Chunk_Start_Index .. Tx_Data_Buffer'Last),
+                    Rx_Data_Buffer (Chunk_Start_Index .. Rx_Data_Buffer'Last));
+               else
+                  Master_Transmit_Receive_DMA_Internal (
+                    Tx_Data_Buffer (Chunk_Start_Index .. Tx_Data_Buffer'Last),
+                    Rx_Data_Buffer);
+               end if;
+            else
+               pragma Assert (Rx_Data_Buffer'Length /= 0);
+               Master_Transmit_Receive_DMA_Internal (
+                  Tx_Data_Buffer,
+                  Rx_Data_Buffer (Chunk_Start_Index .. Rx_Data_Buffer'Last));
+            end if;
+         end if;
+      end if;
+
+      --
+      --  Transmit last frame:
+      --
+      if Tx_Data_Buffer'Length /= 0 then
+         if Rx_Data_Buffer'Length /= 0 then
+            Master_Transmit_Receive_Polling (
+               SPI_Device_Id,
+               Tx_Data_Buffer =>
+                  Tx_Data_Buffer (Tx_Data_Buffer'Last -
+                                     Positive (Frame_Size) + 1 ..
+                                  Tx_Data_Buffer'Last),
+              Rx_Data_Buffer =>
+                  Rx_Data_Buffer (Rx_Data_Buffer'Last -
+                                     Positive (Frame_Size) + 1 ..
+                                  Rx_Data_Buffer'Last));
+         else
+            Master_Transmit_Receive_Polling (
+               SPI_Device_Id,
+               Tx_Data_Buffer =>
+                  Tx_Data_Buffer (Tx_Data_Buffer'Last -
+                                     Positive (Frame_Size) + 1 ..
+                                  Tx_Data_Buffer'Last),
+               Rx_Data_Buffer => Rx_Data_Buffer);
+         end if;
+      else
+         pragma Assert (Rx_Data_Buffer'Length /= 0);
+         Master_Transmit_Receive_Polling (
+               SPI_Device_Id,
+               Tx_Data_Buffer => Tx_Data_Buffer,
+               Rx_Data_Buffer =>
+                  Rx_Data_Buffer (Rx_Data_Buffer'Last -
+                                     Positive (Frame_Size) + 1 ..
+                                  Rx_Data_Buffer'Last));
+      end if;
+
+      DMA_Driver.Disable_DMA_Channel (SPI_Device.Rx_DMA_Channel);
+      DMA_Driver.Disable_DMA_Channel (SPI_DEvice.Tx_DMA_Channel);
+   end Master_Transmit_Receive_DMA;
+
+   -------------------------------------
+   -- Master_Transmit_Receive_Polling --
+   -------------------------------------
+
+   procedure Master_Transmit_Receive_Polling (
+      SPI_Device_Id : SPI_Device_Id_Type;
+      Tx_Data_Buffer : Bytes_Array_Type;
+      Rx_Data_Buffer : out Bytes_Array_Type)
    is
       SPI_Device : SPI_Device_Const_Type renames
 	SPI_Devices_Const (SPI_Device_Id);
@@ -273,19 +653,20 @@ package body SPI_Driver is
       SPI_Registers_Ptr : access SPI_Peripheral renames
         SPI_Device.Registers_Ptr;
       SR_Value : SPI0_SR_Register;
+      MCR_Value : SPI0_MCR_Register;
       PUSHR_Value : SPI0_PUSHR_Register;
       POPR_Value : MK64F12.Word;
-      Tx_Buffer_Cursor : Positive range Tx_Data_Buffer'Range;
-      Rx_Buffer_Cursor : Positive range Rx_Data_Buffer'Range;
-      Next_Index : Positive;
+      Tx_Buffer_Cursor : Positive := Tx_Data_Buffer'First;
+      Rx_Buffer_Cursor : Positive := Rx_Data_Buffer'First;
       SPI_Frame : PUSHR_TXDATA_Field;
+      Dummy_SPI_Frame : constant PUSHR_TXDATA_Field := 0;
       Frame_Size : constant Positive := Positive (SPI_Device_Var.Frame_Size);
-
+      Total_Bytes_To_Transfer : constant Integer_Address :=
+         Integer_Address'Max (Tx_Data_Buffer'Length, Rx_Data_Buffer'Length);
+      Remaining_Frames_To_Transfer : Integer_Address :=
+         (((Total_Bytes_To_Transfer - 1) / Integer_Address (Frame_Size)) + 1);
+      Old_Region : MPU_Region_Descriptor_Type;
    begin
-      pragma Assert (SPI_Device_Var.Master_Mode);
-      pragma Assert(SPI_Device.Tx_Fifo_Size = SPI_Device.Rx_Fifo_Size);
-      pragma Assert (Tx_Data_Buffer'Length mod Frame_Size = 0);
-
       --
       --  Clear status register (status bits are w1c):
       --
@@ -299,6 +680,14 @@ package body SPI_Driver is
                    others => <>);
 
       SPI_Registers_Ptr.SR := SR_Value;
+
+      --
+      --  Flush Tx and Rx FIFOs
+      --
+      MCR_Value := SPI_Registers_Ptr.MCR;
+      MCR_Value.CLR_TXF := MCR_CLR_TXF_Field_1;
+      MCR_Value.CLR_RXF := MCR_CLR_RXF_Field_1;
+      SPI_Registers_Ptr.MCR := MCR_Value;
 
       --
       --  Both the Tx and Rx FIFOs are empty:
@@ -317,100 +706,138 @@ package body SPI_Driver is
 
       --
       --  Configure PUSHR command bits:
-      --  - Continuous Peripheral Chip Select (PCS) (for all SPI frames but the last one)
+      --  - Continuous Peripheral Chip Select (PCS) (for all SPI frames but the
+      --    last one)
       --  - Use CTAR[0] for SPI transfers
       --  - Assert chip select PCS0 for SPI transfers (asserted low)
       --
-      PUSHR_Value := (CTCNT => PUSHR_CTCNT_Field_1,
+      PUSHR_Value := (CONT => PUSHR_CONT_Field_1,
                       CTAS => PUSHR_CTAS_Field_000,
                       PCS => PUSHR_PCS_Field_1,
                       others => <>);
 
-      Tx_Buffer_Cursor := Tx_Data_Buffer'First;
       if Rx_Data_Buffer'Length /= 0 then
-         Rx_Buffer_Cursor := Rx_Data_Buffer'First;
+         Set_Private_Data_Region (Rx_Data_Buffer'Address,
+                                  Rx_Data_Buffer'Length * Byte'Size,
+                                  Read_Write,
+                                  Old_Region);
       end if;
 
       loop
 	 SR_Value := SPI_Registers_Ptr.SR;
+         pragma Assert (SR_Value.TFFF /= SR_TFFF_Field_0);
 	 pragma Assert (SR_Value.RFDF = SR_RFDF_Field_0);
 
          --
-         --  Fill next SPI frame to send, LSByte first:
-         --
-         --  NOTE: Since we are running little endian the LSByte goes to the
-         --  lower address and the the MSByte goes to the higher address.
-         --
-         if Frame_Size = 2 then
-            SPI_Frame :=
-              Unsigned_16 (Tx_Data_Buffer (Tx_Buffer_Cursor)) or
-              Shift_Left (Unsigned_16 (Tx_Data_Buffer (Tx_Buffer_Cursor + 1)),
-                          8);
-         else
-	    SPI_Frame := Unsigned_16 (Tx_Data_Buffer (Tx_Buffer_Cursor));
-	 end if;
-
-         --
-         --  Make sure there is room in the Tx FIFO:
+         --  Fill the Tx FIFO:
          --
          loop
-	    SR_Value := (TFFF => SR_TFFF_Field_1, others => <>);
-	    SPI_Registers_Ptr.SR := SR_Value;
+            --
+            --  Build next SPI frame to send:
+            --
+            if Tx_Data_Buffer'Length /= 0 then
+               if Frame_Size = 2 then
+                  --
+                  --  Assume little endian byte order (LSByte in lowest
+                  --  address)
+                  --
+                  SPI_Frame :=
+                    (if Tx_Buffer_Cursor = Tx_Data_Buffer'Last then
+                        Unsigned_16 (Tx_Data_Buffer (Tx_Buffer_Cursor))
+                     else
+                        Unsigned_16 (Tx_Data_Buffer (Tx_Buffer_Cursor))
+                        or
+                        Shift_Left (
+                           Unsigned_16 (Tx_Data_Buffer (Tx_Buffer_Cursor + 1)),
+                           8));
+               else
+	          SPI_Frame := Unsigned_16 (Tx_Data_Buffer (Tx_Buffer_Cursor));
+	       end if;
+            else
+               SPI_Frame := Dummy_SPI_Frame;
+            end if;
+
+            --
+            --  Transfer next SPI frame to the Tx FIFO:
+            --
+            --  NOTE: For the last frame transfer, we need to turn off
+            --  "Continuous PCS", so that PCS is de-asserted after the
+            --  last transfer.
+            --
+	    PUSHR_Value.TXDATA := SPI_Frame;
+            if Remaining_Frames_To_Transfer = 1 then
+	       PUSHR_Value.CONT := PUSHR_CONT_Field_0;
+               PUSHR_Value.EOQ := PUSHR_EOQ_Field_1;
+	    end if;
+
+            pragma Assert (PUSHR_Value.PCS = PUSHR_PCS_Field_1);
+  	    SPI_Registers_Ptr.PUSHR := PUSHR_Value;
+
+            Remaining_Frames_To_Transfer :=
+               Remaining_Frames_To_Transfer - 1;
+            exit when Remaining_Frames_To_Transfer = 0;
+
+            if Tx_Data_Buffer'Length /= 0 then
+  	       Tx_Buffer_Cursor := Tx_Buffer_Cursor + Frame_Size;
+            end if;
+
+            SR_Value := (TFFF => SR_TFFF_Field_1, others => <>);
+            SPI_Registers_Ptr.SR := SR_Value; --  TFFF cleared if Tx FIFO full
 	    SR_Value := SPI_Registers_Ptr.SR;
-	    exit when (SR_Value.TFFF /= SR_TFFF_Field_0);
+	    exit when SR_Value.TFFF = SR_TFFF_Field_0;
          end loop;
-
-         --
-         --  Transfer next SPI frame to the Tx FIFO:
-         --
-         --  NOTE: For the last frame transfer, we need to turn off
-         --  "Continuous PCS", so that PCS is de-asserted after the
-         --  last transfer.
-         --
-	 PUSHR_Value.TXDATA := SPI_Frame;
-         if Tx_Buffer_Cursor + Frame_Size > Tx_Data_Buffer'Last then
-	    PUSHR_Value.CTCNT := PUSHR_CTCNT_Field_0;
-	 end if;
-
-         pragma Assert (PUSHR_Value.PCS = PUSHR_PCS_Field_1);
-	 SPI_Registers_Ptr.PUSHR := PUSHR_Value;
 
          --
          --  Wait until the Rx FIFO is not empty:
          --
+         SR_Value := (RFDF => SR_RFDF_Field_1, others => <>);
+         SPI_Registers_Ptr.SR := SR_Value; --  RFDF cleared if RX FIFO empty
 	 loop
-	    SR_Value := (RFDF => SR_RFDF_Field_1, others => <>);
-	    SPI_Registers_Ptr.SR := SR_Value;
 	    SR_Value := SPI_Registers_Ptr.SR;
-	    exit when (SR_Value.RFDF /= SR_RFDF_Field_0);
+	    exit when SR_Value.RFDF /= SR_RFDF_Field_0;
          end loop;
 
          --
-         --  Receive next SPI frame from the Rx FIFO:
+         --  Drain the Rx FIFO:
          --
-         POPR_Value := SPI_Registers_Ptr.POPR;
-         if Rx_Data_Buffer'Length /= 0 then
-            if Frame_Size = 2 then
-               pragma Assert (POPR_Value <= Word (Unsigned_16'Last));
-   	       Rx_Data_Buffer (Rx_Buffer_Cursor) :=
-	          Byte (POPR_Value and 16#ff#);
-	       Rx_Data_Buffer (Rx_Buffer_Cursor + 1) :=
-	          Byte (Shift_Right (POPR_Value, 8));
-               Rx_Buffer_Cursor := Rx_Buffer_Cursor + 2;
-            else
-               pragma Assert (POPR_Value <= Word (Unsigned_8'Last));
-	       Rx_Data_Buffer (Rx_Buffer_Cursor) := Byte (POPR_Value);
-               Rx_Buffer_Cursor := Rx_Buffer_Cursor + 1;
-            end if;
-	 end if;
+         loop
+            --
+            --  Receive next SPI frame from the Rx FIFO:
+            --
+            POPR_Value := SPI_Registers_Ptr.POPR;
+            if Rx_Data_Buffer'Length /= 0 then
+               if Frame_Size = 2 then
+                  --
+                  --  Assume little endian byte order (LSByte in lowest
+                  --  address)
+                  --
+                  pragma Assert (POPR_Value <= Word (Unsigned_16'Last));
+                  Rx_Data_Buffer (Rx_Buffer_Cursor) :=
+                     Byte (POPR_Value and 16#ff#);
+                  if Rx_Buffer_Cursor < Rx_Data_Buffer'Last then
+ 	             Rx_Data_Buffer (Rx_Buffer_Cursor + 1) :=
+                        Byte (Shift_Right (POPR_Value, 8));
+                  end if;
+               else
+                  pragma Assert (POPR_Value <= Word (Unsigned_8'Last));
+	          Rx_Data_Buffer (Rx_Buffer_Cursor) := Byte (POPR_Value);
+               end if;
 
-	 SR_Value := (RFDF => SR_RFDF_Field_1, others => <>);
-	 SPI_Registers_Ptr.SR := SR_Value;
+               Rx_Buffer_Cursor := Rx_Buffer_Cursor + Frame_Size;
+	    end if;
 
-	 Next_Index := Tx_Buffer_Cursor + Frame_Size;
-	 exit when Next_Index > Tx_Data_Buffer'Last;
-	 Tx_Buffer_Cursor := Next_Index;
+    	    SR_Value := (RFDF => SR_RFDF_Field_1, others => <>);
+  	    SPI_Registers_Ptr.SR := SR_Value; --  RFDF cleared if Rx FIFO empty
+       	    SR_Value := SPI_Registers_Ptr.SR;
+	    exit when SR_Value.RFDF = SR_RFDF_Field_0;
+         end loop;
+
+         exit when Remaining_Frames_To_Transfer = 0;
       end loop;
+
+      if Rx_Data_Buffer'Length /= 0 then
+         Restore_Private_Data_Region (Old_Region);
+      end if;
 
       --
       --  Both the Tx and Rx FIFOs are empty:
@@ -420,7 +847,7 @@ package body SPI_Driver is
       pragma Assert (SR_Value.RFDF = SR_RFDF_Field_0);
       pragma Assert (Byte (SR_Value.TXCTR) = 0);
       pragma Assert (Byte (SR_Value.RXCTR) = 0);
-      pragma Assert (SR_Value.TXRXS = SR_TXRXS_Field_1);
-   end Master_Transmit_Receive;
+      --pragma Assert (SR_Value.TXRXS = SR_TXRXS_Field_1);
+   end Master_Transmit_Receive_Polling;
 
 end SPI_Driver;

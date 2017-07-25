@@ -57,7 +57,7 @@ package LCD_Display is
                        Light_Blue => 16#FF06#,
                        White => 16#FFFF#);
 
-   Display_Width : constant Positive := 96 + 16;  --  in pixels
+   Display_Width : constant Positive := 96;  --  in pixels
    Display_Height : constant Positive := 96; --  in pixels
 
    type X_Coordinate_Type is range 1 .. Display_Width;
