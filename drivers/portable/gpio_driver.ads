@@ -42,6 +42,8 @@ package Gpio_Driver is
       Is_Active_High : Boolean;
    end record;
 
+   type GPIO_Pin_Irq_Handler_Type is access procedure;
+
    procedure Configure_Pin (Gpio_Pin : Gpio_Pin_Type;
                             Drive_Strength_Enable : Boolean;
                             Pullup_Resistor : Boolean;
@@ -55,8 +57,10 @@ package Gpio_Driver is
 
    function Read_Input_Pin (Gpio_Pin : Gpio_Pin_Type) return Boolean;
 
-   procedure Enable_Pin_Irq (Gpio_Pin : Gpio_Pin_Type;
-                             Pin_Irq_Mode : Pin_Irq_Mode_Type);
+   procedure Enable_Pin_Irq (
+      Gpio_Pin : Gpio_Pin_Type;
+      Pin_Irq_Mode : Pin_Irq_Mode_Type;
+      Pin_Irq_Handler : GPIO_Pin_Irq_Handler_Type);
 
    procedure Disable_Pin_Irq (Gpio_Pin : Gpio_Pin_Type);
 

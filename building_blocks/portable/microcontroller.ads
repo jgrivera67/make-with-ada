@@ -139,6 +139,9 @@ package Microcontroller is
    CAN_Interrupt_Priority : constant System.Interrupt_Priority :=
       System.Interrupt_Priority'Last; --  lowest
 
+   GPIO_Interrupt_Priority : constant System.Interrupt_Priority :=
+      System.Interrupt_Priority'Last; --  lowest
+
    UART_Interrupt_Priority : constant System.Interrupt_Priority :=
       System.Interrupt_Priority'Last; --  lowest
 

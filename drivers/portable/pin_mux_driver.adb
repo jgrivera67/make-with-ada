@@ -28,11 +28,13 @@
 with Pin_Mux_Driver.MCU_Specific_Private;
 with Memory_Protection;
 with System.Address_To_Access_Conversions;
+with Interfaces.Bit_Types;
 
 package body Pin_Mux_Driver is
    pragma SPARK_Mode (Off);
    use Pin_Mux_Driver.MCU_Specific_Private;
    use Memory_Protection;
+   use Interfaces.Bit_Types;
 
    package Address_To_Port_Registers_Pointer is new
       System.Address_To_Access_Conversions (PORT.Registers_Type);
@@ -68,9 +70,9 @@ package body Pin_Mux_Driver is
       Restore_Private_Data_Region (Old_IO_Region);
    end Clear_Pin_Irq;
 
-   --------------------
+   ---------------------
    -- Disable_Pin_Irq --
-   --------------------
+   ---------------------
 
    procedure Disable_Pin_Irq (Pin_Info : Pin_Info_Type) is
       Port_Registers : access PORT.Registers_Type renames
@@ -112,6 +114,20 @@ package body Pin_Mux_Driver is
       Port_Registers.all.PCR (Pin_Info.Pin_Index) := PCR_Value;
       Restore_Private_Data_Region (Old_IO_Region);
    end Enable_Pin_Irq;
+
+   -------------------
+   -- Is_Irq_Raised --
+   -------------------
+
+   function Is_Irq_Raised (Pin_Info : Pin_Info_Type) return Boolean
+   is
+      Port_Registers : access PORT.Registers_Type renames
+        Ports (Pin_Info.Pin_Port);
+      ISFR_Value : PORT.Pin_Array_Type;
+   begin
+      ISFR_Value := Port_Registers.all.ISFR;
+      return ISFR_Value (Pin_Info.Pin_Index) = 1;
+   end Is_Irq_Raised;
 
    ----------------
    -- Initialize --

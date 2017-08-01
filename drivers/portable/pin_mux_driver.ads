@@ -123,6 +123,13 @@ package Pin_Mux_Driver is
    --  @param Pin_Info Pin information
    --
 
+   function Is_Irq_Raised (Pin_Info : Pin_Info_Type) return Boolean;
+   --
+   --  Tell if there  is an outstanding IRQ on the given pin
+   --
+   --  @param Pin_Info Pin information
+   --
+
 private
 
    Pin_Mux_Initialized : Boolean := False;
