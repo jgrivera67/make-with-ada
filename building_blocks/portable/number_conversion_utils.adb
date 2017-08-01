@@ -295,7 +295,8 @@ package body Number_Conversion_Utils is
 
    procedure Unsigned_To_Decimal_String (Value : Unsigned_32;
                                          Buffer : out String;
-                                         Actual_Length : out Positive)
+                                         Actual_Length : out Positive;
+                                         Add_Leading_Zeros : Boolean := False)
   is
       Tmp_Buffer : String (1 .. 10);
       Start_Index : Positive range Tmp_Buffer'Range := Tmp_Buffer'First;
@@ -313,8 +314,16 @@ package body Number_Conversion_Utils is
 
       Actual_Length := (Tmp_Buffer'Last - Start_Index) + 1;
       if Buffer'Length >= Actual_Length then
-         Buffer (Buffer'First .. Buffer'First + Actual_Length - 1) :=
-           Tmp_Buffer (Start_Index .. Tmp_Buffer'Last);
+         if Add_Leading_Zeros then
+            Buffer (Buffer'First .. Buffer'Last - Actual_Length) :=
+               (others => '0');
+            Buffer (Buffer'Last - Actual_Length + 1 .. Buffer'Last) :=
+               Tmp_Buffer (Start_Index .. Tmp_Buffer'Last);
+            Actual_Length := Buffer'Length;
+         else
+            Buffer (Buffer'First .. Buffer'First + Actual_Length - 1) :=
+               Tmp_Buffer (Start_Index .. Tmp_Buffer'Last);
+         end if;
       else
          raise Program_Error
             with "Unsigned_To_Decimal: buffer too small";

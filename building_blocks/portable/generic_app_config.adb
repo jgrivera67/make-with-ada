@@ -27,11 +27,15 @@
 
 with Nor_Flash_Driver;
 with Interfaces.Bit_Types;
+with Memory_Protection;
+with System.Storage_Elements;
 
 package body Generic_App_Config is
    use Nor_Flash_Driver;
    use Interfaces.Bit_Types;
    use Interfaces;
+   use Memory_Protection;
+   use System.Storage_Elements;
 
    -----------------
    -- Load_Config --
@@ -40,8 +44,29 @@ package body Generic_App_Config is
    procedure Load_Config (App_Config : out App_Config_Type) is
       App_Config_In_Nor_Flash : App_Config_Type with
          Import, Address => Nor_Flash_Config_Addr;
+
+      Old_Region1 : MPU_Region_Descriptor_Type;
+      Old_Region2 : MPU_Region_Descriptor_Type;
    begin
+      Set_Private_Data_Region (App_Config'Address,
+                               App_Config'Size,
+                               Read_Write,
+                               Old_Region1);
+
+      --
+      --  NOTE: The NOR flash area used to store the application's
+      --  configuration parameters is not accessible by default
+      --
+      Set_Private_Code_Region (
+         Nor_Flash_Config_Addr,
+         To_Address (To_Integer (Nor_Flash_Config_Addr) +
+                     App_Config_In_Nor_Flash'Size / Byte'Size - 1),
+         Old_Region2);
+
       App_Config := App_Config_In_Nor_Flash;
+
+      Restore_Private_Code_Region (Old_Region2);
+      Restore_Private_Data_Region (Old_Region1);
    end Load_Config;
 
    -----------------

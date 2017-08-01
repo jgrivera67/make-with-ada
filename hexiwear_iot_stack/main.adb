@@ -40,8 +40,8 @@ with Ada.Real_Time;
 with Last_Chance_Handler;
 with Memory_Protection;
 with Nor_Flash_Driver;
-with LCD_Display;
 with DMA_Driver;
+with Watch;
 
 pragma Unreferenced (Last_Chance_Handler);
 
@@ -62,7 +62,7 @@ procedure Main is
 
    -- ** --
 
-   procedure Print_Greeting is
+   procedure Print_Console_Greeting is
    begin
       Serial_Console.Lock;
       Serial_Console.Clear_Screen;
@@ -71,7 +71,7 @@ procedure Main is
         " at " & GNAT.Source_Info.Compilation_Time & ")" & ASCII.LF);
 
       Serial_Console.Unlock;
-   end Print_Greeting;
+   end Print_Console_Greeting;
 
    -- ** --
 
@@ -83,7 +83,7 @@ procedure Main is
    -- ** --
 
 begin -- Hexiwear_Iot_Stack
-   Memory_Protection.Enable_MPU;
+   --Memory_Protection.Enable_MPU;
 
    Runtime_Logs.Initialize;
    Log_Start_Info;
@@ -94,22 +94,13 @@ begin -- Hexiwear_Iot_Stack
    Serial_Console.Initialize;
    Nor_Flash_Driver.Initialize;
    DMA_Driver.Initialize;
-   LCD_Display.Initialize;
-   LCD_Display.Clear_Screen (LCD_Display.Blue);
-   LCD_Display.Print_String (16, 8, "Luzmila",
-                             LCD_Display.Yellow,
-                             LCD_Display.Blue);
-
-   LCD_Display.Print_String (16, 32, "te amo",
-                             LCD_Display.Yellow,
-                             LCD_Display.Blue);
-
    Old_Color := Color_Led.Set_Color (Color_Led.Blue);
    Color_Led.Turn_On_Blinker (Heartbeat_Period_Ms);
 
-   Print_Greeting;
+   Print_Console_Greeting;
    Bluetooth.Initialize;
    Command_Parser.Initialize;
+   Watch.Initialize;
 
    loop
       Command_Parser.Parse_Command;

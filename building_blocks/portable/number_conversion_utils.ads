@@ -64,7 +64,8 @@ package Number_Conversion_Utils is
 
    procedure Unsigned_To_Decimal_String (Value : Unsigned_32;
                                          Buffer : out String;
-                                         Actual_Length : out Positive)
+                                         Actual_Length : out Positive;
+                                         Add_Leading_Zeros : Boolean := False)
       with Pre => Buffer'Length >= 1;
 
    procedure Unsigned_To_Hexadecimal_String (Value : Unsigned_32;
