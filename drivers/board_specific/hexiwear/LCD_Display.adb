@@ -35,7 +35,7 @@ with Ada.Real_Time;
 with BMP_Fonts;
 
 --
---  LCD display services implementation
+--  LCD display services implementation for the PSP27801 OLED color display
 --
 package body LCD_Display is
    pragma SPARK_Mode (Off);
