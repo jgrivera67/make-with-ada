@@ -604,6 +604,26 @@ package body LCD_Display is
           Rx_Data_Buffer => Dummy_SPI_Rx_Buffer);
    end Send_Display_Data;
 
+   ----------------------
+   -- Turn_Off_Display --
+   ----------------------
+
+   procedure Turn_Off_Display
+   is
+   begin
+      Send_Display_Command (Cmd_Display_Off, Empty_Args_Buffer);
+   end Turn_Off_Display;
+
+   ---------------------
+   -- Turn_On_Display --
+   ---------------------
+
+   procedure Turn_On_Display
+   is
+   begin
+      Send_Display_Command (Cmd_Display_On, Empty_Args_Buffer);
+   end Turn_On_Display;
+
    --------------------
    -- Update_Display --
    --------------------

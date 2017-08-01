@@ -75,7 +75,8 @@ package LCD_Display is
    procedure Initialize
      with Pre => not Initialized;
 
-   procedure Clear_Screen (Color : Color_Type);
+   procedure Clear_Screen (Color : Color_Type)
+     with Pre => Initialized;
 
    procedure Draw_Rectangle (
       X : X_Coordinate_Type;
@@ -85,7 +86,8 @@ package LCD_Display is
       Color : Color_Type;
       Border_Thickness : Border_Thickness_Type := 0;
       Border_Color : Color_Type := Color_Type'First)
-      with Pre => Natural (Border_Thickness) <
+      with Pre => Initialized and
+                  Natural (Border_Thickness) <
                   Positive'Min (Positive (Width_In_Pixels),
                                 Positive (Height_In_Pixels));
 
@@ -95,6 +97,13 @@ package LCD_Display is
                            Foreground_Color : Color_Type;
                            Background_Color : Color_Type;
                            Dot_Size : Dot_Size_Type := Dot_Size_Type'First)
-     with Pre => Text'Length /= 0;
+     with Pre => Initialized and
+                 Text'Length /= 0;
+
+   procedure Turn_Off_Display
+      with Pre => Initialized;
+
+   procedure Turn_On_Display
+      with Pre => Initialized;
 
 end LCD_Display;
