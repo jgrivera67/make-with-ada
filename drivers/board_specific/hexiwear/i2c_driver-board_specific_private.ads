@@ -1,5 +1,5 @@
 --
---  Copyright (c) 2016, German Rivera
+--  Copyright (c) 2017, German Rivera
 --  All rights reserved.
 --
 --  Redistribution and use in source and binary forms, with or without
@@ -25,52 +25,51 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with Interfaces.Bit_Types;
-with Memory_Utils;
+with I2C_Driver.MCU_Specific_Private;
+with Pin_Mux_Driver;
 
 --
---  @summary DEclarations common to all devices
+--  @summary Board-specific I2C driver private declarations
 --
-package Devices is
-   pragma Preelaborate;
-   use Interfaces;
-   use Interfaces.Bit_Types;
-
-   subtype Bytes_Array_Type is Memory_Utils.Bytes_Array_Type;
-
-   type Bytes_Array_Access_Type is access all Bytes_Array_Type;
-
-   type Words_Array_Type is array (Positive range <>) of aliased Word;
-
-   subtype Two_Bits is UInt2;
-   subtype Three_Bits is UInt3;
-   subtype Four_Bits is UInt4;
-   subtype Five_Bits is UInt5;
-   subtype Six_Bits is UInt6;
-   subtype Nine_Bits is UInt9;
-   subtype Twelve_Bits is UInt12;
-   subtype Half_Word is Unsigned_16;
+private package I2C_Driver.Board_Specific_Private is
+   pragma SPARK_Mode (Off);
+   use I2C_Driver.MCU_Specific_Private;
+   use Pin_Mux_Driver;
 
    --
-   --  Type used in Unchecked_Union records that present memory-mapped I/O
-   --  registers
+   --  Array of I2C device constant objects to be placed on
+   --  flash:
    --
-   type Register_View_Type is (Bit_Fields_View, Whole_Register_View);
+   I2C_Devices_Const :
+     constant array (I2C_Device_Id_Type) of I2C_Device_Const_Type :=
+     (I2C0 =>
+        (Registers_Ptr => I2C.I2C0_Periph'Access,
+         Scl_Pin_Info =>
+            (Pin_Port => PIN_PORT_B,
+             Pin_Index => 0,
+             Pin_Function => PIN_FUNCTION_ALT2),
+         Sda_Pin_Info =>
+            (Pin_Port => PIN_PORT_B,
+             Pin_Index => 1,
+             Pin_Function => PIN_FUNCTION_ALT2)
+        ),
 
-   --
-   --  Counter type for iterations of a polling loop
-   --  waiting for response from the Ethernet PHY
-   --
-   type Polling_Count_Type is range 1 .. Unsigned_16'Last;
+      I2C1 =>
+        (Registers_Ptr => I2C.I2C1_Periph'Access,
+         Scl_Pin_Info =>
+            (Pin_Port => PIN_PORT_C,
+             Pin_Index => 10,
+             Pin_Function => PIN_FUNCTION_ALT2),
+         Sda_Pin_Info =>
+            (Pin_Port => PIN_PORT_C,
+             Pin_Index => 11,
+             Pin_Function => PIN_FUNCTION_ALT2)
+        ),
 
-   function Bit_Mask (Bit_Index : UInt5) return Unsigned_32 is
-     (Shift_Left (Unsigned_32 (1), Natural (Bit_Index)));
-   --
-   --  Return the 32-bit mask for a given bit index
-   --
-   --  @param Bit_Index bit index: 0 .. 31. Bit 0 is LSB, bit 31 is MSB.
-   --
-   --  @return Bit mask
-   --
+      I2C2 =>
+        (Registers_Ptr => I2C.I2C2_Periph'Access,
+         others => <>
+        )
+     );
 
-end Devices;
+end I2C_Driver.Board_Specific_Private;

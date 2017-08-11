@@ -42,7 +42,7 @@ package Memory_Utils is
    function Round_Up (M : Unsigned_32; N : Unsigned_32) return Unsigned_32
    is (How_Many (M, N) * N);
 
-   type Bytes_Array_Type is array (Positive range <>) of Unsigned_8;
+   type Bytes_Array_Type is array (Positive range <>) of aliased Unsigned_8;
 
    function Compute_Checksum (Bytes_Array : Bytes_Array_Type)
       return Unsigned_32;

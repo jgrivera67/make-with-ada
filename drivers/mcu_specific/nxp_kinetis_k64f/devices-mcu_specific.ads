@@ -35,6 +35,7 @@ with MK64F12.FTFE;
 with MK64F12.SPI;
 with MK64F12.DMA;
 with MK64F12.DMAMUX;
+with MK64F12.I2C;
 
 --
 --  @summary Devices in the Kinetis K64F MCU
@@ -78,6 +79,13 @@ package Devices.MCU_Specific is
                                SPI1,
                                SPI2);
 
+   --
+   --  IDs of I2C instances
+   --
+   type I2C_Device_Id_Type is (I2C0,
+                               I2C1,
+                               I2C2);
+
    package PORT renames Kinetis_K64F.PORT;
    package SIM renames Kinetis_K64F.SIM;
    package GPIO renames Kinetis_K64F.GPIO;
@@ -88,5 +96,6 @@ package Devices.MCU_Specific is
    package SPI renames MK64F12.SPI;
    package DMA renames MK64F12.DMA;
    package DMAMUX renames MK64F12.DMAMUX;
+   package I2C renames MK64F12.I2C;
 
 end Devices.MCU_Specific;

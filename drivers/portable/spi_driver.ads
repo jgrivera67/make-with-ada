@@ -142,22 +142,16 @@ private
    --  @field Master_Mode Flag indicating if this device is in master mode
    --  (true) or slave mode (false)
    --  @field Frame_Size SPI transfer frame size in bytes
-   --  @field Rx_Buffer_Ptr Pointer to the Rx buffer for the SPI transfer
-   --  currently in progress
-   --  @field Rx_SPI_Frames_Expected Number of SPI frames still expected for
-   --  the SPI transfer currently in progress
-   --  @filed PUSHR_Value_For_DMA Temporary buffer for storing PUSHR values
+   --  @filed DMA_Staging_Buffer Temporary buffer for storing PUSHR values
    --  during DMA transfers
    --
    type SPI_Device_Var_Type is limited record
       Initialized : Boolean := False;
       Master_Mode : Boolean;
       Frame_Size : SPI_Frame_Size_Type;
-      Rx_Buffer_Ptr : Byte_Ring_Buffers.Ring_Buffer_Access_Type := null;
-      Rx_SPI_Frames_Expected : Unsigned_32;
       DMA_Staging_Buffer : DMA_Staging_Buffer_Type;
    end record with Alignment => MPU_Region_Alignment,
-                   Size => 65 * MPU_Region_Alignment * Byte'Size;
+                   Size => 64 * MPU_Region_Alignment * Byte'Size;
 
    --
    --  Array of SPI device objects

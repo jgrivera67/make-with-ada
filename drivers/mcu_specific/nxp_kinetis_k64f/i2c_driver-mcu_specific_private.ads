@@ -1,5 +1,5 @@
 --
---  Copyright (c) 2016, German Rivera
+--  Copyright (c) 2017, German Rivera
 --  All rights reserved.
 --
 --  Redistribution and use in source and binary forms, with or without
@@ -25,52 +25,24 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with Interfaces.Bit_Types;
-with Memory_Utils;
+with Devices.MCU_Specific;
+with Pin_Mux_Driver;
 
---
---  @summary DEclarations common to all devices
---
-package Devices is
-   pragma Preelaborate;
-   use Interfaces;
-   use Interfaces.Bit_Types;
-
-   subtype Bytes_Array_Type is Memory_Utils.Bytes_Array_Type;
-
-   type Bytes_Array_Access_Type is access all Bytes_Array_Type;
-
-   type Words_Array_Type is array (Positive range <>) of aliased Word;
-
-   subtype Two_Bits is UInt2;
-   subtype Three_Bits is UInt3;
-   subtype Four_Bits is UInt4;
-   subtype Five_Bits is UInt5;
-   subtype Six_Bits is UInt6;
-   subtype Nine_Bits is UInt9;
-   subtype Twelve_Bits is UInt12;
-   subtype Half_Word is Unsigned_16;
+private package I2C_Driver.MCU_Specific_Private is
+   pragma SPARK_Mode (Off);
+   use Pin_Mux_Driver;
 
    --
-   --  Type used in Unchecked_Union records that present memory-mapped I/O
-   --  registers
+   --  Type for the constant portion of a I2C device object
    --
-   type Register_View_Type is (Bit_Fields_View, Whole_Register_View);
+   --  @field Registers_Ptr Pointer to I/O registers for the I2C peripheral
+   --  @field Scl_Pin_Info SCL signal pin (board specific)
+   --  @field Sda_Pin_Info SDA signal pin (board specific)
+   --
+   type I2C_Device_Const_Type is limited record
+      Registers_Ptr : not null access Devices.MCU_Specific.I2C.I2C_Peripheral;
+      Scl_Pin_Info : Pin_Info_Type;
+      Sda_Pin_Info : Pin_Info_Type;
+   end record;
 
-   --
-   --  Counter type for iterations of a polling loop
-   --  waiting for response from the Ethernet PHY
-   --
-   type Polling_Count_Type is range 1 .. Unsigned_16'Last;
-
-   function Bit_Mask (Bit_Index : UInt5) return Unsigned_32 is
-     (Shift_Left (Unsigned_32 (1), Natural (Bit_Index)));
-   --
-   --  Return the 32-bit mask for a given bit index
-   --
-   --  @param Bit_Index bit index: 0 .. 31. Bit 0 is LSB, bit 31 is MSB.
-   --
-   --  @return Bit mask
-   --
-
-end Devices;
+end I2C_Driver.MCU_Specific_Private;

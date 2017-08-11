@@ -77,6 +77,7 @@ private
       Last_RTC_Time_Reading : Seconds_Count := 0;
       Display_On : Boolean := False;
       Display_Lock : Suspension_Object;
+      Accelerometer_Task_Suspension_Obj : Suspension_Object;
       Async_Operations_Task_Suspension_Obj : Suspension_Object;
       Watch_Task_Suspension_Obj : Suspension_Object;
       Screen_Saver_Task_Suspension_Obj : Suspension_Object;
@@ -87,6 +88,7 @@ private
    --
    Watch_Var : Watch_Type;
 
+   task Accelerometer_Task;
    task Async_Operations_Task;
    task Watch_Task;
    task Screen_Saver_Task;

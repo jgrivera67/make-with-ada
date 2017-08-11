@@ -31,6 +31,7 @@ with Number_Conversion_Utils;
 with Runtime_Logs;
 with Microcontroller.Arm_Cortex_M;
 with RTC_Driver;
+with Accelerometer;
 
 package body Watch is
    pragma SPARK_Mode (Off);
@@ -51,8 +52,6 @@ package body Watch is
    procedure Display_Greeting;
 
    procedure Lock_Display;
-
-   procedure Tap_Irq_Handler;
 
    procedure Unlock_Display;
 
@@ -122,10 +121,7 @@ package body Watch is
    begin
       RTC_Driver.Initialize;
       LCD_Display.Initialize;
-      --Configure_Pin (Watch_Const.Tap_Pin,
-      --               Drive_Strength_Enable => False,
-      --               Pullup_Resistor       => True,
-      --               Is_Output_Pin         => False);
+      Accelerometer.Initialize;
 
       Set_Private_Data_Region (Watch_Var'Address, Watch_Var'Size,
                                Read_Write, Old_Region);
@@ -133,13 +129,6 @@ package body Watch is
       Set_True (Watch_Var.Display_Lock);
       Watch_Var.Display_On := True;
       Watch_Var.Initialized := True;
-
-      --
-      --  Enable generation of touch panel tap detection interrupt:
-      --
-      --Enable_Pin_Irq (Watch_Const.Tap_Pin,
-      --                Pin_Irq_Mode => Pin_Irq_On_Falling_Edge,
-      --                Pin_Irq_Handler => Tap_Irq_Handler'Access);
 
       Display_Greeting;
       Display_Watch_Label (Watch_Var.Config_Parameters.Watch_Label);
@@ -283,16 +272,6 @@ package body Watch is
       Restore_Private_Data_Region (Old_Region);
    end Set_Watch_Time;
 
-   ---------------------
-   -- Tap_Irq_Handler --
-   ---------------------
-
-   procedure Tap_Irq_Handler
-   is
-   begin
-      Set_True (Watch_Var.Async_Operations_Task_Suspension_Obj);
-   end Tap_Irq_Handler;
-
    --------------------
    -- Unlock_Display --
    --------------------
@@ -302,6 +281,30 @@ package body Watch is
    begin
       Set_True (Watch_Var.Display_Lock);
    end Unlock_Display;
+
+   ------------------------
+   -- Accelerometer_Task --
+   ------------------------
+
+   task body Accelerometer_Task is
+      X_Axis_Motion : Unsigned_8;
+      Y_Axis_Motion : Unsigned_8;
+      Z_Axis_Motion : Unsigned_8;
+   begin
+      Suspend_Until_True (Watch_Var.Accelerometer_Task_Suspension_Obj);
+      Runtime_Logs.Info_Print ("Accelerometer task started");
+      Set_Private_Data_Region (Watch_Var'Address,
+                               Watch_Var'Size,
+                               Read_Write);
+
+      loop
+         Accelerometer.Detect_Motion (X_Axis_Motion,
+                                      Y_Axis_Motion,
+                                      Z_Axis_Motion);
+
+         Set_True (Watch_Var.Async_Operations_Task_Suspension_Obj);
+      end loop;
+   end Accelerometer_Task;
 
    ---------------------------
    -- Async_Operations_Task --

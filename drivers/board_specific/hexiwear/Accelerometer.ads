@@ -1,5 +1,5 @@
 --
---  Copyright (c) 2016, German Rivera
+--  Copyright (c) 2017, German Rivera
 --  All rights reserved.
 --
 --  Redistribution and use in source and binary forms, with or without
@@ -25,52 +25,40 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with Interfaces.Bit_Types;
-with Memory_Utils;
+--
+--  @summary Accelerometer driver
+--
+with Interfaces;
 
---
---  @summary DEclarations common to all devices
---
-package Devices is
-   pragma Preelaborate;
+package Accelerometer is
    use Interfaces;
-   use Interfaces.Bit_Types;
 
-   subtype Bytes_Array_Type is Memory_Utils.Bytes_Array_Type;
+   function Initialized return Boolean
+     with Inline;
 
-   type Bytes_Array_Access_Type is access all Bytes_Array_Type;
+   procedure Initialize
+     with Pre => not Initialized;
 
-   type Words_Array_Type is array (Positive range <>) of aliased Word;
+   type Acceleration_Reading_Type is new Integer_16;
 
-   subtype Two_Bits is UInt2;
-   subtype Three_Bits is UInt3;
-   subtype Four_Bits is UInt4;
-   subtype Five_Bits is UInt5;
-   subtype Six_Bits is UInt6;
-   subtype Nine_Bits is UInt9;
-   subtype Twelve_Bits is UInt12;
-   subtype Half_Word is Unsigned_16;
+   procedure Read_Acceleration (
+      X_Axis_Reading : in out Acceleration_Reading_Type;
+      Y_Axis_Reading : in out Acceleration_Reading_Type;
+      Z_Axis_Reading : in out Acceleration_Reading_Type;
+      Acceleration_Changed : out Boolean)
+      with Pre => Initialized;
 
-   --
-   --  Type used in Unchecked_Union records that present memory-mapped I/O
-   --  registers
-   --
-   type Register_View_Type is (Bit_Fields_View, Whole_Register_View);
+   type Motion_Reading_Type is range -1 .. 1;
 
-   --
-   --  Counter type for iterations of a polling loop
-   --  waiting for response from the Ethernet PHY
-   --
-   type Polling_Count_Type is range 1 .. Unsigned_16'Last;
+   procedure Detect_Motion (
+      X_Axis_Motion : out Unsigned_8;
+      Y_Axis_Motion : out Unsigned_8;
+      Z_Axis_Motion : out Unsigned_8)
+      with Pre => Initialized;
 
-   function Bit_Mask (Bit_Index : UInt5) return Unsigned_32 is
-     (Shift_Left (Unsigned_32 (1), Natural (Bit_Index)));
-   --
-   --  Return the 32-bit mask for a given bit index
-   --
-   --  @param Bit_Index bit index: 0 .. 31. Bit 0 is LSB, bit 31 is MSB.
-   --
-   --  @return Bit mask
-   --
+   Type Milli_G_Type is new Integer;
 
-end Devices;
+   function Convert_Acceleration_Reading_To_Milli_G (
+      Reading : Acceleration_Reading_Type) return Milli_G_Type;
+
+end Accelerometer;
