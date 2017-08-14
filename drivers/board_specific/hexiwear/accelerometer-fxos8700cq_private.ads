@@ -275,18 +275,25 @@ private package Accelerometer.Fxos8700cq_Private is
       Int_En_Aslp   at 0 range 7 .. 7;
    end record;
 
+   type Interrupt_Pin_Type is (Int2, Int1)
+     with Size => 1;
+
+   for Interrupt_Pin_Type use
+     (Int2 => 0,
+      Int1 => 1);
+
    type Accel_Ctrl_Reg5_Register_Type (As_Value : Boolean := True) is record
       case As_Value is
 	 when True =>
 	    Value : Byte := 0;
 	 when False =>
-	    Int_Cfg_Drdy : Bit;
-	    Int_Cfg_Ff_Mt : Bit;
-	    Int_Cfg_Pulse : Bit;
-	    Int_Cfg_Lndprt : Bit;
-	    Int_Cfg_Trans  : Bit;
-	    Int_Cfg_Fifo : Bit;
-	    Int_Cfg_Aslp : Bit;
+	    Int_Cfg_Drdy : Interrupt_Pin_Type;
+	    Int_Cfg_Ff_Mt : Interrupt_Pin_Type;
+	    Int_Cfg_Pulse : Interrupt_Pin_Type;
+	    Int_Cfg_Lndprt : Interrupt_Pin_Type;
+	    Int_Cfg_Trans  : Interrupt_Pin_Type;
+	    Int_Cfg_Fifo : Interrupt_Pin_Type;
+	    Int_Cfg_Aslp : Interrupt_Pin_Type;
       end case;
    end record
       with Unchecked_Union, Size => Byte'Size;

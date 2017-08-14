@@ -65,6 +65,7 @@ package body Accelerometer is
       I2C_Slave_Address : I2C_Slave_Address_Type;
       Acc_Int1_Pin : Gpio_Pin_Type;
       Acc_Int2_Pin : Gpio_Pin_Type;
+      Reset_Pin : Gpio_Pin_Type;
    end record;
 
    Accelerometer_Const : constant Accelerometer_Const_Type :=
@@ -79,7 +80,12 @@ package body Accelerometer is
                            (Pin_Port => PIN_PORT_D,
                             Pin_Index => 13,
                             Pin_Function => PIN_FUNCTION_ALT1),
-                        Is_Active_High => False));
+                        Is_Active_High => False),
+       Reset_Pin =>    (Pin_Info =>
+                           (Pin_Port => PIN_PORT_D,
+                            Pin_Index => 11,
+                            Pin_Function => PIN_FUNCTION_ALT1),
+                        Is_Active_High => True));
 
    --
    --  State variables of the Accelerometer
@@ -122,6 +128,7 @@ package body Accelerometer is
 
       Set_True (Accelerometer_Var.Motion_Detected_Susp_Obj);
       Restore_Private_Data_Region (Old_Region);
+      Ada.Text_IO.Put_Line ("*** Accel_Int1_Pin_Irq_Callback ***");--???
       Runtime_Logs.Debug_Print ("*** Accel_Int1_Pin_Irq_Callback ***"); -- ???
    end Accel_Int1_Pin_Irq_Callback;
 
@@ -144,7 +151,7 @@ package body Accelerometer is
 
       Set_True (Accelerometer_Var.Tapping_Detected_Susp_Obj);
       Restore_Private_Data_Region (Old_Region);
-
+      Ada.Text_IO.Put_Line ("*** Accel_Int2_Pin_Irq_Callback ***");--???
       Runtime_Logs.Debug_Print ("*** Accel_Int2_Pin_Irq_Callback ***"); -- ???
    end Accel_Int2_Pin_Irq_Callback;
 
@@ -157,7 +164,7 @@ package body Accelerometer is
    begin
       Ctrl_Reg1_Value.Value := I2C_Read (Accelerometer_Const.I2C_Device_Id,
                                          Accelerometer_Const.I2C_Slave_Address,
-                                         Accel_Who_Am_I'Enum_Rep);
+                                         Accel_Ctrl_Reg1'Enum_Rep);
 
       Ctrl_Reg1_Value.Active := 1;
       I2C_Write (Accelerometer_Const.I2C_Device_Id,
@@ -167,7 +174,7 @@ package body Accelerometer is
 
       Ctrl_Reg1_Value.Value := I2C_Read (Accelerometer_Const.I2C_Device_Id,
                                          Accelerometer_Const.I2C_Slave_Address,
-                                         Accel_Who_Am_I'Enum_Rep);
+                                         Accel_Ctrl_Reg1'Enum_Rep);
 
       pragma Assert (Ctrl_Reg1_Value.Active /= 0);
    end Activate_Accelerometer;
@@ -216,7 +223,7 @@ package body Accelerometer is
    begin
       Ctrl_Reg1_Value.Value := I2C_Read (Accelerometer_Const.I2C_Device_Id,
                                          Accelerometer_Const.I2C_Slave_Address,
-                                         Accel_Who_Am_I'Enum_Rep);
+                                         Accel_Ctrl_Reg1'Enum_Rep);
 
       if Ctrl_Reg1_Value.Active = 0 then
          return;
@@ -230,7 +237,7 @@ package body Accelerometer is
 
       Ctrl_Reg1_Value.Value := I2C_Read (Accelerometer_Const.I2C_Device_Id,
                                          Accelerometer_Const.I2C_Slave_Address,
-                                   Accel_Who_Am_I'Enum_Rep);
+                                         Accel_Ctrl_Reg1'Enum_Rep);
 
       pragma Assert (Ctrl_Reg1_Value.Active /= 0);
    end Deactivate_Accelerometer;
@@ -379,6 +386,19 @@ package body Accelerometer is
       XYZ_Data_Cfg_Value : Accel_XYZ_Data_Cfg_Register_Type;
 
    begin
+      Configure_Pin (Accelerometer_Const.Reset_Pin,
+                     Drive_Strength_Enable => False,
+                     Pullup_Resistor       => False,
+                     Is_Output_Pin         => True);
+
+      --
+      --  Reset accelerometer, from its reset pin
+      --
+      Activate_Output_Pin (Accelerometer_Const.Reset_Pin);
+      delay until Clock + Milliseconds (1);
+      Deactivate_Output_Pin (Accelerometer_Const.Reset_Pin);
+      delay until Clock + Milliseconds (50);
+
       if not I2C_Driver.Initialized (Accelerometer_Const.I2C_Device_Id) then
          I2C_Driver.Initialize (Accelerometer_Const.I2C_Device_Id);
       end if;
@@ -387,7 +407,6 @@ package body Accelerometer is
                                   Accelerometer_Const.I2C_Slave_Address,
                                   Accel_Who_Am_I'Enum_Rep);
 
-      Ada.Text_IO.Put_Line("**** Who Am I" & Who_Am_I_Value'Image);--???
       pragma Assert (Who_Am_I_Value = Expected_Who_Am_I_Value);
 
       --
@@ -399,21 +418,21 @@ package body Accelerometer is
       --  Reset accelerometer:
       --
 
-      Ctrl_Reg2_Value.Rst := 1;
-      I2C_Write (Accelerometer_Const.I2C_Device_Id,
-                 Accelerometer_Const.I2C_Slave_Address,
-                 Accel_Ctrl_Reg2'Enum_Rep,
-                 Ctrl_Reg2_Value.Value);
+      --Ctrl_Reg2_Value.Rst := 1;
+      --I2C_Write (Accelerometer_Const.I2C_Device_Id,
+      --           Accelerometer_Const.I2C_Slave_Address,
+      --           Accel_Ctrl_Reg2'Enum_Rep,
+      --           Ctrl_Reg2_Value.Value);
 
-      loop
-         delay until Clock + Microseconds (100);
-         Ctrl_Reg2_Value.Value :=
-            I2C_Read (Accelerometer_Const.I2C_Device_Id,
-                      Accelerometer_Const.I2C_Slave_Address,
-                      Accel_Ctrl_Reg2'Enum_Rep);
-
-         exit when Ctrl_Reg2_Value.Rst = 0;
-      end loop;
+      --loop
+      --   delay until Clock + Microseconds (100);
+      --   Ctrl_Reg2_Value.Value :=
+      --      I2C_Read (Accelerometer_Const.I2C_Device_Id,
+      --                Accelerometer_Const.I2C_Slave_Address,
+      --                Accel_Ctrl_Reg2'Enum_Rep);
+      --
+      --   exit when Ctrl_Reg2_Value.Rst = 0;
+      --end loop;
 
       --
       --  Set normal mode:
@@ -541,7 +560,7 @@ package body Accelerometer is
       --
       --Ctrl_Reg4_Value.Int_En_Drdy := 1;
       --Ctrl_Reg4_Value.Int_En_Aslp := 1;
-      --Ctrl_Reg4_Value.Int_En_Ff_Mt := 1;
+      Ctrl_Reg4_Value.Int_En_Ff_Mt := 1;
       Ctrl_Reg4_Value.Int_En_Pulse := 1;
       I2C_Write (Accelerometer_Const.I2C_Device_Id,
                  Accelerometer_Const.I2C_Slave_Address,
@@ -552,9 +571,9 @@ package body Accelerometer is
       --  Route motion detection interrupt to INT1 and tapping detection
       --  interrupt to INT2
       --
-      --Ctrl_Reg5_Value.Int_Cfg_Drdy := 1;
-      Ctrl_Reg5_Value.Int_Cfg_Ff_Mt := 1;
-      Ctrl_Reg5_Value.Int_Cfg_Pulse := 0;
+      --Ctrl_Reg5_Value.Int_Cfg_Drdy := Int1;
+      Ctrl_Reg5_Value.Int_Cfg_Ff_Mt := Int1;
+      Ctrl_Reg5_Value.Int_Cfg_Pulse := Int2;
       I2C_Write (Accelerometer_Const.I2C_Device_Id,
                  Accelerometer_Const.I2C_Slave_Address,
                  Accel_Ctrl_Reg5'Enum_Rep,
@@ -567,20 +586,20 @@ package body Accelerometer is
 
       Configure_Pin (Accelerometer_Const.Acc_Int1_Pin,
                      Drive_Strength_Enable => False,
-                     Pullup_Resistor       => False,
+                     Pullup_Resistor       => True,
                      Is_Output_Pin         => False);
 
       Enable_Pin_Irq (Gpio_Pin => Accelerometer_Const.Acc_Int1_Pin,
-                      Pin_Irq_Mode => Pin_Irq_When_Logic_One,
+                      Pin_Irq_Mode => Pin_Irq_On_Falling_Edge,
                       Pin_Irq_Handler => Accel_Int1_Pin_Irq_Callback'Access);
 
       Configure_Pin (Accelerometer_Const.Acc_Int2_Pin,
                      Drive_Strength_Enable => False,
-                     Pullup_Resistor       => False,
+                     Pullup_Resistor       => True,
                      Is_Output_Pin         => False);
 
       Enable_Pin_Irq (Gpio_Pin => Accelerometer_Const.Acc_Int2_Pin,
-                      Pin_Irq_Mode => Pin_Irq_When_Logic_One,
+                      Pin_Irq_Mode => Pin_Irq_On_Falling_Edge,
                       Pin_Irq_Handler => Accel_Int2_Pin_Irq_Callback'Access);
 
       --

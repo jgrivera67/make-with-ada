@@ -156,8 +156,11 @@ package body I2C_Driver is
       Buffer_Length : Positive)
    is
       Transaction_Successful : Boolean;
-      Tries_Left : Natural := 100;
+      Tries_Left : Natural := 1;
    begin
+      Ada.Text_IO.Put_Line ("*** Enter Do_I2C_Transaction (" &
+       (if I2C_Transaction_Is_Read_Data then "read" else "write") & " register:" & I2C_Slave_Register_Address'Image & ")");
+       --???
       loop
          I2C_Start_Transaction (I2C_Device_Id,
                                 I2C_Slave_Address,
@@ -173,6 +176,10 @@ package body I2C_Driver is
          exit when Transaction_Successful or else Tries_Left = 0;
          delay until Clock + Milliseconds (1); --???
       end loop;
+
+      Ada.Text_IO.Put_Line ("*** Exit Do_I2C_Transaction (" &
+       (if I2C_Transaction_Is_Read_Data then "read" else "write") & " register:" & I2C_Slave_Register_Address'Image & ")");
+       --???
    end Do_I2C_Transaction;
 
    ----------------
@@ -230,12 +237,12 @@ package body I2C_Driver is
       --
       Set_Pin_Function (I2C_Device.Scl_Pin_Info,
                         Drive_Strength_Enable => False,
-                        Pullup_Resistor => False,
+                        Pullup_Resistor => True,
                         Open_Drain_Enable => True);
 
       Set_Pin_Function (I2C_Device.Sda_Pin_Info,
                         Drive_Strength_Enable => False,
-                        Pullup_Resistor => False,
+                        Pullup_Resistor => True,
                         Open_Drain_Enable => True);
 
       Set_Private_Data_Region (
@@ -421,7 +428,6 @@ package body I2C_Driver is
       Slave_Address_Packet : I2C_Slave_Address_Packet_Type;
       Old_Region : MPU_Region_Descriptor_Type;
    begin
-       --Ada.Text_IO.Put_Line ("*** I2C_Start_Transaction"); --???
       Set_Private_Data_Region (
          To_Address (Object_Pointer (I2C_Registers_Ptr)),
          I2C_Peripheral'Object_Size,
@@ -499,6 +505,7 @@ package body I2C_Driver is
          S_Value := I2C_Registers_Ptr.S;
          exit when S_Value.TCF = S_TCF_Field_0;
       end loop;
+
       Restore_Private_Data_Region (Old_Region);
    end I2C_Start_Transaction;
 
