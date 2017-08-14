@@ -282,30 +282,6 @@ package body Watch is
       Set_True (Watch_Var.Display_Lock);
    end Unlock_Display;
 
-   ------------------------
-   -- Accelerometer_Task --
-   ------------------------
-
-   task body Accelerometer_Task is
-      X_Axis_Motion : Unsigned_8;
-      Y_Axis_Motion : Unsigned_8;
-      Z_Axis_Motion : Unsigned_8;
-   begin
-      Suspend_Until_True (Watch_Var.Accelerometer_Task_Suspension_Obj);
-      Runtime_Logs.Info_Print ("Accelerometer task started");
-      Set_Private_Data_Region (Watch_Var'Address,
-                               Watch_Var'Size,
-                               Read_Write);
-
-      loop
-         Accelerometer.Detect_Motion (X_Axis_Motion,
-                                      Y_Axis_Motion,
-                                      Z_Axis_Motion);
-
-         Set_True (Watch_Var.Async_Operations_Task_Suspension_Obj);
-      end loop;
-   end Accelerometer_Task;
-
    ---------------------------
    -- Async_Operations_Task --
    ---------------------------
@@ -332,6 +308,30 @@ package body Watch is
          end if;
       end loop;
    end Async_Operations_Task;
+
+   --------------------------
+   -- Motion_Detector_Task --
+   --------------------------
+
+   task body Motion_Detector_Task is
+      X_Axis_Motion : Unsigned_8;
+      Y_Axis_Motion : Unsigned_8;
+      Z_Axis_Motion : Unsigned_8;
+   begin
+      Suspend_Until_True (Watch_Var.Motion_Detector_Task_Suspension_Obj);
+      Runtime_Logs.Info_Print ("Motion detector task started");
+      Set_Private_Data_Region (Watch_Var'Address,
+                               Watch_Var'Size,
+                               Read_Write);
+
+      loop
+         Accelerometer.Detect_Motion (X_Axis_Motion,
+                                      Y_Axis_Motion,
+                                      Z_Axis_Motion);
+
+         Set_True (Watch_Var.Async_Operations_Task_Suspension_Obj);
+      end loop;
+   end Motion_Detector_Task;
 
    -----------------------
    -- Screen_Saver_Task --
@@ -368,6 +368,28 @@ package body Watch is
          end if;
       end loop;
    end Screen_Saver_Task;
+
+   ---------------------------
+   -- Tapping_Detector_Task --
+   ---------------------------
+
+   task body Tapping_Detector_Task is
+      X_Axis_Motion : Unsigned_8;
+      Y_Axis_Motion : Unsigned_8;
+      Z_Axis_Motion : Unsigned_8;
+   begin
+      Suspend_Until_True (Watch_Var.Tapping_Detector_Task_Suspension_Obj);
+      Runtime_Logs.Info_Print ("Tapping detector task started");
+      Set_Private_Data_Region (Watch_Var'Address,
+                               Watch_Var'Size,
+                               Read_Write);
+
+      loop
+         Accelerometer.Detect_Tapping;
+
+         Set_True (Watch_Var.Async_Operations_Task_Suspension_Obj);
+      end loop;
+   end Tapping_Detector_Task;
 
    ----------------
    -- Watch_Task --

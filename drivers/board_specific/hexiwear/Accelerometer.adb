@@ -35,6 +35,7 @@ with Accelerometer.Fxos8700cq_Private;
 with Ada.Real_Time;
 with Ada.Synchronous_Task_Control;
 with Runtime_Logs;
+with Ada.Text_IO;--???
 
 --
 -- Driver for the FXOS8700CQ accelerometer
@@ -86,6 +87,7 @@ package body Accelerometer is
    type Accelerometer_Type is limited record
       Initialized : Boolean := False;
       Motion_Detected_Susp_Obj : Suspension_Object;
+      Tapping_Detected_Susp_Obj : Suspension_Object;
    end record with Alignment => MPU_Region_Alignment;
 
    Accelerometer_Var : Accelerometer_Type;
@@ -129,12 +131,20 @@ package body Accelerometer is
 
    procedure Accel_Int2_Pin_Irq_Callback
    is
+      Old_Region : MPU_Region_Descriptor_Type;
    begin
       --
       --  Int2 pin has been cleared by the corresponding pin port IRQ handler
       --
 
-      null;
+      Set_Private_Data_Region (Accelerometer_Var'Address,
+                               Accelerometer_Var'Size,
+                               Read_Write,
+                               Old_Region);
+
+      Set_True (Accelerometer_Var.Tapping_Detected_Susp_Obj);
+      Restore_Private_Data_Region (Old_Region);
+
       Runtime_Logs.Debug_Print ("*** Accel_Int2_Pin_Irq_Callback ***"); -- ???
    end Accel_Int2_Pin_Irq_Callback;
 
@@ -286,11 +296,72 @@ package body Accelerometer is
       end if;
    end Detect_Motion;
 
+   --------------------
+   -- Detect_Tapping --
+   --------------------
+
+   procedure Detect_Tapping
+   is
+   begin
+      Suspend_Until_True (Accelerometer_Var.Tapping_Detected_Susp_Obj);
+
+   end Detect_Tapping;
+
    ----------------
    -- Initialize --
    ----------------
 
    procedure Initialize is
+      procedure Configure_Tapping_Detection;
+
+      ---------------------------------
+      -- Configure_Tapping_Detection --
+      ---------------------------------
+
+      procedure Configure_Tapping_Detection
+      is
+      begin
+         I2C_Write (Accelerometer_Const.I2C_Device_Id,
+                    Accelerometer_Const.I2C_Slave_Address,
+                    Accel_HP_Filter_Cutoff'Enum_Rep,
+                    16#00#);
+
+         I2C_Write (Accelerometer_Const.I2C_Device_Id,
+                    Accelerometer_Const.I2C_Slave_Address,
+                    Accel_Pulse_Cfg'Enum_Rep,
+                    Shift_Left (Byte(1), 5));
+
+         --
+         --  Set the threshold - minimum required acceleration to cause a tap.
+         --  write the value as a current sensitivity multiplier to get the
+         --  desired value in [g] current z-threshold is set at 0.25g
+         --
+         I2C_Write (Accelerometer_Const.I2C_Device_Id,
+                    Accelerometer_Const.I2C_Slave_Address,
+                    Accel_Pulse_Threshold_Z'Enum_Rep,
+                    10);
+
+         --
+         --  set the time limit - the maximum time that a tap can be above the
+         --  threshold 2.55s time limit at 100Hz odr, this is very dependent on
+         --  data rate, see the app note
+         --
+         I2C_Write (Accelerometer_Const.I2C_Device_Id,
+                    Accelerometer_Const.I2C_Slave_Address,
+                    Accel_Pulse_Tmlt'Enum_Rep,
+                    80);
+
+         --
+         --  set the pulse latency - the minimum required time between one pulse
+         --  and the next 5.1s 100Hz odr between taps min, this also depends on
+         --  the data rate
+         --
+         I2C_Write (Accelerometer_Const.I2C_Device_Id,
+                    Accelerometer_Const.I2C_Slave_Address,
+                    Accel_Pulse_Ltcy'Enum_Rep,
+                    40);
+      end Configure_Tapping_Detection;
+
       Old_Region : MPU_Region_Descriptor_Type;
       Who_Am_I_Value : Byte;
       Ctrl_Reg1_Value : Accel_Ctrl_Reg1_Register_Type;
@@ -304,8 +375,9 @@ package body Accelerometer is
       FF_MT_Cfg_Value : Accel_FF_MT_Cfg_Register_Type;
       Aslp_Count_Value : Byte;
       FF_MT_Count_Value : Byte;
-      FF_MT_THS_Value : Accel_FF_MT_THS_Register_Type;
+      FF_MT_Threshold_Value : Accel_FF_MT_Threshold_Register_Type;
       XYZ_Data_Cfg_Value : Accel_XYZ_Data_Cfg_Register_Type;
+
    begin
       if not I2C_Driver.Initialized (Accelerometer_Const.I2C_Device_Id) then
          I2C_Driver.Initialize (Accelerometer_Const.I2C_Device_Id);
@@ -315,6 +387,7 @@ package body Accelerometer is
                                   Accelerometer_Const.I2C_Slave_Address,
                                   Accel_Who_Am_I'Enum_Rep);
 
+      Ada.Text_IO.Put_Line("**** Who Am I" & Who_Am_I_Value'Image);--???
       pragma Assert (Who_Am_I_Value = Expected_Who_Am_I_Value);
 
       --
@@ -420,11 +493,11 @@ package body Accelerometer is
       --   or
       --  TODO: Or to set threshold to about 0.25g, use 4.
       --
-      FF_MT_THS_Value.THS := 1;
+      FF_MT_Threshold_Value.Threshold := 1;
       I2C_Write (Accelerometer_Const.I2C_Device_Id,
                  Accelerometer_Const.I2C_Slave_Address,
-                 Accel_FF_MT_Ths'Enum_Rep,
-                 FF_MT_THS_Value.Value);
+                 Accel_FF_MT_Threshold'Enum_Rep,
+                 FF_MT_Threshold_Value.Value);
 
       --
       --  Set the debounce counter to eliminate false readings for 100 Hz
@@ -460,21 +533,28 @@ package body Accelerometer is
                  Accel_XYZ_Data_Cfg'Enum_Rep,
                  XYZ_Data_Cfg_Value.Value);
 
+      Configure_Tapping_Detection;
+
       --
-      --  Enable data-ready, auto-sleep and motion detection interrupts:
+      --  Enable data-ready, auto-sleep, motion detection and tapping detection
+      --  interrupts:
       --
-      Ctrl_Reg4_Value.Int_En_Drdy := 1;
-      Ctrl_Reg4_Value.Int_En_Aslp := 1;
-      Ctrl_Reg4_Value.Int_En_Ff_Mt := 1;
+      --Ctrl_Reg4_Value.Int_En_Drdy := 1;
+      --Ctrl_Reg4_Value.Int_En_Aslp := 1;
+      --Ctrl_Reg4_Value.Int_En_Ff_Mt := 1;
+      Ctrl_Reg4_Value.Int_En_Pulse := 1;
       I2C_Write (Accelerometer_Const.I2C_Device_Id,
                  Accelerometer_Const.I2C_Slave_Address,
                  Accel_Ctrl_Reg4'Enum_Rep,
                  Ctrl_Reg4_Value.Value);
 
       --
-      --  Route data-ready interrupts to INT1, others INT2 (default)
+      --  Route motion detection interrupt to INT1 and tapping detection
+      --  interrupt to INT2
       --
-      Ctrl_Reg5_Value.Int_Cfg_Drdy := 1;
+      --Ctrl_Reg5_Value.Int_Cfg_Drdy := 1;
+      Ctrl_Reg5_Value.Int_Cfg_Ff_Mt := 1;
+      Ctrl_Reg5_Value.Int_Cfg_Pulse := 0;
       I2C_Write (Accelerometer_Const.I2C_Device_Id,
                  Accelerometer_Const.I2C_Slave_Address,
                  Accel_Ctrl_Reg5'Enum_Rep,

@@ -45,10 +45,18 @@ private package Accelerometer.Fxos8700cq_Private is
        Accel_Int_Source,
        Accel_Who_Am_I,
        Accel_XYZ_Data_Cfg,
+       Accel_HP_Filter_Cutoff,
        Accel_FF_MT_Cfg,
        Accel_FF_MT_Src,
-       Accel_FF_MT_Ths,
+       Accel_FF_MT_Threshold,
        Accel_FF_MT_Count,
+       Accel_Pulse_Cfg,
+       Accel_Pulse_Threshold_X,
+       Accel_Pulse_Threshold_Y,
+       Accel_Pulse_Threshold_Z,
+       Accel_Pulse_Tmlt,
+       Accel_Pulse_Ltcy,
+       Accel_Pulse_Wind,
        Accel_Aslp_Count, --  Auto Sleep Inactivity Timer register
        Accel_Ctrl_Reg1,
        Accel_Ctrl_Reg2,
@@ -66,10 +74,18 @@ private package Accelerometer.Fxos8700cq_Private is
        Accel_Int_Source => 16#0C#,
        Accel_Who_Am_I => 16#0D#,
        Accel_XYZ_Data_Cfg => 16#0E#,
+       Accel_HP_Filter_Cutoff => 16#0F#,
        Accel_FF_MT_Cfg => 16#15#,
        Accel_FF_MT_Src => 16#16#,
-       Accel_FF_MT_Ths => 16#17#,
+       Accel_FF_MT_Threshold => 16#17#,
        Accel_FF_MT_Count => 16#18#,
+       Accel_Pulse_Cfg => 16#21#,
+       Accel_Pulse_Threshold_X => 16#23#,
+       Accel_Pulse_Threshold_Y => 16#24#,
+       Accel_Pulse_Threshold_Z => 16#25#,
+       Accel_Pulse_Tmlt => 16#26#,
+       Accel_Pulse_Ltcy => 16#27#,
+       Accel_Pulse_Wind => 16#28#,
        Accel_Aslp_Count => 16#29#,
        Accel_Ctrl_Reg1 => 16#2A#,
        Accel_Ctrl_Reg2 => 16#2B#,
@@ -388,21 +404,21 @@ private package Accelerometer.Fxos8700cq_Private is
       ELE   at 0 range 7 .. 7;
    end record;
 
-   type Accel_FF_MT_THS_Register_Type (As_Value : Boolean := True) is record
+   type Accel_FF_MT_Threshold_Register_Type (As_Value : Boolean := True) is record
       case As_Value is
 	 when True =>
 	    Value : Byte := 0;
 	 when False =>
-	    THS : UInt7;
-	    THS_DBCNTM : Bit;
+	    Threshold : UInt7;
+	    Threshold_DBCNTM : Bit;
       end case;
    end record
       with Unchecked_Union, Size => Byte'Size;
 
-   for Accel_FF_MT_THS_Register_Type use record
-      Value	    at 0 range 0 .. 7;
-      THS	    at 0 range 0 .. 6;
-      THS_DBCNTM    at 0 range 7 .. 7;
+   for Accel_FF_MT_Threshold_Register_Type use record
+      Value	        at 0 range 0 .. 7;
+      Threshold	        at 0 range 0 .. 6;
+      Threshold_DBCNTM  at 0 range 7 .. 7;
    end record;
 
    type Accel_FF_MT_SRC_Register_Type (As_Value : Boolean := True) is record
@@ -456,7 +472,7 @@ private package Accelerometer.Fxos8700cq_Private is
 	 when False =>
 	    Rst_Cnt : UInt2;
 	    Maxmin_Rst : Bit;
-	    Maxmin_Dis_THS : Bit;
+	    Maxmin_Dis_Threshold : Bit;
 	    Maxmin_Dis : Bit;
 	    Hyb_Autoinc : Bit;
       end case;
@@ -464,12 +480,12 @@ private package Accelerometer.Fxos8700cq_Private is
       with Unchecked_Union, Size => Byte'Size;
 
    for Magnet_Ctrl_Reg2_Register_Type use record
-      Value		at 0 range 0 .. 7;
-      Rst_Cnt		at 0 range 0 .. 1;
-      Maxmin_Rst	at 0 range 2 .. 2;
-      Maxmin_Dis_THS	at 0 range 3 .. 3;
-      Maxmin_Dis	at 0 range 4 .. 4;
-      Hyb_Autoinc	at 0 range 5 .. 5;
+      Value		    at 0 range 0 .. 7;
+      Rst_Cnt		    at 0 range 0 .. 1;
+      Maxmin_Rst	    at 0 range 2 .. 2;
+      Maxmin_Dis_Threshold  at 0 range 3 .. 3;
+      Maxmin_Dis	    at 0 range 4 .. 4;
+      Hyb_Autoinc	    at 0 range 5 .. 5;
    end record;
 
 end Accelerometer.Fxos8700cq_Private;

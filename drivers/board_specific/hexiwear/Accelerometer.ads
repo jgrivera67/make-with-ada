@@ -56,6 +56,9 @@ package Accelerometer is
       Z_Axis_Motion : out Unsigned_8)
       with Pre => Initialized;
 
+   procedure Detect_Tapping
+      with Pre => Initialized;
+
    Type Milli_G_Type is new Integer;
 
    function Convert_Acceleration_Reading_To_Milli_G (

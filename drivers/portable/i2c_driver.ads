@@ -52,7 +52,7 @@ package I2C_Driver is
    --  @param I2C_Device_Id I2C device Id
    --
 
-   type I2C_Slave_Address_Type is new Uint7;
+   type I2C_Slave_Address_Type is new UInt7;
 
    type I2C_Slave_Register_Address_Type is new Unsigned_8;
 

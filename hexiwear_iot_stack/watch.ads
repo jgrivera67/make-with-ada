@@ -77,10 +77,11 @@ private
       Last_RTC_Time_Reading : Seconds_Count := 0;
       Display_On : Boolean := False;
       Display_Lock : Suspension_Object;
-      Accelerometer_Task_Suspension_Obj : Suspension_Object;
       Async_Operations_Task_Suspension_Obj : Suspension_Object;
       Watch_Task_Suspension_Obj : Suspension_Object;
       Screen_Saver_Task_Suspension_Obj : Suspension_Object;
+      Motion_Detector_Task_Suspension_Obj : Suspension_Object;
+      Tapping_Detector_Task_Suspension_Obj : Suspension_Object;
    end record with Alignment => MPU_Region_Alignment;
 
    --
@@ -88,10 +89,11 @@ private
    --
    Watch_Var : Watch_Type;
 
-   task Accelerometer_Task;
    task Async_Operations_Task;
    task Watch_Task;
    task Screen_Saver_Task;
+   task Motion_Detector_Task;
+   task Tapping_Detector_Task;
 
    function Initialized return Boolean is
      (Watch_Var.Initialized);

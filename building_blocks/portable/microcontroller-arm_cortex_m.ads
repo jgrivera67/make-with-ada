@@ -267,4 +267,7 @@ package Microcontroller.Arm_Cortex_M is
    function Byte_Swap (Value : Unsigned_32) return Unsigned_32 with inline;
    --  Do a byte-swap of a 32-bit value
 
+   procedure Nop;
+   --  Nop machine instruction
+
 end Microcontroller.Arm_Cortex_M;

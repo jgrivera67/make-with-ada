@@ -265,6 +265,15 @@ package body Microcontroller.Arm_Cortex_M is
       return Control.SPSEL = 0;
    end Is_Cpu_Using_MSP_Stack_Pointer;
 
+   ---------
+   -- Nop --
+   ---------
+
+   procedure Nop is
+   begin
+      Asm ("nop", Volatile => True);
+   end Nop;
+
    ----------------------------
    -- Restore_Cpu_Interrupts --
    ----------------------------
