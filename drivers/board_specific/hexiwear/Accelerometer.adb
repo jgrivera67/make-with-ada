@@ -391,6 +391,16 @@ package body Accelerometer is
                      Pullup_Resistor       => False,
                      Is_Output_Pin         => True);
 
+     Configure_Pin (Accelerometer_Const.Acc_Int1_Pin,
+                     Drive_Strength_Enable => False,
+                     Pullup_Resistor       => True,
+                     Is_Output_Pin         => False);
+
+     Configure_Pin (Accelerometer_Const.Acc_Int2_Pin,
+                     Drive_Strength_Enable => False,
+                     Pullup_Resistor       => True,
+                     Is_Output_Pin         => False);
+
       --
       --  Reset accelerometer, from its reset pin
       --
@@ -580,23 +590,12 @@ package body Accelerometer is
                  Ctrl_Reg5_Value.Value);
 
       --
-      --  Configure INT1 and INT2 interrupt pins:
-      -- (interrupt when logical 1)
+      --  Enable GPIO interrupts from INT1 and INT2 pins:
       --
-
-      Configure_Pin (Accelerometer_Const.Acc_Int1_Pin,
-                     Drive_Strength_Enable => False,
-                     Pullup_Resistor       => True,
-                     Is_Output_Pin         => False);
 
       Enable_Pin_Irq (Gpio_Pin => Accelerometer_Const.Acc_Int1_Pin,
                       Pin_Irq_Mode => Pin_Irq_On_Falling_Edge,
                       Pin_Irq_Handler => Accel_Int1_Pin_Irq_Callback'Access);
-
-      Configure_Pin (Accelerometer_Const.Acc_Int2_Pin,
-                     Drive_Strength_Enable => False,
-                     Pullup_Resistor       => True,
-                     Is_Output_Pin         => False);
 
       Enable_Pin_Irq (Gpio_Pin => Accelerometer_Const.Acc_Int2_Pin,
                       Pin_Irq_Mode => Pin_Irq_On_Falling_Edge,

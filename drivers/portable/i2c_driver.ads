@@ -60,7 +60,8 @@ package I2C_Driver is
       I2C_Device_Id : I2C_Device_Id_Type;
       I2C_Slave_Address : I2C_Slave_Address_Type;
       I2C_Slave_Register_Address : I2C_Slave_Register_Address_Type;
-      Buffer : out Bytes_Array_Type)
+      Buffer : out Bytes_Array_Type;
+      Use_Polling : Boolean := False)
       with Pre => Initialized (I2C_Device_Id)
                   and
                   Buffer'Length /= 0;
@@ -76,7 +77,8 @@ package I2C_Driver is
    function I2C_Read (
       I2C_Device_Id : I2C_Device_Id_Type;
       I2C_Slave_Address : I2C_Slave_Address_Type;
-      I2C_Slave_Register_Address : I2C_Slave_Register_Address_Type)
+      I2C_Slave_Register_Address : I2C_Slave_Register_Address_Type;
+      Use_Polling : Boolean := False)
       return Byte;
    --
    --  Read a block of bytes from an I2C slave
@@ -86,7 +88,8 @@ package I2C_Driver is
       I2C_Device_Id : I2C_Device_Id_Type;
       I2C_Slave_Address : I2C_Slave_Address_Type;
       I2C_Slave_Register_Address : I2C_Slave_Register_Address_Type;
-      Buffer : Bytes_Array_Type)
+      Buffer : Bytes_Array_Type;
+      Use_Polling : Boolean := False)
       with Pre => Initialized (I2C_Device_Id);
    --
    --  Writed a block of bytes to an I2C slave
@@ -101,7 +104,8 @@ package I2C_Driver is
       I2C_Device_Id : I2C_Device_Id_Type;
       I2C_Slave_Address : I2C_Slave_Address_Type;
       I2C_Slave_Register_Address : I2C_Slave_Register_Address_Type;
-      Byte_Value : Byte);
+      Byte_Value : Byte;
+      Use_Polling : Boolean := False);
    --
    --  Write one byte to an I2C slave
    --
@@ -138,20 +142,20 @@ private
       Buffer_Length : Positive;
       Buffer_Cursor : Positive;
       Num_Data_Bytes_Left : Natural := 0;
+      Byte_Transfer_Completed : Suspension_Object;
    end record;
 
    --
    --  State variables of a I2C controller device object
    --
    --  @field Initialized Flag indicating if this device has been initialized
-   --  @field I2C_Transaction_Completed Suspension object to be signaled when
-   --         the curretn I2C transaction on the I2C controller has completed
    --  @field Current_Transaction Current data transfer transaction
+   --  @field I2C_Byte_Transfer_Completed Suspension object to be signaled from
+   --         the I2C interrupt handler, when an I2C byte transfer completes
    --
    type I2C_Device_Var_Type is limited record
       Initialized : Boolean := False;
       Current_Transaction : I2C_Transaction_Type;
-      I2C_Transaction_Completed : Suspension_Object;
    end record with Alignment => MPU_Region_Alignment;
 
    --

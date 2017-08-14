@@ -36,7 +36,6 @@ with Pin_Mux_Driver;
 with Microcontroller.Arm_Cortex_M;
 with Runtime_Logs;
 with Ada.Text_IO; --???
-with Ada.Real_Time;
 
 package body I2C_Driver is
    pragma SPARK_Mode (Off);
@@ -48,7 +47,6 @@ package body I2C_Driver is
    use Ada.Interrupts;
    use Microcontroller.Arm_Cortex_M;
    use System.Storage_Elements;
-   use Ada.Real_Time;
 
    package Address_To_I2C_Registers_Pointer is new
       System.Address_To_Access_Conversions (I2C_Peripheral);
@@ -82,6 +80,7 @@ package body I2C_Driver is
       I2C_Slave_Register_Address : I2C_Slave_Register_Address_Type;
       I2C_Transaction_Has_Reg_Addr : Boolean;
       I2C_Transaction_Is_Read_Data : Boolean;
+      Use_Polling : Boolean;
       Buffer_Address : System.Address;
       Buffer_Length : Positive)
       with Pre => I2C_Devices_Var (I2C_Device_Id).Current_Transaction.State =
@@ -107,12 +106,8 @@ package body I2C_Driver is
    procedure I2C_Switch_To_Rx_Mode (
       I2C_Device_Id : I2C_Device_Id_Type);
 
-   procedure I2C_Wait_Transaction_Completion (
-      I2C_Device_Id : I2C_Device_Id_Type);
-
    procedure Run_I2C_Transaction_State_Machine (
-      I2C_Device_Id : I2C_Device_Id_Type;
-      Transaction_Successful : out Boolean);
+      I2C_Device_Id : I2C_Device_Id_Type);
 
    --
    --  I2C slave address packet type
@@ -152,30 +147,77 @@ package body I2C_Driver is
       I2C_Slave_Register_Address : I2C_Slave_Register_Address_Type;
       I2C_Transaction_Has_Reg_Addr : Boolean;
       I2C_Transaction_Is_Read_Data : Boolean;
+      Use_Polling : Boolean;
       Buffer_Address : System.Address;
       Buffer_Length : Positive)
    is
-      Transaction_Successful : Boolean;
-      Tries_Left : Natural := 1;
+      I2C_Device : I2C_Device_Const_Type renames
+         I2C_Devices_Const (I2C_Device_Id);
+      I2C_Device_Var : I2C_Device_Var_Type renames
+         I2C_Devices_Var (I2C_Device_Id);
+      Current_Transaction : I2C_Transaction_Type renames
+         I2C_Device_Var.Current_Transaction;
+      I2C_Registers_Ptr : access I2C_Peripheral renames
+            I2C_Device.Registers_Ptr;
+      S_Value : I2C0_S_Register;
+      Old_Region : MPU_Region_Descriptor_Type;
+      C1_Value : I2C0_C1_Register;
    begin
       Ada.Text_IO.Put_Line ("*** Enter Do_I2C_Transaction (" &
        (if I2C_Transaction_Is_Read_Data then "read" else "write") & " register:" & I2C_Slave_Register_Address'Image & ")");
        --???
-      loop
-         I2C_Start_Transaction (I2C_Device_Id,
-                                I2C_Slave_Address,
-                                I2c_Slave_Register_Address,
-                                I2C_Transaction_Has_Reg_Addr,
-                                I2C_Transaction_Is_Read_Data,
-                                Buffer_Address,
-                                Buffer_Length);
+      I2C_Start_Transaction (I2C_Device_Id,
+                             I2C_Slave_Address,
+                             I2c_Slave_Register_Address,
+                             I2C_Transaction_Has_Reg_Addr,
+                             I2C_Transaction_Is_Read_Data,
+                             Buffer_Address,
+                             Buffer_Length);
 
-         Run_I2C_Transaction_State_Machine (I2C_Device_Id,
-                                            Transaction_Successful);
-         Tries_Left := Tries_Left - 1;
-         exit when Transaction_Successful or else Tries_Left = 0;
-         delay until Clock + Milliseconds (1); --???
+      Set_Private_Data_Region (To_Address (Object_Pointer (I2C_Registers_Ptr)),
+                               I2C_Peripheral'Object_Size,
+                               Read_Write,
+                               Old_Region);
+
+      if not Use_Polling then
+         C1_Value :=  I2C_Registers_Ptr.C1;
+         C1_Value.IICIE := C1_IICIE_Field_1;
+         I2C_Registers_Ptr.C1 := C1_Value;
+      end if;
+
+      loop
+         if Use_Polling then
+            loop
+                S_Value := I2C_Registers_Ptr.S;
+                exit when S_Value.IICIF = S_IICIF_Field_1;
+            end loop;
+
+            --  Clear IICIF bit (w1c)
+            I2C_Registers_Ptr.S := S_Value;
+         else
+            Suspend_Until_True (Current_Transaction.Byte_Transfer_Completed);
+         end if;
+
+         S_Value := I2C_Registers_Ptr.S;
+         if S_Value.TCF = S_TCF_Field_1 then
+            Run_I2C_Transaction_State_Machine (I2C_Device_Id);
+            exit when Current_Transaction.State = I2C_Transaction_Completed
+                      or else
+                      Current_Transaction.State = I2C_Transaction_Aborted;
+         end if;
       end loop;
+
+      if not Use_Polling then
+         C1_Value :=  I2C_Registers_Ptr.C1;
+         C1_Value.IICIE := C1_IICIE_Field_0;
+         I2C_Registers_Ptr.C1 := C1_Value;
+      end if;
+
+      Set_Private_Data_Region (I2C_Device_Var'Address,
+                               I2C_Device_Var'Size,
+                               Read_Write);
+      I2C_Device_Var.Current_Transaction.State := I2C_Transaction_Not_Started;
+      Restore_Private_Data_Region (Old_Region);
 
       Ada.Text_IO.Put_Line ("*** Exit Do_I2C_Transaction (" &
        (if I2C_Transaction_Is_Read_Data then "read" else "write") & " register:" & I2C_Slave_Register_Address'Image & ")");
@@ -268,10 +310,9 @@ package body I2C_Driver is
       --  Enable IIC module:
       --
       C1_Value.IICEN := C1_IICEN_Field_1;
-      --C1_Value.IICIE := C1_IICIE_Field_1; --???
       I2C_Registers_Ptr.C1 := C1_Value;
 
-      --???
+      --
       --  Enable I2C interrupts in the interrupt controller (NVIC):
       --  NOTE: This is implicitly done by the Ada runtime
       --
@@ -301,7 +342,6 @@ package body I2C_Driver is
         I2C_Device.Registers_Ptr;
       S_Value : I2C0_S_Register;
       C1_Value : I2C0_C1_Register;
-      FLT_Value : I2C0_FLT_Register;
       Old_Region : MPU_Region_Descriptor_Type;
    begin
       pragma Assert (I2C_Device_Var.Current_Transaction.State /=
@@ -322,39 +362,26 @@ package body I2C_Driver is
          Read_Write,
          Old_Region);
 
-      FLT_Value := I2C_Registers_Ptr.FLT;
-      pragma Assert (FLT_Value.STOPF = FLT_STOPF_Field_0);
-
       C1_Value := I2C_Registers_Ptr.C1;
       pragma Assert (C1_Value.MST = C1_MST_Field_1);
       pragma Assert (C1_Value.RSTA = 0); --  Always read as 0
       C1_Value.MST := C1_MST_Field_0;
       C1_Value.TX := C1_TX_Field_0;
       C1_Value.TXAK := C1_TXAK_Field_0;
-      C1_Value.RSTA := 0; -- ???
+      C1_Value.RSTA := 0;
       I2C_Registers_Ptr.C1 := C1_Value;
 
       --
       --  Wait for the STOP signal to be asserted:
       --
-      loop
-         FLT_Value := I2C_Registers_Ptr.FLT;
-         exit when FLT_Value.STOPF = FLT_STOPF_Field_1;
-         --
-         --   TODO: Have max number of iterations to avoid infinite loop
-         --
-      end loop;
-
+      --loop
+      --   FLT_Value := I2C_Registers_Ptr.FLT;
+      --   exit when FLT_Value.STOPF = FLT_STOPF_Field_1;
+      --end loop;
       --  Clear STOPF bit (w1c):
-      I2C_Registers_Ptr.FLT := FLT_Value;
-
-      S_Value := I2C_Registers_Ptr.S;
-      pragma Assert (S_Value.BUSY = S_BUSY_Field_0);
-      pragma Assert (S_Value.RXAK = S_RXAK_Field_0);
+      --I2C_Registers_Ptr.FLT := FLT_Value;
 
       Restore_Private_Data_Region (Old_Region);
---Ada.Text_IO.Put_Line ("*** I2C_End_Transaction"); --???
-      Set_True (I2C_Device_Var.I2C_Transaction_Completed);
    end I2C_End_Transaction;
 
    --------------
@@ -365,7 +392,8 @@ package body I2C_Driver is
       I2C_Device_Id : I2C_Device_Id_Type;
       I2C_Slave_Address : I2C_Slave_Address_Type;
       I2C_Slave_Register_Address : I2C_Slave_Register_Address_Type;
-      Buffer : out Bytes_Array_Type)
+      Buffer : out Bytes_Array_Type;
+      Use_Polling : Boolean := False)
    is
    begin
       Do_I2C_Transaction (I2C_Device_Id,
@@ -373,6 +401,7 @@ package body I2C_Driver is
                           I2c_Slave_Register_Address,
                           I2C_Transaction_Has_Reg_Addr => True,
                           I2C_Transaction_Is_Read_Data => True,
+                          Use_Polling => Use_Polling,
                           Buffer_Address => Buffer'Address,
                           Buffer_Length => Buffer'Length);
    end I2C_Read;
@@ -384,7 +413,8 @@ package body I2C_Driver is
    function I2C_Read (
       I2C_Device_Id : I2C_Device_Id_Type;
       I2C_Slave_Address : I2C_Slave_Address_Type;
-      I2C_Slave_Register_Address : I2C_Slave_Register_Address_Type)
+      I2C_Slave_Register_Address : I2C_Slave_Register_Address_Type;
+      Use_Polling : Boolean := False)
       return Byte
    is
       Byte_Value : Byte with Volatile;
@@ -394,6 +424,7 @@ package body I2C_Driver is
                           I2c_Slave_Register_Address,
                           I2C_Transaction_Has_Reg_Addr => True,
                           I2C_Transaction_Is_Read_Data => True,
+                          Use_Polling => Use_Polling,
                           Buffer_Address => Byte_Value'Address,
                           Buffer_Length => 1);
 
@@ -424,7 +455,6 @@ package body I2C_Driver is
         I2C_Device.Registers_Ptr;
       C1_Value : I2C0_C1_Register;
       S_Value : I2C0_S_Register;
-      FLT_Value : I2C0_FLT_Register;
       Slave_Address_Packet : I2C_Slave_Address_Packet_Type;
       Old_Region : MPU_Region_Descriptor_Type;
    begin
@@ -453,9 +483,6 @@ package body I2C_Driver is
       --  Generate START signal by changing MST bit from 0 to 1:
       --
 
-      FLT_Value := I2C_Registers_Ptr.FLT;
-      pragma Assert (FLT_Value.STARTF = FLT_STARTF_Field_0);
-
       C1_Value := I2C_Registers_Ptr.C1;
       pragma Assert (C1_Value.MST = C1_MST_Field_0);
       pragma Assert (C1_Value.RSTA = 0);
@@ -472,16 +499,15 @@ package body I2C_Driver is
       C1_Value.TX := C1_TX_Field_1;
       I2C_Registers_Ptr.C1 := C1_Value;
 
-      loop
-         FLT_Value := I2C_Registers_Ptr.FLT;
-         exit when FLT_Value.STARTF = FLT_STARTF_Field_1;
-      end loop;
-
+      --  Wait for STARTF bit to get set:
+      --loop
+      --   FLT_Value := I2C_Registers_Ptr.FLT;
+      --   exit when FLT_Value.STARTF = FLT_STARTF_Field_1;
+      --end loop;
       --  Clear STARTF bit (w1c):
-      I2C_Registers_Ptr.FLT := FLT_Value;
+      --I2C_Registers_Ptr.FLT := FLT_Value;
 
       S_Value := I2C_Registers_Ptr.S;
-      pragma Assert (S_Value.BUSY = S_BUSY_Field_1);
       pragma Assert (S_Value.IICIF = S_IICIF_Field_0);
       pragma Assert (S_Value.ARBL = S_ARBL_Field_0);
       pragma Assert (S_Value.RXAK = S_RXAK_Field_0);
@@ -501,10 +527,10 @@ package body I2C_Driver is
       Slave_Address_Packet.Is_Read_Transaction := 0;
       I2C_Registers_Ptr.D := Slave_Address_Packet.Value;
 
-      loop
-         S_Value := I2C_Registers_Ptr.S;
-         exit when S_Value.TCF = S_TCF_Field_0;
-      end loop;
+      --loop
+      --   S_Value := I2C_Registers_Ptr.S;
+      --   exit when S_Value.TCF = S_TCF_Field_0;
+      --end loop;
 
       Restore_Private_Data_Region (Old_Region);
    end I2C_Start_Transaction;
@@ -556,7 +582,6 @@ package body I2C_Driver is
       pragma Assert (S_Value.BUSY /= S_BUSY_Field_0);
 
       C1_Value.RSTA := 1;
-      C1_Value.Tx := C1_TX_Field_1; -- ??? Redundant: remove
       I2C_Registers_Ptr.C1 := C1_Value;
 
       for I in 1 .. 6 loop  -- ???
@@ -571,43 +596,13 @@ package body I2C_Driver is
       Slave_Address_Packet.Is_Read_Transaction := 1;
       I2C_Registers_Ptr.D := Slave_Address_Packet.Value;
 
-      loop
-         S_Value := I2C_Registers_Ptr.S;
-         exit when S_Value.TCF = S_TCF_Field_0;
-      end loop;
+      --loop
+      --   S_Value := I2C_Registers_Ptr.S;
+      --   exit when S_Value.TCF = S_TCF_Field_0;
+      --end loop;
 
       Restore_Private_Data_Region (Old_Region);
    end I2C_Switch_To_Rx_Mode;
-
-   -------------------------------------
-   -- I2C_Wait_Transaction_Completion --
-   -------------------------------------
-
-   procedure I2C_Wait_Transaction_Completion (
-      I2C_Device_Id : I2C_Device_Id_Type)
-   is
-      I2C_Device_Var : I2C_Device_Var_Type renames
-        I2C_Devices_Var (I2C_Device_Id);
-      Old_Region : MPU_Region_Descriptor_Type;
-   begin
-      Ada.Text_IO.Put_Line ("*** I2C_Wait_Transaction_Completion: Before sleep"); --???
-      Suspend_Until_True (I2C_Device_Var.I2C_Transaction_Completed);
-      Ada.Text_IO.Put_Line ("*** I2C_Wait_Transaction_Completion: After sleep"); --???
-      pragma Assert (I2C_Device_Var.Current_Transaction.State =
-                        I2C_Transaction_Completed
-                     or else
-                     I2C_Device_Var.Current_Transaction.State =
-                        I2C_Transaction_Aborted);
-
-      Set_Private_Data_Region (
-         I2C_Device_Var'Address,
-         I2C_Device_Var'Size,
-         Read_Write,
-         Old_Region);
-
-      I2C_Device_Var.Current_Transaction.State := I2C_Transaction_Not_Started;
-      Restore_Private_Data_Region (Old_Region);
-   end I2C_Wait_Transaction_Completion;
 
    ---------------
    -- I2C_Write --
@@ -617,7 +612,8 @@ package body I2C_Driver is
       I2C_Device_Id : I2C_Device_Id_Type;
       I2C_Slave_Address : I2C_Slave_Address_Type;
       I2C_Slave_Register_Address : I2C_Slave_Register_Address_Type;
-      Buffer : Bytes_Array_Type)
+      Buffer : Bytes_Array_Type;
+      Use_Polling : Boolean := False)
    is
    begin
       Do_I2C_Transaction (I2C_Device_Id,
@@ -625,6 +621,7 @@ package body I2C_Driver is
                           I2C_Slave_Register_Address,
                           I2C_Transaction_Has_Reg_Addr => True,
                           I2C_Transaction_Is_Read_Data => False,
+                          Use_Polling => Use_Polling,
                           Buffer_Address => Buffer'Address,
                           Buffer_Length => Buffer'Length);
    end I2C_Write;
@@ -637,7 +634,8 @@ package body I2C_Driver is
       I2C_Device_Id : I2C_Device_Id_Type;
       I2C_Slave_Address : I2C_Slave_Address_Type;
       I2C_Slave_Register_Address : I2C_Slave_Register_Address_Type;
-      Byte_Value : Byte)
+      Byte_Value : Byte;
+      Use_Polling : Boolean := False)
    is
    begin
       Do_I2C_Transaction (I2C_Device_Id,
@@ -645,6 +643,7 @@ package body I2C_Driver is
                           I2C_Slave_Register_Address,
                           I2C_Transaction_Has_Reg_Addr => True,
                           I2C_Transaction_Is_Read_Data => False,
+                          Use_Polling => Use_Polling,
                           Buffer_Address => Byte_Value'Address,
                           Buffer_Length => 1);
    end I2C_Write;
@@ -654,11 +653,7 @@ package body I2C_Driver is
    ---------------------------------------
 
    procedure Run_I2C_Transaction_State_Machine (
-      I2C_Device_Id : I2C_Device_Id_Type;
-      Transaction_Successful : out Boolean) is
-
-      procedure Do_One_State_Transition;
-
+      I2C_Device_Id : I2C_Device_Id_Type) is
       I2C_Device : I2C_Device_Const_Type renames
          I2C_Devices_Const (I2C_Device_Id);
       I2C_Device_Var : I2C_Device_Var_Type renames
@@ -670,282 +665,210 @@ package body I2C_Driver is
       S_Value : I2C0_S_Register;
       C1_Value : I2C0_C1_Register;
       Dummy_D_Value : Byte with Unreferenced;
-      Data_Buffer :
-         Bytes_Array_Type (1 .. Current_Transaction.Buffer_Length)
+      Data_Buffer : Bytes_Array_Type (1 .. Current_Transaction.Buffer_Length)
          with Address => Current_Transaction.Buffer_Address;
+      Old_Region : MPU_Region_Descriptor_Type;
+   begin
+      S_Value := I2C_Registers_Ptr.S;
+      pragma Assert (S_Value.TCF /= S_TCF_Field_0);
+      pragma Assert (S_Value.BUSY /= S_BUSY_Field_0);
+      pragma Assert (S_Value.IICIF = S_IICIF_Field_0);
+      pragma Assert (S_Value.ARBL = S_ARBL_Field_0);
 
-      -----------------------------
-      -- Do_One_State_Transition --
-      -----------------------------
+      Set_Private_Data_Region (
+         To_Address (Object_Pointer (I2C_Registers_Ptr)),
+         I2C_Peripheral'Object_Size,
+         Read_Write,
+         Old_Region);
 
-      procedure Do_One_State_Transition is
-         Old_Region : MPU_Region_Descriptor_Type;
-      begin
-         Ada.Text_IO.Put_Line ("*** Do_One_State_Transition: state=" & Current_Transaction.State'Image); --???
-         S_Value := I2C_Registers_Ptr.S;
-         pragma Assert (S_Value.TCF /= S_TCF_Field_0);
-         pragma Assert (S_Value.BUSY /= S_BUSY_Field_0);
-         pragma Assert (S_Value.IICIF = S_IICIF_Field_0);
-         pragma Assert (S_Value.ARBL = S_ARBL_Field_0);
+      if Current_Transaction.State = I2C_Sending_Slave_Addr or else
+         Current_Transaction.State = I2C_Sending_Slave_Reg_Addr or else
+         Current_Transaction.State = I2C_Sending_Data_Byte then
+         if S_Value.RXAK = S_RXAK_Field_1 then
+            --
+            --  RXAK == 1 means no ACK signal from the slave detected
+            --
+            Runtime_Logs.Error_Print (
+               "ACK signal not received from i2C slave for I2C controller" &
+               I2C_Device_Id'Image);
 
-         Set_Private_Data_Region (
-            To_Address (Object_Pointer (I2C_Registers_Ptr)),
-            I2C_Peripheral'Object_Size,
-            Read_Write,
-            Old_Region);
+            I2C_End_Transaction (I2C_Device_Id);
 
-         if Current_Transaction.State = I2C_Sending_Slave_Addr or else
-            Current_Transaction.State = I2C_Sending_Slave_Reg_Addr or else
-            Current_Transaction.State = I2C_Sending_Data_Byte then
-            if S_Value.RXAK = S_RXAK_Field_1 then
-               --
-               --  RXAK == 1 means no ACK signal from the slave detected
-               --
-               Runtime_Logs.Error_Print (
-                  "ACK signal not received from i2C slave for I2C controller" &
-                  I2C_Device_Id'Image);
+            Set_Private_Data_Region (I2C_Device_Var'Address,
+                                     I2C_Device_Var'Size,
+                                     Read_Write);
 
-               I2C_End_Transaction (I2C_Device_Id);
+            Current_Transaction.State := I2C_Transaction_Aborted;
+            goto Common_Exit;
+         end if;
+      end if;
+
+      case Current_Transaction.State is
+         when I2C_Sending_Slave_Addr | I2C_Sending_Slave_Reg_Addr =>
+            if Current_Transaction.State = I2C_Sending_Slave_Addr and then
+               Current_Transaction.Transaction_Has_Reg_Addr
+            then
+               I2C_Registers_Ptr.D :=
+                  Byte (Current_Transaction.Slave_Register_Address);
 
                Set_Private_Data_Region (I2C_Device_Var'Address,
                                         I2C_Device_Var'Size,
                                         Read_Write);
-
-               Current_Transaction.State := I2C_Transaction_Aborted;
-               Ada.Text_IO.Put_Line ("*** Transaction aborted"); --???
+               Current_Transaction.State := I2C_Sending_Slave_Reg_Addr;
                goto Common_Exit;
             end if;
-         end if;
 
-         case Current_Transaction.State is
-            when I2C_Sending_Slave_Addr | I2C_Sending_Slave_Reg_Addr =>
-               if Current_Transaction.State = I2C_Sending_Slave_Addr and then
-                  Current_Transaction.Transaction_Has_Reg_Addr
-               then
-                  I2C_Registers_Ptr.D :=
-                     Byte (Current_Transaction.Slave_Register_Address);
-
-                  loop
-                     S_Value := I2C_Registers_Ptr.S;
-                     exit when S_Value.TCF = S_TCF_Field_0;
-                  end loop;
-
-                  Set_Private_Data_Region (I2C_Device_Var'Address,
-                                           I2C_Device_Var'Size,
-                                           Read_Write);
-                  Current_Transaction.State := I2C_Sending_Slave_Reg_Addr;
-                  goto Common_Exit;
-               end if;
-
-               if Current_Transaction.Transaction_Is_Read_Data then
-                  I2C_Switch_To_Rx_Mode (I2C_Device_Id);
-                  Set_Private_Data_Region (I2C_Device_Var'Address,
-                                           I2C_Device_Var'Size,
-                                           Read_Write);
-                  Current_Transaction.State := I2C_Sending_Slave_Addr_For_Rx;
-               else
-                  --
-                  --  Initiate send of first data byte to the slave:
-                  --
-                  pragma Assert (Current_Transaction.Num_Data_Bytes_Left > 0);
-                  I2C_Registers_Ptr.D :=
-                     Data_Buffer (Current_Transaction.Buffer_Cursor);
-
-                  loop
-                     S_Value := I2C_Registers_Ptr.S;
-                     exit when S_Value.TCF = S_TCF_Field_0;
-                  end loop;
-
-                  Set_Private_Data_Region (I2C_Device_Var'Address,
-                                           I2C_Device_Var'Size,
-                                           Read_Write);
-                  Current_Transaction.State := I2C_Sending_Data_Byte;
-               end if;
-
-            when I2C_Sending_Slave_Addr_For_Rx =>
+            if Current_Transaction.Transaction_Is_Read_Data then
+               I2C_Switch_To_Rx_Mode (I2C_Device_Id);
+               Set_Private_Data_Region (I2C_Device_Var'Address,
+                                        I2C_Device_Var'Size,
+                                        Read_Write);
+               Current_Transaction.State := I2C_Sending_Slave_Addr_For_Rx;
+            else
                --
-               --  Initiate receive of first data byte from the slave:
+               --  Initiate send of first data byte to the slave:
                --
                pragma Assert (Current_Transaction.Num_Data_Bytes_Left > 0);
-
-               C1_Value := I2C_Registers_Ptr.C1;
-               C1_Value.TX := C1_TX_Field_0;
-               if Current_Transaction.Num_Data_Bytes_Left = 1 then
-                  --
-                  --  Don't send ACK signal for next byte received from the
-                  --  slave
-                  --
-                  C1_Value.TXAK := C1_TXAK_Field_1;
-               else
-                  --
-                  --  Send ACK signal for next byte received from the slave
-                  --  (TXAK bit is active low)
-                  --
-                  C1_Value.TXAK := C1_TXAK_Field_0;
-               end if;
-
-               I2C_Registers_Ptr.C1 := C1_Value;
-
-               --
-               --  Do a dummy read of the D register to initiate receive of
-               --  first data byte from slave:
-               --
-               Dummy_D_Value := I2C_Registers_Ptr.D;
-
-               loop
-                  S_Value := I2C_Registers_Ptr.S;
-                  exit when S_Value.TCF = S_TCF_Field_0;
-               end loop;
+               I2C_Registers_Ptr.D :=
+                  Data_Buffer (Current_Transaction.Buffer_Cursor);
 
                Set_Private_Data_Region (I2C_Device_Var'Address,
                                         I2C_Device_Var'Size,
                                         Read_Write);
-               Current_Transaction.State := I2C_Receiving_Data_Byte;
+               Current_Transaction.State := I2C_Sending_Data_Byte;
+            end if;
 
-           when I2C_Sending_Data_Byte =>
-              pragma Assert (Current_Transaction.Num_Data_Bytes_Left > 0);
+         when I2C_Sending_Slave_Addr_For_Rx =>
+            --
+            --  Initiate receive of first data byte from the slave:
+            --
+            pragma Assert (Current_Transaction.Num_Data_Bytes_Left > 0);
 
-              Set_Private_Data_Region (I2C_Device_Var'Address,
-                                           I2C_Device_Var'Size,
-                                           Read_Write);
-              Current_Transaction.Buffer_Cursor :=
-                 Current_Transaction.Buffer_Cursor + 1;
-              Current_Transaction.Num_Data_Bytes_Left :=
-                 Current_Transaction.Num_Data_Bytes_Left - 1;
-              if Current_Transaction.Num_Data_Bytes_Left = 0 then
-                 I2C_End_Transaction (I2C_Device_Id);
-                 Current_Transaction.State := I2C_Transaction_Completed;
-                 goto Common_Exit;
-              end if;
+            C1_Value := I2C_Registers_Ptr.C1;
+            C1_Value.TX := C1_TX_Field_0;
+            if Current_Transaction.Num_Data_Bytes_Left = 1 then
+               --
+               --  Don't send ACK signal for next byte received from the
+               --  slave
+               --
+               C1_Value.TXAK := C1_TXAK_Field_1;
+            else
+               --
+               --  Send ACK signal for next byte received from the slave
+               --  (TXAK bit is active low)
+               --
+               C1_Value.TXAK := C1_TXAK_Field_0;
+            end if;
 
+            I2C_Registers_Ptr.C1 := C1_Value;
+
+            --
+            --  Do a dummy read of the D register to initiate receive of
+            --  first data byte from slave:
+            --
+            Dummy_D_Value := I2C_Registers_Ptr.D;
+
+            Set_Private_Data_Region (I2C_Device_Var'Address,
+                                     I2C_Device_Var'Size,
+                                     Read_Write);
+            Current_Transaction.State := I2C_Receiving_Data_Byte;
+
+        when I2C_Sending_Data_Byte =>
+           pragma Assert (Current_Transaction.Num_Data_Bytes_Left > 0);
+
+           Set_Private_Data_Region (I2C_Device_Var'Address,
+                                        I2C_Device_Var'Size,
+                                        Read_Write);
+           Current_Transaction.Buffer_Cursor :=
+              Current_Transaction.Buffer_Cursor + 1;
+           Current_Transaction.Num_Data_Bytes_Left :=
+              Current_Transaction.Num_Data_Bytes_Left - 1;
+           if Current_Transaction.Num_Data_Bytes_Left = 0 then
+              I2C_End_Transaction (I2C_Device_Id);
+              Current_Transaction.State := I2C_Transaction_Completed;
+              goto Common_Exit;
+           end if;
+
+           --
+           --  Initiate send of next data byte:
+           --
+           Set_Private_Data_Region (
+              To_Address (Object_Pointer (I2C_Registers_Ptr)),
+              I2C_Peripheral'Object_Size,
+              Read_Write);
+
+           I2C_Registers_Ptr.D :=
+              Data_Buffer (Current_Transaction.Buffer_Cursor);
+
+        when I2C_Receiving_Data_Byte =>
+           pragma Assert (Current_Transaction.Num_Data_Bytes_Left > 0);
+
+           Current_Transaction.Num_Data_Bytes_Left :=
+              Current_Transaction.Num_Data_Bytes_Left - 1;
+           if Current_Transaction.Num_Data_Bytes_Left = 0 then
               --
-              --  Initiate send of next data byte:
+              --  This is the last byte:
               --
-              Set_Private_Data_Region (
-                 To_Address (Object_Pointer (I2C_Registers_Ptr)),
-                 I2C_Peripheral'Object_Size,
-                 Read_Write);
-
-              I2C_Registers_Ptr.D :=
-                 Data_Buffer (Current_Transaction.Buffer_Cursor);
-
-              loop
-                  S_Value := I2C_Registers_Ptr.S;
-                  exit when S_Value.TCF = S_TCF_Field_0;
-               end loop;
-
-           when I2C_Receiving_Data_Byte =>
-              pragma Assert (Current_Transaction.Num_Data_Bytes_Left > 0);
-
-              Current_Transaction.Num_Data_Bytes_Left :=
-                 Current_Transaction.Num_Data_Bytes_Left - 1;
-              if Current_Transaction.Num_Data_Bytes_Left = 0 then
+              I2C_End_Transaction (I2C_Device_Id);
+           else
+              C1_Value := I2C_Registers_Ptr.C1;
+              if Current_Transaction.Num_Data_Bytes_Left = 1 then
                  --
-                 --  This is the last byte:
+                 --  Don't send ACK signal for next byte received from the
+                 --  slave (TXAK bit is active low)
                  --
-                 I2C_End_Transaction (I2C_Device_Id);
+                 C1_Value.TXAK := C1_TXAK_Field_1;
               else
-                 C1_Value := I2C_Registers_Ptr.C1;
-                 if Current_Transaction.Num_Data_Bytes_Left = 1 then
-                    --
-                    --  Don't send ACK signal for next byte received from the
-                    --  slave (TXAK bit is active low)
-                    --
-                    C1_Value.TXAK := C1_TXAK_Field_1;
-                 else
-                    --
-                    --  Send ACK signal for next byte received from the slave
-                    --
-                    C1_Value.TXAK := C1_TXAK_Field_0;
-                 end if;
-
-                 I2C_Registers_Ptr.C1 := C1_Value;
+                 --
+                 --  Send ACK signal for next byte received from the slave
+                 --
+                 C1_Value.TXAK := C1_TXAK_Field_0;
               end if;
 
-              --
-              --  Read D register to retrieve last data byte received and to
-              --  start receiving the next data byte from the slave
-              --
-              --  NOTE: If I2C_End_Transaction is not called above, this will
-              --  also initiate another read transfer.
-              --
-              Set_Private_Data_Region (
-                 Current_Transaction.Buffer_Address,
-                 Integer_Address (
-                    Current_Transaction.Buffer_Length * Byte'Size),
-                 Read_Write);
+              I2C_Registers_Ptr.C1 := C1_Value;
+           end if;
 
-              Data_Buffer (Current_Transaction.Buffer_Cursor) :=
-                 I2C_Registers_Ptr.D;
+           --
+           --  Read D register to retrieve last data byte received and to
+           --  start receiving the next data byte from the slave
+           --
+           --  NOTE: If I2C_End_Transaction is not called above, this will
+           --  also initiate another read transfer.
+           --
+           Set_Private_Data_Region (
+              Current_Transaction.Buffer_Address,
+              Integer_Address (
+                 Current_Transaction.Buffer_Length * Byte'Size),
+              Read_Write);
 
-               if Current_Transaction.Num_Data_Bytes_Left /= 0 then
-                  loop
-                     S_Value := I2C_Registers_Ptr.S;
-                     exit when S_Value.TCF = S_TCF_Field_0;
-                  end loop;
-               end if;
+           Data_Buffer (Current_Transaction.Buffer_Cursor) :=
+              I2C_Registers_Ptr.D;
 
-              Set_Private_Data_Region (I2C_Device_Var'Address,
-                                       I2C_Device_Var'Size,
-                                       Read_Write);
+           Set_Private_Data_Region (I2C_Device_Var'Address,
+                                    I2C_Device_Var'Size,
+                                    Read_Write);
 
-              Current_Transaction.Buffer_Cursor :=
-                 Current_Transaction.Buffer_Cursor + 1;
+           Current_Transaction.Buffer_Cursor :=
+              Current_Transaction.Buffer_Cursor + 1;
 
-              if Current_Transaction.Num_Data_Bytes_Left = 0 then
-                 Current_Transaction.State := I2C_Transaction_Completed;
-              end if;
+           if Current_Transaction.Num_Data_Bytes_Left = 0 then
+              Current_Transaction.State := I2C_Transaction_Completed;
+           end if;
 
-           when others =>
-              --
-              --  Unexpected  interrupt. If state is
-              --  I2C_Transaction_Not_Started, this may be a left-over byte
-              --  sent by the slave from a previously aborted or failed I2C
-              --  transaction
-              --
-              Runtime_Logs.Error_Print (
-                 "Unexpected I2C interrupt in transaction state" &
-                 Current_Transaction.State'Image);
-         end case;
+        when others =>
+           --
+           --  Unexpected  interrupt. If state is
+           --  I2C_Transaction_Not_Started, this may be a left-over byte
+           --  sent by the slave from a previously aborted or failed I2C
+           --  transaction
+           --
+           Runtime_Logs.Error_Print (
+              "Unexpected I2C interrupt in transaction state" &
+              Current_Transaction.State'Image);
+      end case;
 
-      <<Common_Exit>>
-         Restore_Private_Data_Region (Old_Region);
-      end Do_One_State_Transition;
-
-      Old_Region : MPU_Region_Descriptor_Type;
-
-   begin --  Run_I2C_Transfer_State_Machine
-
-       Set_Private_Data_Region (
-            To_Address (Object_Pointer (I2C_Registers_Ptr)),
-            I2C_Peripheral'Object_Size,
-            Read_Write,
-            Old_Region);
-
-       loop
-          loop
-             S_Value := I2C_Registers_Ptr.S;
-             exit when S_Value.IICIF = S_IICIF_Field_1;
-          end loop;
-
-          --  Clear IICIF bit (w1c)
-          I2C_Registers_Ptr.S := S_Value;
-
-          loop
-             S_Value := I2C_Registers_Ptr.S;
-             exit when S_Value.TCF = S_TCF_Field_1;
-          end loop;
-
-          Do_One_State_Transition;
-          exit when Current_Transaction.State = I2C_Transaction_Completed
-                    or else
-                    Current_Transaction.State = I2C_Transaction_Aborted;
-       end loop;
-
-       Transaction_Successful :=
-          (Current_Transaction.State = I2C_Transaction_Completed);
-       I2C_Device_Var.Current_Transaction.State := I2C_Transaction_Not_Started;
-       Restore_Private_Data_Region (Old_Region);
+   <<Common_Exit>>
+      Restore_Private_Data_Region (Old_Region);
    end Run_I2C_Transaction_State_Machine;
 
    --
@@ -984,17 +907,10 @@ package body I2C_Driver is
          I2C_Registers_Ptr : access I2C_Peripheral renames
             I2C_Device.Registers_Ptr;
          S_Value : I2C0_S_Register;
-         C1_Value : I2C0_C1_Register;
-         Dummy_D_Value : Byte with Unreferenced;
          Old_Region : MPU_Region_Descriptor_Type;
-         Data_Buffer :
-            Bytes_Array_Type (1 .. Current_Transaction.Buffer_Length)
-            with Address => Current_Transaction.Buffer_Address;
       begin
-         Ada.Text_IO.Put_Line ("*** I2C ISR: state=" & Current_Transaction.State'Image); --???
          S_Value := I2C_Registers_Ptr.S;
          pragma Assert (S_Value.IICIF /= S_IICIF_Field_0);
-         pragma Assert (S_Value.TCF /= S_TCF_Field_0);
          pragma Assert (S_Value.BUSY /= S_BUSY_Field_0);
 
          Set_Private_Data_Region (
@@ -1021,221 +937,7 @@ package body I2C_Driver is
          pragma Assert (S_Value.IICIF = S_IICIF_Field_0);
          pragma Assert (S_Value.ARBL = S_ARBL_Field_0);
 
-         if Current_Transaction.State = I2C_Sending_Slave_Addr or else
-            Current_Transaction.State = I2C_Sending_Slave_Reg_Addr or else
-            Current_Transaction.State = I2C_Sending_Data_Byte then
-            if S_Value.RXAK = S_RXAK_Field_1 then
-               --
-               --  RXAK == 1 means no ACK signal from the slave detected
-               --
-               Runtime_Logs.Error_Print (
-                  "ACK signal not received from i2C slave for I2C controller" &
-                  I2C_Device_Id'Image);
-
-               I2C_End_Transaction (I2C_Device_Id);
-
-               Set_Private_Data_Region (I2C_Device_Var'Address,
-                                        I2C_Device_Var'Size,
-                                        Read_Write);
-
-               Current_Transaction.State := I2C_Transaction_Aborted;
-               Ada.Text_IO.Put_Line ("*** Transaction aborted"); --???
-               goto Common_Exit;
-            end if;
-         end if;
-
-         case Current_Transaction.State is
-            when I2C_Sending_Slave_Addr | I2C_Sending_Slave_Reg_Addr =>
-               if Current_Transaction.State = I2C_Sending_Slave_Addr and then
-                  Current_Transaction.Transaction_Has_Reg_Addr
-               then
-                  I2C_Registers_Ptr.D :=
-                     Byte (Current_Transaction.Slave_Register_Address);
-
-                  loop
-                     S_Value := I2C_Registers_Ptr.S;
-                     exit when S_Value.TCF = S_TCF_Field_0;
-                  end loop;
-
-                  Set_Private_Data_Region (I2C_Device_Var'Address,
-                                           I2C_Device_Var'Size,
-                                           Read_Write);
-                  Current_Transaction.State := I2C_Sending_Slave_Reg_Addr;
-                  goto Common_Exit;
-               end if;
-
-               if Current_Transaction.Transaction_Is_Read_Data then
-                  I2C_Switch_To_Rx_Mode (I2C_Device_Id);
-                  Set_Private_Data_Region (I2C_Device_Var'Address,
-                                           I2C_Device_Var'Size,
-                                           Read_Write);
-                  Current_Transaction.State := I2C_Sending_Slave_Addr_For_Rx;
-               else
-                  --
-                  --  Initiate send of first data byte to the slave:
-                  --
-                  pragma Assert (Current_Transaction.Num_Data_Bytes_Left > 0);
-                  I2C_Registers_Ptr.D :=
-                     Data_Buffer (Current_Transaction.Buffer_Cursor);
-
-                  loop
-                     S_Value := I2C_Registers_Ptr.S;
-                     exit when S_Value.TCF = S_TCF_Field_0;
-                  end loop;
-
-                  Set_Private_Data_Region (I2C_Device_Var'Address,
-                                           I2C_Device_Var'Size,
-                                           Read_Write);
-                  Current_Transaction.State := I2C_Sending_Data_Byte;
-               end if;
-
-            when I2C_Sending_Slave_Addr_For_Rx =>
-               --
-               --  Initiate receive of first data byte from the slave:
-               --
-               pragma Assert (Current_Transaction.Num_Data_Bytes_Left > 0);
-
-               C1_Value := I2C_Registers_Ptr.C1;
-               C1_Value.TX := C1_TX_Field_0;
-               if Current_Transaction.Num_Data_Bytes_Left = 1 then
-                  --
-                  --  Don't send ACK signal for next byte received from the
-                  --  slave
-                  --
-                  C1_Value.TXAK := C1_TXAK_Field_1;
-               else
-                  --
-                  --  Send ACK signal for next byte received from the slave
-                  --  (TXAK bit is active low)
-                  --
-                  C1_Value.TXAK := C1_TXAK_Field_0;
-               end if;
-
-               I2C_Registers_Ptr.C1 := C1_Value;
-
-               --
-               --  Do a dummy read of the D register to initiate receive of
-               --  first data byte from slave:
-               --
-               Dummy_D_Value := I2C_Registers_Ptr.D;
-
-               loop
-                  S_Value := I2C_Registers_Ptr.S;
-                  exit when S_Value.TCF = S_TCF_Field_0;
-               end loop;
-
-               Set_Private_Data_Region (I2C_Device_Var'Address,
-                                        I2C_Device_Var'Size,
-                                        Read_Write);
-               Current_Transaction.State := I2C_Receiving_Data_Byte;
-
-           when I2C_Sending_Data_Byte =>
-              pragma Assert (Current_Transaction.Num_Data_Bytes_Left > 0);
-
-              Set_Private_Data_Region (I2C_Device_Var'Address,
-                                           I2C_Device_Var'Size,
-                                           Read_Write);
-              Current_Transaction.Buffer_Cursor :=
-                 Current_Transaction.Buffer_Cursor + 1;
-              Current_Transaction.Num_Data_Bytes_Left :=
-                 Current_Transaction.Num_Data_Bytes_Left - 1;
-              if Current_Transaction.Num_Data_Bytes_Left = 0 then
-                 I2C_End_Transaction (I2C_Device_Id);
-                 Current_Transaction.State := I2C_Transaction_Completed;
-                 goto Common_Exit;
-              end if;
-
-              --
-              --  Initiate send of next data byte:
-              --
-              Set_Private_Data_Region (
-                 To_Address (Object_Pointer (I2C_Registers_Ptr)),
-                 I2C_Peripheral'Object_Size,
-                 Read_Write);
-
-              I2C_Registers_Ptr.D :=
-                 Data_Buffer (Current_Transaction.Buffer_Cursor);
-
-              loop
-                  S_Value := I2C_Registers_Ptr.S;
-                  exit when S_Value.TCF = S_TCF_Field_0;
-               end loop;
-
-           when I2C_Receiving_Data_Byte =>
-              pragma Assert (Current_Transaction.Num_Data_Bytes_Left > 0);
-
-              Current_Transaction.Num_Data_Bytes_Left :=
-                 Current_Transaction.Num_Data_Bytes_Left - 1;
-              if Current_Transaction.Num_Data_Bytes_Left = 0 then
-                 --
-                 --  This is the last byte:
-                 --
-                 I2C_End_Transaction (I2C_Device_Id);
-              else
-                 C1_Value := I2C_Registers_Ptr.C1;
-                 if Current_Transaction.Num_Data_Bytes_Left = 1 then
-                    --
-                    --  Don't send ACK signal for next byte received from the
-                    --  slave (TXAK bit is active low)
-                    --
-                    C1_Value.TXAK := C1_TXAK_Field_1;
-                 else
-                    --
-                    --  Send ACK signal for next byte received from the slave
-                    --
-                    C1_Value.TXAK := C1_TXAK_Field_0;
-                 end if;
-
-                 I2C_Registers_Ptr.C1 := C1_Value;
-              end if;
-
-              --
-              --  Read D register to retrieve last data byte received and to
-              --  start receiving the next data byte from the slave
-              --
-              --  NOTE: If I2C_End_Transaction is not called above, this will
-              --  also initiate another read transfer.
-              --
-              Set_Private_Data_Region (
-                 Current_Transaction.Buffer_Address,
-                 Integer_Address (
-                    Current_Transaction.Buffer_Length * Byte'Size),
-                 Read_Write);
-
-              Data_Buffer (Current_Transaction.Buffer_Cursor) :=
-                 I2C_Registers_Ptr.D;
-
-               if Current_Transaction.Num_Data_Bytes_Left /= 0 then
-                  loop
-                     S_Value := I2C_Registers_Ptr.S;
-                     exit when S_Value.TCF = S_TCF_Field_0;
-                  end loop;
-               end if;
-
-              Set_Private_Data_Region (I2C_Device_Var'Address,
-                                       I2C_Device_Var'Size,
-                                       Read_Write);
-
-              Current_Transaction.Buffer_Cursor :=
-                 Current_Transaction.Buffer_Cursor + 1;
-
-              if Current_Transaction.Num_Data_Bytes_Left = 0 then
-                 Current_Transaction.State := I2C_Transaction_Completed;
-              end if;
-
-           when others =>
-              --
-              --  Unexpected  interrupt. If state is
-              --  I2C_Transaction_Not_Started, this may be a left-over byte
-              --  sent by the slave from a previously aborted or failed I2C
-              --  transaction
-              --
-              Runtime_Logs.Error_Print (
-                 "Unexpected I2C interrupt in transaction state" &
-                 Current_Transaction.State'Image);
-         end case;
-
-      <<Common_Exit>>
+         Set_True (Current_Transaction.Byte_Transfer_Completed);
          Restore_Private_Data_Region (Old_Region);
       end I2C_Irq_Common_Handler;
 
