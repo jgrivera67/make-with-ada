@@ -134,8 +134,9 @@ package body I2C_Driver is
    --
    --  Value for ICR field of F register corresonding to 400KHz for bus clock
    --  of 60 MHz (see Table 51-54. I2C divider and hold values)
+   --  For 100KHz use 16#2D#
    --
-   I2C_ICR_Value : constant F_ICR_Field := 16#2D#; -- ???16#1C#;
+   I2C_ICR_Value : constant F_ICR_Field := 16#1C#;
 
    ------------------------
    -- Do_I2C_Transaction --
@@ -279,12 +280,12 @@ package body I2C_Driver is
       --
       Set_Pin_Function (I2C_Device.Scl_Pin_Info,
                         Drive_Strength_Enable => False,
-                        Pullup_Resistor => True,
+                        Pullup_Resistor => False,
                         Open_Drain_Enable => True);
 
       Set_Pin_Function (I2C_Device.Sda_Pin_Info,
                         Drive_Strength_Enable => False,
-                        Pullup_Resistor => True,
+                        Pullup_Resistor => False,
                         Open_Drain_Enable => True);
 
       Set_Private_Data_Region (

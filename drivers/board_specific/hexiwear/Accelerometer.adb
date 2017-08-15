@@ -255,6 +255,7 @@ package body Accelerometer is
       FF_MT_Src_Value : Accel_FF_MT_SRC_Register_Type;
    begin
       Suspend_Until_True (Accelerometer_Var.Motion_Detected_Susp_Obj);
+      Ada.Text_IO.Put_Line ("Detect_Motion after wait");--???
 
       --
       --  Read Accelerometer interrupt status register:
@@ -309,8 +310,29 @@ package body Accelerometer is
 
    procedure Detect_Tapping
    is
+      Int_Source_Value : Accel_Ctrl_Reg4_Register_Type;
+      Pulse_Source_Value : Accel_Pulse_Source_Register_Type;
    begin
       Suspend_Until_True (Accelerometer_Var.Tapping_Detected_Susp_Obj);
+      Ada.Text_IO.Put_Line ("Detect_Tapping after wait");--???
+
+      --
+      --  Read Accelerometer interrupt status register:
+      --
+      Int_Source_Value.Value := I2C_Read (Accelerometer_Const.I2C_Device_Id,
+                                          Accelerometer_Const.I2C_Slave_Address,
+                                          Accel_Int_Source'Enum_Rep);
+
+      pragma Assert (Int_Source_Value.Int_En_Pulse = 1);
+
+      --
+      --  Read the accelerometer motion detection register to make the
+      --  accelerometer de-assert the INT2 pin:
+      --
+      Pulse_Source_Value.Value :=
+         I2C_Read (Accelerometer_Const.I2C_Device_Id,
+                   Accelerometer_Const.I2C_Slave_Address,
+                   Accel_Pulse_Src'Enum_Rep);
 
    end Detect_Tapping;
 
@@ -402,7 +424,7 @@ package body Accelerometer is
                      Is_Output_Pin         => False);
 
       --
-      --  Reset accelerometer, from its reset pin
+      --  Do a hard reset of the accelerometer, from its reset pin
       --
       Activate_Output_Pin (Accelerometer_Const.Reset_Pin);
       delay until Clock + Milliseconds (1);
@@ -425,7 +447,7 @@ package body Accelerometer is
       Deactivate_Accelerometer;
 
       --
-      --  Reset accelerometer:
+      --  Do Soft reset of the accelerometer:
       --
 
       --Ctrl_Reg2_Value.Rst := 1;
@@ -448,7 +470,7 @@ package body Accelerometer is
       --  Set normal mode:
       --
       Ctrl_Reg2_Value := (others => <>);
-      Ctrl_Reg2_Value.Mods := Mods_Normal;
+      Ctrl_Reg2_Value.Mods := Mods_Normal; -- Mods_Low_Power;
       I2C_Write (Accelerometer_Const.I2C_Device_Id,
                  Accelerometer_Const.I2C_Slave_Address,
                  Accel_Ctrl_Reg2'Enum_Rep,
@@ -464,22 +486,12 @@ package body Accelerometer is
                  F_Setup_Value.Value);
 
       --
-      --  Enable auto-sleep, low power in sleep, high res in wake
-      --
-      Ctrl_Reg2_Value := (others => <>);
-      Ctrl_Reg2_Value.Slpe := 1;
-      Ctrl_Reg2_Value.Smods := Smod_Low_Power;
-      Ctrl_Reg2_Value.Mods := Mods_High_Res;
-      I2C_Write (Accelerometer_Const.I2C_Device_Id,
-                 Accelerometer_Const.I2C_Slave_Address,
-                 Accel_Ctrl_Reg2'Enum_Rep,
-                 Ctrl_Reg2_Value.Value);
-
-      --
       --  Set up Magnetometer OSR and Hybrid mode, use default for Acc
+      --  TODO: Define constants (HMS of 0 measn accelerometer only, 3 means
+      --  both accelerometer and magnetometer)
       --
-      Magnet_Ctrl_Reg1_Value.OSR := 16#7#;
-      Magnet_Ctrl_Reg1_Value.HMS := 16#3#;
+      Magnet_Ctrl_Reg1_Value.OSR := 16#0#; --??? 16#7#;
+      Magnet_Ctrl_Reg1_Value.HMS := 16#0#; --??? 16#3#;
       I2C_Write (Accelerometer_Const.I2C_Device_Id,
                  Accelerometer_Const.I2C_Slave_Address,
                  Magnet_Ctrl_Reg1'Enum_Rep,
@@ -508,13 +520,25 @@ package body Accelerometer is
                  FF_MT_Cfg_Value.Value);
 
       --
+      --  Enable auto-sleep, low power in sleep, high res in wake
+      --
+      --Ctrl_Reg2_Value := (others => <>);
+      --Ctrl_Reg2_Value.Slpe := 1;
+      --Ctrl_Reg2_Value.Smods := Smod_Low_Power;
+      --Ctrl_Reg2_Value.Mods := Mods_High_Res;
+      --I2C_Write (Accelerometer_Const.I2C_Device_Id,
+      --           Accelerometer_Const.I2C_Slave_Address,
+      --           Accel_Ctrl_Reg2'Enum_Rep,
+      --           Ctrl_Reg2_Value.Value);
+
+      --
       --  Set auto-sleep wait period to 5s (=5/0.64=~8)
       --
-      Aslp_Count_Value := 8;
-      I2C_Write (Accelerometer_Const.I2C_Device_Id,
-                 Accelerometer_Const.I2C_Slave_Address,
-                 Accel_Aslp_Count'Enum_Rep,
-                 Aslp_Count_Value);
+      --Aslp_Count_Value := 8;
+      --I2C_Write (Accelerometer_Const.I2C_Device_Id,
+      --           Accelerometer_Const.I2C_Slave_Address,
+      --           Accel_Aslp_Count'Enum_Rep,
+      --           Aslp_Count_Value);
 
       --
       --  Set threshold value for motion detection of > 0.063g:
@@ -522,7 +546,7 @@ package body Accelerometer is
       --   or
       --  TODO: Or to set threshold to about 0.25g, use 4.
       --
-      FF_MT_Threshold_Value.Threshold := 1;
+      FF_MT_Threshold_Value.Threshold := 4; --??? 1;
       I2C_Write (Accelerometer_Const.I2C_Device_Id,
                  Accelerometer_Const.I2C_Slave_Address,
                  Accel_FF_MT_Threshold'Enum_Rep,
@@ -565,12 +589,24 @@ package body Accelerometer is
       Configure_Tapping_Detection;
 
       --
+      --  Set push-pull and active low interrupt
+      --  and enable ffmt as a wake-up source:
+      --
+      Ctrl_Reg3_Value.Pp_Od := 0; --  push-pull
+      Ctrl_Reg3_Value.Ipol := 0;  --  active low
+      --Ctrl_Reg3_Value.Wake_Ff_Mt := 1;
+      I2C_Write (Accelerometer_Const.I2C_Device_Id,
+                 Accelerometer_Const.I2C_Slave_Address,
+                 Accel_Ctrl_Reg3'Enum_Rep,
+                 Ctrl_Reg3_Value.Value);
+
+      --
       --  Enable data-ready, auto-sleep, motion detection and tapping detection
       --  interrupts:
       --
       --Ctrl_Reg4_Value.Int_En_Drdy := 1;
       --Ctrl_Reg4_Value.Int_En_Aslp := 1;
-      Ctrl_Reg4_Value.Int_En_Ff_Mt := 1;
+      --Ctrl_Reg4_Value.Int_En_Ff_Mt := 1;
       Ctrl_Reg4_Value.Int_En_Pulse := 1;
       I2C_Write (Accelerometer_Const.I2C_Device_Id,
                  Accelerometer_Const.I2C_Slave_Address,
@@ -600,15 +636,6 @@ package body Accelerometer is
       Enable_Pin_Irq (Gpio_Pin => Accelerometer_Const.Acc_Int2_Pin,
                       Pin_Irq_Mode => Pin_Irq_On_Falling_Edge,
                       Pin_Irq_Handler => Accel_Int2_Pin_Irq_Callback'Access);
-
-      --
-      --  Enable ffmt as a wake-up source
-      --
-      Ctrl_Reg3_Value.Wake_Ff_Mt := 1;
-      I2C_Write (Accelerometer_Const.I2C_Device_Id,
-                 Accelerometer_Const.I2C_Slave_Address,
-                 Accel_Ctrl_Reg3'Enum_Rep,
-                 Ctrl_Reg3_Value.Value);
 
       --
       --  Set sampling rates accelerometer:

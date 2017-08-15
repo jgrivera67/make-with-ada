@@ -73,6 +73,8 @@ package I2C_Driver is
    --  @param I2C_Slave_Register_Address Slave-specific register address
    --  @param Buffer buffer to be filled with incoming data
    --
+   --  @Pre Concurrent callers on the same I2C_Device_Id are not allowed
+   --
 
    function I2C_Read (
       I2C_Device_Id : I2C_Device_Id_Type;
@@ -82,6 +84,8 @@ package I2C_Driver is
       return Byte;
    --
    --  Read a block of bytes from an I2C slave
+   --
+   --  @Pre Concurrent callers on the same I2C_Device_Id are not allowed
    --
 
    procedure I2C_Write (
@@ -99,6 +103,8 @@ package I2C_Driver is
    --  @param I2C_Slave_Register_Address Slave-specific register address
    --  @param Buffer buffer holding the outgoing data
    --
+   --  @Pre Concurrent callers on the same I2C_Device_Id are not allowed
+   --
 
    procedure I2C_Write (
       I2C_Device_Id : I2C_Device_Id_Type;
@@ -108,6 +114,8 @@ package I2C_Driver is
       Use_Polling : Boolean := False);
    --
    --  Write one byte to an I2C slave
+   --
+   --  @Pre Concurrent callers on the same I2C_Device_Id are not allowed
    --
 
 private

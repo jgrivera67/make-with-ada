@@ -136,6 +136,8 @@ package body Watch is
       Set_True (Watch_Var.Async_Operations_Task_Suspension_Obj);
       Set_True (Watch_Var.Watch_Task_Suspension_Obj);
       Set_True (Watch_Var.Screen_Saver_Task_Suspension_Obj);
+      Set_True (Watch_Var.Motion_Detector_Task_Suspension_Obj);
+      Set_True (Watch_Var.Tapping_Detector_Task_Suspension_Obj);
       Restore_Private_Data_Region (Old_Region);
    end Initialize;
 

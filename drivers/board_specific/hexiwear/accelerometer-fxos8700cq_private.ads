@@ -51,6 +51,7 @@ private package Accelerometer.Fxos8700cq_Private is
        Accel_FF_MT_Threshold,
        Accel_FF_MT_Count,
        Accel_Pulse_Cfg,
+       Accel_Pulse_Src,
        Accel_Pulse_Threshold_X,
        Accel_Pulse_Threshold_Y,
        Accel_Pulse_Threshold_Z,
@@ -80,6 +81,7 @@ private package Accelerometer.Fxos8700cq_Private is
        Accel_FF_MT_Threshold => 16#17#,
        Accel_FF_MT_Count => 16#18#,
        Accel_Pulse_Cfg => 16#21#,
+       Accel_Pulse_Src => 16#22#,
        Accel_Pulse_Threshold_X => 16#23#,
        Accel_Pulse_Threshold_Y => 16#24#,
        Accel_Pulse_Threshold_Z => 16#25#,
@@ -452,6 +454,35 @@ private package Accelerometer.Fxos8700cq_Private is
       Y_HE   at 0 range 3 .. 3;
       Z_HP   at 0 range 4 .. 4;
       Z_HE   at 0 range 5 .. 5;
+      EA     at 0 range 7 .. 7;
+   end record;
+
+   type Accel_Pulse_Source_Register_Type (As_Value : Boolean := True) is record
+      case As_Value is
+	 when True =>
+	    Value : Byte := 0;
+	 when False =>
+	    Pol_X : Bit;
+            Pol_Y : Bit;
+            Pol_Z : Bit;
+            DPE : Bit;
+            AX_X : Bit;
+	    AX_Y : Bit;
+            AX_Z : Bit;
+	    EA : Bit;
+      end case;
+   end record
+      with Unchecked_Union, Size => Byte'Size;
+
+   for Accel_Pulse_Source_Register_Type use record
+      Value at 0 range 0 .. 7;
+      Pol_X  at 0 range 0 .. 0;
+      Pol_Y  at 0 range 1 .. 1;
+      Pol_Z  at 0 range 2 .. 2;
+      DPE    at 0 range 3 .. 3;
+      AX_X   at 0 range 4 .. 4;
+      AX_Y   at 0 range 5 .. 5;
+      AX_Z   at 0 range 6 .. 6;
       EA     at 0 range 7 .. 7;
    end record;
 
