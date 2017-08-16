@@ -314,7 +314,6 @@ package body Accelerometer is
       Pulse_Source_Value : Accel_Pulse_Source_Register_Type;
    begin
       Suspend_Until_True (Accelerometer_Var.Tapping_Detected_Susp_Obj);
-      Ada.Text_IO.Put_Line ("Detect_Tapping after wait");--???
 
       --
       --  Read Accelerometer interrupt status register:
@@ -334,6 +333,7 @@ package body Accelerometer is
                    Accelerometer_Const.I2C_Slave_Address,
                    Accel_Pulse_Src'Enum_Rep);
 
+      Ada.Text_IO.Put_Line ("Detect_Tapping called:" & Pulse_Source_Value.Value'Image);--???
    end Detect_Tapping;
 
    ----------------
@@ -355,25 +355,40 @@ package body Accelerometer is
                     Accel_HP_Filter_Cutoff'Enum_Rep,
                     16#00#);
 
+         --
+         --  Enable X, Y, Z Single Pulse and X, Y and Z Double Pulse with
+         --  DPA = 0 no double pulse abort
+         --
          I2C_Write (Accelerometer_Const.I2C_Device_Id,
                     Accelerometer_Const.I2C_Slave_Address,
                     Accel_Pulse_Cfg'Enum_Rep,
-                    Shift_Left (Byte(1), 5));
+                    16#3F#);
 
          --
          --  Set the threshold - minimum required acceleration to cause a tap.
          --  write the value as a current sensitivity multiplier to get the
-         --  desired value in [g] current z-threshold is set at 0.25g
+         --  desired value in [g] 10 = 0.63g / 0.063g (every step is 0.063g)
          --
          I2C_Write (Accelerometer_Const.I2C_Device_Id,
                     Accelerometer_Const.I2C_Slave_Address,
+                    Accel_Pulse_Threshold_X'Enum_Rep,
+                    80);
+
+         I2C_Write (Accelerometer_Const.I2C_Device_Id,
+                    Accelerometer_Const.I2C_Slave_Address,
+                    Accel_Pulse_Threshold_Y'Enum_Rep,
+                    80);
+
+         I2C_Write (Accelerometer_Const.I2C_Device_Id,
+                    Accelerometer_Const.I2C_Slave_Address,
                     Accel_Pulse_Threshold_Z'Enum_Rep,
-                    10);
+                    40);
 
          --
-         --  set the time limit - the maximum time that a tap can be above the
-         --  threshold 2.55s time limit at 100Hz odr, this is very dependent on
-         --  data rate, see the app note
+         --  Set Time Limit for Tap Detection to 200 ms (LP Mode, 200 Hz ODR,
+         --  No LPF):
+         --
+         --  NOTE: In 200 Hz ODR LP Mode, Time step is 2.5 ms per step
          --
          I2C_Write (Accelerometer_Const.I2C_Device_Id,
                     Accelerometer_Const.I2C_Slave_Address,
@@ -381,14 +396,26 @@ package body Accelerometer is
                     80);
 
          --
-         --  set the pulse latency - the minimum required time between one pulse
-         --  and the next 5.1s 100Hz odr between taps min, this also depends on
-         --  the data rate
+         --  Set Latency Timer to 200 ms:
+         --
+         --  Note: 200 Hz ODR LP Mode, Time step is 5 ms per step
+         --        200 ms / 5 ms = 40 counts
          --
          I2C_Write (Accelerometer_Const.I2C_Device_Id,
                     Accelerometer_Const.I2C_Slave_Address,
                     Accel_Pulse_Ltcy'Enum_Rep,
                     40);
+
+         --
+         --  Set Time Window for Second Tap to 300 ms:
+         --
+         --  Note: 200 Hz ODR LP Mode, Time step is 5 ms per steps
+         --        300 ms / 5 ms = 60 counts
+         --
+         I2C_Write (Accelerometer_Const.I2C_Device_Id,
+                    Accelerometer_Const.I2C_Slave_Address,
+                    Accel_Pulse_Wind'Enum_Rep,
+                    60);
       end Configure_Tapping_Detection;
 
       Old_Region : MPU_Region_Descriptor_Type;
@@ -470,7 +497,7 @@ package body Accelerometer is
       --  Set normal mode:
       --
       Ctrl_Reg2_Value := (others => <>);
-      Ctrl_Reg2_Value.Mods := Mods_Normal; -- Mods_Low_Power;
+      Ctrl_Reg2_Value.Mods := Mods_Low_Power;  --Mods_Normal
       I2C_Write (Accelerometer_Const.I2C_Device_Id,
                  Accelerometer_Const.I2C_Slave_Address,
                  Accel_Ctrl_Reg2'Enum_Rep,
@@ -486,7 +513,12 @@ package body Accelerometer is
                  F_Setup_Value.Value);
 
       --
-      --  Set up Magnetometer OSR and Hybrid mode, use default for Acc
+      --  Disable hybrid mode (enable accelerometer and disable magnetometer):
+      --
+      --  NOTE: If Hybrid mode is enabled, the actual ODR for the accelerometer
+      --  is half of the value set in Ctrl_Reg1_Value.Dr
+      --
+      --  TODO: Set up Magnetometer OSR and Hybrid mode, use default for Acc
       --  TODO: Define constants (HMS of 0 measn accelerometer only, 3 means
       --  both accelerometer and magnetometer)
       --
@@ -626,6 +658,22 @@ package body Accelerometer is
                  Ctrl_Reg5_Value.Value);
 
       --
+      --  Set sampling rates accelerometer:
+      --  - ASLP rate: every 640ms (1.56 HZ)
+      --  - data rate: 100 HZ (every 10ms)
+      --  - FSR=2g
+      --
+      Ctrl_Reg1_Value.Lnoise := 1;
+      Ctrl_Reg1_Value.Aslp_Rate := Aslp_Rate_640Ms;
+      Ctrl_Reg1_Value.Dr := Dr_200Hz; --Dr_100Hz
+      I2C_Write (Accelerometer_Const.I2C_Device_Id,
+                 Accelerometer_Const.I2C_Slave_Address,
+                 Accel_Ctrl_Reg1'Enum_Rep,
+                 Ctrl_Reg1_Value.Value);
+
+      Activate_Accelerometer;
+
+      --
       --  Enable GPIO interrupts from INT1 and INT2 pins:
       --
 
@@ -636,22 +684,6 @@ package body Accelerometer is
       Enable_Pin_Irq (Gpio_Pin => Accelerometer_Const.Acc_Int2_Pin,
                       Pin_Irq_Mode => Pin_Irq_On_Falling_Edge,
                       Pin_Irq_Handler => Accel_Int2_Pin_Irq_Callback'Access);
-
-      --
-      --  Set sampling rates accelerometer:
-      --  - ASLP rate: every 640ms (1.56 HZ)
-      --  - data rate: 100 HZ (every 10ms)
-      --  - FSR=2g
-      --
-      Ctrl_Reg1_Value.Lnoise := 1;
-      Ctrl_Reg1_Value.Aslp_Rate := Aslp_Rate_640Ms;
-      Ctrl_Reg1_Value.Dr := Dr_100Hz;
-      I2C_Write (Accelerometer_Const.I2C_Device_Id,
-                 Accelerometer_Const.I2C_Slave_Address,
-                 Accel_Ctrl_Reg1'Enum_Rep,
-                 Ctrl_Reg1_Value.Value);
-
-      Activate_Accelerometer;
 
       Set_Private_Data_Region (Accelerometer_Var'Address,
                                Accelerometer_Var'Size,
