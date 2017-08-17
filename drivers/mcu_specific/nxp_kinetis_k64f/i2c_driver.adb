@@ -35,7 +35,6 @@ with Ada.Interrupts.Names;
 with Pin_Mux_Driver;
 with Microcontroller.Arm_Cortex_M;
 with Runtime_Logs;
-with Ada.Text_IO; --???
 
 package body I2C_Driver is
    pragma SPARK_Mode (Off);
@@ -134,9 +133,10 @@ package body I2C_Driver is
    --
    --  Value for ICR field of F register corresonding to 400KHz for bus clock
    --  of 60 MHz (see Table 51-54. I2C divider and hold values)
+   --  For 400KHz use 16#1C#
    --  For 100KHz use 16#2D#
    --
-   I2C_ICR_Value : constant F_ICR_Field := 16#1C#;
+   I2C_ICR_Value : constant F_ICR_Field := 16#2D#;
 
    ------------------------
    -- Do_I2C_Transaction --
@@ -164,9 +164,9 @@ package body I2C_Driver is
       Old_Region : MPU_Region_Descriptor_Type;
       C1_Value : I2C0_C1_Register;
    begin
-      Ada.Text_IO.Put_Line ("*** Enter Do_I2C_Transaction (" &
-       (if I2C_Transaction_Is_Read_Data then "read" else "write") & " register:" & I2C_Slave_Register_Address'Image & ")");
-       --???
+      --Ada.Text_IO.Put_Line ("*** Enter Do_I2C_Transaction (" &
+      -- (if I2C_Transaction_Is_Read_Data then "read" else "write") & " register:" & I2C_Slave_Register_Address'Image & ")");
+      --???
       I2C_Start_Transaction (I2C_Device_Id,
                              I2C_Slave_Address,
                              I2c_Slave_Register_Address,
@@ -220,9 +220,9 @@ package body I2C_Driver is
       I2C_Device_Var.Current_Transaction.State := I2C_Transaction_Not_Started;
       Restore_Private_Data_Region (Old_Region);
 
-      Ada.Text_IO.Put_Line ("*** Exit Do_I2C_Transaction (" &
-       (if I2C_Transaction_Is_Read_Data then "read" else "write") & " register:" & I2C_Slave_Register_Address'Image & ")");
-       --???
+      --Ada.Text_IO.Put_Line ("*** Exit Do_I2C_Transaction (" &
+      -- (if I2C_Transaction_Is_Read_Data then "read" else "write") & " register:" & I2C_Slave_Register_Address'Image & ")");
+      --???
    end Do_I2C_Transaction;
 
    ----------------
@@ -459,11 +459,10 @@ package body I2C_Driver is
       Slave_Address_Packet : I2C_Slave_Address_Packet_Type;
       Old_Region : MPU_Region_Descriptor_Type;
    begin
-      Set_Private_Data_Region (
-         To_Address (Object_Pointer (I2C_Registers_Ptr)),
-         I2C_Peripheral'Object_Size,
-         Read_Write,
-         Old_Region);
+      Set_Private_Data_Region (I2C_Device_Var'Address,
+                               I2C_Device_Var'Size,
+                               Read_Write,
+                               Old_Region);
 
       Current_Transaction.Transaction_Has_Reg_Addr :=
          I2C_Transaction_Has_Reg_Addr;
@@ -479,6 +478,10 @@ package body I2C_Driver is
       Current_Transaction.Buffer_Length := Buffer_Length;
       Current_Transaction.Buffer_Cursor := 1;
       Current_Transaction.Num_Data_Bytes_Left := Buffer_Length;
+
+      Set_Private_Data_Region (To_Address (Object_Pointer (I2C_Registers_Ptr)),
+                               I2C_Peripheral'Object_Size,
+                               Read_Write);
 
       --
       --  Generate START signal by changing MST bit from 0 to 1:
@@ -523,9 +526,20 @@ package body I2C_Driver is
       --  In this window the I2C IST could run seeing the wrong value for
       --  Current_Transaction.State.
       --
-      I2C_Device_Var.Current_Transaction.State := I2C_Sending_Slave_Addr;
+
+      Set_Private_Data_Region (I2C_Device_Var'Address,
+                               I2C_Device_Var'Size,
+                               Read_Write);
+
+      Current_Transaction.State := I2C_Sending_Slave_Addr;
+
       Slave_Address_Packet.Address := I2C_Slave_Address;
       Slave_Address_Packet.Is_Read_Transaction := 0;
+
+      Set_Private_Data_Region (To_Address (Object_Pointer (I2C_Registers_Ptr)),
+                               I2C_Peripheral'Object_Size,
+                               Read_Write);
+
       I2C_Registers_Ptr.D := Slave_Address_Packet.Value;
 
       --loop
@@ -803,6 +817,9 @@ package body I2C_Driver is
 
         when I2C_Receiving_Data_Byte =>
            pragma Assert (Current_Transaction.Num_Data_Bytes_Left > 0);
+           Set_Private_Data_Region (I2C_Device_Var'Address,
+                                    I2C_Device_Var'Size,
+                                    Read_Write);
 
            Current_Transaction.Num_Data_Bytes_Left :=
               Current_Transaction.Num_Data_Bytes_Left - 1;
@@ -825,6 +842,11 @@ package body I2C_Driver is
                  --
                  C1_Value.TXAK := C1_TXAK_Field_0;
               end if;
+
+              Set_Private_Data_Region (
+                 To_Address (Object_Pointer (I2C_Registers_Ptr)),
+                 I2C_Peripheral'Object_Size,
+                 Read_Write);
 
               I2C_Registers_Ptr.C1 := C1_Value;
            end if;

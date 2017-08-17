@@ -83,7 +83,7 @@ procedure Main is
    -- ** --
 
 begin -- Hexiwear_Iot_Stack
-   --Memory_Protection.Enable_MPU;
+   Memory_Protection.Enable_MPU;
 
    Runtime_Logs.Initialize;
    Log_Start_Info;
@@ -94,14 +94,13 @@ begin -- Hexiwear_Iot_Stack
    Serial_Console.Initialize;
    Nor_Flash_Driver.Initialize;
    DMA_Driver.Initialize;
-   Old_Color := Color_Led.Set_Color (Color_Led.Blue);
-   Color_Led.Turn_On_Blinker (Heartbeat_Period_Ms);
+   --Old_Color := Color_Led.Set_Color (Color_Led.Blue);
+   --Color_Led.Turn_On_Blinker (Heartbeat_Period_Ms);
 
    Print_Console_Greeting;
    Bluetooth.Initialize;
    Command_Parser.Initialize;
    Watch.Initialize;
-
    loop
       Command_Parser.Parse_Command;
    end loop;

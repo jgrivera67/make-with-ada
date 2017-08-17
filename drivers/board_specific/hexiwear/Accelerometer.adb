@@ -313,16 +313,25 @@ package body Accelerometer is
       Int_Source_Value : Accel_Ctrl_Reg4_Register_Type;
       Pulse_Source_Value : Accel_Pulse_Source_Register_Type;
    begin
-      Suspend_Until_True (Accelerometer_Var.Tapping_Detected_Susp_Obj);
+      loop
+         Suspend_Until_True (Accelerometer_Var.Tapping_Detected_Susp_Obj);
 
-      --
-      --  Read Accelerometer interrupt status register:
-      --
-      Int_Source_Value.Value := I2C_Read (Accelerometer_Const.I2C_Device_Id,
-                                          Accelerometer_Const.I2C_Slave_Address,
-                                          Accel_Int_Source'Enum_Rep);
+         --
+         --  Read Accelerometer interrupt status register:
+         --
+         Int_Source_Value.Value :=
+            I2C_Read (Accelerometer_Const.I2C_Device_Id,
+                      Accelerometer_Const.I2C_Slave_Address,
+                      Accel_Int_Source'Enum_Rep);
 
-      pragma Assert (Int_Source_Value.Int_En_Pulse = 1);
+         if Int_Source_Value.Int_En_Pulse = 1 then
+            exit;
+         else
+            Runtime_Logs.Error_Print (
+              "Acceleromter: unexpected interrupt INT2 (Int_Source:" &
+              Int_Source_Value.Value'Image);
+         end if;
+      end loop;
 
       --
       --  Read the accelerometer motion detection register to make the
@@ -333,7 +342,7 @@ package body Accelerometer is
                    Accelerometer_Const.I2C_Slave_Address,
                    Accel_Pulse_Src'Enum_Rep);
 
-      Ada.Text_IO.Put_Line ("Detect_Tapping called:" & Pulse_Source_Value.Value'Image);--???
+      --Ada.Text_IO.Put_Line ("Detect_Tapping called:" & Pulse_Source_Value.Value'Image);--???
    end Detect_Tapping;
 
    ----------------
