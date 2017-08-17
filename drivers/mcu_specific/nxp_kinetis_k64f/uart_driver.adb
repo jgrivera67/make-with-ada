@@ -30,6 +30,7 @@ with System;
 with Uart_Driver.Board_Specific_Private;
 with Microcontroller.Arm_Cortex_M;
 with System.Address_To_Access_Conversions;
+with Runtime_Logs;
 
 package body Uart_Driver is
    pragma SPARK_Mode (Off);
@@ -409,11 +410,21 @@ package body Uart_Driver is
              S1_Value.FE /= 0 or else
              S1_Value.PF /= 0
          then
-            Uart_Device_Var.Errors := Uart_Device_Var.Errors + 1;
+            Runtime_Logs.Error_Print (
+               "UART" & Uart_Device_Id'Image & " Rx IRQ Error (" &
+               "S1.S1_OR:" & S1_Value.S1_OR'Image &
+               ", S1.NF:" & S1_Value.NF'Image &
+               ", S1.FE:" & S1_Value.FE'Image &
+               ", S1.PF:" & S1_Value.PF'Image & ")");
 
             --  Clear error conditions:
             S1_Value := (S1_OR | NF | FE | PF => 1, others => 0);
             Uart_Registers_Ptr.S1 := S1_Value;
+
+            Set_Private_Data_Region (Uart_Device_Var'Address,
+                                     Uart_Device_Var'Size,
+                                     Read_Write);
+            Uart_Device_Var.Errors := Uart_Device_Var.Errors + 1;
          end if;
 
          Restore_Private_Data_Region (Old_Region);
