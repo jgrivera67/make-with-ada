@@ -33,6 +33,9 @@ with System;
 with Interfaces.Bit_Types;
 with Bluetooth.FSCI;
 with Memory_Protection;
+with Gpio_Driver;
+with Pin_Mux_Driver;
+with Ada.Real_Time;
 with System.Address_To_Access_Conversions;
 
 package body Bluetooth is
@@ -45,6 +48,9 @@ package body Bluetooth is
    use Bluetooth.FSCI;
    use System;
    use Memory_Protection;
+   use Gpio_Driver;
+   use Pin_Mux_Driver;
+   use Ada.Real_Time;
 
    procedure Compute_FSCI_Packet_Checksum (
       Packet_Buffer : in out Bytes_Array_Type);
@@ -54,25 +60,48 @@ package body Bluetooth is
    --
    Bluetooth_Uart_Baud_Rate : constant Uart_Driver.Baud_Rate_Type := 115_200;
 
+   --
+   --  Type for the constant portion of the bluetooth driver
+   --
+   --  @field Uart_Device_Id UART interfacing with the KW40 SoC
+   --  @field Reset_Pin Reset pin
+   --
+   type Bluetooth_Serial_Interface_Const_Type is limited record
+      Uart_Device_Id : Uart_Device_Id_Type;
+      Reset_Pin : Gpio_Pin_Type;
+   end record;
+
+   Bluetooth_Serial_Interface_Const :
+      aliased constant Bluetooth_Serial_Interface_Const_Type :=
+      (Uart_Device_Id => UART4,
+       Reset_Pin =>    (Pin_Info =>
+                           (Pin_Port => PIN_PORT_B,
+                            Pin_Index => 23,
+                            Pin_Function => PIN_FUNCTION_ALT1),
+                        Is_Active_High => True));
+
    type Bluetooth_Serial_Interface_Type;
 
    task type Bluetooth_Serial_Interface_Input_Task_Type (
-     Bluetooth_Serial_Interface_Ptr : not null access Bluetooth_Serial_Interface_Type)
+     Bluetooth_Serial_Interface_Const_Ptr :
+        not null access constant Bluetooth_Serial_Interface_Const_Type;
+     Bluetooth_Serial_Interface_Ptr :
+        not null access Bluetooth_Serial_Interface_Type)
      with Priority => System.Priority'Last - 2;
 
    --
    --  State variables of the serial interface to the bluetooth chip (KW40)
    --
-   type Bluetooth_Serial_Interface_Type (Uart : Uart_Device_Id_Type) is
+   type Bluetooth_Serial_Interface_Type is
    limited record
       Initialized : Boolean := False;
       Initialized_Condvar : Suspension_Object;
       Input_Task : Bluetooth_Serial_Interface_Input_Task_Type (
+                      Bluetooth_Serial_Interface_Const'Access,
                       Bluetooth_Serial_Interface_Type'Access);
    end record;
 
-   Bluetooth_Serial_Interface_Var :
-      aliased Bluetooth_Serial_Interface_Type (UART4);
+   Bluetooth_Serial_Interface_Var : aliased Bluetooth_Serial_Interface_Type;
 
    package Address_To_Bluetooth_Serial_Interface_Pointer is new
       System.Address_To_Access_Conversions (Bluetooth_Serial_Interface_Type);
@@ -111,7 +140,20 @@ package body Bluetooth is
    is
       Old_Region : MPU_Region_Descriptor_Type;
    begin
-      Uart_Driver.Initialize (Bluetooth_Serial_Interface_Var.Uart,
+      Configure_Pin (Bluetooth_Serial_Interface_Const.Reset_Pin,
+                     Drive_Strength_Enable => False,
+                     Pullup_Resistor       => False,
+                     Is_Output_Pin         => True);
+
+      --
+      --  Do a hard reset of the KW40, by asserting its reset pin
+      --
+      Deactivate_Output_Pin (Bluetooth_Serial_Interface_Const.Reset_Pin);
+      delay until Clock + Milliseconds (10);
+      Activate_Output_Pin (Bluetooth_Serial_Interface_Const.Reset_Pin);
+      delay until Clock + Milliseconds (200);
+
+      Uart_Driver.Initialize (Bluetooth_Serial_Interface_Const.Uart_Device_Id,
                               Bluetooth_Uart_Baud_Rate);
 
       Set_Private_Data_Region (Bluetooth_Serial_Interface_Var'Address,
@@ -158,13 +200,14 @@ package body Bluetooth is
       Compute_FSCI_Packet_Checksum (Packet_Buffer (1 .. Packet_Size));
 
       Uart_Driver.Put_Bytes (
-         Bluetooth_Serial_Interface_Ptr.Uart,
+         Bluetooth_Serial_Interface_Const_Ptr.Uart_Device_Id,
          Packet_Buffer (1 .. Packet_Size));
 
       --???
       Runtime_Logs.Debug_Print ("Waiting for KW40 ...");--???
       loop
-         Data := Uart_Driver.Get_Byte (Bluetooth_Serial_Interface_Ptr.Uart);
+         Data := Uart_Driver.Get_Byte (
+                     Bluetooth_Serial_Interface_Const_Ptr.Uart_Device_Id);
          Runtime_Logs.Debug_Print ("Byte received from KW40" & Data'Image);--???
       end loop;
       --???

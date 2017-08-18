@@ -114,8 +114,8 @@ private package SPI_Driver.Board_Specific_Private is
              Pin_Function => PIN_FUNCTION_ALT2),
 
          Miso_Pin_Info =>
-            (Pin_Port => PIN_PORT_B,
-             Pin_Index => 23,
+            (Pin_Port => PIN_PORT_D,
+             Pin_Index => 14,
              Pin_Function => PIN_FUNCTION_ALT2),
 
          Tx_Fifo_Size => 1, --  see RM section 3.9.4.4
