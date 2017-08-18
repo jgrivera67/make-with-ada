@@ -67,9 +67,20 @@ package body Watch is
                                 Watch_Var.Config_Parameters.Foreground_Color,
                                 Watch_Var.Config_Parameters.Background_Color,
                                 2);
+
+      LCD_Display.Print_String (1, 40, "Inside",
+                                Watch_Var.Config_Parameters.Foreground_Color,
+                                Watch_Var.Config_Parameters.Background_Color,
+                                2);
+
       delay until Clock + Milliseconds (1_000);
 
-      LCD_Display.Print_String (12, 16, "       ",
+      LCD_Display.Print_String (12, 16, "   ",
+                                Watch_Var.Config_Parameters.Foreground_Color,
+                                Watch_Var.Config_Parameters.Background_Color,
+                                2);
+
+      LCD_Display.Print_String (1, 40, "      ",
                                 Watch_Var.Config_Parameters.Foreground_Color,
                                 Watch_Var.Config_Parameters.Background_Color,
                                 2);

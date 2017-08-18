@@ -1,6 +1,6 @@
 with "../../embedded-runtimes/ravenscar-kinetis_k64f_hexiwear/ravenscar_build.gpr";
 
-project hexiwear_iot_stack is
+project hexiwear_watch is
 
    for Languages use ("ada");
 
@@ -39,7 +39,7 @@ project hexiwear_iot_stack is
 
    package Builder is
       for Default_Switches ("ada") use ("-g", "-O0");
-      for Executable ("main.adb") use "hexiwear_iot_stack";
+      for Executable ("main.adb") use "hexiwear_watch";
    end Builder;
 
    --for Runtime ("Ada") use "ravenscar-sfp-kinetis_k64f_hexiwear";
@@ -51,5 +51,5 @@ project hexiwear_iot_stack is
       for Communication_Protocol use "remote";
    end Ide;
 
-end hexiwear_iot_stack;
+end hexiwear_watch;
 
