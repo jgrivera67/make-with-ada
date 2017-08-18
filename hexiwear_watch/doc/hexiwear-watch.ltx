@@ -1,0 +1,954 @@
+\documentclass[11pt,letterpaper,twoside,openany]{report}
+\usepackage{lineno}
+\usepackage{afterpage}
+\usepackage[pdftex]{graphicx}
+\usepackage[pdftex, pdfborder={0 0 0}]{hyperref}
+\usepackage[pdftex]{lscape}
+\usepackage{listings}
+%\usepackage{longtable}
+%\usepackage{fancyvrb}
+\usepackage{zed-csp}
+
+\lstset{language=Ada,
+        basicstyle=\footnotesize,
+        frame=single,
+        breaklines=true}
+        %basicstyle=\small}
+
+\addtolength{\textheight}{0.6in}
+%\addtolength{\textheight}{1.25in}
+
+\addtolength{\textwidth}{0.6in}
+%\addtolength{\textwidth}{0.5in}
+
+\setlength{\parskip}{5pt plus1pt minus1pt}
+\addtocounter{secnumdepth}{1}
+
+%\pagestyle{plain}
+\pagestyle{myheadings}
+\markboth{Design of the McRTOS Multi-core Real-Time Operating System}{Design of the McRTOS Real-Time Operating System}
+%\linenumbers
+
+\begin{document}
+\title{
+    \begin{figure}[t]
+        \begin{center}
+            \scalebox{0.25}{\includegraphics{MWAC-libre.jpg}}
+        \end{center}
+    \end{figure}
+    \textbf{Design of the McRTOS Multi-core \\
+            Real-Time Operating System}
+}
+
+\author{Germ\'an Rivera \\
+        \texttt jgrivera67@gmail.com}
+\date{\today}
+\maketitle
+%\flushleft
+\raggedbottom
+
+\begin{abstract}
+This document describes the design of McRTOS, a Multi-core Real-time Operating
+System kernel for ARM processors \cite{Arm1, Arm2}. Specifically, McRTOS is designed
+to support ARM cores that implement the ARMv7 architecture \cite{Arm3} in any of its
+profiles (A, R or M), and also to be backward compatible down to the ARMv4 architecture.
+McRTOS is intended to support both single-core processors and multi-core processors.
+
+The main focus of McRTOS is reliability. McRTOS is designed to be thoroughly
+self-checking and it is intended to be used in safety-critical applications.
+
+The design of McRTOS is described as a formal specification using the
+\href{http://en.wikipedia.org/wiki/Z_notation}{Z notation} \cite{Zrm, WayofZ}.
+Z is a software modeling notation based on discrete mathematics structures (such as sets,
+relations and functions) and predicate logic. With Z, data structures can be specified in
+terms of mathematical structures and their state invariants can be specified using mathematical
+predicates. The pre-conditions and post-conditions of the operations that manipulate
+the data structures can also be specified using predicates. Using Z for this purpose encourages
+a rigorous and methodical thought process to elicit the correctness properties to check at run
+time, in a systematic way.
+The Z specification described here was checked with the \verb'fuzz' tool~\cite{Fuzz}, a
+Z type-checker, that catches Z type mismatches in predicates.
+\end{abstract}
+
+\clearpage
+\tableofcontents
+\listoffigures
+
+\clearpage
+\chapter{Overview}
+
+\section{Major Design Decisions and Assumptions}
+
+\begin{itemize}
+    \item Threads will always run in the CPU core in which they were created. They
+    cannot migrate to a different core. Mutexes and condition variables can
+    only be used to synchronize threads in the same CPU core.
+    For synchronization/communication between threads on separate CPU cores,
+    a door-bell mechanism will be implemented using shared memory and software
+    triggered inter-processor interrupts.
+
+    \item An application thread can only create other threads, mutexes, condition
+    variables and timers on the same CPU core in which it runs.
+\end{itemize}
+
+\section{McRTOS Component Architecture}
+
+The McRTOS component-level architecture is depicted in the UML component diagram in
+figure \ref{McRTOSArchitecture}.
+
+\begin{landscape}
+\begin{figure}[t]
+    \begin{center}
+        %\scalebox{0.75}{\includegraphics{McRTOS_Architecture.pdf}}
+    \end{center}
+    \caption{McRTOS Component Architecture}
+    \label{McRTOSArchitecture}
+\end{figure}
+\end{landscape}
+
+\clearpage
+\section{Development Plan}
+
+McRTOS will be developed initially for the following two embedded boards:
+
+\begin{itemize}
+\item The \href{https://www.olimex.com/Products/ARM/NXP/LPC2478-STK/}{Olimex LPC2478-STK}
+development prototype board. This board features an LPC2478 SoC, which has an ARM7TDMI CPU
+core, 64K of static RAM and 512K of Flash. The ARM7TDMI core implements the ARMv4 archirecture.
+\item The \href{http://www.ti.com/tool/ek-lm4f120xl}{Stellaris LM4F120 LaunchPad evaluation board}.
+This board features an LM4F120H5QR SoC, which has an ARM Cortex-M4 core, 32K of static RAM and 256K
+of Flash. The Cortex-M4 core implements the ARM v7-M architecture.
+\end{itemize}
+
+Although the SoCs on these boards have single core CPUs, McRTOS will be designed from the
+beginning with support of Multi-core CPUs.
+
+The development of McRTOS will be done in the following phases:
+
+\begin{itemize}
+\item Phase 1: Design, code and test the following components:
+
+\begin{itemize}
+\item Source tree architecture and makefiles
+\item Minimal board support for LPC2478-STK
+\item Failure Data Capture Services
+\item Runtime Exception Handlers
+\item Generic Linked-List Primitives
+\item Thread Primitives: Thread Queue
+\end{itemize}
+
+\item Phase 2: Design, code and test the following components:
+
+\begin{itemize}
+\item Thread Primitives: thread creation
+\item Tick Timer Interrupt Handler and Context Switch for the LPC2478 SoC
+\item Thread Scheduler
+\item Minimal board support for LM4F120
+\item Tick Timer Interrupt Handler and Context Switch for the LM4F120 SoC
+\end{itemize}
+
+\item Phase 3: Design, code and test the following components:
+
+\begin{itemize}
+\item Synchronization Primitives
+\item Time Primitives: Delay
+\item Generic Circular Buffer Primitives
+\item Object Pool Primitives
+\item Message Channel Primitives
+\end{itemize}
+
+\item Phase 4: Design, code and test the following components:
+
+\begin{itemize}
+\item Interrupt Primitives for Application-specific Peripheral interrupts
+\item Time Primitives: timers
+\item System Call Interface components
+\item Liveness Watchdog Timers
+\item Safety Patrol Threads
+\end{itemize}
+
+\item Phase 5: Design, code and test the following components:
+
+\begin{itemize}
+\item Peripheral device drivers for the LPC2478-STK board
+\item Peripheral device drivers for the LM4F120 LaunchPad board
+\end{itemize}
+\end{itemize}
+
+\clearpage
+\chapter{Major Data Structures}
+
+\section{Z Naming Conventions}
+%\paragraph*{NOTE:}
+
+The following naming conventions are used in this Z specification.
+\begin{itemize}
+\item Z Primitive types are in uppercase.
+\item Z Composite types (schema types) start with uppercase.
+\item Z constants and variables start with lower case, with the following special cases:
+\begin{itemize}
+\item Identifiers that start with $k$ represent compile-time constants.
+\item Identifiers that start with $z$ are redundant variables that are only used to add clarity to the
+specification. They are not meant to be implemented in code.
+\end{itemize}
+\end{itemize}
+
+\clearpage
+\section{Numeric Constants}
+
+These are compile-time constants. Values given are just for illustrative purposes. Some may vary in the
+actual implementation.
+
+\begin{axdef}
+    kMaxNumCpuCores: \nat_1 \\
+    kMaxNumThreadsPerCpu: \nat_1 \\
+    kMaxNumMutexes: \nat_1 \\
+    kMaxNumCondvars: \nat_1 \\
+    kWordSizeInBytes: \nat_1 \\
+    kMaxNumInterruptChannelsPerCpu: \nat_1 \\
+	kMaxNumThreadPriorities: \nat_1 \\
+	kThreadQuantumInTicks: \nat_1 \\
+    kLowestThreadPriority: \nat_1 \\
+    kThreadStackSizeInWords: \nat_1 \\
+    kInterruptStackSizeInWords: \nat_1 \\
+\where
+   kMaxNumCpuCores = 4 \\
+    kMaxNumThreadsPerCpu = 32 \\
+    kMaxNumMutexes = 16 \\
+    kMaxNumCondvars = 16 \\
+    kWordSizeInBytes = 4 \\
+    kMaxNumInterruptChannelsPerCpu = 32 \\
+	kMaxNumThreadPriorities = 32 \\
+    kLowestThreadPriority = kMaxNumThreadPriorities - 1 \\
+    kThreadQuantumInTicks = 8 \\
+    kThreadStackSizeInWords = 128 \\
+    kInterruptStackSizeInWords = 32 \\
+\end{axdef}
+
+$kMaxNumThreadPriorities$ is limited to the integer bit-size of the machine
+(32-bits for ARMv7). This limitation is to ensure that the thread scheduler has
+``O(1)'' complexity (requiring only one \verb'CLZ' ARM instruction to determine
+the highest-priority runnable thread).
+
+\clearpage
+\section{Primitive Types}
+
+\begin{zed}
+    [BYTE\_LOCATION] \\
+    [WORD\_LOCATION] \\
+    [OBJECT\_TYPE] \\
+	[LIST\_NODE] \\
+    [STRING] \\
+    CPUID == 0 \upto kMaxNumCpuCores - 1 \\
+    THREAD\_ID == 0 \upto kMaxNumThreadsPerCpu - 1 \\
+    INTERRUPT\_CHANNEL == 0 \upto  kMaxNumInterruptChannelsPerCpu - 1 \\
+    THREAD\_PRIO == 0 \upto kMaxNumThreadPriorities - 1 \\
+    INTPRIO == 0 \upto kMaxNumInterruptChannelsPerCpu - 1 \\
+    UINT8 == 0 \upto 255  \\
+    UINT16 == 0 \upto 65535 \\
+    UINT32 == 0 \upto 4294967295 \\
+    ADDRESS == UINT32 \\
+    EXECUTION\_CONTEXT\_TYPE ::= kThreadContext | kInterruptContext \\
+    CPU\_MODE ::= kUnprivilegedThreadMode | \\
+\t4               kPrivilegedThreadMode | \\
+\t4               kInterruptMode \\
+    SYNCHRONIZATION\_SCOPE ::= kLocalCpuThreadOnly | \\
+\t8                            kLocalCpuInterruptAndThread | \\
+\t8                            kInterCpuThreadOnly \\
+    THREAD\_STATE ::= kRunnable | \\
+\t5                   kRunning | \\
+\t5                   kBlocked | \\
+\t5                   kPreemptedByInterrupt | \\
+\t5                   kPreemptedByThread | \\
+\t5                   kTerminated \\
+\end{zed}
+
+For both threads and interrupts, lower priority numbers represent higher priorities. Interrupts
+have higher priority than threads. That is, the lowest priority interrupt has higher priority than
+the highest priority thread.
+
+\clearpage
+\section{Structural Constants}
+
+\begin{axdef}
+    kValidMemoryBytes: ADDRESS \pinj BYTE\_LOCATION \\
+    kByteValue: BYTE\_LOCATION \fun UINT8 \\
+	kValidMemoryWords: ADDRESS \pinj WORD\_LOCATION \\
+    kWordValue: WORD\_LOCATION \fun UINT32 \\
+    kValidRamWordAddresses: \finset_1 ADDRESS \\
+    kValidRomWordAddresses: \finset ADDRESS \\
+ 	kValidMmioWordAddresses: \finset ADDRESS \\
+    kReadOnlyAddresses: \finset ADDRESS \\
+    kExecutableAddresses: \finset ADDRESS \\
+	kInterruptPriority: INTERRUPT\_CHANNEL \fun INTPRIO \\
+\where
+    \dom kValidMemoryBytes \subseteq \{ a: ADDRESS \}
+\also
+	\dom kValidMemoryWords \subseteq \{ a: ADDRESS | a \mod kWordSizeInBytes = 0 \}
+\also
+    \bigcap \{ kValidRamWordAddresses, kValidRomWordAddresses, \\
+\t1	           kValidMmioWordAddresses \} = \emptyset
+\also
+    \bigcup \{ kValidRamWordAddresses, kValidRomWordAddresses, \\
+\t1            kValidMmioWordAddresses \} \subseteq \dom kValidMemoryWords
+\also
+     kValidRomWordAddresses \subseteq kReadOnlyAddresses
+\also
+     kReadOnlyAddresses \subset (kValidRomWordAddresses \cup kValidRamWordAddresses)
+\also
+     kExecutableAddresses \subset kReadOnlyAddresses
+\end{axdef}
+
+\clearpage
+
+\section{State Variables}
+
+\begin{schema}{McRTOS}
+    ExecutionController \\
+    ReliabilityMonitor \\
+    mutexes: \finset Mutex \\
+    condvars: \finset Condvar \\
+    %semaphores: \finset Semaphore \\
+    messageChannels: \finset MessageChannel \\
+    objectPools: \finset ObjectPool \\
+    zMutexOwner: Mutex \pfun ExecutionContext \\
+    zMutexWaiters: Thread \pfun Mutex \\
+    zCondvarWaiters: Thread \pfun Condvar \\
+    zCondvarToMutex: Condvar \pfun Mutex \\
+\where
+	\dom zMutexOwner \subseteq mutexes
+\also
+	\ran zMutexOwner \subset  \\
+\t1      \{ t: zThreads @ t.executionContext \}~ \cup \{ i: zInterrupts @ i.executionContext \}
+\also
+	\dom zMutexWaiters \subset zThreads \land \ran zMutexWaiters \subseteq mutexes
+\also
+	\dom zCondvarWaiters \subset zThreads \land \ran zCondvarWaiters \subseteq condvars
+\also
+    \dom zMutexWaiters \cap \dom zCondvarWaiters = \emptyset
+\also
+    \# zMutexWaiters < \# zThreads \land \# zCondvarWaiters < \# zThreads
+\also
+	\forall cpu: CPUID @ \\
+\t1		(zCpuIdToCpuController(cpu)).zRunnableThreads ~\cap \\
+\t1		(\dom zMutexWaiters \cup \dom zCondvarWaiters) = \emptyset
+\also
+    \forall t: zThreads @ \\
+\t1		t.executionContext \notin \ran zMutexOwner \implies \\
+\t2			t.currentPriority = t.basePriority
+\also
+    \{ mq: messageChannels @ mq.mutex \} \subset mutexes
+\also
+    \{ mq: messageChannels @ mq.notEmptyCondvar \}~ \cup \\
+    \{ mq: messageChannels @ mq.notFullCondvar \} \subset condvars
+\also
+    \forall cv: \dom zCondvarToMutex @ \\
+\t1     cv.synchronizationScope \neq kLocalCpuInterruptAndThread \land \\
+\t1     cv.synchronizationScope = (zCondvarToMutex(cv)).synchronizationScope
+\end{schema}
+
+Invariants:
+\begin{itemize}
+\item The same thread cannot be waiting for more than one mutex.
+\item The same mutex cannot be owned by more than one thread.
+\item The same thread cannot be waiting on more than one condition variable.
+\item The same thread cannot be waiting on a mutex and a condition variable at the same time.
+\item The same thread cannot be both runnable and blocked on a condvar or mutex.
+\item ISRs can never wait on mutexes or condvars. However, ISRs can signal condvars
+for which waiting threads call ``wait for interrupt''.
+\item The current priority of a thread that does not own a mutex must always be its base priority.
+\end{itemize}
+
+\clearpage
+\subsection{Execution Controller}
+
+\begin{schema}{ExecutionController}
+    zCpuIdToCpuController: CPUID \inj CpuController \\
+    cpuControllers: \finset_1 CpuController \\
+    zExecutionContexts: \finset_1 ExecutionContext \\
+	zThreads: \finset Thread \\
+    zInterrupts: \finset_1 Interrupt \\
+    zExecutionContextToCpu: ExecutionContext \psurj CPUID \\
+    zThreadToExecutionContext: Thread \pinj ExecutionContext \\
+    zInterruptToExecutionContext: Interrupt \pinj ExecutionContext
+\where
+	\ran zCpuIdToCpuController = cpuControllers
+\also
+    \forall cpu: CPUID @ (zCpuIdToCpuController(cpu)).cpuId = cpu
+\also
+	\bigcap \{ cpuC: cpuControllers @ cpuC.threads \} = \emptyset
+\also
+    \bigcup \{ cpuC: cpuControllers @ cpuC.threads \} = zThreads
+\also
+	\bigcap \{ cpuC: cpuControllers @ cpuC.interrupts \} = \emptyset
+\also
+    \bigcup \{ cpuC: cpuControllers @ cpuC.interrupts \} = zInterrupts
+\also
+    zExecutionContexts = \\
+\t1 \{ t: zThreads @ t.executionContext \} \cup \{ i: zInterrupts @ i.executionContext \}
+\also
+	\{ t: zThreads @ t.executionContext \} \cap \{ i: zInterrupts @ i.executionContext \} = \emptyset
+\also
+	\dom zExecutionContextToCpu = zExecutionContexts
+\also
+	\dom zThreadToExecutionContext = zThreads
+\also
+    \ran zThreadToExecutionContext = \{ t: zThreads @ t.executionContext \}
+\also
+	\dom zInterruptToExecutionContext = zInterrupts
+\also
+	\ran zInterruptToExecutionContext = \{ i: zInterrupts @ i.executionContext \}
+\also
+	\forall et: zExecutionContexts @ zExecutionContextToCpu(et) = et.cpuId
+\also
+	\bigcap \{ et: zExecutionContexts @ et.executionStack \} = \emptyset
+\end{schema}
+
+An execution context can correspond to a software-scheduled thread or to an interrupt.
+Interrupts are seen as ``hardware-scheduled'' threads that have higher priority
+than software-scheduled threads. Thus, an interrupt can be seen as a hardware thread
+that can preempt the highest priority software thread.
+
+Invariants:
+\begin{itemize}
+\item Every thread must be assigned to a CPU. This is done at thread creation time
+and the thread cannot be moved to another CPU.
+\item Every interrupt source must be assigned to a CPU and must always be served by that CPU.
+\item The same thread cannot be assigned to more than one CPU.
+\item The same interrupt source cannot be assigned to more than one CPU.
+\item Every execution context is assigned to a fixed CPU. The same execution context cannot be
+assigned to two different CPUs. Every CPU has at least one execution context (if nothing else,
+its idle thread).
+\item Synchronization between threads and interrupts via codvars is only allowed for
+threads and interrupts running on the same CPU. That is, a thread cannot be signaled
+from an ISR running on a different CPU. In other words, a thread cannot wait for
+an interrupt assigned to a different CPU.
+\end{itemize}
+
+\clearpage
+\subsection{CPU Controllers}
+
+\begin{schema}{CpuController}
+	ThreadScheduler \\
+    cpuId: CPUID \\
+    zExecutionContexts: \finset_1 ExecutionContext \\
+    preemptedBy: ExecutionContext \pinj ExecutionContext \\
+    timers: \finset Timer \\
+  	zIterruptChannelToInterrupt: INTERRUPT\_CHANNEL \inj Interrupt \\
+    interrupts: \finset_1 Interrupt \\
+    tickTimerInterrupt: Interrupt \\
+    runningExecutionContext: ExecutionContext \\
+    nestedInterruptCount: 0 \upto kMaxNumInterruptChannelsPerCpu \\
+	activeInterruptsBitMap: \finset INTERRUPT\_CHANNEL \\
+    activeInterrupts: \finset Interrupt \\
+\where
+	 \ran zIterruptChannelToInterrupt = interrupts
+\also
+     zExecutionContexts = \\
+\t1     \{ t: threads @ t.executionContext \} \cup \{ i: interrupts @ i.executionContext \}
+\also
+     \{ t: threads @ t.executionContext \} \cap \{ i: interrupts @ i.executionContext \} = \emptyset
+\also
+     \forall et: zExecutionContexts @ et.cpuId = cpuId
+\also
+	 activeInterrupts = \{ iv: activeInterruptsBitMap @ zIterruptChannelToInterrupt(iv) \}
+\also
+     nestedInterruptCount = \# activeInterrupts
+\also
+	 nestedInterruptCount = 0 \iff \\
+\t1 	runningExecutionContext \in \{ t: zRunnableThreads @ t.executionContext \}
+\also
+     nestedInterruptCount > 0 \iff \\
+\t1		runningExecutionContext \in \{ i: activeInterrupts @ i.executionContext \}
+\end{schema}
+
+Invariants:
+\begin{itemize}
+\item There can be more than one interrupt with the same interrupt priority. Interrupt
+    scheduling is done by hardware. For the LPC2478, this is done by the Vectored Interrupt
+    Controller (VIC). For ARMv7-A and ARMv7-R processors, the ARM generic interrupt controller
+    (GIC) \cite{Arm4} is used. For ARMv7-M processors, the Nested Vectored Interrupt controller
+    (NVIC) is used.
+\item The same interrupt cannot be nested.
+\end{itemize}
+
+$ThreadScheduler$ represents the state variables of the Per-CPU thread scheduler.
+
+\clearpage
+\begin{schema}{ThreadScheduler}
+ 	zThreadIdToThread: THREAD\_ID \pinj Thread \\
+    threads: \finset_1 Thread \\
+    zUserThreads: \finset Thread \\
+    zSystemThreads: \finset_1 Thread \\
+    idleThread: Thread \\
+    runningThread: Thread \\
+    runnableThreadPrioritiesBitMap: \finset_1 THREAD\_PRIO \\
+    runnableThreadQueues: THREAD\_PRIO \inj ThreadQueue \\
+    zRunnableThreads: \finset_1 Thread \\
+\where
+     \ran zThreadIdToThread = threads
+\also
+	 zRunnableThreads = \\
+\t1 \bigcup \{ i: THREAD\_PRIO @ \ran (runnableThreadQueues(i)).zElements \}
+\also
+     zRunnableThreads \neq \emptyset \land zRunnableThreads \subseteq threads
+\also
+     threads = zUserThreads \cup zSystemThreads
+\also
+     zUserThreads \cap zSystemThreads = \emptyset
+\also
+     \forall t: zSystemThreads @ t.executionContext.cpuMode = kPrivilegedThreadMode
+\also
+     \forall t: zUserThreads @ \\
+\t1      t.executionContext.cpuMode \in \\
+\t2           \{ kUnprivilegedThreadMode, kPrivilegedThreadMode \}
+\also
+     idleThread \in zSystemThreads
+\also
+	 zThreadIdToThread(0) = idleThread
+\also
+     runningThread \in zRunnableThreads \land runningThread.state = kRunning
+\also
+     \forall t: zRunnableThreads \setminus \{ runningThread \} @ t.state = kRunnable
+\also
+     \forall t: threads \setminus zRunnableThreads @ \\
+\t1     t.state \notin \{kRunnable, kRunning \}
+\also
+	\ran (runnableThreadQueues(kLowestThreadPriority)).zElements = \{ idleThread \}
+\also
+  	\forall t: threads @ \\
+\t1 	runningThread.currentPriority \geq t.currentPriority
+\also
+  	\forall prio: runnableThreadPrioritiesBitMap @ prio \in \dom runnableThreadQueues
+\end{schema}
+
+Invariants:
+\begin{itemize}
+\item The running thread is always the highest priority thread. There can be more than one
+thread with the same thread priority. Threads of equal priority are time-sliced in a
+round-robin fashion.
+\item Each CPU has an idle thread. The idle thread has the lowest priority and cannot get
+blocked on any mutex or condvar, but it is the only thread that can execute an instruction
+that stops the processor until an interrupt happens.
+\end{itemize}
+
+\begin{schema}{ThreadQueue}
+    GenericLinkedList[Thread] \\
+\end{schema}
+
+\clearpage
+\subsection{ExecutionContext}
+
+\begin{schema}{ExecutionContext}
+    cpuRegisters: \finset_1 WORD\_LOCATION \\
+    stackPointer: WORD\_LOCATION \\
+    cpuId: CPUID \\
+	cpuMode: CPU\_MODE \\
+    contextType: EXECUTION\_CONTEXT\_TYPE \\
+	executionStack: ADDRESS \pinj WORD\_LOCATION \\
+    exeStackTopEnd: ADDRESS \\
+    exeStackBottomEnd: ADDRESS \\
+    contextName: STRING \\
+ \where
+    stackPointer \in cpuRegisters
+\also
+    kWordValue(stackPointer) \in \dom executionStack
+\also
+    exeStackTopEnd < exeStackBottomEnd
+\also
+    exeStackTopEnd \upto exeStackBottomEnd \subset kValidRamWordAddresses
+\also
+    \dom executionStack = exeStackTopEnd + 1 \upto exeStackBottomEnd
+\also
+	\dom executionStack \subset kValidRamWordAddresses
+\also
+	\dom executionStack \cap kReadOnlyAddresses = \emptyset
+\end{schema}
+
+
+\subsection{Threads}
+
+\begin{schema}{Thread}
+    executionContext: ExecutionContext \\
+    threadID: THREAD\_ID \\
+    threadFunction: kExecutableAddresses \\
+    state: THREAD\_STATE \\
+	basePriority: THREAD\_PRIO \\
+	currentPriority: THREAD\_PRIO \\
+    listNode: LIST\_NODE \\
+    deadlineToRun: \nat \\
+\where
+	currentPriority \geq basePriority
+\also
+	executionContext.contextType = kThreadContext
+\also
+	executionContext.cpuMode \in \{ kUnprivilegedThreadMode, kPrivilegedThreadMode \}
+\also
+    \# executionContext.executionStack = kThreadStackSizeInWords
+\end{schema}
+
+User-created threads will run in the ARM user mode and system internal threads will run in the
+ARM system mode. This is to prevent user threads to execute privileged instructions. When
+user threads call the system APIs, API wrappers that execute the ARM system call instruction
+are actually invoked. Then, the SWI exception handler, which gets invoked in supervisor mode,
+changes the CPU mode to system mode and call the corresponding kernel service. When the
+kernel service returns to the SWI exception handler, it switches back to supervisor mode
+and returns form the exception, causing the CPU mode to go back to user mode again.
+
+Invariants:
+\begin{itemize}
+\item The current priority of a thread can never be lower than its base priority. The
+current priority can be higher than the base priority, due to priority inheritance,
+when the thread owns a mutex a higher priority thread is waiting for.
+\end{itemize}
+
+\subsection{Interrupts}
+
+\begin{schema}{Interrupt}
+    executionContext: ExecutionContext \\
+    interruptChannel: INTERRUPT\_CHANNEL \\
+	isrFunction: kExecutableAddresses \\
+\where
+	executionContext.contextType = kInterruptContext
+\also
+	executionContext.cpuMode = kInterruptMode
+\also
+    \# executionContext.executionStack = kInterruptStackSizeInWords
+\end{schema}
+
+Interrupt execution contexts run in the ARM IRQ mode. To ensure that a higher priority
+interrupt is not delayed by a lower priority interrupt, nested interrupts will be
+supported. After clearing the interrupt source, all interrupt service routines (ISRs),
+re-enable IRQ interrupts in the ARM core, but continue running in IRQ mode. Note that
+the same interrupt cannot be raised again until we finish servicing the current one, as
+the interrupt controller is expected to only raise interrupts with higher priority
+than the current one being served. (The last step in servicing an interrupt is to
+notify the interrupt controller of the completion of servicing the interrupt).
+
+\subsection{Timers}
+
+\begin{schema}{Timer}
+    counter: \nat \\
+%\where
+\end{schema}
+
+%\clearpage
+
+\subsection{Mutexes}
+
+\begin{schema}{Mutex}
+	waitingThreads: ThreadQueue \\
+    synchronizationScope: SYNCHRONIZATION\_SCOPE \\
+ \where
+    synchronizationScope \in \{ kLocalCpuThreadOnly, kInterCpuThreadOnly \}
+\end{schema}
+
+When a mutex is released and another thread is waiting to acquire it, the ownership of the mutex
+is transferred to the first waiter, and this waiter is made runnable. This is so that if the
+previous owner has higher priority and tries to acquire it again, it will get blocked. Otherwise,
+the highest priority thread will keep running, acquiring and releasing the mutex without giving
+a chance to the low priority waiting thread to ever get it.
+
+The queue of waiters on a mutex is strictly FIFO, not priority based. This is to ensure
+fairness for lower priority threads. Otherwise, lower priority threads may starve waiting
+to get the mutex, as higher priority threads keep acquiring it first.
+
+The primitive to acquire a mutex returns with error if the reliability monitor detects a
+deadlock, to prevent the caller from waiting indefinitely.
+
+\subsection{Condition Variables}
+
+\begin{schema}{Condvar}
+    waitingThreads: ThreadQueue \\
+    synchronizationScope: SYNCHRONIZATION\_SCOPE \\
+%\where
+\end{schema}
+
+Besides the traditional condvar ``wait'' primitive, there is an additional ``Wait for interrupt''
+primitive, intended to be used to synchronize a waiting thread with an ISR that is supposed to signal
+the corresponding condvar on which the thread is waiting. The waiting thread must have interrupts
+disabled in the ARM processor, when it calls ``wait for interrupt''.
+
+If more than one thread is waiting on the condvar, the ``signal'' primitive will wake up the
+first thread in the condvar's queue. The ``broadcast'' primitive wakes up all the waiting threads.
+
+There is a variation of the ``wait'' primitive that includes a timeout.
+
+McRTOS will not provide semaphore primitives as part of its user APIs, as semaphores can be
+easily implemented using condition variables and mutexes, for semaphores used only by threads.
+For semaphores signaled from ISRs, they can be implemented with a combination of condition
+variables and disabling interrupts, since mutexes cannot be used in ISRs. In this case, the thread
+waiting on the condition variable to be signaled by an ISR, disables interrupts before checking
+the condition and calls the ``wait for interrupt'' primitive, if the condition has not been met.
+Otherwise, missed ``wake-ups'' could happen due to a race condition between the thread and the ISR.
+
+%\subsection{Semaphores}
+
+%\begin{schema}{Semaphore}
+%    counter: \nat \\
+%	counterNonZeroCondVar: Condvar \\
+%\where
+%    counterNonZeroCondVar.synchronizationScope = kLocalCpuInterruptAndThread
+%\end{schema}
+
+\subsection{Message Channels}
+
+\begin{schema}{MessageChannel}
+    GenericCircularBuffer[WORD\_LOCATION] \\
+\end{schema}
+
+\subsection{Object Pools}
+
+\begin{schema}{ObjectPool}
+    objects: \finset_1 ADDRESS \\
+    zNumObjects: \nat_1 \\
+    freeObjects: FreeList  \\
+    zNumFreeObjects: \nat \\
+    objectType: OBJECT\_TYPE \\
+\where
+    \# objects = zNumObjects
+\also
+    freeObjects.numEntries = zNumObjects
+\also
+    freeObjects.entriesFilled = zNumFreeObjects
+\end{schema}
+
+\begin{schema}{FreeList}
+    GenericCircularBuffer[ADDRESS] \\
+\end{schema}
+
+\clearpage
+\subsection{Reliability Monitor}
+
+\begin{schema}{ReliabilityMonitor}
+    failureTraceLog: FailureTraceBuffer \\
+%\where
+\end{schema}
+
+\begin{schema}{FailureTraceBuffer}
+    GenericCircularBuffer[Failure] \\
+\end{schema}
+
+\begin{schema}{Failure}
+    location: ADDRESS \\
+    timeStamp: \nat \\
+    stackTrace: \iseq WORD\_LOCATION \\
+%\where
+\end{schema}
+
+Failures to be detected by the Reliability Monitor:
+\begin{itemize}
+\item Interrupts have been disabled for too long (longer than a predefined threshold).
+\item Mutex deadlock (initial implementation may simply use a timer-based detection approach
+to detect if a mutex has been held for too long)
+\item Thread starvation: a runnable thread other than the idle thread has not been able to
+      get the CPU for too long.
+\item A time-critical thread has missed its next deadline to run.
+\item Failure detectors will be placed through the code of McRTOS in the form of
+production-code ``asserts'' (as opposed to debug-only asserts that are compiled-out from
+production code).
+\item Regular error handling in the code will call the Reliability monitor to capture
+failure data associated with the error. The reliability monitor will assign a unique error
+to each error detected by error handling logic. The purpose of these error codes is
+to uniquely identify the point in the source code where the error originated.
+\end{itemize}
+
+\subsection{Generic Data Structures}
+
+\subsubsection{Generic Linked Lists}
+
+\begin{schema}{GenericLinkedList}[ElementType]
+    listAnchor: LIST\_NODE \\
+    numNodes: \nat \\
+    zNodes: \finset LIST\_NODE \\
+    zElements: \iseq ElementType \\
+    zNodeToElem: LIST\_NODE \finj ElementType \\
+    zNextNode: LIST\_NODE \finj LIST\_NODE \\
+    zPrevNode: LIST\_NODE \finj LIST\_NODE \\
+	zNodeToListAnchor: LIST\_NODE \finj LIST\_NODE \\
+\where
+    listAnchor \notin zNodes
+\also
+	numNodes = \# zNodes
+\also
+    \dom zNodeToElem = zNodes
+\also
+    \ran zNodeToElem = \ran zElements
+\also
+    \dom zNextNode = zNodes \cup \{listAnchor\}
+\also
+    \ran zNextNode = zNodes \cup \{listAnchor\}
+\also
+    \dom zPrevNode = \dom zNextNode
+\also
+    \ran zPrevNode = \ran zNextNode
+\also
+    \# zElements = \# zNodes
+\also
+    head~zElements = zNodeToElem(zNextNode(listAnchor)) \iff zElements \neq \emptyset
+\also
+    last~zElements = zNodeToElem(zPrevNode(listAnchor)) \iff zElements \neq \emptyset
+\also
+    head~zElements = last~zElements \iff \# zElements = 1
+\also
+    \forall x: zNodes @ \\
+\t1      zPrevNode(zNextNode(x)) = x \land zNextNode(zPrevNode(x)) = x \land \\
+%\t1      (zNodeToElem(x)).listNode = x \land \\ XXX
+\t1      zNodeToListAnchor(x) = listAnchor
+\also
+    \forall x: zNodes @ \\
+\t1      zNextNode^{\# zNodes + 1}(x) = x \land zPrevNode^{\# zNodes + 1}(x) = x
+\also
+    \forall x: zNodes; k: 1 \upto \# zNodes @ \\
+\t1     zNextNode^{k}(x) \neq x \land zPrevNode^{k}(x) \neq x
+\also
+	 zNextNode(listAnchor) = zNodeToElem\inv(zElements(0))
+\also
+	 zPrevNode(listAnchor) = zNodeToElem\inv(last(zElements))
+\also
+     zNextNode(listAnchor) = listAnchor \iff zNodes = \emptyset
+\also
+    zPrevNode(listAnchor) = listAnchor \iff zNextNode(listAnchor) = listAnchor
+\also
+    zNextNode(listAnchor) = zPrevNode(listAnchor) \iff \# zNodes \leq 1
+\end{schema}
+
+\subsubsection{Generic Circular Buffers}
+
+\begin{schema}{GenericCircularBuffer}[EntryType]
+    zEntries: \iseq EntryType \\
+    numEntries: \nat_1 \\
+    entriesFilled: \nat \\
+    readCursor: \nat \\
+    writeCursor: \nat \\
+    synchronizationScope: SYNCHRONIZATION\_SCOPE \\
+    mutex: Mutex \\
+    notEmptyCondvar: Condvar \\
+    notFullCondvar: Condvar \\
+\where
+   \# zEntries = numEntries
+\also
+    entriesFilled \in 0 \upto numEntries
+\also
+   readCursor \in 0 \upto numEntries - 1
+\also
+   writeCursor \in 0 \upto numEntries - 1
+\also
+   writeCursor = readCursor \iff \\
+\t1 (entriesFilled = 0 \lor entriesFilled = numEntries)
+\also
+    notEmptyCondvar \neq notFullCondvar
+\also
+    notEmptyCondvar.synchronizationScope = synchronizationScope
+\also
+    notFullCondvar.synchronizationScope = synchronizationScope
+\end{schema}
+
+If $synchronizationScope$ is $kLocalCpuInterruptAndThread$, the circular buffer operations
+disable interrupts instead of using the circular buffer's mutex. If a circular buffer is empty,
+a reader will block until the buffer is not empty.
+Three behaviors are possible for writers when a circular buffer is full: block until there is
+room to complete the write, drop the item to be written, overwrite the oldest entry with the
+new item.
+
+\chapter{Code Quality Guidelines}
+
+\section{Compliance with Industry Standards for Code Reliability}
+
+All the C code of McRTOS will follow the MISRA C 2012 standard \cite{MisraC} and
+the CERT C Secure Coding Standard \cite{CertC}.
+
+%\section{Compliance with the CMSIS-RTOS API Specification}
+%The User-level APIS of McRTOS will confrom as much as possible with the CMSIS-RTOS API
+%specification \cite{CMSIS}.
+
+\section{Doxygen Code Documentation}
+
+All functions, types, constants and global variables will have a preceding comment
+block in Doxygen format \cite{Doxygen}, so that API documentation can be generated automatically from
+code comments.
+
+\section{Opaque Objects return by User-level APIs}
+All the ``create'' APIs return opaque pointers (pointer to incomplete structs). They point to
+objects allocated from internal object pools statically allocated (\verb'malloc()' is not used at all).
+Entries in these object pools are cache-line aligned, to avoid cache line trashing when threads running
+on different processors keep modifying neighboring entries.
+The returned pointers are``scrambled'' so that the user cannot dereference them directly. A simple approach to
+scramble a pointer is to rotate its bits left or right 2 or 3 bits, using an inline assembly
+instruction. When an API needs to dereference a pointer, it will ``un-scramble'' it first, by
+doing the opposite rotation.
+
+\section{Design-by-Contract Principles}
+Design-by-Contract principles \cite{DbC} will be followed to systematically identify places
+in the code where to put ``asserts''. Assertion checks will stay in production code, as opposed
+to being compiled out from production builds.
+
+\section{Test-Driven Development}
+
+Test-driven development practices \cite{TDD1} will be used to develop the code of McRTOS. In particular
+the CppUTest \cite{TDD2} unit-testing framework will be used to create automated unit tests.
+
+\clearpage
+\begin{thebibliography}{9}
+
+\bibitem{Arm1}
+Steve Furber, ``ARM System-on-Chip Architecture'', second edition, Addison-Wesley, 2000 \\
+\url{http://www.amazon.com/ARM-System-Chip-Architecture-Edition/dp/0201675196}
+
+\bibitem{Arm2}
+Andrew Sloss et al, ``ARM System Developer's Guide: Designing and Optimizing System Software'', Morgan Kaufmann, 2004 \\
+\url{http://www.amazon.com/ARM-System-Developers-Guide-Architecture/dp/1558608745}
+
+\bibitem{Arm3}
+ARM, ``Cortex-A Series Programmer’s Guide'', version 3.0, ARM, 2012 \\
+\url{http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.den0013-/index.html}
+
+\bibitem{Arm4}
+ARM, ``ARM Generic Interrupt Controller Architecture Specification Architecture'',  version 2.0, ARM, 2011 \\
+\url{http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.ihi0048b/index.html}
+
+\bibitem{Zrm}
+Mike Spivey, ``The Z Reference Manual'', second edition, Prentice-Hall, 1992 \\
+\url{http://spivey.oriel.ox.ac.uk/~mike/zrm/zrm.pdf}
+
+\bibitem{WayofZ}
+Jonathan Jacky, ``The Way of Z'', Cambridge Press, 1997 \\
+\url{http://staff.washington.edu/jon/z-book/index.html}
+
+\bibitem{Fuzz}
+Mike Spivey, ``The Fuzz checker'' \\
+\url{http://spivey.oriel.ox.ac.uk/mike/fuzz}
+
+\bibitem{MisraC}
+MISRA, ``MISRA C:2012'' \\
+\url{http://www.misra.org.uk/LinkClick.aspx?fileticket=SAG1iH3YwNE%3d&tabid=59}
+
+\bibitem{CertC}
+Software Engineering Institute, ``CERT C Secure Coding Standard'' \\
+\url{https://www.securecoding.cert.org/confluence/display/seccode/CERT+C+Secure+Coding+Standard}
+
+\bibitem{Doxygen}
+Dimitri van Heesch, ``Doxygen Documentation Generator'' \\
+\url{http://doxygen.org}
+
+\bibitem{DbC}
+Bertrand Meyer, ``Touch of Class: Learning to Program Well with Objects and Contracts'', Springer, 2009 \\
+\url{http://www.amazon.com/dp/3540921443}
+
+\bibitem{TDD1}
+James W. Grenning, ``Test Driven Development for Embedded C'', Pragmatic Bookshelf, 2011 \\
+\url{http://www.amazon.com/Driven-Development-Embedded-Pragmatic-Programmers/dp/193435662X}
+
+\bibitem{TDD2}
+CppUTest Project, ``CppUTest unit testing and mocking framework for C/C++'' \\
+\url{http://cpputest.org}
+
+%\bibitem{CMSIS}
+%ARM, ``CMSIS - Cortex Microcontroller Software Interface Standard'' \\
+%\url{http://www.arm.com/products/processors/cortex-m/cortex-microcontroller-software-interface-standard.php}
+
+\end{thebibliography}
+
+\end{document}
+
+

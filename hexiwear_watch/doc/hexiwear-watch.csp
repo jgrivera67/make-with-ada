@@ -1,0 +1,118 @@
+datatype Events = driver_turns_on_ignition |
+                  driver_presses_gas_pedal |
+		  driver_releases_gas_pedal |
+                  driver_touches_brake_pedal |
+                  driver_touches_cruise_button |
+                  driver_touches_set_button |
+		  driver_touches_resume_button |
+		  driver_touches_plus_button |
+		  driver_touches_minus_button |
+                  driver_turns_on_cruise_control |
+                  driver_turns_off_ignition
+
+datatype Actions = start_engine |
+                   stop_engine |
+                   increase_current_speed |
+                   decrease_current_speed |
+                   increase_target_speed |
+                   decrease_target_speed |
+                   turn_on_cruise_control |
+                   turn_off_cruise_control |
+		   set_current_speed_to_target_speed |
+                   set_target_speed_to_current_speed
+
+channel event : Events
+
+channel action : Actions
+
+CRUISE_CONTROL = ENGINE_OFF
+
+ENGINE_OFF =
+    event.driver_turns_on_ignition -> action.start_engine -> CRUISE_CONTROL_OFF
+
+CRUISE_CONTROL_OFF =
+    event.driver_presses_gas_pedal -> action.increase_current_speed ->
+	CRUISE_CONTROL_OFF
+    []
+    event.driver_touches_brake_pedal -> action.decrease_current_speed ->
+	CRUISE_CONTROL_OFF
+    []
+    event.driver_touches_cruise_button -> action.turn_on_cruise_control ->
+	CRUISE_CONTROL_INACTIVE
+    []
+    event.driver_turns_off_ignition -> action.stop_engine -> ENGINE_OFF
+
+CRUISE_CONTROL_INACTIVE =
+    event.driver_presses_gas_pedal -> action.increase_current_speed ->
+        CRUISE_CONTROL_INACTIVE
+    []
+    event.driver_touches_brake_pedal -> action.decrease_current_speed ->
+	CRUISE_CONTROL_INACTIVE
+    []
+    event.driver_touches_cruise_button -> action.turn_off_cruise_control ->
+	CRUISE_CONTROL_OFF
+    []
+    event.driver_touches_set_button ->
+	action.set_target_speed_to_current_speed -> CRUISE_CONTROL_ACTIVE
+    []
+    event.driver_turns_off_ignition -> action.stop_engine -> ENGINE_OFF
+
+CRUISE_CONTROL_ACTIVE =
+    event.driver_presses_gas_pedal -> action.increase_current_speed ->
+	CRUISE_CONTROL_PASSIVE
+    []
+    event.driver_touches_brake_pedal -> action.decrease_current_speed ->
+	CRUISE_CONTROL_DEACTIVATED
+    []
+    event.driver_touches_cruise_button -> action.turn_off_cruise_control ->
+	CRUISE_CONTROL_OFF
+    []
+    event.driver_touches_plus_button -> action.increase_target_speed ->
+	action.set_current_speed_to_target_speed -> CRUISE_CONTROL_ACTIVE
+    []
+    event.driver_touches_minus_button -> action.decrease_target_speed ->
+	action.set_current_speed_to_target_speed -> CRUISE_CONTROL_ACTIVE
+    []
+    event.driver_turns_off_ignition -> action.stop_engine -> ENGINE_OFF
+
+CRUISE_CONTROL_PASSIVE =
+    event.driver_presses_gas_pedal -> action.increase_current_speed ->
+	CRUISE_CONTROL_PASSIVE
+    []
+    event.driver_touches_brake_pedal -> action.decrease_current_speed ->
+	CRUISE_CONTROL_DEACTIVATED
+    []
+    event.driver_touches_cruise_button ->  action.turn_off_cruise_control ->
+	CRUISE_CONTROL_OFF
+    []
+    event.driver_touches_plus_button -> action.increase_target_speed ->
+	CRUISE_CONTROL_PASSIVE
+    []
+    event.driver_touches_minus_button -> action.decrease_target_speed ->
+	CRUISE_CONTROL_PASSIVE
+    []
+    event.driver_touches_set_button ->
+	action.set_target_speed_to_current_speed -> CRUISE_CONTROL_PASSIVE
+    []
+    event.driver_releases_gas_pedal ->
+	action.set_current_speed_to_target_speed -> CRUISE_CONTROL_ACTIVE
+    []
+    event.driver_turns_off_ignition -> action.stop_engine -> ENGINE_OFF
+
+CRUISE_CONTROL_DEACTIVATED =
+    event.driver_presses_gas_pedal -> action.increase_current_speed ->
+	CRUISE_CONTROL_DEACTIVATED
+    []
+    event.driver_touches_brake_pedal -> action.decrease_current_speed ->
+	CRUISE_CONTROL_DEACTIVATED
+    []
+    event.driver_touches_cruise_button -> CRUISE_CONTROL_OFF
+    []
+    event.driver_touches_set_button ->
+	action.set_target_speed_to_current_speed -> CRUISE_CONTROL_ACTIVE
+    []
+    event.driver_touches_resume_button ->
+	action.set_current_speed_to_target_speed -> CRUISE_CONTROL_ACTIVE
+    []
+    event.driver_turns_off_ignition -> action.stop_engine -> ENGINE_OFF
+
