@@ -27,7 +27,6 @@
 
 with Interfaces.Bit_Types;
 with System;
-with Devices;
 with Ada.Unchecked_Conversion;
 
 --
