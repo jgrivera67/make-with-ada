@@ -63,8 +63,7 @@ package body Watch is
    is
    begin
       LCD_Display.Clear_Screen (LCD_Display.Blue);
-      --LCD_Display.Print_String (1, 16, "Ada",
-      LCD_Display.Print_String (12, 16, "Luzmi",
+      LCD_Display.Print_String (12, 16, "Ada",
                                 Watch_Var.Config_Parameters.Foreground_Color,
                                 Watch_Var.Config_Parameters.Background_Color,
                                 2);
@@ -123,19 +122,19 @@ package body Watch is
       LCD_Display.Initialize;
       Accelerometer.Initialize;
 
-      Set_Private_Data_Region (Watch_Var'Address, Watch_Var'Size,
-                               Read_Write, Old_Region);
+      Set_Private_Data_Region (Watch_Var'Address,
+                               Watch_Var'Size,
+                               Read_Write,
+                               Old_Region);
+
       App_Configuration.Load_Config_Parameters (Watch_Var.Config_Parameters);
       Set_True (Watch_Var.Display_Lock);
-      Watch_Var.Display_On := True;
       Watch_Var.Initialized := True;
 
       Display_Greeting;
       Display_Watch_Label (Watch_Var.Config_Parameters.Watch_Label);
 
-      Set_True (Watch_Var.Async_Operations_Task_Suspension_Obj);
       Set_True (Watch_Var.Watch_Task_Suspension_Obj);
-      Set_True (Watch_Var.Screen_Saver_Task_Suspension_Obj);
       Set_True (Watch_Var.Motion_Detector_Task_Suspension_Obj);
       Set_True (Watch_Var.Tapping_Detector_Task_Suspension_Obj);
       Restore_Private_Data_Region (Old_Region);
@@ -284,33 +283,6 @@ package body Watch is
       Set_True (Watch_Var.Display_Lock);
    end Unlock_Display;
 
-   ---------------------------
-   -- Async_Operations_Task --
-   ---------------------------
-
-   task body Async_Operations_Task is
-   begin
-      Suspend_Until_True (Watch_Var.Async_Operations_Task_Suspension_Obj);
-      Runtime_Logs.Info_Print ("Async operations task");
-      Set_Private_Data_Region (Watch_Var'Address,
-                               Watch_Var'Size,
-                               Read_Write);
-
-      loop
-         Suspend_Until_True (Watch_Var.Async_Operations_Task_Suspension_Obj);
-
-         --
-         --  TODO: Traverse async event vector, processing pending events
-         --
-         if not Watch_Var.Display_On then
-            Lock_Display;
-            LCD_Display.Turn_On_Display;
-            Unlock_Display;
-            Watch_Var.Display_On := True;
-         end if;
-      end loop;
-   end Async_Operations_Task;
-
    --------------------------
    -- Motion_Detector_Task --
    --------------------------
@@ -327,49 +299,17 @@ package body Watch is
                                Read_Write);
 
       loop
-         Accelerometer.Detect_Motion (X_Axis_Motion,
-                                      Y_Axis_Motion,
-                                      Z_Axis_Motion);
+         if Watch_Var.Motion_Detection_On then
+            Accelerometer.Detect_Motion (X_Axis_Motion,
+                                         Y_Axis_Motion,
+                                         Z_Axis_Motion);
 
-         Set_True (Watch_Var.Async_Operations_Task_Suspension_Obj);
-      end loop;
-   end Motion_Detector_Task;
-
-   -----------------------
-   -- Screen_Saver_Task --
-   -----------------------
-
-   task body Screen_Saver_Task is
-      Next_Wakeup_Time : Time;
-   begin
-      Suspend_Until_True (Watch_Var.Screen_Saver_Task_Suspension_Obj);
-      Runtime_Logs.Info_Print ("Screen saver task started");
-      Set_Private_Data_Region (Watch_Var'Address,
-                               Watch_Var'Size,
-                               Read_Write);
-
-      Next_Wakeup_Time :=
-         Clock +
-         Milliseconds (
-           Integer (Watch_Var.Config_Parameters.Screen_Saver_Timeout_Ms));
-      loop
-         if Watch_Var.Config_Parameters.Screen_Saver_Timeout_Ms = 0 then
-            Suspend_Until_True (Watch_Var.Screen_Saver_Task_Suspension_Obj);
+            Set_True (Watch_Var.Watch_Task_Suspension_Obj);
          else
-            delay until Next_Wakeup_Time;
-            Next_Wakeup_Time :=
-               Next_Wakeup_Time +
-               Milliseconds (Integer (
-                  Watch_Var.Config_Parameters.Screen_Saver_Timeout_Ms));
-            if Watch_Var.Display_On then
-               Lock_Display;
-               LCD_Display.Turn_Off_Display;
-               Unlock_Display;
-               Watch_Var.Display_On := False;
-            end if;
+            Suspend_Until_True (Watch_Var.Motion_Detector_Task_Suspension_Obj);
          end if;
       end loop;
-   end Screen_Saver_Task;
+   end Motion_Detector_Task;
 
    ---------------------------
    -- Tapping_Detector_Task --
@@ -388,8 +328,7 @@ package body Watch is
 
       loop
          Accelerometer.Detect_Tapping;
-
-         Set_True (Watch_Var.Async_Operations_Task_Suspension_Obj);
+         Set_True (Watch_Var.Watch_Task_Suspension_Obj);
       end loop;
    end Tapping_Detector_Task;
 
@@ -454,20 +393,40 @@ package body Watch is
       end Refresh_Wall_Time;
 
       Task_Period_Ms : constant Natural := 500;
+      Initial_Count_Down_To_Turn_Off_Display : constant Natural := 20;
       Next_Wakeup_Time : Time;
+      Count_Down_To_Turn_Off_Display : Natural;
    begin
       Suspend_Until_True (Watch_Var.Watch_Task_Suspension_Obj);
       Runtime_Logs.Info_Print ("Watch task started");
       Set_Private_Data_Region (Watch_Var'Address, Watch_Var'Size, Read_Write);
       Next_Wakeup_Time := Clock + Milliseconds (Task_Period_Ms);
+      Count_Down_To_Turn_Off_Display := Initial_Count_Down_To_Turn_Off_Display;
 
       loop
          if Watch_Var.Display_On then
             Refresh_Wall_Time;
+            delay until Next_Wakeup_Time;
+            Next_Wakeup_Time := Next_Wakeup_Time +
+                                Milliseconds (Task_Period_Ms);
+            Count_Down_To_Turn_Off_Display :=
+               Count_Down_To_Turn_Off_Display - 1;
+            if Count_Down_To_Turn_Off_Display = 0 then
+               Lock_Display;
+               LCD_Display.Turn_Off_Display;
+               Unlock_Display;
+               Watch_Var.Display_On := False;
+            end if;
+         else
+            Suspend_Until_True (Watch_Var.Watch_Task_Suspension_Obj);
+            Next_Wakeup_Time := Clock + Milliseconds (Task_Period_Ms);
+            Count_Down_To_Turn_Off_Display :=
+               Initial_Count_Down_To_Turn_Off_Display;
+            Lock_Display;
+            LCD_Display.Turn_On_Display;
+            Unlock_Display;
+            Watch_Var.Display_On := True;
          end if;
-
-         delay until Next_Wakeup_Time;
-         Next_Wakeup_Time := Next_Wakeup_Time + Milliseconds (Task_Period_Ms);
       end loop;
    end Watch_Task;
 

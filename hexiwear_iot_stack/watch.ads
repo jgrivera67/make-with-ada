@@ -75,11 +75,10 @@ private
       Initialized : Boolean := False;
       Config_Parameters : App_Configuration.Config_Parameters_Type;
       Last_RTC_Time_Reading : Seconds_Count := 0;
-      Display_On : Boolean := False;
+      Display_On : Boolean := True;
+      Motion_Detection_On : Boolean := False;
       Display_Lock : Suspension_Object;
-      Async_Operations_Task_Suspension_Obj : Suspension_Object;
       Watch_Task_Suspension_Obj : Suspension_Object;
-      Screen_Saver_Task_Suspension_Obj : Suspension_Object;
       Motion_Detector_Task_Suspension_Obj : Suspension_Object;
       Tapping_Detector_Task_Suspension_Obj : Suspension_Object;
    end record with Alignment => MPU_Region_Alignment;
@@ -89,9 +88,7 @@ private
    --
    Watch_Var : Watch_Type;
 
-   task Async_Operations_Task;
    task Watch_Task;
-   task Screen_Saver_Task;
    task Motion_Detector_Task;
    task Tapping_Detector_Task;
 

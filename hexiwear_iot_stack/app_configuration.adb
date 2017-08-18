@@ -79,7 +79,6 @@ package body App_Configuration is
                                   Read_Write,
                                   Old_Region);
          Config_Parameters.Watch_Label := "Ada inside";
-         --Config_Parameters.Watch_Label := "Luzmila   ";
          Config_Parameters.Screen_Saver_Timeout_Ms := 20_000;
          Config_Parameters.Background_Color := LCD_Display.Blue;
          Config_Parameters.Foreground_Color := LCD_Display.Yellow;
