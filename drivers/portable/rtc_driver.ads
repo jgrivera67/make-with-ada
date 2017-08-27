@@ -26,12 +26,15 @@
 --
 
 with Ada.Real_Time;
-
+with Interfaces;
+private with Memory_Protection;
+private with System;
 --
 --  @summary Real-Time Clock (RTC) driver
 --
 package RTC_Driver is
    use Ada.Real_Time;
+   use Interfaces;
 
    function Initialized return Boolean;
    --  @private (Used only in contracts)
@@ -58,10 +61,43 @@ package RTC_Driver is
    --  @param Wall_Time_Seconds : Date and time encoded in seconds since
    --
 
+   type RTC_Callback_Type is access procedure;
+
+   procedure Set_RTC_Alarm (Time_Secs : Unsigned_32;
+                            RTC_Alarm_Callback : RTC_Callback_Type)
+     with Pre => Initialized and RTC_Alarm_Callback /= null;
+   --
+   --  Set an alarm to fire at the specfied time
+   --
+   --  @param Time_Secs Number of second sin the future when the alarm is to
+   --  fire
+   --  @param RTC_Alarm_Callback callback to be invoked when the alarm fires
+   --
+
+   procedure Enable_RTC_Periodic_One_Second_Interrupt (
+                Periodic_One_Second_Callback : RTC_Callback_Type)
+     with Pre => Initialized and Periodic_One_Second_Callback /= null;
+   --
+   --  Enable RTC once-a-second peridic interrupt
+   --
+   --  @param Periodic_One_Second_Callback callback to be invoked once a second
+   --
+
+   procedure Disable_RTC_Periodic_One_Second_Interrupt
+      with Pre => Initialized;
+
 private
+   use Memory_Protection;
 
-   RTC_Initialized : Boolean := False;
+   type RTC_Var_Type is limited record
+      Initialized : Boolean := False;
+      Alarm_Callback : RTC_Callback_Type := null;
+      Periodic_One_Second_Callback : RTC_Callback_Type := null;
+   end record with Alignment => MPU_Region_Alignment,
+                   Size => MPU_Region_Alignment * System.Storage_Unit;
 
-   function Initialized return Boolean is (RTC_Initialized);
+   RTC_Var : RTC_Var_Type;
+
+   function Initialized return Boolean is (RTC_Var.Initialized);
 
 end RTC_Driver;

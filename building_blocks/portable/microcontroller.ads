@@ -127,6 +127,9 @@ package Microcontroller is
    DMA_Interrupt_Priority : constant System.Interrupt_Priority :=
       System.Interrupt_Priority'First; --  highest
 
+   LLWU_Interrupt_Priority : constant System.Interrupt_Priority :=
+      System.Interrupt_Priority'First; --  highest
+
    Timer_Interrupt_Priority : constant System.Interrupt_Priority :=
       System.Interrupt_Priority'First + 1;
 
@@ -144,6 +147,9 @@ package Microcontroller is
 
    UART_Interrupt_Priority : constant System.Interrupt_Priority :=
       System.Interrupt_Priority'Last; --  lowest
+
+   RTC_Interrupt_Priority : constant System.Interrupt_Priority :=
+      System.Interrupt_Priority'First; --  highest
 
    -- ** --
 

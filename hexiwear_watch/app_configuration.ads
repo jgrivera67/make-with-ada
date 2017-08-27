@@ -44,7 +44,7 @@ package App_Configuration is
       --
       Checksum : Unsigned_32;
       Watch_Label : String (1 .. 10);
-      Screen_Saver_Timeout_Ms : Unsigned_32;
+      Screen_Saver_Timeout_Secs: Unsigned_32;
       Background_Color : LCD_Display.Color_Type;
       Foreground_Color : LCD_Display.Color_Type;
    end record with Alignment => Unsigned_32'Size / Byte'Size;
@@ -52,7 +52,7 @@ package App_Configuration is
    for Config_Parameters_Type use record
       Checksum at 0 range 0 .. 31;
       Watch_Label at 4 range 0 .. 10*8 - 1;
-      Screen_Saver_Timeout_Ms at 14 range 0 .. 31;
+      Screen_Saver_Timeout_Secs at 14 range 0 .. 31;
       Background_Color at 18 range 0 .. 15;
       Foreground_Color at 20 range 0 .. 15;
    end record;

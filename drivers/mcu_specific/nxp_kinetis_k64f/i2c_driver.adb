@@ -323,7 +323,7 @@ package body I2C_Driver is
                                Read_Write);
 
       I2C_Device_Var.Initialized := True;
-      Runtime_Logs.Debug_Print ("I2C: Initialized I2C" & I2C_Device_Id'Image);
+      Runtime_Logs.Info_Print ("I2C: Initialized I2C" & I2C_Device_Id'Image);
 
       Restore_Private_Data_Region (Old_Region);
    end Initialize;

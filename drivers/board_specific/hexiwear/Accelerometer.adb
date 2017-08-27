@@ -35,7 +35,7 @@ with Accelerometer.Fxos8700cq_Private;
 with Ada.Real_Time;
 with Ada.Synchronous_Task_Control;
 with Runtime_Logs;
-with Ada.Text_IO;--???
+with Low_Power_Driver;
 
 --
 -- Driver for the FXOS8700CQ accelerometer
@@ -57,12 +57,16 @@ package body Accelerometer is
    --  Type for the constant portion of the Accelerometer driver
    --
    --  @field I2C_Device_Id I2C controller interfacing with the accelerometer
+   --  @field I2C_Slave_Address : I2C slave address
+   --  @field Auto_Sleep_Count:  auto-sleep wait period
    --  @field Acc_Int1_Pin Interrupt 1 pin
    --  @field Acc_Int2_Pin Interrupt 2 pin
+   --  @field Reset_Pin  Hard reset pin
    --
    type Accelerometer_Const_Type is limited record
       I2C_Device_Id : I2C_Device_Id_Type;
       I2C_Slave_Address : I2C_Slave_Address_Type;
+      Auto_Sleep_Count : Byte;
       Acc_Int1_Pin : Gpio_Pin_Type;
       Acc_Int2_Pin : Gpio_Pin_Type;
       Reset_Pin : Gpio_Pin_Type;
@@ -71,6 +75,7 @@ package body Accelerometer is
    Accelerometer_Const : constant Accelerometer_Const_Type :=
       (I2C_Device_Id => I2C1,
        I2C_Slave_Address => 16#1E#,
+       Auto_Sleep_Count => 16, --  Auto-sleep count to 10s (= 10 /0.64=~16)
        Acc_Int1_Pin => (Pin_Info =>
                            (Pin_Port => PIN_PORT_C,
                             Pin_Index => 1,
@@ -92,11 +97,18 @@ package body Accelerometer is
    --
    type Accelerometer_Type is limited record
       Initialized : Boolean := False;
+      Int1_Task_Susp_Obj : Suspension_Object;
+      Int2_Task_Susp_Obj : Suspension_Object;
       Motion_Detected_Susp_Obj : Suspension_Object;
       Tapping_Detected_Susp_Obj : Suspension_Object;
+      Go_to_Sleep_Callback : Go_to_Sleep_Callback_Type;
    end record with Alignment => MPU_Region_Alignment;
 
    Accelerometer_Var : Accelerometer_Type;
+
+   task Int1_Task;
+
+   task Int2_Task;
 
    procedure Accel_Int1_Pin_Irq_Callback;
 
@@ -115,21 +127,12 @@ package body Accelerometer is
 
    procedure Accel_Int1_Pin_Irq_Callback
    is
-      Old_Region : MPU_Region_Descriptor_Type;
    begin
       --
       --  Int1 pin has been cleared by the corresponding pin port IRQ handler
       --
-
-      Set_Private_Data_Region (Accelerometer_Var'Address,
-                               Accelerometer_Var'Size,
-                               Read_Write,
-                               Old_Region);
-
-      Set_True (Accelerometer_Var.Motion_Detected_Susp_Obj);
-      Restore_Private_Data_Region (Old_Region);
-      Ada.Text_IO.Put_Line ("*** Accel_Int1_Pin_Irq_Callback ***");--???
-      Runtime_Logs.Debug_Print ("*** Accel_Int1_Pin_Irq_Callback ***"); -- ???
+      Set_True (Accelerometer_Var.Int1_Task_Susp_Obj);
+      Runtime_Logs.Debug_Print ("Accelerometer INT1 interrupt");
    end Accel_Int1_Pin_Irq_Callback;
 
    ---------------------------------
@@ -138,21 +141,12 @@ package body Accelerometer is
 
    procedure Accel_Int2_Pin_Irq_Callback
    is
-      Old_Region : MPU_Region_Descriptor_Type;
    begin
       --
       --  Int2 pin has been cleared by the corresponding pin port IRQ handler
       --
-
-      Set_Private_Data_Region (Accelerometer_Var'Address,
-                               Accelerometer_Var'Size,
-                               Read_Write,
-                               Old_Region);
-
-      Set_True (Accelerometer_Var.Tapping_Detected_Susp_Obj);
-      Restore_Private_Data_Region (Old_Region);
-      Ada.Text_IO.Put_Line ("*** Accel_Int2_Pin_Irq_Callback ***");--???
-      Runtime_Logs.Debug_Print ("*** Accel_Int2_Pin_Irq_Callback ***"); -- ???
+      Set_True (Accelerometer_Var.Int2_Task_Susp_Obj);
+      Runtime_Logs.Debug_Print ("Accelerometer INT2 interrupt");
    end Accel_Int2_Pin_Irq_Callback;
 
    ----------------------------
@@ -251,20 +245,9 @@ package body Accelerometer is
       Y_Axis_Motion : out Unsigned_8;
       Z_Axis_Motion : out Unsigned_8)
    is
-      Int_Source_Value : Accel_Ctrl_Reg4_Register_Type;
       FF_MT_Src_Value : Accel_FF_MT_SRC_Register_Type;
    begin
       Suspend_Until_True (Accelerometer_Var.Motion_Detected_Susp_Obj);
-      Ada.Text_IO.Put_Line ("Detect_Motion after wait");--???
-
-      --
-      --  Read Accelerometer interrupt status register:
-      --
-      Int_Source_Value.Value := I2C_Read (Accelerometer_Const.I2C_Device_Id,
-                                          Accelerometer_Const.I2C_Slave_Address,
-                                          Accel_Int_Source'Enum_Rep);
-
-      pragma Assert (Int_Source_Value.Int_En_Ff_Mt = 1);
 
       --
       --  Read the accelerometer motion detection register to make the
@@ -310,28 +293,9 @@ package body Accelerometer is
 
    procedure Detect_Tapping
    is
-      Int_Source_Value : Accel_Ctrl_Reg4_Register_Type;
-      Pulse_Source_Value : Accel_Pulse_Source_Register_Type;
+      Pulse_Source_Value : Accel_Pulse_Source_Register_Type with Unreferenced;
    begin
-      loop
-         Suspend_Until_True (Accelerometer_Var.Tapping_Detected_Susp_Obj);
-
-         --
-         --  Read Accelerometer interrupt status register:
-         --
-         Int_Source_Value.Value :=
-            I2C_Read (Accelerometer_Const.I2C_Device_Id,
-                      Accelerometer_Const.I2C_Slave_Address,
-                      Accel_Int_Source'Enum_Rep);
-
-         if Int_Source_Value.Int_En_Pulse = 1 then
-            exit;
-         else
-            Runtime_Logs.Error_Print (
-              "Acceleromter: unexpected interrupt INT2 (Int_Source:" &
-              Int_Source_Value.Value'Image);
-         end if;
-      end loop;
+      Suspend_Until_True (Accelerometer_Var.Tapping_Detected_Susp_Obj);
 
       --
       --  Read the accelerometer motion detection register to make the
@@ -349,7 +313,7 @@ package body Accelerometer is
    -- Initialize --
    ----------------
 
-   procedure Initialize is
+   procedure Initialize (Go_to_Sleep_Callback : Go_to_Sleep_Callback_Type) is
       procedure Configure_Tapping_Detection;
 
       ---------------------------------
@@ -503,7 +467,7 @@ package body Accelerometer is
       --end loop;
 
       --
-      --  Set normal mode:
+      --  Set operating mode:
       --
       Ctrl_Reg2_Value := (others => <>);
       Ctrl_Reg2_Value.Mods := Mods_Low_Power;  --Mods_Normal
@@ -561,27 +525,6 @@ package body Accelerometer is
                  FF_MT_Cfg_Value.Value);
 
       --
-      --  Enable auto-sleep, low power in sleep, high res in wake
-      --
-      --Ctrl_Reg2_Value := (others => <>);
-      --Ctrl_Reg2_Value.Slpe := 1;
-      --Ctrl_Reg2_Value.Smods := Smod_Low_Power;
-      --Ctrl_Reg2_Value.Mods := Mods_High_Res;
-      --I2C_Write (Accelerometer_Const.I2C_Device_Id,
-      --           Accelerometer_Const.I2C_Slave_Address,
-      --           Accel_Ctrl_Reg2'Enum_Rep,
-      --           Ctrl_Reg2_Value.Value);
-
-      --
-      --  Set auto-sleep wait period to 5s (=5/0.64=~8)
-      --
-      --Aslp_Count_Value := 8;
-      --I2C_Write (Accelerometer_Const.I2C_Device_Id,
-      --           Accelerometer_Const.I2C_Slave_Address,
-      --           Accel_Aslp_Count'Enum_Rep,
-      --           Aslp_Count_Value);
-
-      --
       --  Set threshold value for motion detection of > 0.063g:
       --  0.063g/0.063g == 1.
       --   or
@@ -631,11 +574,12 @@ package body Accelerometer is
 
       --
       --  Set push-pull and active low interrupt
-      --  and enable ffmt as a wake-up source:
+      --  and enable tapping detection as a wake-up source:
       --
       Ctrl_Reg3_Value.Pp_Od := 0; --  push-pull
       Ctrl_Reg3_Value.Ipol := 0;  --  active low
       --Ctrl_Reg3_Value.Wake_Ff_Mt := 1;
+      Ctrl_Reg3_Value.Wake_Pulse := 1;
       I2C_Write (Accelerometer_Const.I2C_Device_Id,
                  Accelerometer_Const.I2C_Slave_Address,
                  Accel_Ctrl_Reg3'Enum_Rep,
@@ -646,8 +590,8 @@ package body Accelerometer is
       --  interrupts:
       --
       --Ctrl_Reg4_Value.Int_En_Drdy := 1;
-      --Ctrl_Reg4_Value.Int_En_Aslp := 1;
       --Ctrl_Reg4_Value.Int_En_Ff_Mt := 1;
+      Ctrl_Reg4_Value.Int_En_Aslp := 1;
       Ctrl_Reg4_Value.Int_En_Pulse := 1;
       I2C_Write (Accelerometer_Const.I2C_Device_Id,
                  Accelerometer_Const.I2C_Slave_Address,
@@ -655,12 +599,12 @@ package body Accelerometer is
                  Ctrl_Reg4_Value.Value);
 
       --
-      --  Route motion detection interrupt to INT1 and tapping detection
-      --  interrupt to INT2
+      --  Route interrupts to GPIO interrupt pins INT1 or INT2:
       --
       --Ctrl_Reg5_Value.Int_Cfg_Drdy := Int1;
-      Ctrl_Reg5_Value.Int_Cfg_Ff_Mt := Int1;
-      Ctrl_Reg5_Value.Int_Cfg_Pulse := Int2;
+      --Ctrl_Reg5_Value.Int_Cfg_Ff_Mt := Int1;
+      Ctrl_Reg5_Value.Int_Cfg_Aslp := Int1;
+      Ctrl_Reg5_Value.Int_Cfg_Pulse := Int1;
       I2C_Write (Accelerometer_Const.I2C_Device_Id,
                  Accelerometer_Const.I2C_Slave_Address,
                  Accel_Ctrl_Reg5'Enum_Rep,
@@ -673,14 +617,65 @@ package body Accelerometer is
       --  - FSR=2g
       --
       Ctrl_Reg1_Value.Lnoise := 1;
-      Ctrl_Reg1_Value.Aslp_Rate := Aslp_Rate_640Ms;
-      Ctrl_Reg1_Value.Dr := Dr_200Hz; --Dr_100Hz
+      Ctrl_Reg1_Value.Aslp_Rate := Aslp_Rate_20Ms; --Aslp_Rate_640Ms;
+      Ctrl_Reg1_Value.Dr := Dr_200Hz; --Dr_100Hz;
       I2C_Write (Accelerometer_Const.I2C_Device_Id,
                  Accelerometer_Const.I2C_Slave_Address,
                  Accel_Ctrl_Reg1'Enum_Rep,
                  Ctrl_Reg1_Value.Value);
 
-      Activate_Accelerometer;
+      Set_Private_Data_Region (Accelerometer_Var'Address,
+                               Accelerometer_Var'Size,
+                               Read_Write,
+                               Old_Region);
+
+      Accelerometer_Var.Go_to_Sleep_Callback := Go_to_Sleep_Callback;
+
+      if Go_to_Sleep_Callback /= null then
+         --
+         --  Set auto-sleep timeout:
+         --
+         Aslp_Count_Value := Accelerometer_Const.Auto_Sleep_Count;
+         I2C_Write (Accelerometer_Const.I2C_Device_Id,
+                    Accelerometer_Const.I2C_Slave_Address,
+                    Accel_Aslp_Count'Enum_Rep,
+                    Aslp_Count_Value);
+
+         --
+         --  Enable auto-sleep, low power in sleep, high res in wake
+         --
+         Ctrl_Reg2_Value := (As_Value => False,
+                             Slpe => 1,
+                             Smods => Smod_Low_Power,
+                             Mods => Mods_High_Res,
+                             others => <>);
+         I2C_Write (Accelerometer_Const.I2C_Device_Id,
+                    Accelerometer_Const.I2C_Slave_Address,
+                    Accel_Ctrl_Reg2'Enum_Rep,
+                    Ctrl_Reg2_Value.Value);
+      else
+         Ctrl_Reg2_Value := (As_Value => False,
+                             Slpe => 0,
+                             Smods => Smod_Low_Power,
+                             Mods => Mods_Low_Power,
+                             others => <>);
+         I2C_Write (Accelerometer_Const.I2C_Device_Id,
+                    Accelerometer_Const.I2C_Slave_Address,
+                    Accel_Ctrl_Reg2'Enum_Rep,
+                    Ctrl_Reg2_Value.Value);
+      end if;
+
+      Accelerometer_Var.Initialized := True;
+
+      Set_True (Accelerometer_Var.Int1_Task_Susp_Obj);
+      Set_True (Accelerometer_Var.Int2_Task_Susp_Obj);
+
+      --
+      --  Set INT1 pin as a deep sleep wakeup source
+      --
+      Low_Power_Driver.Set_Low_Power_Wakeup_Source (
+         Pin_Info => Accelerometer_Const.Acc_Int1_Pin.Pin_Info,
+         Pin_Irq_Mode => Pin_Irq_On_Falling_Edge);
 
       --
       --  Enable GPIO interrupts from INT1 and INT2 pins:
@@ -694,11 +689,13 @@ package body Accelerometer is
                       Pin_Irq_Mode => Pin_Irq_On_Falling_Edge,
                       Pin_Irq_Handler => Accel_Int2_Pin_Irq_Callback'Access);
 
-      Set_Private_Data_Region (Accelerometer_Var'Address,
-                               Accelerometer_Var'Size,
-                               Read_Write,
-                               Old_Region);
-      Accelerometer_Var.Initialized := True;
+      --
+      --  Enable interrupts in the interrupt controller (NVIC):
+      --  NOTE: This is implicitly done by the Ada runtime
+      --
+
+      Activate_Accelerometer;
+
       Restore_Private_Data_Region (Old_Region);
       Runtime_Logs.Info_Print ("Accelerometer initialized");
    end Initialize;
@@ -750,5 +747,96 @@ package body Accelerometer is
      Z_Axis_Reading := Build_14bit_Signed_Value (Readings_Buffer (5),
                                                  Readings_Buffer (6));
    end Read_Acceleration;
+
+   ---------------
+   -- Int1_Task --
+   ---------------
+
+   task body Int1_Task is
+      Int_Source_Value : Accel_Ctrl_Reg4_Register_Type;
+      Sysmod_Value : Accel_Sysmod_Register_Type;
+      Aslp_Count_Value : Byte;
+   begin
+      Suspend_Until_True (Accelerometer_Var.Int1_Task_Susp_Obj);
+      Runtime_Logs.Info_Print ("Accelerometer INT1 task started");
+
+      loop
+         Suspend_Until_True (Accelerometer_Var.Int1_Task_Susp_Obj);
+
+         --
+         --  Read Accelerometer interrupt status register:
+         --
+         Int_Source_Value.Value := I2C_Read (Accelerometer_Const.I2C_Device_Id,
+                                             Accelerometer_Const.I2C_Slave_Address,
+                                             Accel_Int_Source'Enum_Rep);
+
+         if Int_Source_Value.Int_En_Aslp = 1 then
+            --
+            --  Read the accelerometer SYSMOD register to make the
+            --  accelerometer de-assert the INT1 pin:
+            --
+            Sysmod_Value.Value := I2C_Read (Accelerometer_Const.I2C_Device_Id,
+                                            Accelerometer_Const.I2C_Slave_Address,
+                                            Accel_Sysmod'Enum_Rep);
+            if Sysmod_Value.Sysmod = Sleep_Mode then
+               Runtime_Logs.Debug_Print ("Sleep mode interrupt");
+               Accelerometer_Var.Go_to_Sleep_Callback.all;
+            elsif Sysmod_Value.Sysmod = Wake_Mode then
+               Runtime_Logs.Debug_Print ("Wake mode interrupt");
+               -- TODO: Move CPU to normal mode, do callback?
+
+               --
+               --  Reload auto-sleep count:
+               --
+               Aslp_Count_Value := Accelerometer_Const.Auto_Sleep_Count;
+               I2C_Write (Accelerometer_Const.I2C_Device_Id,
+                          Accelerometer_Const.I2C_Slave_Address,
+                          Accel_Aslp_Count'Enum_Rep,
+                          Aslp_Count_Value);
+            else
+               Runtime_Logs.Error_Print (
+                  "Unexpected system mode (Sysmod_Value" &
+                  Sysmod_Value.Value'Image & ")");
+            end if;
+         end if;
+
+         if Int_Source_Value.Int_En_Ff_Mt = 1 then
+            Runtime_Logs.Debug_Print ("Motion detected interrupt");
+            Set_True (Accelerometer_Var.Motion_Detected_Susp_Obj);
+         end if;
+
+         if Int_Source_Value.Int_En_Pulse = 1 then
+            Runtime_Logs.Debug_Print ("Tapping detected interrupt");
+            Set_True (Accelerometer_Var.Tapping_Detected_Susp_Obj);
+         end if;
+
+      end loop;
+   end Int1_Task;
+
+   ---------------
+   -- Int2_Task --
+   ---------------
+
+   task body Int2_Task is
+      Int_Source_Value : Accel_Ctrl_Reg4_Register_Type;
+   begin
+      Suspend_Until_True (Accelerometer_Var.Int2_Task_Susp_Obj);
+      Runtime_Logs.Info_Print ("Accelerometer INT2 task started");
+
+      loop
+         Suspend_Until_True (Accelerometer_Var.Int2_Task_Susp_Obj);
+
+         --
+         --  Read Accelerometer interrupt status register:
+         --
+         Int_Source_Value.Value := I2C_Read (Accelerometer_Const.I2C_Device_Id,
+                                             Accelerometer_Const.I2C_Slave_Address,
+                                             Accel_Int_Source'Enum_Rep);
+
+         Runtime_Logs.Error_Print (
+            "Unexpected Int2 interrupt (Int_Source_Value" &
+            Int_Source_Value.Value'Image & ")");
+      end loop;
+   end Int2_Task;
 
 end Accelerometer;

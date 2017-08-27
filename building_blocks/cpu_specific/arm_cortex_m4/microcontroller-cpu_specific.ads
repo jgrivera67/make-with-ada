@@ -100,6 +100,20 @@ package Microcontroller.CPU_Specific is
          VECTKEY at 0 range 16 .. 31;
       end record;
 
+   --  SCR - System Control Register
+   type SCR_Type is record
+      SLEEPONEXIT : Bit;
+      SLEEPDEEP : Bit;
+      SEVONPEND : Bit;
+   end record with Size => Word'Size, Bit_Order => Low_Order_First;
+
+   for SCR_Type use
+      record
+         SLEEPONEXIT at 0 range 1 .. 1;
+         SLEEPDEEP at 0 range 2 .. 2;
+         SEVONPEND at 0 range 4 .. 4;
+      end record;
+
    --
    --  SCB registers
    --
@@ -108,7 +122,7 @@ package Microcontroller.CPU_Specific is
       ICSR : ICSR_Type;
       VTOR : Word;
       AIRCR : AIRCR_Type;
-      SCR : Word;
+      SCR : SCR_Type;
       CCR : Word;
       SHP : Bytes_Array_Type (1 .. 12);
       SHCSR : Word;

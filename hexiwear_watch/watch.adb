@@ -32,6 +32,7 @@ with Runtime_Logs;
 with Microcontroller.Arm_Cortex_M;
 with RTC_Driver;
 with Accelerometer;
+with Low_Power_Driver;
 
 package body Watch is
    pragma SPARK_Mode (Off);
@@ -52,6 +53,12 @@ package body Watch is
    procedure Display_Greeting;
 
    procedure Lock_Display;
+
+   procedure Low_Power_Wakeup_Callback;
+
+   procedure RTC_Alarm_Callback;
+
+   procedure RTC_Periodic_One_Second_Callback;
 
    procedure Unlock_Display;
 
@@ -129,9 +136,11 @@ package body Watch is
    is
       Old_Region : MPU_Region_Descriptor_Type;
    begin
+      Low_Power_Driver.Initialize;
+      Low_Power_Driver.Set_Low_Power_Run_Mode;
       RTC_Driver.Initialize;
       LCD_Display.Initialize;
-      Accelerometer.Initialize;
+      Accelerometer.Initialize (null);
 
       Set_Private_Data_Region (Watch_Var'Address,
                                Watch_Var'Size,
@@ -160,6 +169,57 @@ package body Watch is
    begin
       Suspend_Until_True (Watch_Var.Display_Lock);
    end Lock_Display;
+
+   -------------------------------
+   -- Low_Power_Wakeup_Callback --
+   -------------------------------
+
+   procedure Low_Power_Wakeup_Callback is
+      Old_Region : MPU_Region_Descriptor_Type;
+   begin
+      Set_Private_Data_Region (Watch_Var'Address,
+                               Watch_Var'Size,
+                               Read_Write,
+                               Old_Region);
+
+      Watch_Var.Event_Low_Power_Wakeup := True;
+      Set_True (Watch_Var.Watch_Task_Suspension_Obj);
+      Restore_Private_Data_Region (Old_Region);
+   end Low_Power_Wakeup_Callback;
+
+   ------------------------
+   -- RTC_Alarm_Callback --
+   ------------------------
+
+   procedure RTC_Alarm_Callback is
+      Old_Region : MPU_Region_Descriptor_Type;
+   begin
+      Set_Private_Data_Region (Watch_Var'Address,
+                               Watch_Var'Size,
+                               Read_Write,
+                               Old_Region);
+
+      Watch_Var.Event_Time_To_Sleep := True;
+      Set_True (Watch_Var.Watch_Task_Suspension_Obj);
+      Restore_Private_Data_Region (Old_Region);
+   end RTC_Alarm_Callback;
+
+   --------------------------------------
+   -- RTC_Periodic_One_Second_Callback --
+   --------------------------------------
+
+   procedure RTC_Periodic_One_Second_Callback is
+      Old_Region : MPU_Region_Descriptor_Type;
+   begin
+      Set_Private_Data_Region (Watch_Var'Address,
+                               Watch_Var'Size,
+                               Read_Write,
+                               Old_Region);
+
+      Watch_Var.Event_Time_To_Refresh_Time := True;
+      Set_True (Watch_Var.Watch_Task_Suspension_Obj);
+      Restore_Private_Data_Region (Old_Region);
+   end RTC_Periodic_One_Second_Callback;
 
    -----------------------------------
    -- Save_Configuration_Parameters --
@@ -227,8 +287,8 @@ package body Watch is
                                Old_Region);
 
       Old_Intmask := Disable_Cpu_Interrupts;
-      Watch_Var.Config_Parameters.Screen_Saver_Timeout_Ms :=
-         Unsigned_32 (Timeout_Secs) * 1000;
+      Watch_Var.Config_Parameters.Screen_Saver_Timeout_Secs :=
+         Unsigned_32 (Timeout_Secs);
       Restore_Cpu_Interrupts (Old_Intmask);
       Restore_Private_Data_Region (Old_Region);
    end Set_Screen_Saver_Timeout;
@@ -339,6 +399,10 @@ package body Watch is
 
       loop
          Accelerometer.Detect_Tapping;
+         RTC_Driver.Set_RTC_Alarm (
+            Watch_Var.Config_Parameters.Screen_Saver_Timeout_Secs,
+            RTC_Alarm_Callback'Access);
+
          Set_True (Watch_Var.Watch_Task_Suspension_Obj);
       end loop;
    end Tapping_Detector_Task;
@@ -403,40 +467,62 @@ package body Watch is
          Unlock_Display;
       end Refresh_Wall_Time;
 
-      Task_Period_Ms : constant Natural := 500;
-      Initial_Count_Down_To_Turn_Off_Display : constant Natural := 20;
-      Next_Wakeup_Time : Time;
-      Count_Down_To_Turn_Off_Display : Natural;
    begin
       Suspend_Until_True (Watch_Var.Watch_Task_Suspension_Obj);
       Runtime_Logs.Info_Print ("Watch task started");
-      Set_Private_Data_Region (Watch_Var'Address, Watch_Var'Size, Read_Write);
-      Next_Wakeup_Time := Clock + Milliseconds (Task_Period_Ms);
-      Count_Down_To_Turn_Off_Display := Initial_Count_Down_To_Turn_Off_Display;
+
+      Set_Private_Data_Region (Watch_Var'Address,
+                               Watch_Var'Size,
+                               Read_Write);
+
+      RTC_Driver.Enable_RTC_Periodic_One_Second_Interrupt (
+         RTC_Periodic_One_Second_Callback'Access);
+
+      RTC_Driver.Set_RTC_Alarm (
+         Watch_Var.Config_Parameters.Screen_Saver_Timeout_Secs,
+         RTC_Alarm_Callback'Access);
+      Refresh_Wall_Time;
 
       loop
-         if Watch_Var.Display_On then
-            Refresh_Wall_Time;
-            delay until Next_Wakeup_Time;
-            Next_Wakeup_Time := Next_Wakeup_Time +
-                                Milliseconds (Task_Period_Ms);
-            Count_Down_To_Turn_Off_Display :=
-               Count_Down_To_Turn_Off_Display - 1;
-            if Count_Down_To_Turn_Off_Display = 0 then
-               Lock_Display;
-               LCD_Display.Turn_Off_Display;
-               Unlock_Display;
-               Watch_Var.Display_On := False;
-            end if;
-         else
-            Suspend_Until_True (Watch_Var.Watch_Task_Suspension_Obj);
-            Next_Wakeup_Time := Clock + Milliseconds (Task_Period_Ms);
-            Count_Down_To_Turn_Off_Display :=
-               Initial_Count_Down_To_Turn_Off_Display;
+         Suspend_Until_True (Watch_Var.Watch_Task_Suspension_Obj);
+
+         if Watch_Var.Event_Time_to_Sleep then
+            Watch_Var.Event_Time_to_Sleep := False;
+            Lock_Display;
+            LCD_Display.Turn_Off_Display;
+            Unlock_Display;
+            Watch_Var.Display_On := False;
+            RTC_Driver.Disable_RTC_Periodic_One_Second_Interrupt;
+            Set_False (Watch_Var.Watch_Task_Suspension_Obj);
+
+            --
+            -- Prepare for deep sleep:
+            --
+            Low_Power_Driver.Set_Low_Power_Stop_Mode (
+               Low_Power_Wakeup_Callback'Access);
+
+         elsif Watch_Var.Event_Low_Power_Wakeup then
+            Watch_Var.Event_Low_Power_Wakeup := False;
             Lock_Display;
             LCD_Display.Turn_On_Display;
             Unlock_Display;
             Watch_Var.Display_On := True;
+            Refresh_Wall_Time;
+
+            RTC_Driver.Enable_RTC_Periodic_One_Second_Interrupt (
+               RTC_Periodic_One_Second_Callback'Access);
+
+            RTC_Driver.Set_RTC_Alarm (
+               Watch_Var.Config_Parameters.Screen_Saver_Timeout_Secs,
+               RTC_Alarm_Callback'Access);
+
+         elsif Watch_Var.Event_Time_to_Refresh_Time then
+            Watch_Var.Event_Time_to_Refresh_Time := False;
+            if Watch_Var.Display_On then
+               Refresh_Wall_Time;
+            end if;
+         else
+            Runtime_Logs.Error_Print ("Watch_Task unexpected wakeup");
          end if;
       end loop;
    end Watch_Task;

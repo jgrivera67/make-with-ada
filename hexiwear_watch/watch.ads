@@ -76,6 +76,9 @@ private
       Config_Parameters : App_Configuration.Config_Parameters_Type;
       Last_RTC_Time_Reading : Seconds_Count := 0;
       Display_On : Boolean := True;
+      Event_Time_to_Sleep : Boolean := False; --???
+      Event_Time_to_Refresh_Time : Boolean := False; --???
+      Event_Low_Power_Wakeup : Boolean := False; --???
       Motion_Detection_On : Boolean := False;
       Display_Lock : Suspension_Object;
       Watch_Task_Suspension_Obj : Suspension_Object;

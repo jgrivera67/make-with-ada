@@ -170,7 +170,7 @@ package body Command_Parser is
          "Watch label: " & Config_Parameters.Watch_Label & ASCII.LF);
 
       Unsigned_To_Decimal_String (
-         Config_Parameters.Screen_Saver_Timeout_Ms / 1000,
+         Config_Parameters.Screen_Saver_Timeout_Secs,
          Timeout_Str,
          Str_Length);
 

@@ -29,6 +29,7 @@ with System;
 --  Low leakage wakeup unit
 package MK64F12.LLWU is
    pragma Preelaborate;
+   pragma SPARK_Mode (Off);
 
    ---------------
    -- Registers --

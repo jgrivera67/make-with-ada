@@ -27,13 +27,91 @@
 
 with MK64F12.SIM;
 with MK64F12.RTC;
-with Memory_Protection;
+with Microcontroller.Arm_Cortex_M;
+with Ada.Interrupts.Names;
 
 package body RTC_Driver is
    pragma SPARK_Mode (Off);
    use MK64F12.SIM;
    use MK64F12.RTC;
-   use Memory_Protection;
+   use MK64F12;
+   use Microcontroller.Arm_Cortex_M;
+
+   --
+   --  Protected object to define Interrupt handlers
+   --
+   protected RTC_Interrupts_Object is
+      pragma Interrupt_Priority (Microcontroller.RTC_Interrupt_Priority);
+   private
+      procedure RTC_Irq_Handler;
+      pragma Attach_Handler (RTC_Irq_Handler,
+                             Ada.Interrupts.Names.RTC_Interrupt);
+
+      procedure RTC_Second_Irq_Handler;
+      pragma Attach_Handler (RTC_Second_Irq_Handler,
+                             Ada.Interrupts.Names.RTC_Seconds_Interrupt);
+   end RTC_Interrupts_Object;
+   pragma Unreferenced (RTC_Interrupts_Object);
+
+   -----------------------------------------------
+   -- Disable_RTC_Periodic_One_Second_Interrupt --
+   -----------------------------------------------
+
+   procedure Disable_RTC_Periodic_One_Second_Interrupt is
+      Old_Region : MPU_Region_Descriptor_Type;
+      Old_Intmask : Word;
+      IER_Value : RTC_IER_Register;
+   begin
+      Old_Intmask := Disable_Cpu_Interrupts;
+      Set_Private_Data_Region (RTC_Periph'Address,
+                               RTC_Periph'Size,
+                               Read_Write,
+                               Old_Region);
+
+      IER_Value := RTC_Periph.IER;
+      IER_Value.TSIE := IER_TSIE_Field_0;
+      RTC_Periph.IER := IER_Value;
+
+      Set_Private_Data_Region (RTC_Var'Address,
+                               RTC_Var'Size,
+                               Read_Write);
+
+      RTC_Var.Periodic_One_Second_Callback := null;
+
+      Restore_Private_Data_Region (Old_Region);
+      Restore_Cpu_Interrupts (Old_Intmask);
+
+   end Disable_RTC_Periodic_One_Second_Interrupt;
+
+   ----------------------------------------------
+   -- Enable_RTC_Periodic_One_Second_Interrupt --
+   ----------------------------------------------
+
+   procedure Enable_RTC_Periodic_One_Second_Interrupt (
+      Periodic_One_Second_Callback : RTC_Callback_Type) is
+      Old_Region : MPU_Region_Descriptor_Type;
+      Old_Intmask : Word;
+      IER_Value : RTC_IER_Register;
+   begin
+      Old_Intmask := Disable_Cpu_Interrupts;
+      Set_Private_Data_Region (RTC_Var'Address,
+                               RTC_Var'Size,
+                               Read_Write,
+                               Old_Region);
+
+      RTC_Var.Periodic_One_Second_Callback := Periodic_One_Second_Callback;
+
+      Set_Private_Data_Region (RTC_Periph'Address,
+                               RTC_Periph'Size,
+                               Read_Write);
+
+      IER_Value := RTC_Periph.IER;
+      IER_Value.TSIE := IER_TSIE_Field_1;
+      RTC_Periph.IER := IER_Value;
+
+      Restore_Private_Data_Region (Old_Region);
+      Restore_Cpu_Interrupts (Old_Intmask);
+   end Enable_RTC_Periodic_One_Second_Interrupt;
 
    ------------------
    -- Get_RTC_Time --
@@ -57,6 +135,7 @@ package body RTC_Driver is
       SR_Value : RTC_SR_Register;
       CR_Value : RTC_CR_Register;
       TSR_Value : MK64F12.Word;
+      IER_value : RTC_IER_Register;
       Old_Region : MPU_Region_Descriptor_Type;
    begin
       Set_Private_Data_Region (SIM_Periph'Address,
@@ -109,12 +188,53 @@ package body RTC_Driver is
       SR_Value.TCE := SR_TCE_Field_1;
       RTC_Periph.SR := SR_Value;
 
-      Set_Private_Data_Region (RTC_Initialized'Address,
-                               RTC_Initialized'Size,
+      --
+      --  Enable alarm interrupt:
+      --
+      IER_Value.TAIE := IER_TAIE_Field_1;
+      RTC_Periph.IER := IER_Value;
+
+      --
+      --  Enable interrupts in the interrupt controller (NVIC):
+      --  NOTE: This is implicitly done by the Ada runtime
+      --
+
+      Set_Private_Data_Region (RTC_Var'Address,
+                               RTC_Var'Size,
                                Read_Write);
-      RTC_Initialized := True;
+      RTC_Var.Initialized := True;
       Restore_Private_Data_Region (Old_Region);
    end Initialize;
+
+   -------------------
+   -- Set_RTC_Alarm --
+   -------------------
+
+   procedure Set_RTC_Alarm (Time_Secs : Unsigned_32;
+                            RTC_Alarm_Callback : RTC_Callback_Type)
+   is
+      Old_Region : MPU_Region_Descriptor_Type;
+      TAR_Value : Word;
+      Old_Intmask : Word;
+   begin
+      Old_Intmask := Disable_Cpu_Interrupts;
+      Set_Private_Data_Region (RTC_Var'Address,
+                               RTC_Var'Size,
+                               Read_Write,
+                               Old_Region);
+
+      RTC_Var.Alarm_Callback := RTC_Alarm_Callback;
+
+      Set_Private_Data_Region (RTC_Periph'Address,
+                               RTC_Periph'Size,
+                               Read_Write);
+
+      TAR_Value := RTC_Periph.TSR + Time_Secs;
+      RTC_Periph.TAR := TAR_Value;
+
+      Restore_Private_Data_Region (Old_Region);
+      Restore_Cpu_Interrupts (Old_Intmask);
+   end Set_RTC_Alarm;
 
    ------------------
    -- Set_RTC_Time --
@@ -153,5 +273,54 @@ package body RTC_Driver is
 
       Restore_Private_Data_Region (Old_Region);
    end Set_RTC_Time;
+
+   --
+   --  Interrupt handler
+   --
+   protected body RTC_Interrupts_Object is
+
+      ---------------------
+      -- RTC_Irq_Handler --
+      ---------------------
+
+      procedure RTC_Irq_Handler is
+         Old_Region : MPU_Region_Descriptor_Type;
+         SR_Value : RTC_SR_Register;
+         TAR_Value : MK64F12.Word;
+      begin
+         Set_Private_Data_Region (
+            RTC_Periph'Address,
+            RTC_Periph'Size,
+            Read_Write,
+            Old_Region);
+
+        SR_Value := RTC_Periph.SR;
+        pragma Assert (SR_Value.TAF = SR_TAF_Field_1);
+
+        --
+        --  Clear interrupt source:
+        --
+        TAR_Value := 0;
+        RTC_Periph.TAR := TAR_Value;
+
+        if RTC_Var.Alarm_Callback /= null then
+           RTC_Var.Alarm_Callback.all;
+        end if;
+
+        Restore_Private_Data_Region (Old_Region);
+      end RTC_Irq_Handler;
+
+      ----------------------------
+      -- RTC_Second_Irq_Handler --
+      ----------------------------
+
+      procedure RTC_Second_Irq_Handler is
+      begin
+        if RTC_Var.Periodic_One_Second_Callback /= null then
+           RTC_Var.Periodic_One_Second_Callback.all;
+        end if;
+      end RTC_Second_Irq_Handler;
+
+   end RTC_Interrupts_Object;
 
 end RTC_Driver;

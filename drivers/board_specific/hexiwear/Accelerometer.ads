@@ -36,7 +36,9 @@ package Accelerometer is
    function Initialized return Boolean
      with Inline;
 
-   procedure Initialize
+   type Go_to_Sleep_Callback_Type is access procedure;
+
+   procedure Initialize (Go_to_Sleep_Callback : Go_to_Sleep_Callback_Type)
      with Pre => not Initialized;
 
    type Acceleration_Reading_Type is new Integer_16;

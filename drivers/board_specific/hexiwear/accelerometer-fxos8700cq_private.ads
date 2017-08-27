@@ -42,6 +42,7 @@ private package Accelerometer.Fxos8700cq_Private is
        Accel_Out_Y_Msb,
        Accel_Out_Z_Msb,
        Accel_F_Setup,
+       Accel_Sysmod,
        Accel_Int_Source,
        Accel_Who_Am_I,
        Accel_XYZ_Data_Cfg,
@@ -72,6 +73,7 @@ private package Accelerometer.Fxos8700cq_Private is
        Accel_Out_Y_Msb => 16#03#,
        Accel_Out_Z_Msb => 16#05#,
        Accel_F_Setup => 16#09#,
+       Accel_Sysmod => 16#0B#,
        Accel_Int_Source => 16#0C#,
        Accel_Who_Am_I => 16#0D#,
        Accel_XYZ_Data_Cfg => 16#0E#,
@@ -524,6 +526,34 @@ private package Accelerometer.Fxos8700cq_Private is
       Maxmin_Dis_Threshold  at 0 range 3 .. 3;
       Maxmin_Dis	    at 0 range 4 .. 4;
       Hyb_Autoinc	    at 0 range 5 .. 5;
+   end record;
+
+  type System_Modes_Type is
+      (Standby_Mode,
+       Wake_Mode,
+       Sleep_Mode)
+       with Size => UInt2'Size;
+
+   for System_Modes_Type use
+      (Standby_Mode => 16#0#,
+       Wake_Mode    => 16#1#,
+       Sleep_Mode   => 16#2#);
+
+   type Accel_Sysmod_Register_Type (As_Value : Boolean := True) is record
+      case As_Value is
+	 when True =>
+	    Value : Byte := 0;
+	 when False =>
+	    Sysmod : System_Modes_Type;
+	    Reserved : Uint5;
+      end case;
+   end record
+      with Unchecked_Union, Size => Byte'Size;
+
+   for Accel_Sysmod_Register_Type use record
+      Value	at 0 range 0 .. 7;
+      Sysmod    at 0 range 0 .. 1;
+      Reserved  at 0 range 2 .. 7;
    end record;
 
 end Accelerometer.Fxos8700cq_Private;
