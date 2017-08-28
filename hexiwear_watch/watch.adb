@@ -42,25 +42,15 @@ package body Watch is
    use Interfaces;
    use Microcontroller.Arm_Cortex_M;
 
-   pragma Compile_Time_Error (
-           Watch_Var.Config_Parameters.Checksum'Position =
-           (Watch_Var.Config_Parameters'Size - Unsigned_32'Size) /
-              System.Storage_Unit,
-           "Checksum field is in the wrong place");
-
    procedure Display_Watch_Label (Label : String);
 
    procedure Display_Greeting;
-
-   procedure Lock_Display;
 
    procedure Low_Power_Wakeup_Callback;
 
    procedure RTC_Alarm_Callback;
 
    procedure RTC_Periodic_One_Second_Callback;
-
-   procedure Unlock_Display;
 
    ----------------------
    -- Display_Greeting --
@@ -139,8 +129,7 @@ package body Watch is
       Low_Power_Driver.Initialize;
       Low_Power_Driver.Set_Low_Power_Run_Mode;
       RTC_Driver.Initialize;
-      LCD_Display.Initialize;
-      Accelerometer.Initialize (null);
+      Accelerometer.Initialize (Go_to_Sleep_Callback => null);
 
       Set_Private_Data_Region (Watch_Var'Address,
                                Watch_Var'Size,
@@ -148,27 +137,13 @@ package body Watch is
                                Old_Region);
 
       App_Configuration.Load_Config_Parameters (Watch_Var.Config_Parameters);
-      Set_True (Watch_Var.Display_Lock);
       Watch_Var.Initialized := True;
-
-      Display_Greeting;
-      Display_Watch_Label (Watch_Var.Config_Parameters.Watch_Label);
 
       Set_True (Watch_Var.Watch_Task_Suspension_Obj);
       Set_True (Watch_Var.Motion_Detector_Task_Suspension_Obj);
       Set_True (Watch_Var.Tapping_Detector_Task_Suspension_Obj);
       Restore_Private_Data_Region (Old_Region);
    end Initialize;
-
-   ------------------
-   -- Lock_Display --
-   ------------------
-
-   procedure Lock_Display
-   is
-   begin
-      Suspend_Until_True (Watch_Var.Display_Lock);
-   end Lock_Display;
 
    -------------------------------
    -- Low_Power_Wakeup_Callback --
@@ -321,7 +296,7 @@ package body Watch is
       end if;
 
       Restore_Private_Data_Region (Old_Region);
-      Display_Watch_Label (Watch_Var.Config_Parameters.Watch_Label);
+      --Display_Watch_Label (Watch_Var.Config_Parameters.Watch_Label);
    end Set_Watch_Label;
 
    --------------------
@@ -343,16 +318,6 @@ package body Watch is
       Restore_Cpu_Interrupts (Old_Intmask);
       Restore_Private_Data_Region (Old_Region);
    end Set_Watch_Time;
-
-   --------------------
-   -- Unlock_Display --
-   --------------------
-
-   procedure Unlock_Display
-   is
-   begin
-      Set_True (Watch_Var.Display_Lock);
-   end Unlock_Display;
 
    --------------------------
    -- Motion_Detector_Task --
@@ -399,11 +364,14 @@ package body Watch is
 
       loop
          Accelerometer.Detect_Tapping;
-         RTC_Driver.Set_RTC_Alarm (
-            Watch_Var.Config_Parameters.Screen_Saver_Timeout_Secs,
-            RTC_Alarm_Callback'Access);
-
-         Set_True (Watch_Var.Watch_Task_Suspension_Obj);
+         if Watch_Var.Display_On Then
+            RTC_Driver.Set_RTC_Alarm (
+               Watch_Var.Config_Parameters.Screen_Saver_Timeout_Secs,
+               RTC_Alarm_Callback'Access);
+         else
+            Watch_Var.Event_Low_Power_Wakeup := True; --???
+            Set_True (Watch_Var.Watch_Task_Suspension_Obj);
+         end if;
       end loop;
    end Tapping_Detector_Task;
 
@@ -462,14 +430,16 @@ package body Watch is
                                      Str_Length,
                                      Add_Leading_Zeros => True);
 
-         Lock_Display;
          Display_Wall_Time (Wall_Time_Str);
-         Unlock_Display;
       end Refresh_Wall_Time;
 
    begin
       Suspend_Until_True (Watch_Var.Watch_Task_Suspension_Obj);
       Runtime_Logs.Info_Print ("Watch task started");
+
+      LCD_Display.Initialize;
+      Display_Greeting;
+      Display_Watch_Label (Watch_Var.Config_Parameters.Watch_Label);
 
       Set_Private_Data_Region (Watch_Var'Address,
                                Watch_Var'Size,
@@ -488,9 +458,7 @@ package body Watch is
 
          if Watch_Var.Event_Time_to_Sleep then
             Watch_Var.Event_Time_to_Sleep := False;
-            Lock_Display;
             LCD_Display.Turn_Off_Display;
-            Unlock_Display;
             Watch_Var.Display_On := False;
             RTC_Driver.Disable_RTC_Periodic_One_Second_Interrupt;
             Set_False (Watch_Var.Watch_Task_Suspension_Obj);
@@ -498,14 +466,12 @@ package body Watch is
             --
             -- Prepare for deep sleep:
             --
-            Low_Power_Driver.Set_Low_Power_Stop_Mode (
-               Low_Power_Wakeup_Callback'Access);
+            --Low_Power_Driver.Set_Low_Power_Stop_Mode (
+            --   Low_Power_Wakeup_Callback'Access);
 
          elsif Watch_Var.Event_Low_Power_Wakeup then
             Watch_Var.Event_Low_Power_Wakeup := False;
-            Lock_Display;
             LCD_Display.Turn_On_Display;
-            Unlock_Display;
             Watch_Var.Display_On := True;
             Refresh_Wall_Time;
 

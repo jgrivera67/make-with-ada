@@ -169,10 +169,11 @@ package body Nor_Flash_Driver is
    is
       use NOR;
       use MK64F12;
-      Int_Mask : constant Unsigned_32 := Disable_Cpu_Interrupts;
+      Int_Mask : Unsigned_32;
       FSTAT_Value : FTFE_FSTAT_Register;
       Old_Region : MPU_Region_Descriptor_Type;
    begin
+      Int_Mask := Disable_Cpu_Interrupts;
       Set_Private_Data_Region (
          To_Address (Object_Pointer (Nor_Flash_Const.Registers_Ptr)),
          NOR.FTFE_Peripheral'Object_Size,
@@ -192,7 +193,6 @@ package body Nor_Flash_Driver is
 
       Restore_Private_Data_Region (Old_Region);
       Restore_Cpu_Interrupts (Int_Mask);
-
       if FSTAT_Value.ACCERR = FSTAT_ACCERR_Field_1 or else
          FSTAT_Value.FPVIOL = FSTAT_FPVIOL_Field_1 or else
          FSTAT_Value.MGSTAT0 = 1
@@ -311,6 +311,12 @@ package body Nor_Flash_Driver is
          Unsigned_32 (To_Integer (Dest_Address));
       Old_Region : MPU_Region_Descriptor_Type;
    begin
+      Set_Private_Data_Region (
+         Dest_Words'Address,
+         Dest_Words'Size,
+         Read_Write,
+         Old_Region);
+
       --
       --  Copy source section to the NOR flash programming acceleration buffer:
       --
@@ -319,8 +325,7 @@ package body Nor_Flash_Driver is
       Set_Private_Data_Region (
          To_Address (Object_Pointer (Nor_Flash_Const.Registers_Ptr)),
          NOR.FTFE_Peripheral'Object_Size,
-         Read_Write,
-         Old_Region);
+         Read_Write);
 
       --
       --  Clear error flags (w1c) from previous command, if any:

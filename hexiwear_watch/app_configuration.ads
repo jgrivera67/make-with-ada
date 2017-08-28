@@ -42,6 +42,8 @@ package App_Configuration is
       --
       --  Checksum of the subsequent fields
       --
+      --  NOTE: It must be the first field of the record
+      --
       Checksum : Unsigned_32;
       Watch_Label : String (1 .. 10);
       Screen_Saver_Timeout_Secs: Unsigned_32;

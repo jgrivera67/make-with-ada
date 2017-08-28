@@ -53,10 +53,20 @@ package body App_Configuration is
 
    procedure Load_Config_Parameters (
       Config_Parameters : out Config_Parameters_Type) is
+      pragma Compile_Time_Error (
+           Config_Parameters.Checksum'Position /= 0,
+           "Checksum field is in the wrong place");
+      pragma Compile_Time_Error (
+           Config_Parameters.Watch_Label'Position /=
+           Config_Parameters.Checksum'Size / Byte'Size,
+           "Watch_Label field is in the wrong place");
+
       Checksum : Unsigned_32;
-      Config_Parameters_As_Bytes :
-         Bytes_Array_Type (1 .. Config_Parameters'Size / Byte'Size)
-         with Address => Config_Parameters'Address;
+      Config_Parameters_Without_Checksum_Size : constant Positive :=
+         (Config_Parameters'Size - Config_Parameters.Checksum'Size) / Byte'Size;
+      Config_Parameters_Without_Checksum :
+         Bytes_Array_Type (1 .. Config_Parameters_Without_Checksum_Size)
+         with Address => Config_Parameters.Watch_Label'Address;
       Old_Region : MPU_Region_Descriptor_Type;
    begin
       App_Config.Load_Config (Config_Parameters);
@@ -65,7 +75,7 @@ package body App_Configuration is
       --  Verify checksum:
       --
       Checksum :=
-         Memory_Utils.Compute_Checksum (Config_Parameters_As_Bytes);
+         Memory_Utils.Compute_Checksum (Config_Parameters_Without_Checksum);
 
       if Checksum /= Config_Parameters.Checksum then
          Runtime_Logs.Debug_Print (
@@ -94,10 +104,11 @@ package body App_Configuration is
    function Save_Config_Parameters (
       Config_Parameters : in out Config_Parameters_Type) return Boolean
    is
-      Checksum : Unsigned_32;
-      Config_Parameters_As_Bytes :
-         Bytes_Array_Type (1 .. Config_Parameters'Size / Byte'Size)
-         with Address => Config_Parameters'Address;
+      Config_Parameters_Without_Checksum_Size : constant Positive :=
+         (Config_Parameters'Size - Config_Parameters.Checksum'Size) / Byte'Size;
+      Config_Parameters_Without_Checksum :
+         Bytes_Array_Type (1 .. Config_Parameters_Without_Checksum_Size)
+         with Address => Config_Parameters.Watch_Label'Address;
       Old_Region : MPU_Region_Descriptor_Type;
    begin
       Set_Private_Data_Region (Config_Parameters'Address,
@@ -105,9 +116,8 @@ package body App_Configuration is
                                Read_Write,
                                Old_Region);
 
-      Checksum :=
-         Memory_Utils.Compute_Checksum (Config_Parameters_As_Bytes);
-      Config_Parameters.Checksum := Checksum;
+      Config_Parameters.Checksum :=
+         Memory_Utils.Compute_Checksum (Config_Parameters_Without_Checksum);
 
       Restore_Private_Data_Region (Old_Region);
       return App_Config.Save_Config (Config_Parameters);

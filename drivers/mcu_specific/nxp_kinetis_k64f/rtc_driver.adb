@@ -29,6 +29,7 @@ with MK64F12.SIM;
 with MK64F12.RTC;
 with Microcontroller.Arm_Cortex_M;
 with Ada.Interrupts.Names;
+with Runtime_Logs;
 
 package body RTC_Driver is
    pragma SPARK_Mode (Off);
@@ -136,15 +137,18 @@ package body RTC_Driver is
       CR_Value : RTC_CR_Register;
       TSR_Value : MK64F12.Word;
       IER_value : RTC_IER_Register;
+      TAR_Value : Word;
       Old_Region : MPU_Region_Descriptor_Type;
+      Old_Intmask : Word;
    begin
+      Old_Intmask := Disable_Cpu_Interrupts;
       Set_Private_Data_Region (SIM_Periph'Address,
                                SIM_Periph'Size,
                                Read_Write,
                                Old_Region);
 
       --
-      --  Enable the Clock to the CRC Module
+      --  Enable the Clock to the RTC Module
       --
       SCGC6_Value := SIM_Periph.SCGC6;
       SCGC6_Value.RTC := SCGC6_RTC_Field_1;
@@ -175,6 +179,19 @@ package body RTC_Driver is
       end if;
 
       --
+      --  Disable generation of all RTC interrupt:
+      --
+      IER_Value.TIIE := IER_TIIE_Field_0;
+      IER_Value.TOIE := IER_TOIE_Field_0;
+      IER_Value.TAIE := IER_TAIE_Field_0;
+      IER_Value.TSIE := IER_TSIE_Field_0;
+      IER_Value.WPON := IER_WPON_Field_0;
+      RTC_Periph.IER := IER_Value;
+
+      TAR_Value := 0;
+      RTC_Periph.TAR := TAR_Value;
+
+      --
       --  Enable the RTC 32KHz oscillator
       --
       CR_Value := RTC_Periph.CR;
@@ -189,7 +206,7 @@ package body RTC_Driver is
       RTC_Periph.SR := SR_Value;
 
       --
-      --  Enable alarm interrupt:
+      --  Enable the alarm interrupt:
       --
       IER_Value.TAIE := IER_TAIE_Field_1;
       RTC_Periph.IER := IER_Value;
@@ -204,6 +221,7 @@ package body RTC_Driver is
                                Read_Write);
       RTC_Var.Initialized := True;
       Restore_Private_Data_Region (Old_Region);
+      Restore_Cpu_Interrupts (Old_Intmask);
    end Initialize;
 
    -------------------
@@ -295,18 +313,20 @@ package body RTC_Driver is
             Old_Region);
 
         SR_Value := RTC_Periph.SR;
-        pragma Assert (SR_Value.TAF = SR_TAF_Field_1);
+        if SR_Value.TAF = SR_TAF_Field_1 then
+           --
+           --  Clear interrupt source:
+           --
+           TAR_Value := 0;
+           RTC_Periph.TAR := TAR_Value;
 
-        --
-        --  Clear interrupt source:
-        --
-        TAR_Value := 0;
-        RTC_Periph.TAR := TAR_Value;
+           if RTC_Var.Alarm_Callback /= null then
+              RTC_Var.Alarm_Callback.all;
+           end if;
+        else
+           Runtime_Logs.Error_Print ("Unexpected RTC interrupt");
 
-        if RTC_Var.Alarm_Callback /= null then
-           RTC_Var.Alarm_Callback.all;
         end if;
-
         Restore_Private_Data_Region (Old_Region);
       end RTC_Irq_Handler;
 

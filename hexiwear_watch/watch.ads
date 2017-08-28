@@ -46,7 +46,8 @@ package Watch is
    procedure Initialize
      with Pre => not Initialized;
 
-   procedure Save_Configuration_Parameters;
+   procedure Save_Configuration_Parameters
+      with Pre => Initialized;
 
    procedure Set_Watch_Label (Label : String)
       with Pre => Initialized;
@@ -80,7 +81,6 @@ private
       Event_Time_to_Refresh_Time : Boolean := False; --???
       Event_Low_Power_Wakeup : Boolean := False; --???
       Motion_Detection_On : Boolean := False;
-      Display_Lock : Suspension_Object;
       Watch_Task_Suspension_Obj : Suspension_Object;
       Motion_Detector_Task_Suspension_Obj : Suspension_Object;
       Tapping_Detector_Task_Suspension_Obj : Suspension_Object;
