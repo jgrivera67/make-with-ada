@@ -33,6 +33,41 @@ separate (Pin_Mux_Driver)
                                Pullup_Resistor : Boolean := False;
                                Open_Drain_Enable : Boolean := False)
    is
+      procedure Enable_Port_Clock (Pin_Port : Pin_Port_Type);
+
+      -----------------------
+      -- Enable_Port_Clock --
+      -----------------------
+
+      procedure Enable_Port_Clock (Pin_Port : Pin_Port_Type)
+      is
+         SCGC5_Value : SIM.SCGC5_Type;
+         Old_Region : MPU_Region_Descriptor_Type;
+      begin
+         Set_Private_Data_Region (
+            SIM.Registers'Address,
+            SIM.Registers'Size,
+            Read_Write,
+            Old_Region);
+
+         SCGC5_Value := SIM.Registers.SCGC5;
+         case Pin_Port is
+            when PIN_PORT_A =>
+               SCGC5_Value.PORTA := 1;
+            when PIN_PORT_B =>
+               SCGC5_Value.PORTB := 1;
+            when PIN_PORT_C =>
+               SCGC5_Value.PORTC := 1;
+            when PIN_PORT_D =>
+               SCGC5_Value.PORTD := 1;
+            when PIN_PORT_E =>
+               SCGC5_Value.PORTE := 1;
+         end case;
+
+         SIM.Registers.SCGC5 := SCGC5_Value;
+         Restore_Private_Data_Region (Old_Region);
+      end Enable_Port_Clock;
+
       Pins_In_Use_Entry : Boolean renames
         Pins_In_Use_Map (Pin_Info.Pin_Port, Pin_Info.Pin_Index);
 
@@ -42,6 +77,8 @@ separate (Pin_Mux_Driver)
       Old_Region : MPU_Region_Descriptor_Type;
    begin
       pragma Assert (not Pins_In_Use_Entry);
+      Enable_Port_Clock (Pin_Info.Pin_Port);
+
       PCR_Value :=
         (MUX => Pin_Function_Type'Pos (Pin_Info.Pin_Function),
          DSE => Boolean'Pos (Drive_Strength_Enable),

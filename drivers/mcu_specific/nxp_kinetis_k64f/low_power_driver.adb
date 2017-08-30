@@ -32,6 +32,7 @@ with Ada.Interrupts.Names;
 with Devices.MCU_Specific;
 with Kinetis_K64F.PORT;
 with Runtime_Logs;
+with Kinetis_K64F.MCG;
 
 package body Low_Power_Driver
    with SPARK_Mode => Off
@@ -41,6 +42,7 @@ is
    use Devices.MCU_Specific;
    use Kinetis_K64F.PORT;
    use Microcontroller.CPU_Specific;
+   use Kinetis_K64F;
 
    procedure Set_Low_Leakage_Stop_Mode (Very_Low : Boolean;
                                         Wakeup_Callback : Wakeup_Callback_Type);
@@ -127,7 +129,6 @@ is
          PMCTRL_Value.STOPM := PMCTRL_STOPM_Field_011;
       end if;
 
-      PMCTRL_Value.LPWUI := PMCTRL_LPWUI_Field_1;
       SMC_Periph.PMCTRL := PMCTRL_Value;
 
       --
@@ -184,65 +185,6 @@ is
    begin
       Set_Run_Mode (Low_Power => False);
    end Set_Normal_Run_Mode;
-
-   -------------------------
-   -- Set_Normal_Stop_Mode --
-   --------------------------
-
-   procedure Set_Normal_Stop_Mode (Deep_Sleep : Boolean := False)
-   is
-      PMCTRL_Value : SMC_PMCTRL_Register;
-      Dummy_PMCTRL_Value : SMC_PMCTRL_Register with Unreferenced;
-      SCR_Value : SCR_Type;
-      Old_Region : MPU_Region_Descriptor_Type;
-   begin
-      Set_Private_Data_Region (SMC_Periph'Address,
-                               SMC_Periph'Size,
-                               Read_Write,
-                               Old_Region);
-
-      PMCTRL_Value := SMC_Periph.PMCTRL;
-
-      --
-      --  Select normal stop mode:
-      --
-      PMCTRL_Value.STOPM := PMCTRL_STOPM_Field_000;
-      PMCTRL_Value.LPWUI := PMCTRL_LPWUI_Field_0;
-      SMC_Periph.PMCTRL := PMCTRL_Value;
-
-      --
-      --  Do a dummy read of PMCTRL to ensure that the previous register write
-      --  completes before proceeding:
-      --
-      --  NOTE: We have to ensure it is complete before the caller executes a
-      --  WFI.
-      --
-      Dummy_PMCTRL_Value := SMC_Periph.PMCTRL;
-
-      Set_Private_Data_Region (SCB'Address,
-                               SCB'Size,
-                               Read_Write);
-
-      SCR_Value := SCB.SCR;
-      if Deep_Sleep then
-         --
-         --  Enable deep sleep mode (stop mode) in the ARM Cortex-M core, so
-         --  that the MCU goes to "stop" mode, instead of "wait" mode when
-         --  executing a WFI instruction:
-         --
-         SCR_Value.SLEEPDEEP := 1;
-      else
-         --
-         --  Disable deep sleep mode (stop mode) in the ARM Cortex-M core, so
-         --  that the MCU goes to "wait" mode, instead of "stop" mode when
-         --  executing a WFI instruction:
-         --
-         SCR_Value.SLEEPDEEP := 0;
-      end if;
-
-      SCB.SCR := SCR_Value;
-      Restore_Private_Data_Region (Old_Region);
-   end Set_Normal_Stop_Mode;
 
    ------------------
    -- Set_Run_Mode --
@@ -355,7 +297,20 @@ is
          Old_Region : MPU_Region_Descriptor_Type;
          F1_Value : LLWU_F1_Register;
          PMSTAT_Value : SMC_PMSTAT_Register;
+         SCR_Value : SCR_Type;
       begin
+         --
+         --  Low-leakage stop modes changed the MCG clock mode from PEE to PBE,
+         --  so we need to change the MCG clock mode back to PEE
+         --
+         MCG.Registers.C1 := (FRDIV => 5, IRCLKEN => 1, CLKS => 0,
+                              others => 0);
+
+         --  Wait until output of the PLL is selected:
+         loop
+            exit when MCG.Registers.S.CLKST = 2#11#;
+         end loop;
+
          Set_Private_Data_Region (
             LLWU_Periph'Address,
             LLWU_Periph'Size,
@@ -375,21 +330,25 @@ is
             LLWU_Periph.F1 := F1_Value;
 
             --
-            --  Set normal stop fo the next time that a WFI instruction is
-            --  executed:
+            --  Disable deep sleep mode (stop mode) in the ARM Cortex-M core, so
+            --  that the MCU goes to "wait" mode, instead of "stop" mode when
+            --  executing a WFI instruction:
             --
-            --  NOTE: Set Deep_Sleep  to false, for using "wait mode" instead of
-            --  "stop mode", when WFI is executed.
-            --
-            Set_Normal_Stop_Mode (Deep_Sleep => False); --???True);
+            Set_Private_Data_Region (SCB'Address,
+                                     SCB'Size,
+                                     Read_Write);
+            SCR_Value := SCB.SCR;
+            SCR_Value.SLEEPDEEP := 0;
+            SCB.SCR := SCR_Value;
          else
             Runtime_Logs.Error_Print ("Unexpected low power wake-up Pin");
          end if;
 
          PMSTAT_Value := SMC_Periph.PMSTAT;
          pragma Assert (PMSTAT_Value.PMSTAT = 2#0001#);
+
          if Low_Power_Var.Low_Power_Run_Mode then
-            Set_Run_Mode (Low_Power => True);
+            Set_Low_Power_Run_Mode;
          end if;
 
          Runtime_Logs.Debug_Print ("LLWU interrupt");

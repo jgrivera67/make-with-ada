@@ -29,34 +29,20 @@ pragma SPARK_Mode (Off);
 
 separate (Pin_Mux_Driver)
    procedure Initialize is
-      SCGC5_Value : SIM.SCGC5_Type;
       Old_Region : MPU_Region_Descriptor_Type;
    begin
       --
-      --  Enable all of the GPIO port clocks:
+      --  NOTE: Do not enable all port clocks here, to ave power. Instead,
+      --  Enable them on demand in Set_Pin_Function. Also, do not disable them
+      --  here, as some of them may already be ein use (e.g.g, PTA18 for EXTAL0,
+      --  PTB16 and PTB17 for early UART input/output):
       --
-      --  NOTE: Clocks of GPIO ports need to be enabled to configure pin
-      --  muxing.
-      --
-      SCGC5_Value := SIM.Registers.SCGC5;
-      SCGC5_Value.PORTA := 1;
-      SCGC5_Value.PORTB := 1;
-      SCGC5_Value.PORTC := 1;
-      SCGC5_Value.PORTD := 1;
-      SCGC5_Value.PORTE := 1;
-
-      Set_Private_Data_Region (
-         SIM.Registers'Address,
-         SIM.Registers'Size,
-         Read_Write,
-         Old_Region);
-
-      SIM.Registers.SCGC5 := SCGC5_Value;
 
       Set_Private_Data_Region (
          Pin_Mux_Initialized'Address,
          Pin_Mux_Initialized'Size,
-         Read_Write);
+         Read_Write,
+         Old_Region);
 
       Pin_Mux_Initialized := True;
       Restore_Private_Data_Region (Old_Region);

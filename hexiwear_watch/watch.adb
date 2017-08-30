@@ -26,7 +26,6 @@
 --
 
 with Interfaces.Bit_Types;
-with System;
 with Number_Conversion_Utils;
 with Runtime_Logs;
 with Microcontroller.Arm_Cortex_M;
@@ -102,7 +101,7 @@ package body Watch is
    procedure Display_Watch_Label (Label : String)
    is
    begin
-      LCD_Display.Print_String (8, 64, Label,
+      LCD_Display.Print_String (8, 80, Label,
                                 Watch_Var.Config_Parameters.Foreground_Color,
                                 Watch_Var.Config_Parameters.Background_Color);
    end Display_Watch_Label;
@@ -466,8 +465,8 @@ package body Watch is
             --
             -- Prepare for deep sleep:
             --
-            --Low_Power_Driver.Set_Low_Power_Stop_Mode (
-            --   Low_Power_Wakeup_Callback'Access);
+            Low_Power_Driver.Set_Low_Power_Stop_Mode (
+               Low_Power_Wakeup_Callback'Access);
 
          elsif Watch_Var.Event_Low_Power_Wakeup then
             Watch_Var.Event_Low_Power_Wakeup := False;
