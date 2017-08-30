@@ -33,7 +33,6 @@ with Gpio_Driver;
 with Pin_Mux_Driver;
 with Ada.Real_Time;
 with Ada.Task_Identification;
-with BMP_Fonts;
 
 --
 --  LCD display services implementation for the PSP27801 OLED color display
@@ -94,6 +93,7 @@ package body LCD_Display is
    type LCD_Display_Type is limited record
       Initialized : Boolean := False;
       Owner_Task_Id : Task_Id;
+      Current_Font : Font_Type := Small_Font;
       Staging_Buffer : Display_Staging_Buffer_Type;
    end record with Alignment => MPU_Region_Alignment,
                    Size => 577 * MPU_Region_Alignment * Byte'Size;
@@ -467,7 +467,7 @@ package body LCD_Display is
                            Background_Color : Color_Type;
                            Dot_Size : Dot_Size_Type);
 
-      Font : constant BMP_Fonts.BMP_Font := BMP_Fonts.Font8x8;
+      Font : BMP_Font renames LCD_Display_Var.Current_Font;
 
       ---------------
       -- Draw_Char --
@@ -608,6 +608,23 @@ package body LCD_Display is
           Tx_Data_Buffer => Data_Buffer,
           Rx_Data_Buffer => Dummy_SPI_Rx_Buffer);
    end Send_Display_Data;
+
+   --------------
+   -- Set_Font --
+   --------------
+
+   procedure Set_Font (Font : Font_Type)
+   is
+      Old_Region : MPU_Region_Descriptor_Type;
+   begin
+      Set_Private_Data_Region (LCD_Display_Var'Address,
+                               LCD_Display_Var'Size,
+                               Read_Write,
+                               Old_Region);
+
+      LCD_Display_Var.Current_Font := Font;
+      Restore_Private_Data_Region (Old_Region);
+   end Set_Font;
 
    ----------------------
    -- Turn_Off_Display --

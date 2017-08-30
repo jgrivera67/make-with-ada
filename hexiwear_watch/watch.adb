@@ -59,27 +59,24 @@ package body Watch is
    is
    begin
       LCD_Display.Clear_Screen (LCD_Display.Blue);
+      LCD_Display.Set_Font (LCD_Display.Large_Font);
       LCD_Display.Print_String (12, 16, "Ada",
                                 Watch_Var.Config_Parameters.Foreground_Color,
-                                Watch_Var.Config_Parameters.Background_Color,
-                                2);
+                                Watch_Var.Config_Parameters.Background_Color);
 
       LCD_Display.Print_String (1, 40, "Inside",
                                 Watch_Var.Config_Parameters.Foreground_Color,
-                                Watch_Var.Config_Parameters.Background_Color,
-                                2);
+                                Watch_Var.Config_Parameters.Background_Color);
 
       delay until Clock + Milliseconds (1_000);
 
       LCD_Display.Print_String (12, 16, "   ",
                                 Watch_Var.Config_Parameters.Foreground_Color,
-                                Watch_Var.Config_Parameters.Background_Color,
-                                2);
+                                Watch_Var.Config_Parameters.Background_Color);
 
       LCD_Display.Print_String (1, 40, "      ",
                                 Watch_Var.Config_Parameters.Foreground_Color,
-                                Watch_Var.Config_Parameters.Background_Color,
-                                2);
+                                Watch_Var.Config_Parameters.Background_Color);
    end Display_Greeting;
 
    -----------------------
@@ -89,7 +86,9 @@ package body Watch is
    procedure Display_Wall_Time (Wall_Time_Str : String)
    is
     begin
-      LCD_Display.Print_String (14, 16, Wall_Time_Str,
+      LCD_Display.Set_Font (LCD_Display.Large_Font);
+      LCD_Display.Print_String (10, 16, Wall_Time_Str (Wall_Time_Str'First ..
+                                                       Wall_Time_Str'First + 4),
                                 Watch_Var.Config_Parameters.Foreground_Color,
                                 Watch_Var.Config_Parameters.Background_Color);
    end Display_Wall_Time;
@@ -101,7 +100,8 @@ package body Watch is
    procedure Display_Watch_Label (Label : String)
    is
    begin
-      LCD_Display.Print_String (8, 80, Label,
+      LCD_Display.Set_Font (LCD_Display.Small_Font);
+      LCD_Display.Print_String (8, 84, Label,
                                 Watch_Var.Config_Parameters.Foreground_Color,
                                 Watch_Var.Config_Parameters.Background_Color);
    end Display_Watch_Label;
@@ -414,22 +414,25 @@ package body Watch is
          Minutes := Remaining_Seconds / Seconds_In_A_Minute;
          Seconds := Remaining_Seconds mod Seconds_In_A_Minute;
 
-         Unsigned_To_Decimal_String (Unsigned_32 (Hours),
-                                     Wall_Time_Str (1 .. 2),
-                                     Str_Length,
-                                     Add_Leading_Zeros => True);
-         Wall_Time_Str (3) := ':';
-         Unsigned_To_Decimal_String (Unsigned_32 (Minutes),
-                                     Wall_Time_Str (4 .. 5),
-                                     Str_Length,
-                                     Add_Leading_Zeros => True);
-         Wall_Time_Str (6) := ':';
-         Unsigned_To_Decimal_String (Unsigned_32 (Seconds),
-                                     Wall_Time_Str (7 .. 8),
-                                     Str_Length,
-                                     Add_Leading_Zeros => True);
+         if Minutes /= Watch_Var.Last_Minutes then
+            Watch_Var.Last_Minutes := Minutes;
+            Unsigned_To_Decimal_String (Unsigned_32 (Hours),
+                                        Wall_Time_Str (1 .. 2),
+                                        Str_Length,
+                                        Add_Leading_Zeros => True);
+            Wall_Time_Str (3) := ':';
+            Unsigned_To_Decimal_String (Unsigned_32 (Minutes),
+                                        Wall_Time_Str (4 .. 5),
+                                        Str_Length,
+                                        Add_Leading_Zeros => True);
+            Wall_Time_Str (6) := ':';
+            Unsigned_To_Decimal_String (Unsigned_32 (Seconds),
+                                        Wall_Time_Str (7 .. 8),
+                                        Str_Length,
+                                        Add_Leading_Zeros => True);
 
-         Display_Wall_Time (Wall_Time_Str);
+            Display_Wall_Time (Wall_Time_Str);
+         end if;
       end Refresh_Wall_Time;
 
    begin

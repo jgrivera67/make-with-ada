@@ -76,6 +76,7 @@ private
       Initialized : Boolean := False;
       Config_Parameters : App_Configuration.Config_Parameters_Type;
       Last_RTC_Time_Reading : Seconds_Count := 0;
+      Last_Minutes : Natural range 0 .. 60 := 60;
       Display_On : Boolean := True;
       Event_Time_to_Sleep : Boolean := False; --???
       Event_Time_to_Refresh_Time : Boolean := False; --???

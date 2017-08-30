@@ -29,8 +29,10 @@
 --  @summary LCD display services
 --
 with Interfaces;
+with BMP_Fonts;
 
 package LCD_Display is
+   use BMP_Fonts;
 
    type Color_Type is (Black,
                        Red,
@@ -69,6 +71,12 @@ package LCD_Display is
    type Border_Thickness_Type is
       range 0 .. Positive'Min (Display_Width, Display_Height);
 
+   subtype Font_Type is BMP_Font;
+
+   Small_Font : constant Font_Type := Font8x8;
+   Medium_Font : constant Font_Type := Font12x12;
+   Large_Font : constant Font_Type := Font16x24;
+
    function Initialized return Boolean
      with Inline;
 
@@ -99,6 +107,9 @@ package LCD_Display is
                            Dot_Size : Dot_Size_Type := Dot_Size_Type'First)
      with Pre => Initialized and
                  Text'Length /= 0;
+
+   procedure Set_Font (Font : Font_Type)
+      with Pre => Initialized;
 
    procedure Turn_Off_Display
       with Pre => Initialized;
