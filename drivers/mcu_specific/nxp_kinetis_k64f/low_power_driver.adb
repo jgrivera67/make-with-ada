@@ -97,6 +97,32 @@ is
       Restore_Private_Data_Region (Old_Region);
    end Initialize;
 
+   ----------------------------------
+   -- Schedule_Low_Power_Stop_Mode --
+   ----------------------------------
+
+   procedure Schedule_Low_Power_Stop_Mode
+   is
+      SCR_Value : SCR_Type;
+      Old_Region : MPU_Region_Descriptor_Type;
+   begin
+      Set_Private_Data_Region (SCB'Address,
+                               SCB'Size,
+                               Read_Write,
+                               Old_Region);
+
+      --
+      --  Enable deep sleep mode (stop mode) in the ARM Cortex-M core, so
+      --  that the MCU goes to "stop" mode, instead of "wait" mode the next time
+      --  that it executes a WFI instruction:
+      --
+      SCR_Value := SCB.SCR;
+      SCR_Value.SLEEPDEEP := 1;
+      SCB.SCR := SCR_Value;
+
+      Restore_Private_Data_Region (Old_Region);
+   end Schedule_Low_Power_Stop_Mode;
+
    -------------------------------
    -- Set_Low_Leakage_Stop_Mode --
    -------------------------------
@@ -106,7 +132,6 @@ is
    is
       PMCTRL_Value : SMC_PMCTRL_Register;
       Dummy_PMCTRL_Value : SMC_PMCTRL_Register with Unreferenced;
-      SCR_Value : SCR_Type;
       Old_Region : MPU_Region_Descriptor_Type;
    begin
       Set_Private_Data_Region (Low_Power_Var'Address,
@@ -139,20 +164,6 @@ is
       --  WFI.
       --
       Dummy_PMCTRL_Value := SMC_Periph.PMCTRL;
-
-      --
-      --  Enable deep sleep mode (stop mode) in the ARM Cortex-M core, so
-      --  that the MCU goes to "stop" mode, instead of "wait" mode when
-      --  executing a WFI instruction:
-      --
-
-      Set_Private_Data_Region (SCB'Address,
-                               SCB'Size,
-                               Read_Write);
-
-      SCR_Value := SCB.SCR;
-      SCR_Value.SLEEPDEEP := 1;
-      SCB.SCR := SCR_Value;
 
       Restore_Private_Data_Region (Old_Region);
    end Set_Low_Leakage_Stop_Mode;

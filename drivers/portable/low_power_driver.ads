@@ -46,6 +46,9 @@ package Low_Power_Driver is
    --  Initialize the low power hardware module
    --
 
+   procedure Schedule_Low_Power_Stop_Mode
+      with Pre => Initialized;
+
    procedure Set_Low_Power_Run_Mode
       with Pre => Initialized;
 

@@ -127,6 +127,9 @@ package body Watch is
    begin
       Low_Power_Driver.Initialize;
       Low_Power_Driver.Set_Low_Power_Run_Mode;
+      Low_Power_Driver.Set_Low_Power_Stop_Mode (
+         Low_Power_Wakeup_Callback'Access);
+
       RTC_Driver.Initialize;
       Accelerometer.Initialize (Go_to_Sleep_Callback => null);
 
@@ -464,13 +467,7 @@ package body Watch is
             Watch_Var.Display_On := False;
             RTC_Driver.Disable_RTC_Periodic_One_Second_Interrupt;
             Set_False (Watch_Var.Watch_Task_Suspension_Obj);
-
-            --
-            -- Prepare for deep sleep:
-            --
-            Low_Power_Driver.Set_Low_Power_Stop_Mode (
-               Low_Power_Wakeup_Callback'Access);
-
+            Low_Power_Driver.Schedule_Low_Power_Stop_Mode;
          elsif Watch_Var.Event_Low_Power_Wakeup then
             Watch_Var.Event_Low_Power_Wakeup := False;
             LCD_Display.Turn_On_Display;
