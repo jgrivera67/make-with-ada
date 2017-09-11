@@ -26,44 +26,30 @@
 --
 
 --
---  @summary Accelerometer driver
+--  @summary heart rate monitor driver
 --
-with Interfaces;
 
-package Accelerometer is
-   use Interfaces;
+with Sensor_Reading;
+
+package Heart_Rate_Monitor is
+   use Sensor_Reading;
 
    function Initialized return Boolean
      with Inline;
 
-   type Go_to_Sleep_Callback_Type is access procedure;
-
-   procedure Initialize (Go_to_Sleep_Callback : Go_to_Sleep_Callback_Type)
+   procedure Initialize
      with Pre => not Initialized;
 
-   type Acceleration_Reading_Type is new Integer_16;
-
-   procedure Read_Acceleration (
-      X_Axis_Reading : in out Acceleration_Reading_Type;
-      Y_Axis_Reading : in out Acceleration_Reading_Type;
-      Z_Axis_Reading : in out Acceleration_Reading_Type;
-      Acceleration_Changed : out Boolean)
+   procedure Power_Off_Heart_Rate_Monitor
       with Pre => Initialized;
 
-   type Motion_Reading_Type is range -1 .. 1;
-
-   procedure Detect_Motion (
-      X_Axis_Motion : out Unsigned_8;
-      Y_Axis_Motion : out Unsigned_8;
-      Z_Axis_Motion : out Unsigned_8)
+   procedure Start_Heart_Rate_Monitor
       with Pre => Initialized;
 
-   procedure Detect_Tapping (Double_Tap_Detected : out Boolean)
+   procedure Stop_Heart_Rate_Monitor
       with Pre => Initialized;
 
-   Type Milli_G_Type is new Integer;
+   procedure Read_Heart_Rate (Reading_Value : out Reading_Type)
+      with Pre => Initialized;
 
-   function Convert_Acceleration_Reading_To_Milli_G (
-      Reading : Acceleration_Reading_Type) return Milli_G_Type;
-
-end Accelerometer;
+end Heart_Rate_Monitor;

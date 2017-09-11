@@ -26,44 +26,51 @@
 --
 
 --
---  @summary Accelerometer driver
+--  @summary sensor reading
 --
-with Interfaces;
 
-package Accelerometer is
-   use Interfaces;
+with Memory_Protection;
 
-   function Initialized return Boolean
-     with Inline;
+package body Sensor_Reading is
+   use Memory_Protection;
 
-   type Go_to_Sleep_Callback_Type is access procedure;
+   protected body Reading_Protected_Type is
 
-   procedure Initialize (Go_to_Sleep_Callback : Go_to_Sleep_Callback_Type)
-     with Pre => not Initialized;
+      ----------
+      -- Read --
+      ----------
 
-   type Acceleration_Reading_Type is new Integer_16;
+      procedure Read (Reading_Value : out Reading_Type)
+      is
+         Old_region : MPU_Region_Descriptor_Type;
+      begin
+         Set_Private_Data_Region (Reading_Value'Address,
+                                  Reading_Value'Size,
+                                  Read_Write,
+                                  Old_Region);
 
-   procedure Read_Acceleration (
-      X_Axis_Reading : in out Acceleration_Reading_Type;
-      Y_Axis_Reading : in out Acceleration_Reading_Type;
-      Z_Axis_Reading : in out Acceleration_Reading_Type;
-      Acceleration_Changed : out Boolean)
-      with Pre => Initialized;
+         Reading_Value := Reading_Protected_Type.Reading_Value;
 
-   type Motion_Reading_Type is range -1 .. 1;
+         Restore_Private_Data_Region (Old_Region);
+      end Read;
 
-   procedure Detect_Motion (
-      X_Axis_Motion : out Unsigned_8;
-      Y_Axis_Motion : out Unsigned_8;
-      Z_Axis_Motion : out Unsigned_8)
-      with Pre => Initialized;
+      -----------
+      -- Write --
+      -----------
 
-   procedure Detect_Tapping (Double_Tap_Detected : out Boolean)
-      with Pre => Initialized;
+      procedure Write (Reading_Value : Reading_Type) is
+         Old_region : MPU_Region_Descriptor_Type;
+      begin
+         Set_Private_Data_Region (Reading_Protected_Type.Reading_Value'Address,
+                                  Reading_Protected_Type.Reading_Value'Size,
+                                  Read_Write,
+                                  Old_Region);
 
-   Type Milli_G_Type is new Integer;
+         Reading_Protected_Type.Reading_Value := Reading_Value;
 
-   function Convert_Acceleration_Reading_To_Milli_G (
-      Reading : Acceleration_Reading_Type) return Milli_G_Type;
+         Restore_Private_Data_Region (Old_Region);
+      end Write;
 
-end Accelerometer;
+   end Reading_Protected_Type;
+
+end Sensor_Reading;

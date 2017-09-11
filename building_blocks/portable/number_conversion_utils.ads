@@ -62,6 +62,11 @@ package Number_Conversion_Utils is
                                              Value : out Unsigned_8;
                                              Conversion_Ok : out Boolean);
 
+   procedure Signed_To_Decimal_String (Value : Integer_32;
+                                       Buffer : out String;
+                                       Actual_Length : out Positive)
+      with Pre => Buffer'Length >= 1;
+
    procedure Unsigned_To_Decimal_String (Value : Unsigned_32;
                                          Buffer : out String;
                                          Actual_Length : out Positive;

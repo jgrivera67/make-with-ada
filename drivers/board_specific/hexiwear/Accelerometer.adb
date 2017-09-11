@@ -188,7 +188,7 @@ package body Accelerometer is
          --
          --  Sign extend to 16 bits 14-bit negative value
          --
-         Value := (Value and Shift_Left (Unsigned_16 (2#11#), 14));
+         Value := (Value or Shift_Left (Unsigned_16 (2#11#), 14));
       end if;
 
       return Acceleration_Reading_Type (Value);
@@ -233,7 +233,7 @@ package body Accelerometer is
                                          Accelerometer_Const.I2C_Slave_Address,
                                          Accel_Ctrl_Reg1'Enum_Rep);
 
-      pragma Assert (Ctrl_Reg1_Value.Active /= 0);
+      pragma Assert (Ctrl_Reg1_Value.Active = 0);
    end Deactivate_Accelerometer;
 
    -------------------
@@ -291,22 +291,23 @@ package body Accelerometer is
    -- Detect_Tapping --
    --------------------
 
-   procedure Detect_Tapping
+   procedure Detect_Tapping (Double_Tap_Detected : out Boolean)
    is
-      Pulse_Source_Value : Accel_Pulse_Source_Register_Type with Unreferenced;
+      Pulse_Source_Value : Accel_Pulse_Source_Register_Type;
    begin
       Suspend_Until_True (Accelerometer_Var.Tapping_Detected_Susp_Obj);
 
       --
-      --  Read the accelerometer motion detection register to make the
-      --  accelerometer de-assert the INT2 pin:
+      --  Read the accelerometer pulse source register to make the
+      --  accelerometer de-assert the INT1 pin:
       --
       Pulse_Source_Value.Value :=
          I2C_Read (Accelerometer_Const.I2C_Device_Id,
                    Accelerometer_Const.I2C_Slave_Address,
                    Accel_Pulse_Src'Enum_Rep);
 
-      --Ada.Text_IO.Put_Line ("Detect_Tapping called:" & Pulse_Source_Value.Value'Image);--???
+      pragma Assert (Pulse_Source_Value.EA = 1);
+      Double_Tap_Detected := (Pulse_Source_Value.DPE = 1);
    end Detect_Tapping;
 
    ----------------
@@ -330,7 +331,7 @@ package body Accelerometer is
 
          --
          --  Enable X, Y, Z Single Pulse and X, Y and Z Double Pulse with
-         --  DPA = 0 no double pulse abort
+         --  event latch disabled and no double pulse abort
          --
          I2C_Write (Accelerometer_Const.I2C_Device_Id,
                     Accelerometer_Const.I2C_Slave_Address,
@@ -550,7 +551,7 @@ package body Accelerometer is
                  FF_MT_Count_Value);
 
       --
-      --  Set HPF_OUT = 0 - high-pass filter disabled
+      --  Set HPF_OUT = 1 - high-pass filter enabled
       --  Set FS[1:0] = 0 - 2g scale:
       --  range -2g .. 2g (0.25mg increments):
       --  - A reading of 0x1fff (or 8191) corresponds to 1.99975g
@@ -563,7 +564,7 @@ package body Accelerometer is
       --   1 = 1000mg / 4096
       --   1 =  0.25mg
       --
-      XYZ_Data_Cfg_Value.HPF_Out := 0;
+      XYZ_Data_Cfg_Value.HPF_Out := 1;
       XYZ_Data_Cfg_Value.FS := XYZ_Data_Cfg_FS_2g;
       I2C_Write (Accelerometer_Const.I2C_Device_Id,
                  Accelerometer_Const.I2C_Slave_Address,
@@ -834,7 +835,7 @@ package body Accelerometer is
                                              Accel_Int_Source'Enum_Rep);
 
          Runtime_Logs.Error_Print (
-            "Unexpected Int2 interrupt (Int_Source_Value" &
+            "Unexpected accelerometer INT2 interrupt (Int_Source_Value" &
             Int_Source_Value.Value'Image & ")");
       end loop;
    end Int2_Task;

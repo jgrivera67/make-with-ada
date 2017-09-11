@@ -27,6 +27,7 @@
 
 with Devices.MCU_Specific;
 with Interfaces.Bit_Types;
+with Microcontroller.Arm_Cortex_M;
 private with Memory_Protection;
 private with Ada.Synchronous_Task_Control;
 private with System;
@@ -39,6 +40,7 @@ package I2C_Driver is
    use Devices;
    use Interfaces.Bit_Types;
    use Interfaces;
+   use Microcontroller.Arm_Cortex_M;
 
    function Initialized (
       I2C_Device_Id : I2C_Device_Id_Type) return Boolean;
@@ -64,6 +66,8 @@ package I2C_Driver is
       Use_Polling : Boolean := False)
       with Pre => Initialized (I2C_Device_Id)
                   and
+                  not Is_Caller_An_Interrupt_Handler
+                  and
                   Buffer'Length /= 0;
    --
    --  Read a block of bytes from an I2C slave
@@ -81,7 +85,10 @@ package I2C_Driver is
       I2C_Slave_Address : I2C_Slave_Address_Type;
       I2C_Slave_Register_Address : I2C_Slave_Register_Address_Type;
       Use_Polling : Boolean := False)
-      return Byte;
+      return Byte
+      with Pre => Initialized (I2C_Device_Id)
+                  and
+                  not Is_Caller_An_Interrupt_Handler;
    --
    --  Read a block of bytes from an I2C slave
    --
@@ -94,7 +101,9 @@ package I2C_Driver is
       I2C_Slave_Register_Address : I2C_Slave_Register_Address_Type;
       Buffer : Bytes_Array_Type;
       Use_Polling : Boolean := False)
-      with Pre => Initialized (I2C_Device_Id);
+      with Pre => Initialized (I2C_Device_Id)
+                  and
+                  not Is_Caller_An_Interrupt_Handler;
    --
    --  Writed a block of bytes to an I2C slave
    --
@@ -111,7 +120,10 @@ package I2C_Driver is
       I2C_Slave_Address : I2C_Slave_Address_Type;
       I2C_Slave_Register_Address : I2C_Slave_Register_Address_Type;
       Byte_Value : Byte;
-      Use_Polling : Boolean := False);
+      Use_Polling : Boolean := False)
+      with Pre => Initialized (I2C_Device_Id)
+                  and
+                  not Is_Caller_An_Interrupt_Handler;
    --
    --  Write one byte to an I2C slave
    --
@@ -158,12 +170,18 @@ private
    --
    --  @field Initialized Flag indicating if this device has been initialized
    --  @field Current_Transaction Current data transfer transaction
-   --  @field I2C_Byte_Transfer_Completed Suspension object to be signaled from
-   --         the I2C interrupt handler, when an I2C byte transfer completes
+   --  @field Mutex Suspension object to be used as a mutex lock to serialize
+   --         accesssto the same I2C controller for multiple peripherals that
+   --         share the same MCU's I2C interface
+   --
+   --  NOTE: With the Ravenscar runtime, only one waiting task is allowed on a
+   --  a suspension object. Thus, up to two tasks can be using the same I2C
+   --  controller at the same time.
    --
    type I2C_Device_Var_Type is limited record
       Initialized : Boolean := False;
       Current_Transaction : I2C_Transaction_Type;
+      Mutex : Suspension_Object;
    end record with Alignment => MPU_Region_Alignment;
 
    --

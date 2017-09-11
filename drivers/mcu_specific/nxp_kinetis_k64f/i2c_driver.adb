@@ -33,7 +33,6 @@ with System.Storage_Elements;
 with Ada.Interrupts;
 with Ada.Interrupts.Names;
 with Pin_Mux_Driver;
-with Microcontroller.Arm_Cortex_M;
 with Runtime_Logs;
 
 package body I2C_Driver is
@@ -44,7 +43,6 @@ package body I2C_Driver is
    use MK64F12.SIM;
    use Pin_Mux_Driver;
    use Ada.Interrupts;
-   use Microcontroller.Arm_Cortex_M;
    use System.Storage_Elements;
 
    package Address_To_I2C_Registers_Pointer is new
@@ -164,9 +162,8 @@ package body I2C_Driver is
       Old_Region : MPU_Region_Descriptor_Type;
       C1_Value : I2C0_C1_Register;
    begin
-      --Ada.Text_IO.Put_Line ("*** Enter Do_I2C_Transaction (" &
-      -- (if I2C_Transaction_Is_Read_Data then "read" else "write") & " register:" & I2C_Slave_Register_Address'Image & ")");
-      --???
+      Suspend_Until_True (I2C_Device_Var.Mutex);
+
       I2C_Start_Transaction (I2C_Device_Id,
                              I2C_Slave_Address,
                              I2c_Slave_Register_Address,
@@ -220,9 +217,7 @@ package body I2C_Driver is
       I2C_Device_Var.Current_Transaction.State := I2C_Transaction_Not_Started;
       Restore_Private_Data_Region (Old_Region);
 
-      --Ada.Text_IO.Put_Line ("*** Exit Do_I2C_Transaction (" &
-      -- (if I2C_Transaction_Is_Read_Data then "read" else "write") & " register:" & I2C_Slave_Register_Address'Image & ")");
-      --???
+      Set_True (I2C_Device_Var.Mutex);
    end Do_I2C_Transaction;
 
    ----------------
@@ -298,7 +293,7 @@ package body I2C_Driver is
       --  Set baud rate:
       --
       F_Value.ICR := I2C_ICR_Value;
-      I2C_Registers_Ptr.F := F_Value;
+      I2C_Registers_Ptr.F := F_Value; --  Set to default value
 
       --
       --  Clear any pending interrupt:
@@ -318,10 +313,10 @@ package body I2C_Driver is
       --  NOTE: This is implicitly done by the Ada runtime
       --
 
+      Set_True (I2C_Device_Var.Mutex);
       Set_Private_Data_Region (I2C_Device_Var'Address,
                                I2C_Device_Var'Size,
                                Read_Write);
-
       I2C_Device_Var.Initialized := True;
       Runtime_Logs.Info_Print ("I2C: Initialized I2C" & I2C_Device_Id'Image);
 

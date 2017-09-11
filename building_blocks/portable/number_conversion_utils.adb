@@ -289,6 +289,48 @@ package body Number_Conversion_Utils is
       end if;
    end Hexadecimal_String_To_Unsigned;
 
+   -----------------------------
+   -- Signed_To_Decimal_String --
+   ------------------------------
+
+   procedure Signed_To_Decimal_String (Value : Integer_32;
+                                       Buffer : out String;
+                                       Actual_Length : out Positive)
+  is
+      Tmp_Buffer : String (1 .. 10);
+      Start_Index : Positive range Tmp_Buffer'Range := Tmp_Buffer'First;
+      Value_Left : Unsigned_32 := Unsigned_32 (abs Value);
+      First_Digit_Index : Positive range Buffer'Range;
+   begin
+      for I in reverse Tmp_Buffer'Range loop
+         Tmp_Buffer (I) := Character'Val ((Value_Left mod 10) +
+                                          Character'Pos ('0'));
+         Value_Left := Value_Left / 10;
+         if Value_Left = 0 then
+            Start_Index := I;
+            exit;
+         end if;
+      end loop;
+
+      Actual_Length := (Tmp_Buffer'Last - Start_Index) + 1;
+      if Value < 0 then
+         Actual_Length := Actual_Length + 1;
+         Buffer (Buffer'First) := '-';
+         First_Digit_Index := Buffer'First + 1;
+      else
+         First_Digit_Index := Buffer'First;
+      end if;
+
+      if Buffer'Length >= Actual_Length then
+         Buffer (First_Digit_Index .. First_Digit_Index + Actual_Length - 1) :=
+               Tmp_Buffer (Start_Index .. Tmp_Buffer'Last);
+      else
+         raise Program_Error
+            with "Signed_To_Decimal_String: buffer too small";
+      end if;
+
+   end Signed_To_Decimal_String;
+
    --------------------------------
    -- Unsigned_To_Decimal_String --
    --------------------------------

@@ -46,11 +46,11 @@ private package I2C_Driver.Board_Specific_Private is
         (Registers_Ptr => I2C.I2C0_Periph'Access,
          Scl_Pin_Info =>
             (Pin_Port => PIN_PORT_B,
-             Pin_Index => 0,
+             Pin_Index => 0, --2,
              Pin_Function => PIN_FUNCTION_ALT2),
          Sda_Pin_Info =>
             (Pin_Port => PIN_PORT_B,
-             Pin_Index => 1,
+             Pin_Index => 1, --3,
              Pin_Function => PIN_FUNCTION_ALT2)
         ),
 

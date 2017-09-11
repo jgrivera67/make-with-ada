@@ -499,8 +499,7 @@ package body SPI_Driver is
 
       -- ** --
 
-      Chunk_Start_Index :
-         Positive range 1 .. Positive (Total_DMA_Transfer_Size) :=
+      Chunk_Start_Index : Positive :=
          (if Tx_Data_Buffer'Length /= 0 then Tx_Data_Buffer'First
                                         else Rx_Data_Buffer'First);
    begin
