@@ -33,6 +33,7 @@ private with Memory_Protection;
 private with Interfaces;
 private with System;
 private with Sensor_Reading;
+private with Accelerometer;
 
 --
 --  @summary Smart watch
@@ -67,20 +68,45 @@ package Watch is
    procedure Set_Watch_Time (Wall_Time_Secs : Seconds_Count)
       with Pre => Initialized;
 
+   procedure Set_Watch_Date (Date_Secs : Seconds_Count)
+      with Pre => Initialized;
+
+   Reference_Year : constant := 1970;
+
+   Seconds_Per_Hour : constant := 60 * 60;
+
+   Seconds_Per_Day : constant Seconds_Count := 24 * Seconds_Per_Hour;
+
+   Days_Per_Normal_Year : constant := 365;
+
+   subtype Month_Type is Positive range 1 .. 12;
+
+   function Year_Days_Before_Month (Month : Month_Type;
+                                    Year : Natural)
+      return Natural;
+
+   function Days_Per_Month (Month : Month_Type; Year : Natural)
+      return Positive;
+
 private
    pragma SPARK_Mode (Off);
    use Ada.Synchronous_Task_Control;
    use Memory_Protection;
    use Interfaces;
    use Sensor_Reading;
+   use Accelerometer;
 
    --
    --  Possible states for the watch state machine
    --
    type Watch_State_Type is (
       Watch_Uninitialized,
-      Awake_Watch_Mode,
-      Asleep_Watch_Mode)
+      Watch_Mode,
+      Heart_Rate_Monitor_Mode,
+      G_Forces_Monitor_Mode,
+      Asleep_Watch_Mode,
+      Asleep_Heart_Rate_Monitor_Mode,
+      Asleep_G_Forces_Monitor_Mode)
       with Size => 3;
 
    --
@@ -133,16 +159,19 @@ private
    type Watch_Type is limited record
       Initialized : Boolean := False;
       Config_Parameters : App_Configuration.Config_Parameters_Type;
-      State : Watch_State_Type := Watch_Uninitialized;
+      State : Watch_State_Type := Watch_Uninitialized with Volatile;
       Events_Mailbox : Watch_Events_Mailbox_Type;
-      Last_RTC_Time_Reading : Seconds_Count := 0;
       Last_Minutes : Minutes_Type := 0;
+      Last_Days_To_Date : Natural := 0;
       Last_Heart_Rate_Reading : Reading_Protected_Type;
-      Last_Altitude_Reading : Reading_Protected_Type;
-      Last_Temperature_Reading : Reading_Protected_Type;
-      X_Axis_Motion : Unsigned_8;
-      Y_Axis_Motion : Unsigned_8;
-      Z_Axis_Motion : Unsigned_8;
+      Last_Altitude_Reading : Reading_Type;
+      Last_Temperature_Reading : Reading_Type;
+      Last_X_Axis_Motion : Motion_Reading_Type := 0;
+      Last_Y_Axis_Motion : Motion_Reading_Type := 0;
+      Last_Z_Axis_Motion : Motion_Reading_Type := 0;
+      Last_X_Axis_G_Force_Reading : Reading_Protected_Type;
+      Last_Y_Axis_G_Force_Reading : Reading_Protected_Type;
+      Last_Z_Axis_G_Force_Reading : Reading_Protected_Type;
       Watch_Task_Suspension_Obj : Suspension_Object;
       Motion_Detector_Task_Suspension_Obj : Suspension_Object;
       Tapping_Detector_Task_Suspension_Obj : Suspension_Object;

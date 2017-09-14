@@ -30,10 +30,11 @@ with Number_Conversion_Utils;
 with Runtime_Logs;
 with Microcontroller.Arm_Cortex_M;
 with RTC_Driver;
-with Accelerometer;
 with Low_Power_Driver;
 with Heart_Rate_Monitor;
 with Barometric_Pressure_Sensor;
+with Color_Led;
+with Bluetooth;
 
 package body Watch is
    pragma SPARK_Mode (Off);
@@ -48,15 +49,29 @@ package body Watch is
 
    procedure Display_Altitude (Altitude_Str : String);
 
+   procedure Display_Date (Date_Str : String);
+
+   procedure Display_G_Forces_Monitor_Screen;
+
    procedure Display_Heart_Rate (Heart_Rate_Str : String);
+
+   procedure Display_Heart_Rate_Monitor_Screen;
 
    procedure Display_Temperature (Temperature_Str : String);
 
    procedure Display_Wall_Time (Wall_Time_Str : String);
 
+   procedure Display_X_G_Force (G_Force_Str : String);
+
+   procedure Display_Y_G_Force (G_Force_Str : String);
+
+   procedure Display_Z_G_Force (G_Force_Str : String);
+
    procedure Low_Power_Wakeup_Callback;
 
    procedure Refresh_Altitude;
+
+   procedure Refresh_G_Forces;
 
    procedure Refresh_Heart_Rate;
 
@@ -69,6 +84,22 @@ package body Watch is
    procedure RTC_Periodic_One_Second_Callback;
 
    procedure Signal_Event (Event : Watch_Event_Type);
+
+   Heartbeat_Period_Ms : constant Ada.Real_Time.Time_Span :=
+      Ada.Real_Time.Milliseconds (500);
+
+   Use_Polling_For_Motion_Detection : constant Boolean := True;
+
+   --------------------
+   -- Days_Per_Month --
+   --------------------
+
+   function Days_Per_Month (Month : Month_Type; Year : Natural)
+      return Positive is
+      (case Month is
+         when 1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
+         when 2 => (if Year mod 4 = 0 then 29 else 28),
+         when  4 | 6 | 9 | 11 => 30);
 
    ----------------------
    -- Display_Altitude --
@@ -83,6 +114,33 @@ package body Watch is
                                 Watch_Var.Config_Parameters.Background_Color);
    end Display_Altitude;
 
+   -------------------------------------
+   -- Display_G_Forces_Monitor_Screen --
+   -------------------------------------
+
+   procedure Display_G_Forces_Monitor_Screen
+   is
+   begin
+      LCD_Display.Clear_Screen (Watch_Var.Config_Parameters.Background_Color);
+      LCD_Display.Set_Font (LCD_Display.Small_Font);
+      LCD_Display.Print_String (8, 8, "G Forces",
+                                Watch_Var.Config_Parameters.Foreground_Color,
+                                Watch_Var.Config_Parameters.Background_Color);
+      LCD_Display.Print_String (8, 24, "X",
+                                Watch_Var.Config_Parameters.Foreground_Color,
+                                Watch_Var.Config_Parameters.Background_Color);
+      LCD_Display.Print_String (8, 48, "Y",
+                                Watch_Var.Config_Parameters.Foreground_Color,
+                                Watch_Var.Config_Parameters.Background_Color);
+      LCD_Display.Print_String (8, 72, "Z",
+                                Watch_Var.Config_Parameters.Foreground_Color,
+                                Watch_Var.Config_Parameters.Background_Color);
+
+      Display_X_G_Force ("0.0 g");
+      Display_Y_G_Force ("0.0 g");
+      Display_Z_G_Force ("0.0 g");
+    end Display_G_Forces_Monitor_Screen;
+
    ----------------------
    -- Display_Greeting --
    ----------------------
@@ -90,7 +148,7 @@ package body Watch is
    procedure Display_Greeting
    is
    begin
-      LCD_Display.Clear_Screen (LCD_Display.Blue);
+      LCD_Display.Clear_Screen (Watch_Var.Config_Parameters.Background_Color);
       LCD_Display.Set_Font (LCD_Display.Large_Font);
       LCD_Display.Print_String (12, 16, "Ada",
                                 Watch_Var.Config_Parameters.Foreground_Color,
@@ -101,14 +159,6 @@ package body Watch is
                                 Watch_Var.Config_Parameters.Background_Color);
 
       delay until Clock + Milliseconds (1_000);
-
-      LCD_Display.Print_String (12, 16, "   ",
-                                Watch_Var.Config_Parameters.Foreground_Color,
-                                Watch_Var.Config_Parameters.Background_Color);
-
-      LCD_Display.Print_String (1, 40, "      ",
-                                Watch_Var.Config_Parameters.Foreground_Color,
-                                Watch_Var.Config_Parameters.Background_Color);
    end Display_Greeting;
 
    ------------------------
@@ -118,11 +168,26 @@ package body Watch is
    procedure Display_Heart_Rate (Heart_Rate_Str : String)
    is
    begin
-      LCD_Display.Set_Font (LCD_Display.Small_Font);
-      LCD_Display.Print_String (20, 46, Heart_Rate_Str,
+      LCD_Display.Set_Font (LCD_Display.Large_Font);
+      LCD_Display.Print_String (8, 40, Heart_Rate_Str,
                                 Watch_Var.Config_Parameters.Foreground_Color,
                                 Watch_Var.Config_Parameters.Background_Color);
    end Display_Heart_Rate;
+
+   ---------------------------------------
+   -- Display_Heart_Rate_Monitor_Screen --
+   ---------------------------------------
+
+   procedure Display_Heart_Rate_Monitor_Screen
+   is
+   begin
+      LCD_Display.Clear_Screen (Watch_Var.Config_Parameters.Background_Color);
+      LCD_Display.Set_Font (LCD_Display.Small_Font);
+      LCD_Display.Print_String (8, 16, "Heart Rate",
+                                Watch_Var.Config_Parameters.Foreground_Color,
+                                Watch_Var.Config_Parameters.Background_Color);
+      Display_Heart_Rate ("0");
+    end Display_Heart_Rate_Monitor_Screen;
 
    -------------------------
    -- Display_Temperature --
@@ -136,6 +201,19 @@ package body Watch is
                                 Watch_Var.Config_Parameters.Foreground_Color,
                                 Watch_Var.Config_Parameters.Background_Color);
    end Display_Temperature;
+
+   -------------------
+   -- Display_Date --
+   ------------------
+
+   procedure Display_Date (Date_Str : String)
+   is
+    begin
+      LCD_Display.Set_Font (LCD_Display.Small_Font);
+      LCD_Display.Print_String (3, 32, Date_Str,
+                                Watch_Var.Config_Parameters.Foreground_Color,
+                                Watch_Var.Config_Parameters.Background_Color);
+   end Display_Date;
 
    -----------------------
    -- Display_Wall_Time --
@@ -158,30 +236,68 @@ package body Watch is
    procedure Display_Watch_Screen
    is
    begin
-      LCD_Display.Set_Font (LCD_Display.Large_Font);
-      LCD_Display.Print_String (10, 5, "00:00",
-                                Watch_Var.Config_Parameters.Foreground_Color,
-                                Watch_Var.Config_Parameters.Background_Color);
-
+      LCD_Display.Clear_Screen (Watch_Var.Config_Parameters.Background_Color);
       LCD_Display.Set_Font (LCD_Display.Small_Font);
-      LCD_Display.Print_String (3, 32, "01-JAN-0000",
-                                Watch_Var.Config_Parameters.Foreground_Color,
-                                Watch_Var.Config_Parameters.Background_Color);
-
-      LCD_Display.Print_String (1, 46, "HR",
-                                Watch_Var.Config_Parameters.Foreground_Color,
-                                Watch_Var.Config_Parameters.Background_Color);
+      --LCD_Display.Print_String (1, 46, "Direction",
+      --                          Watch_Var.Config_Parameters.Foreground_Color,
+      --                          Watch_Var.Config_Parameters.Background_Color);
 
       LCD_Display.Print_String (1, 58, "A",
                                 Watch_Var.Config_Parameters.Foreground_Color,
                                 Watch_Var.Config_Parameters.Background_Color);
+
       LCD_Display.Print_String (1, 70, "T",
                                 Watch_Var.Config_Parameters.Foreground_Color,
                                 Watch_Var.Config_Parameters.Background_Color);
+
       LCD_Display.Print_String (8, 87, Watch_Var.Config_Parameters.Watch_Label,
                                 Watch_Var.Config_Parameters.Foreground_Color,
                                 Watch_Var.Config_Parameters.Background_Color);
+
+      Display_Wall_Time ("00:00");
+      Display_date ("01-JAN-0000");
+      Display_Altitude ("0 m");
+      Display_Temperature ("0 C 32 F");
    end Display_Watch_Screen;
+
+   -----------------------
+   -- Display_X_G_Force --
+   -----------------------
+
+   procedure Display_X_G_Force (G_Force_Str : String)
+   is
+   begin
+      LCD_Display.Set_Font (LCD_Display.Small_Font);
+      LCD_Display.Print_String (24, 24, G_Force_Str,
+                                Watch_Var.Config_Parameters.Foreground_Color,
+                                Watch_Var.Config_Parameters.Background_Color);
+   end Display_X_G_Force;
+
+   -----------------------
+   -- Display_X_G_Force --
+   -----------------------
+
+   procedure Display_Y_G_Force (G_Force_Str : String)
+   is
+   begin
+      LCD_Display.Set_Font (LCD_Display.Small_Font);
+      LCD_Display.Print_String (24, 48, G_Force_Str,
+                                Watch_Var.Config_Parameters.Foreground_Color,
+                                Watch_Var.Config_Parameters.Background_Color);
+   end Display_Y_G_Force;
+
+   -----------------------
+   -- Display_X_G_Force --
+   -----------------------
+
+   procedure Display_Z_G_Force (G_Force_Str : String)
+   is
+   begin
+      LCD_Display.Set_Font (LCD_Display.Small_Font);
+      LCD_Display.Print_String (24, 72, G_Force_Str,
+                                Watch_Var.Config_Parameters.Foreground_Color,
+                                Watch_Var.Config_Parameters.Background_Color);
+   end Display_Z_G_Force;
 
    ---------------------------------
    -- Get_Configuration_Paramters --
@@ -202,6 +318,7 @@ package body Watch is
    is
       Old_Region : MPU_Region_Descriptor_Type;
    begin
+      Color_Led.Initialize;
       Low_Power_Driver.Initialize;
       Low_Power_Driver.Set_Low_Power_Run_Mode;
       Low_Power_Driver.Set_Low_Power_Stop_Mode (
@@ -209,8 +326,9 @@ package body Watch is
 
       RTC_Driver.Initialize;
       Accelerometer.Initialize (Go_to_Sleep_Callback => null);
-      --Heart_Rate_Monitor.Initialize;
+      Heart_Rate_Monitor.Initialize;
       Barometric_Pressure_Sensor.Initialize;
+      Bluetooth.Initialize;
 
       Set_Private_Data_Region (Watch_Var'Address,
                                Watch_Var'Size,
@@ -218,17 +336,17 @@ package body Watch is
                                Old_Region);
 
       App_Configuration.Load_Config_Parameters (Watch_Var.Config_Parameters);
-      Watch_Var.State := Awake_Watch_Mode;
+      Watch_Var.State := Watch_Mode;
       Watch_Var.Initialized := True;
 
       Set_True (Watch_Var.Watch_Task_Suspension_Obj);
       Set_True (Watch_Var.Motion_Detector_Task_Suspension_Obj);
       Set_True (Watch_Var.Tapping_Detector_Task_Suspension_Obj);
-      --Set_True (Watch_Var.Heart_Rate_Monitor_Task_Suspension_Obj);
+      Set_True (Watch_Var.Heart_Rate_Monitor_Task_Suspension_Obj);
       Set_True (Watch_Var.Altitude_Sensor_Task_Suspension_Obj);
       Set_True (Watch_Var.Temperature_Sensor_Task_Suspension_Obj);
       Restore_Private_Data_Region (Old_Region);
-   end Initialize;
+    end Initialize;
 
    -------------------------------
    -- Low_Power_Wakeup_Callback --
@@ -247,11 +365,17 @@ package body Watch is
    is
       Altitude_Str : String (1 .. 9);
       Str_Length : Positive;
-      Str_Cursor : Positive range Altitude_Str'Range;
+      Str_Cursor : Positive;
       Reading_Value : Reading_Type;
    begin
+      Barometric_Pressure_Sensor.Read_Altitude (Reading_Value);
+      if Reading_Value = Watch_Var.Last_Altitude_Reading then
+         return;
+      end if;
+
+      Watch_Var.Last_Altitude_Reading := Reading_Value;
+
       if Reading_Value.Integer_Part in -999_999 .. 999_999 then
-         Watch_Var.Last_Altitude_Reading.Read (Reading_Value);
          Signed_To_Decimal_String (Reading_Value.Integer_Part,
                                    Altitude_Str,
                                    Str_Length);
@@ -265,10 +389,96 @@ package body Watch is
 
       Altitude_Str (Str_Cursor .. Str_Cursor + 1) := " m";
       Str_Cursor := Str_Cursor + 2;
-      Altitude_Str (Str_Cursor .. Altitude_Str'Last) := (others => ' ');
+      if Str_Cursor <= Altitude_Str'Last then
+         Altitude_Str (Str_Cursor .. Altitude_Str'Last) := (others => ' ');
+      end if;
 
       Display_Altitude (Altitude_Str);
    end Refresh_Altitude;
+
+   ----------------------
+   -- Refresh_G_Forces --
+   ----------------------
+
+   procedure Refresh_G_Forces is
+      procedure Format_G_Force_String (G_Reading_Value : Reading_Type;
+                                       Motion_Reading : Motion_Reading_Type;
+                                       G_Force_Str : out String);
+
+      ---------------------------
+      -- Format_G_Force_String --
+      ---------------------------
+
+      procedure Format_G_Force_String (G_Reading_Value : Reading_Type;
+                                       Motion_Reading : Motion_Reading_Type;
+                                       G_Force_Str : out String)
+      is
+         Str_Length : Positive;
+         Str_Cursor : Positive;
+      begin
+         if G_Reading_Value.Integer_Part in -99 .. 99 then
+            Signed_To_Decimal_String (G_Reading_Value.Integer_Part,
+                                      G_Force_Str,
+                                      Str_Length);
+
+            Str_Cursor := G_Force_Str'First + Str_Length;
+         else
+            G_Force_Str (G_Force_Str'First .. G_Force_Str'First + 2) :=
+               (others => '*');
+            Str_Cursor := G_Force_Str'First + 3;
+         end if;
+
+         G_Force_Str (Str_Cursor) := '.';
+         Str_Cursor := Str_Cursor + 1;
+         if G_Reading_Value.Fractional_Part <= 999 then
+            Unsigned_To_Decimal_String (
+               Unsigned_32 (G_Reading_Value.Fractional_Part),
+               G_Force_Str (Str_Cursor .. Str_Cursor + 2),
+               Str_Length,
+               Add_Leading_Zeros => True);
+
+            Str_Cursor := Str_Cursor + Str_Length;
+         else
+            G_Force_Str (Str_Cursor .. Str_Cursor + 2) :=
+               (others => '*');
+            Str_Cursor := Str_Cursor + 3;
+         end if;
+
+         G_Force_Str (Str_Cursor .. Str_Cursor + 1) := " g";
+         Str_Cursor := Str_Cursor + 2;
+         G_Force_Str (Str_Cursor) := (case Motion_Reading is
+                                         when 1 => '+',
+                                         when -1 => '-',
+                                         when 0 => ' ');
+
+         Str_Cursor := Str_Cursor + 1;
+         if Str_Cursor <= G_Force_Str'Last then
+            G_Force_Str (Str_Cursor .. G_Force_Str'Last) := (others => ' ');
+         end if;
+      end Format_G_Force_String;
+
+      G_Force_Str : String (1 .. 10);
+      X_Reading_Value : Reading_Type;
+      Y_Reading_Value : Reading_Type;
+      Z_Reading_Value : Reading_Type;
+
+   begin
+      Watch_Var.Last_X_Axis_G_Force_Reading.Read (X_Reading_Value);
+      Watch_Var.Last_Y_Axis_G_Force_Reading.Read (Y_Reading_Value);
+      Watch_Var.Last_Z_Axis_G_Force_Reading.Read (Z_Reading_Value);
+
+      Format_G_Force_String (X_Reading_Value, Watch_Var.Last_X_Axis_Motion,
+                             G_Force_Str);
+      Display_X_G_Force (G_Force_Str);
+
+      Format_G_Force_String (Y_Reading_Value,  Watch_Var.Last_Y_Axis_Motion,
+                             G_Force_Str);
+      Display_Y_G_Force (G_Force_Str);
+
+      Format_G_Force_String (Z_Reading_Value,  Watch_Var.Last_Z_Axis_Motion,
+                             G_Force_Str);
+     Display_Z_G_Force (G_Force_Str);
+   end Refresh_G_Forces;
 
    ------------------------
    -- Refresh_Heart_Rate --
@@ -276,10 +486,27 @@ package body Watch is
 
    procedure Refresh_Heart_Rate
    is
-      Heart_Rate_Str : String (1 .. 3);
-      Str_Length : Positive with Unreferenced;
+      Heart_Rate_Str : String (1 .. 6);
+      Str_Length : Positive;
+      Str_Cursor : Positive;
+      Reading_Value : Reading_Type;
    begin
-      Heart_Rate_Str := "0  "; --???
+      Watch_Var.Last_Heart_Rate_Reading.Read (Reading_Value);
+      if abs Reading_Value.Integer_Part <= 99_999 then
+         Signed_To_Decimal_String (Reading_Value.Integer_Part,
+                                   Heart_Rate_Str,
+                                   Str_Length);
+
+         Str_Cursor := Heart_Rate_Str'First + Str_Length;
+      else
+         Heart_Rate_Str := (others => '*');
+         Str_Cursor := Heart_Rate_Str'First + Heart_Rate_Str'Length;
+      end if;
+
+      if Str_Cursor <= Heart_Rate_Str'Last then
+         Heart_Rate_Str (Str_Cursor .. Heart_Rate_Str'Last) := (others => ' ');
+      end if;
+
       Display_Heart_Rate (Heart_Rate_Str);
    end Refresh_Heart_Rate;
 
@@ -291,11 +518,18 @@ package body Watch is
    is
       Temperature_Str : String (1 .. 10);
       Str_Length : Positive;
-      Str_Cursor : Positive range Temperature_Str'Range;
+      Str_Cursor : Positive;
       Reading_Value : Reading_Type;
       Fahrenheit_Value : Integer_32;
    begin
-      Watch_Var.Last_Temperature_Reading.Read (Reading_Value);
+      Barometric_Pressure_Sensor.Read_Temperature (Reading_Value);
+
+      if Reading_Value = Watch_Var.Last_Temperature_Reading then
+         return;
+      end if;
+
+      Watch_Var.Last_Temperature_Reading := Reading_Value;
+
       Fahrenheit_Value :=
          Integer_32 (Float (Reading_Value.Integer_Part) * (9.0 / 5.0)) + 32;
 
@@ -328,7 +562,10 @@ package body Watch is
 
       Temperature_Str (Str_Cursor .. Str_Cursor + 1) := " F";
       Str_Cursor := Str_Cursor + 2;
-      Temperature_Str (Str_Cursor .. Temperature_Str'Last) := (others => ' ');
+      if Str_Cursor <= Temperature_Str'Last then
+         Temperature_Str (Str_Cursor .. Temperature_Str'Last) :=
+            (others => ' ');
+      end if;
 
       Display_Temperature (Temperature_Str);
    end Refresh_Temperature;
@@ -339,28 +576,32 @@ package body Watch is
 
    procedure Refresh_Wall_Time
    is
-      Seconds_In_A_Minute : constant Natural := 60;
-      Seconds_In_An_Hour : constant Natural := 60 * Seconds_In_A_Minute;
-      Seconds_In_A_Day : constant Natural := 24 * Seconds_In_An_Hour;
-      Days : Natural;
       Hours : Natural range 0 .. 23;
       Remaining_Seconds : Natural;
       Minutes : Minutes_Type;
       Seconds : Natural range 0 .. 59;
       Wall_Time_Str : String (1 .. 8);
+      Date_Str : String (1 .. 11);
       Str_Length : Positive with Unreferenced;
       Current_Wall_Time_Secs : Seconds_Count;
-   begin
-      Current_Wall_Time_Secs := Watch_Var.Last_RTC_Time_Reading;
+      Days_To_Date : Natural;
+      Remaining_Days : Natural;
+      Days_Per_Year : Natural;
+      Year : Positive;
+      Month : Month_Type;
+      Days_In_Month : Positive;
+      Day : Positive range 1 .. 31;
+      Month_Str : constant array (1 ..12) of String (1 .. 3) :=
+         ("JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT",
+          "NOV", "DEC");
 
-      Days := Natural (Current_Wall_Time_Secs /
-                       Seconds_Count (Seconds_In_A_Day));
-      Remaining_Seconds := Natural (Current_Wall_Time_Secs mod
-                                    Seconds_Count (Seconds_In_A_Day));
-      Hours := Remaining_Seconds / Seconds_In_An_Hour;
-      Remaining_Seconds := Remaining_Seconds mod Seconds_In_An_Hour;
-      Minutes := Remaining_Seconds / Seconds_In_A_Minute;
-      Seconds := Remaining_Seconds mod Seconds_In_A_Minute;
+   begin
+      Current_Wall_Time_Secs := RTC_Driver.Get_RTC_Time;
+      Remaining_Seconds := Natural (Current_Wall_Time_Secs mod Seconds_Per_Day);
+      Hours := Remaining_Seconds / Seconds_Per_Hour;
+      Remaining_Seconds := Remaining_Seconds mod Seconds_Per_Hour;
+      Minutes := Remaining_Seconds / 60;
+      Seconds := Remaining_Seconds mod 60;
 
       if Minutes /= Watch_Var.Last_Minutes then
          Watch_Var.Last_Minutes := Minutes;
@@ -380,6 +621,48 @@ package body Watch is
                                      Add_Leading_Zeros => True);
 
          Display_Wall_Time (Wall_Time_Str);
+
+         Days_To_Date := Natural (Current_Wall_Time_Secs / Seconds_Per_Day) + 1;
+         if Days_To_Date /= Watch_Var.Last_Days_To_Date then
+            Watch_Var.Last_Days_To_Date := Days_To_Date;
+            Remaining_Days := Days_To_Date;
+            Year := Reference_Year;
+            Days_Per_Year := Days_Per_Normal_Year;
+            while Remaining_Days > Days_Per_Year loop
+               if Year mod 4 = 0 then
+                  Days_Per_Year := Days_Per_Normal_Year + 1;
+               else
+                  Days_Per_Year := Days_Per_Normal_Year;
+               end if;
+
+               Remaining_Days := Remaining_Days - Days_Per_Year;
+               Year := Year + 1;
+            end loop;
+
+            Month := 1;
+            Days_In_Month := Days_Per_Month (Month, Year);
+            while Remaining_Days > Days_In_Month loop
+               Remaining_Days := Remaining_Days - Days_In_Month;
+               Month := Month + 1;
+               Days_In_Month := Days_Per_Month (Month, Year);
+            end loop;
+
+            Day := Remaining_Days + 1;
+
+            Unsigned_To_Decimal_String (Unsigned_32 (Day),
+                                        Date_Str (1 .. 2),
+                                        Str_Length,
+                                        Add_Leading_Zeros => True);
+            Date_Str (3) := '-';
+            Date_Str (4 .. 6) := Month_Str (Month);
+            Date_Str (7) := '-';
+            Unsigned_To_Decimal_String (Unsigned_32 (Year),
+                                        Date_Str (8 .. 11),
+                                        Str_Length,
+                                        Add_Leading_Zeros => True);
+
+            Display_Date (Date_Str);
+         end if;
       end if;
    end Refresh_Wall_Time;
 
@@ -397,16 +680,8 @@ package body Watch is
    --------------------------------------
 
    procedure RTC_Periodic_One_Second_Callback is
-      Old_Region : MPU_Region_Descriptor_Type;
    begin
-      Set_Private_Data_Region (Watch_Var'Address,
-                               Watch_Var'Size,
-                               Read_write,
-                               Old_Region);
-
-      Watch_Var.Last_RTC_Time_Reading := RTC_Driver.Get_RTC_Time;
       Signal_Event (Wall_Time_Changed);
-      Restore_Private_Data_Region (Old_Region);
    end RTC_Periodic_One_Second_Callback;
 
    -----------------------------
@@ -415,30 +690,249 @@ package body Watch is
 
    procedure Run_Watch_State_Machine
    is
-      procedure Awake_Watch_Mode_Event_Handler (Event : Watch_Event_Type);
+      procedure Asleep_Heart_Rate_Monitor_Mode_Event_Handler (Event : Watch_Event_Type);
+      procedure Asleep_G_Forces_Monitor_Mode_Event_Handler (Event : Watch_Event_Type);
       procedure Asleep_Watch_Mode_Event_Handler (Event : Watch_Event_Type);
+      procedure Heart_Rate_Monitor_Mode_Event_Handler (Event : Watch_Event_Type);
+      procedure G_Forces_Monitor_Mode_Event_Handler (Event : Watch_Event_Type);
+      procedure Watch_Mode_Event_Handler (Event : Watch_Event_Type);
 
-      ------------------------------------
-      -- Awake_Watch_Mode_Event_Handler --
-      ------------------------------------
+      ------------------------------------------------
+      -- Asleep_G_Forces_Monitor_Mode_Event_Handler --
+      ------------------------------------------------
 
-      procedure Awake_Watch_Mode_Event_Handler (Event : Watch_Event_Type)
+      procedure Asleep_G_Forces_Monitor_Mode_Event_Handler (Event : Watch_Event_Type)
+      is
+      begin
+         case Event is
+            when Low_Power_Sleep_Wakeup =>
+               Color_Led.Set_Color (Color_Led.Blue);
+               Color_Led.Turn_On_Blinker (Heartbeat_Period_Ms);
+               if not Use_Polling_For_Motion_Detection then
+                   Accelerometer.Enable_Motion_Detection_Interrupt;
+               end if;
+
+               LCD_Display.Turn_On_Display;
+               Refresh_G_Forces;
+               RTC_Driver.Set_RTC_Alarm (
+                  Watch_Var.Config_Parameters.Screen_Saver_Timeout_Secs,
+                  RTC_Alarm_Callback'Access);
+
+               Watch_Var.State := G_Forces_Monitor_Mode;
+               Set_True (Watch_Var.Motion_Detector_Task_Suspension_Obj);
+
+            when others =>
+               Runtime_Logs.Error_Print (
+                  "Watch state machine: unexpected event" & Event'Image &
+                  " in state" &  Watch_Var.State'Image);
+         end case;
+      end Asleep_G_Forces_Monitor_Mode_Event_Handler;
+
+      --------------------------------------------------
+      -- Asleep_Heart_Rate_Monitor_Mode_Event_Handler --
+      --------------------------------------------------
+
+      procedure Asleep_Heart_Rate_Monitor_Mode_Event_Handler (Event : Watch_Event_Type)
+      is
+      begin
+         case Event is
+            when Low_Power_Sleep_Wakeup =>
+               Color_Led.Set_Color (Color_Led.Blue);
+               Color_Led.Turn_On_Blinker (Heartbeat_Period_Ms);
+               Heart_Rate_Monitor.Start_Heart_Rate_Monitor;
+               LCD_Display.Turn_On_Display;
+               Refresh_Heart_Rate;
+               RTC_Driver.Set_RTC_Alarm (
+                  Watch_Var.Config_Parameters.Screen_Saver_Timeout_Secs,
+                  RTC_Alarm_Callback'Access);
+
+               Watch_Var.State := Heart_Rate_Monitor_Mode;
+               Set_True (Watch_Var.Heart_Rate_Monitor_Task_Suspension_Obj);
+
+            when others =>
+               Runtime_Logs.Error_Print (
+                  "Watch state machine: unexpected event" & Event'Image &
+                  " in state" &  Watch_Var.State'Image);
+         end case;
+      end Asleep_Heart_Rate_Monitor_Mode_Event_Handler;
+
+      -------------------------------------
+      -- Asleep_Watch_Mode_Event_Handler --
+      -------------------------------------
+
+      procedure Asleep_Watch_Mode_Event_Handler (Event : Watch_Event_Type)
+      is
+      begin
+         case Event is
+            when Low_Power_Sleep_Wakeup =>
+               Color_Led.Set_Color (Color_Led.Blue);
+               Color_Led.Turn_On_Blinker (Heartbeat_Period_Ms);
+               Barometric_Pressure_Sensor.Start_Barometric_Pressure_Sensor;
+               RTC_Driver.Enable_RTC_Periodic_One_Second_Interrupt (
+                  RTC_Periodic_One_Second_Callback'Access);
+
+               LCD_Display.Turn_On_Display;
+               Refresh_Wall_Time;
+               Refresh_Altitude;
+               Refresh_Temperature;
+               RTC_Driver.Set_RTC_Alarm (
+                  Watch_Var.Config_Parameters.Screen_Saver_Timeout_Secs,
+                  RTC_Alarm_Callback'Access);
+
+               Watch_Var.State := Watch_Mode;
+
+            when others =>
+               Runtime_Logs.Error_Print (
+                  "Watch state machine: unexpected event" & Event'Image &
+                  " in state" &  Watch_Var.State'Image);
+         end case;
+      end Asleep_Watch_Mode_Event_Handler;
+
+      --------------------------------------------
+      -- G_Forces_Monitor_Mode_Event_Handler --
+      --------------------------------------------
+
+      procedure G_Forces_Monitor_Mode_Event_Handler (Event : Watch_Event_Type)
+      is
+      begin
+         case Event is
+            when Low_Power_Sleep_Wakeup =>
+               LCD_Display.Turn_Off_Display;
+               if not Use_Polling_For_Motion_Detection then
+                  Accelerometer.Disable_Motion_Detection_Interrupt;
+               end if;
+
+               Color_Led.Turn_Off_Blinker;
+               Color_Led.Set_Color (Color_Led.Black);
+               Low_Power_Driver.Schedule_Low_Power_Stop_Mode;
+
+               Watch_Var.State := Asleep_G_Forces_Monitor_Mode;
+
+               -- Cancel all remaining pending events:
+               Watch_Var.Events_Mailbox.Clear_All_Events;
+               Set_False (Watch_Var.Watch_Task_Suspension_Obj);
+
+            when Motion_Detected =>
+               Refresh_G_Forces;
+
+            when Double_Tapping_Detected =>
+               if not Use_Polling_For_Motion_Detection then
+                  Accelerometer.Disable_Motion_Detection_Interrupt;
+               end if;
+               Display_Watch_Screen;
+               Watch_Var.Last_Minutes := 0;
+               Watch_Var.Last_Days_To_Date := 0;
+               Watch_Var.Last_Altitude_Reading := (others => <>);
+               Watch_Var.Last_Temperature_Reading := (others => <>);
+
+               Barometric_Pressure_Sensor.Start_Barometric_Pressure_Sensor;
+               RTC_Driver.Enable_RTC_Periodic_One_Second_Interrupt (
+                  RTC_Periodic_One_Second_Callback'Access);
+
+               Refresh_Wall_Time;
+               Refresh_Altitude;
+               Refresh_Temperature;
+               RTC_Driver.Set_RTC_Alarm (
+                  Watch_Var.Config_Parameters.Screen_Saver_Timeout_Secs,
+                  RTC_Alarm_Callback'Access);
+
+               Watch_Var.State := Watch_Mode;
+
+            when Tapping_Detected =>
+               RTC_Driver.Set_RTC_Alarm (
+                  Watch_Var.Config_Parameters.Screen_Saver_Timeout_Secs,
+                  RTC_Alarm_Callback'Access);
+
+            when others =>
+               Runtime_Logs.Error_Print (
+                  "Watch state machine: unexpected event" & Event'Image &
+                  " in state" &  Watch_Var.State'Image);
+         end case;
+      end G_Forces_Monitor_Mode_Event_Handler;
+
+      -------------------------------------------
+      -- Heart_Rate_Monitor_Mode_Event_Handler --
+      -------------------------------------------
+
+      procedure Heart_Rate_Monitor_Mode_Event_Handler (Event : Watch_Event_Type)
+      is
+      begin
+         case Event is
+            when Low_Power_Sleep_Wakeup =>
+               LCD_Display.Turn_Off_Display;
+               Heart_Rate_Monitor.Stop_Heart_Rate_Monitor;
+               Color_Led.Turn_Off_Blinker;
+               Color_Led.Set_Color (Color_Led.Black);
+               Low_Power_Driver.Schedule_Low_Power_Stop_Mode;
+
+               Watch_Var.State := Asleep_Heart_Rate_Monitor_Mode;
+
+               -- Cancel all remaining pending events:
+               Watch_Var.Events_Mailbox.Clear_All_Events;
+               Set_False (Watch_Var.Watch_Task_Suspension_Obj);
+
+            when Heart_Rate_Changed =>
+               Refresh_Heart_Rate;
+
+            when Double_Tapping_Detected =>
+               Heart_Rate_Monitor.Stop_Heart_Rate_Monitor;
+               Display_G_Forces_Monitor_Screen;
+               Watch_Var.Last_X_Axis_Motion := 0;
+               Watch_Var.Last_Y_Axis_Motion := 0;
+               Watch_Var.Last_Z_Axis_Motion := 0;
+               Watch_Var.Last_X_Axis_G_Force_Reading.Write ((others => <>));
+               Watch_Var.Last_Y_Axis_G_Force_Reading.Write ((others => <>));
+               Watch_Var.Last_Z_Axis_G_Force_Reading.Write ((others => <>));
+
+               if not Use_Polling_For_Motion_Detection then
+                  Accelerometer.Enable_Motion_Detection_Interrupt;
+               end if;
+
+               Refresh_G_Forces;
+
+               RTC_Driver.Set_RTC_Alarm (
+                  Watch_Var.Config_Parameters.Screen_Saver_Timeout_Secs,
+                  RTC_Alarm_Callback'Access);
+
+               Watch_Var.State := G_Forces_Monitor_Mode;
+               Set_True (Watch_Var.Motion_Detector_Task_Suspension_Obj);
+
+            when Tapping_Detected =>
+               RTC_Driver.Set_RTC_Alarm (
+                  Watch_Var.Config_Parameters.Screen_Saver_Timeout_Secs,
+                  RTC_Alarm_Callback'Access);
+
+            when others =>
+               Runtime_Logs.Error_Print (
+                  "Watch state machine: unexpected event" & Event'Image &
+                  " in state" &  Watch_Var.State'Image);
+         end case;
+      end Heart_Rate_Monitor_Mode_Event_Handler;
+
+      ------------------------------
+      -- Watch_Mode_Event_Handler --
+      ------------------------------
+
+      procedure Watch_Mode_Event_Handler (Event : Watch_Event_Type)
       is
       begin
          case Event is
             when Low_Power_Sleep_Timeout =>
                LCD_Display.Turn_Off_Display;
                RTC_Driver.Disable_RTC_Periodic_One_Second_Interrupt;
-               --Heart_Rate_Monitor.Stop_Heart_Rate_Monitor;
-               Barometric_Pressure_Sensor.Deactivate_Barometric_Pressure_Sensor;
+               Barometric_Pressure_Sensor.Stop_Barometric_Pressure_Sensor;
+               Color_Led.Turn_Off_Blinker;
+               Color_Led.Set_Color (Color_Led.Black);
                Low_Power_Driver.Schedule_Low_Power_Stop_Mode;
+
                Watch_Var.State := Asleep_Watch_Mode;
+
+               -- Cancel all remaining pending events:
+               Watch_Var.Events_Mailbox.Clear_All_Events;
+               Set_False (Watch_Var.Watch_Task_Suspension_Obj);
 
             when Wall_Time_Changed =>
                Refresh_Wall_Time;
-
-            when Heart_Rate_Changed =>
-               Refresh_Heart_Rate;
 
             when Altitude_Changed =>
                Refresh_Altitude;
@@ -449,56 +943,35 @@ package body Watch is
             when Battery_Charge_Changed =>
                null; --???
 
+            when Double_Tapping_Detected =>
+               RTC_Driver.Disable_RTC_Periodic_One_Second_Interrupt;
+               Barometric_Pressure_Sensor.Stop_Barometric_Pressure_Sensor;
+               Display_Heart_Rate_Monitor_Screen;
+               Watch_Var.Last_Heart_Rate_Reading.Write ((others => <>));
+               Heart_Rate_Monitor.Start_Heart_Rate_Monitor;
+               Refresh_Heart_Rate;
+
+               RTC_Driver.Set_RTC_Alarm (
+                  Watch_Var.Config_Parameters.Screen_Saver_Timeout_Secs,
+                  RTC_Alarm_Callback'Access);
+
+               Watch_Var.State := Heart_Rate_Monitor_Mode;
+               Set_True (Watch_Var.Heart_Rate_Monitor_Task_Suspension_Obj);
+
             when Tapping_Detected =>
                RTC_Driver.Set_RTC_Alarm (
                   Watch_Var.Config_Parameters.Screen_Saver_Timeout_Secs,
                   RTC_Alarm_Callback'Access);
 
-            when Double_Tapping_Detected =>
-               null; --???
-
-            when Motion_Detected =>
-               null; --???
-
             when others =>
                Runtime_Logs.Error_Print (
                   "Watch state machine: unexpected event" & Event'Image &
                   " in state" &  Watch_Var.State'Image);
          end case;
-      end Awake_Watch_Mode_Event_Handler;
-
-      ------------------------------------
-      -- Asleep_Watch_Mode_Event_Handler --
-      ------------------------------------
-
-      procedure Asleep_Watch_Mode_Event_Handler (Event : Watch_Event_Type)
-      is
-      begin
-         case Event is
-            when Low_Power_Sleep_Wakeup =>
-               LCD_Display.Turn_On_Display;
-               Refresh_Wall_Time;
-
-               RTC_Driver.Enable_RTC_Periodic_One_Second_Interrupt (
-                  RTC_Periodic_One_Second_Callback'Access);
-
-               --Heart_Rate_Monitor.Start_Heart_Rate_Monitor;
-               Barometric_Pressure_Sensor.Activate_Barometric_Pressure_Sensor;
-
-               RTC_Driver.Set_RTC_Alarm (
-                  Watch_Var.Config_Parameters.Screen_Saver_Timeout_Secs,
-                  RTC_Alarm_Callback'Access);
-
-               Watch_Var.State := Awake_Watch_Mode;
-
-            when others =>
-               Runtime_Logs.Error_Print (
-                  "Watch state machine: unexpected event" & Event'Image &
-                  " in state" &  Watch_Var.State'Image);
-         end case;
-      end Asleep_Watch_Mode_Event_Handler;
+      end Watch_Mode_Event_Handler;
 
       Old_Region : MPU_Region_Descriptor_Type;
+      Old_state : Watch_State_Type;
 
    begin -- Run_Watch_State_Machine
       Set_Private_Data_Region (Watch_Var'Address,
@@ -509,25 +982,34 @@ package body Watch is
       for Event in Watch_Event_Type loop
          if Watch_Var.Events_Mailbox.Event_Happened (Event) then
             Watch_Var.Events_Mailbox.Clear_Event (Event);
+            Old_state := Watch_Var.State;
             case Watch_Var.State is
-               when Awake_Watch_Mode =>
-                  Awake_Watch_Mode_Event_Handler (Event);
-
-                  --
-                  --  If we transition to sleep mode, cancel all remaining
-                  --  pending events:
-                  --
-                  if Watch_Var.State = Asleep_Watch_Mode then
-                     Watch_Var.Events_Mailbox.Clear_All_Events;
-                     Set_False (Watch_Var.Watch_Task_Suspension_Obj);
-                     exit;
-                  end if;
+               when Watch_Mode =>
+                  Watch_Mode_Event_Handler (Event);
 
                when Asleep_Watch_Mode =>
                   Asleep_Watch_Mode_Event_Handler (Event);
+
+               when Heart_Rate_Monitor_Mode =>
+                  Heart_Rate_Monitor_Mode_Event_Handler (Event);
+
+               when Asleep_Heart_Rate_Monitor_Mode =>
+                  Asleep_Heart_Rate_Monitor_Mode_Event_Handler (Event);
+
+               when G_Forces_Monitor_Mode =>
+                  G_Forces_Monitor_Mode_Event_Handler (Event);
+
+               when Asleep_G_Forces_Monitor_Mode =>
+                  Asleep_G_Forces_Monitor_Mode_Event_Handler (Event);
+
                when others =>
                   pragma Assert (False);
             end case;
+
+            if Watch_Var.State /= Old_State then
+               Runtime_Logs.Info_Print ("Watch moved to state" &
+                                        Watch_Var.State'Image);
+            end if;
          end if;
       end loop;
 
@@ -638,13 +1120,15 @@ package body Watch is
    end Set_Watch_Label;
 
    --------------------
-   -- Set_Watch_Time --
+   -- Set_Watch_Date --
    --------------------
 
-   procedure Set_Watch_Time (Wall_Time_Secs : Seconds_Count)
+   procedure Set_Watch_Date (Date_Secs : Seconds_Count)
    is
       Old_Region : MPU_Region_Descriptor_Type;
       Old_Intmask : Word;
+      New_Date_And_Time_secs : Seconds_Count;
+      Old_Time_Secs : Seconds_Count;
    begin
       Set_Private_Data_Region (Watch_Var'Address,
                                Watch_Var'Size,
@@ -652,7 +1136,34 @@ package body Watch is
                                Old_Region);
 
       Old_Intmask := Disable_Cpu_Interrupts;
-      RTC_Driver.Set_RTC_Time (Wall_Time_Secs);
+      Old_Time_Secs := RTC_Driver.Get_RTC_Time mod Seconds_Per_Day;
+      New_Date_And_Time_Secs := Date_Secs + Old_Time_Secs;
+      RTC_Driver.Set_RTC_Time (New_Date_And_Time_Secs);
+      Restore_Cpu_Interrupts (Old_Intmask);
+      Restore_Private_Data_Region (Old_Region);
+   end Set_Watch_Date;
+
+   --------------------
+   -- Set_Watch_Time --
+   --------------------
+
+   procedure Set_Watch_Time (Wall_Time_Secs : Seconds_Count)
+   is
+      Old_Region : MPU_Region_Descriptor_Type;
+      Old_Intmask : Word;
+      New_Date_And_Time_secs : Seconds_Count;
+      Old_Date_Secs : Seconds_Count;
+   begin
+      Set_Private_Data_Region (Watch_Var'Address,
+                               Watch_Var'Size,
+                               Read_Write,
+                               Old_Region);
+
+      Old_Intmask := Disable_Cpu_Interrupts;
+      Old_Date_Secs := RTC_Driver.Get_RTC_Time;
+      Old_Date_Secs := Old_Date_Secs - (Old_Date_Secs mod Seconds_Per_Day);
+      New_Date_And_Time_Secs := Old_Date_Secs + Wall_Time_Secs;
+      RTC_Driver.Set_RTC_Time (New_Date_And_Time_Secs);
       Restore_Cpu_Interrupts (Old_Intmask);
       Restore_Private_Data_Region (Old_Region);
    end Set_Watch_Time;
@@ -717,6 +1228,24 @@ package body Watch is
 
    end Watch_Events_Mailbox_Type;
 
+   ----------------------------
+   -- Year_Days_Before_Month --
+   ----------------------------
+
+   function Year_Days_Before_Month (Month : Month_Type;
+                                    Year : Natural)
+      return Natural
+   is
+      Days : Natural;
+   begin
+      Days := 0;
+      for M in 2 .. Month loop
+          Days := Days + Days_Per_Month (M - 1, Year);
+      end loop;
+
+      return Days;
+   end Year_Days_Before_Month;
+
    --
    --  Tasks
    --
@@ -726,7 +1255,6 @@ package body Watch is
    --------------------------
 
    task body Altitude_Sensor_Task is
-      New_Reading_Value : Reading_Type;
    begin
       Suspend_Until_True (Watch_Var.Altitude_Sensor_Task_Suspension_Obj);
       Runtime_Logs.Info_Print ("Altitude sensor task started");
@@ -735,8 +1263,7 @@ package body Watch is
                                Read_Write);
 
       loop
-         Barometric_Pressure_Sensor.Detect_Altitude_Change (New_Reading_Value);
-         Watch_Var.Last_Altitude_Reading.Write (New_Reading_Value);
+         Barometric_Pressure_Sensor.Detect_Altitude_Change;
          Signal_Event (Altitude_Changed);
       end loop;
    end Altitude_Sensor_Task;
@@ -756,12 +1283,17 @@ package body Watch is
                                Read_Write);
 
       loop
-         Watch_Var.Last_Heart_Rate_Reading.Read (Old_Reading_Value);
-         Heart_Rate_Monitor.Read_Heart_Rate (New_Reading_Value);
-         Watch_Var.Last_Heart_Rate_Reading.Write (New_Reading_Value);
-         if New_Reading_Value /= Old_Reading_Value then
-            Signal_Event (Heart_Rate_Changed);
-         end if;
+         Suspend_Until_True (Watch_Var.Heart_Rate_Monitor_Task_Suspension_Obj);
+         while Watch_Var.State = Heart_Rate_Monitor_Mode loop
+            Watch_Var.Last_Heart_Rate_Reading.Read (Old_Reading_Value);
+            Heart_Rate_Monitor.Read_Heart_Rate (New_Reading_Value);
+            Watch_Var.Last_Heart_Rate_Reading.Write (New_Reading_Value);
+            if New_Reading_Value /= Old_Reading_Value then
+               Signal_Event (Heart_Rate_Changed);
+            end if;
+
+            --delay until Clock + Milliseconds (500);
+         end loop;
       end loop;
    end Heart_Rate_Monitor_Task;
 
@@ -770,7 +1302,9 @@ package body Watch is
    --------------------------
 
    task body Motion_Detector_Task is
-
+      X_Reading_Value : Reading_Type;
+      Y_Reading_Value : Reading_Type;
+      Z_Reading_Value : Reading_Type;
    begin
       Suspend_Until_True (Watch_Var.Motion_Detector_Task_Suspension_Obj);
       Runtime_Logs.Info_Print ("Motion detector task started");
@@ -779,11 +1313,29 @@ package body Watch is
                                Read_Write);
 
       loop
-         Accelerometer.Detect_Motion (Watch_Var.X_Axis_Motion,
-                                      Watch_Var.Y_Axis_Motion,
-                                      Watch_Var.Z_Axis_Motion);
+         Suspend_Until_True (Watch_Var.Motion_Detector_Task_Suspension_Obj);
+         while Watch_Var.State = G_Forces_Monitor_Mode loop
+            Accelerometer.Detect_Motion (Watch_Var.Last_X_Axis_Motion,
+                                         Watch_Var.Last_Y_Axis_Motion,
+                                         Watch_Var.Last_Z_Axis_Motion,
+                                         Use_Polling_For_Motion_Detection);
 
-         Signal_Event (Motion_Detected);
+            Runtime_Logs.Debug_Print ("Motion detected");
+
+            Accelerometer.Read_G_Forces (X_Reading_Value,
+                                         Y_Reading_Value,
+                                         Z_Reading_Value,
+                                         Use_Polling_For_Motion_Detection);
+
+            Watch_Var.Last_X_Axis_G_Force_Reading.Write (X_Reading_Value);
+            Watch_Var.Last_Y_Axis_G_Force_Reading.Write (Y_Reading_Value);
+            Watch_Var.Last_Z_Axis_G_Force_Reading.Write (Z_Reading_Value);
+
+            Signal_Event (Motion_Detected);
+            if Use_Polling_For_Motion_Detection then
+               delay until clock + Milliseconds (100);
+            end if;
+         end loop;
       end loop;
    end Motion_Detector_Task;
 
@@ -802,10 +1354,13 @@ package body Watch is
 
       loop
          Accelerometer.Detect_Tapping (Double_Tap_Detected);
-         Signal_Event (if Double_Tap_Detected then
-                          Double_Tapping_Detected
-                       else
-                          Tapping_Detected);
+         if Double_Tap_Detected then
+            Runtime_Logs.Debug_Print ("Double tapping detected");
+            Signal_Event (Double_Tapping_Detected);
+         else
+            Runtime_Logs.Debug_Print ("Single tapping detected");
+            Signal_Event (Tapping_Detected);
+         end if;
       end loop;
    end Tapping_Detector_Task;
 
@@ -814,7 +1369,6 @@ package body Watch is
    -----------------------------
 
    task body Temperature_Sensor_Task is
-      New_Reading_Value : Reading_Type;
    begin
       Suspend_Until_True (Watch_Var.Temperature_Sensor_Task_Suspension_Obj);
       Runtime_Logs.Info_Print ("Temperature sensor task started");
@@ -823,10 +1377,7 @@ package body Watch is
                                Read_Write);
 
       loop
-         Barometric_Pressure_Sensor.Detect_Temperature_Change (
-            New_Reading_Value);
-
-         Watch_Var.Last_Temperature_Reading.Write (New_Reading_Value);
+         Barometric_Pressure_Sensor.Detect_Temperature_Change;
          Signal_Event (Temperature_Changed);
       end loop;
    end Temperature_Sensor_Task;
@@ -840,20 +1391,18 @@ package body Watch is
       Suspend_Until_True (Watch_Var.Watch_Task_Suspension_Obj);
       Runtime_Logs.Info_Print ("Watch task started");
 
-      LCD_Display.Initialize;
-      Display_Greeting;
-      Display_Watch_Screen;
-
       Set_Private_Data_Region (Watch_Var'Address,
                                Watch_Var'Size,
                                Read_Write);
 
-      Watch_Var.Last_RTC_Time_Reading := RTC_Driver.Get_RTC_Time;
-      Refresh_Wall_Time;
-      Refresh_Heart_Rate;
-      Refresh_Altitude;
-      Refresh_Temperature;
+      LCD_Display.Initialize;
+      Display_Greeting;
+      Display_Watch_Screen;
 
+      Color_Led.Set_Color (Color_Led.Blue);
+      Color_Led.Turn_On_Blinker (Heartbeat_Period_Ms);
+
+      Barometric_Pressure_Sensor.Start_Barometric_Pressure_Sensor;
       RTC_Driver.Enable_RTC_Periodic_One_Second_Interrupt (
          RTC_Periodic_One_Second_Callback'Access);
 
@@ -861,8 +1410,9 @@ package body Watch is
          Watch_Var.Config_Parameters.Screen_Saver_Timeout_Secs,
          RTC_Alarm_Callback'Access);
 
-      --Heart_Rate_Monitor.Start_Heart_Rate_Monitor;
-      Barometric_Pressure_Sensor.Activate_Barometric_Pressure_Sensor;
+      Refresh_Wall_Time;
+      Refresh_Altitude;
+      Refresh_Temperature;
 
       loop
          Suspend_Until_True (Watch_Var.Watch_Task_Suspension_Obj);

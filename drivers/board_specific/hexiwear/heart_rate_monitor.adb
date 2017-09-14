@@ -66,6 +66,7 @@ package body Heart_Rate_Monitor is
       I2C_Slave_Address : I2C_Slave_Address_Type;
       Int_Pin : Gpio_Pin_Type;
       Power_Pin : Gpio_Pin_Type;
+      Volt_3V3B_Pin : Gpio_Pin_Type;
    end record;
 
    Heart_Rate_Monitor_Const : constant Heart_Rate_Monitor_Const_Type :=
@@ -75,10 +76,16 @@ package body Heart_Rate_Monitor is
                                 Pin_Index => 18,
                                 Pin_Function => PIN_FUNCTION_ALT1),
                    Is_Active_High => False),
+
        Power_Pin => (Pin_Info => (Pin_Port => PIN_PORT_A,
                                   Pin_Index => 29,
                                   Pin_Function => PIN_FUNCTION_ALT1),
-                    Is_Active_High => True));
+                    Is_Active_High => True),
+
+       Volt_3V3B_Pin => (Pin_Info => (Pin_Port => PIN_PORT_B,
+                                      Pin_Index => 12,
+                                      Pin_Function => PIN_FUNCTION_ALT1),
+                    Is_Active_High => False));
 
    --
    --  State variables of the Heart rate monitor
@@ -113,6 +120,11 @@ package body Heart_Rate_Monitor is
                      Is_Output_Pin         => False);
 
       Configure_Pin (Heart_Rate_Monitor_Const.Power_Pin,
+                     Drive_Strength_Enable => False,
+                     Pullup_Resistor       => False,
+                     Is_Output_Pin         => True);
+
+      Configure_Pin (Heart_Rate_Monitor_Const.Volt_3V3B_Pin,
                      Drive_Strength_Enable => False,
                      Pullup_Resistor       => False,
                      Is_Output_Pin         => True);
@@ -171,10 +183,10 @@ package body Heart_Rate_Monitor is
       --           REG_LED_GREEN_PA'Enum_Rep,
       --           16#FF#);
 
-      I2C_Write (Heart_Rate_Monitor_Const.I2C_Device_Id,
-                 Heart_Rate_Monitor_Const.I2C_Slave_Address,
-                 REG_PROXY_PA'Enum_Rep,
-                 16#19#);
+      --I2C_Write (Heart_Rate_Monitor_Const.I2C_Device_Id,
+      --           Heart_Rate_Monitor_Const.I2C_Slave_Address,
+      --           REG_PROXY_PA'Enum_Rep,
+      --           16#19#);
 
       --I2C_Write (Heart_Rate_Monitor_Const.I2C_Device_Id,
       --           Heart_Rate_Monitor_Const.I2C_Slave_Address,
@@ -199,10 +211,20 @@ package body Heart_Rate_Monitor is
       --           16#43#);
 
       --  Set Proximity Mode Interrupt Threshold:
+      --I2C_Write (Heart_Rate_Monitor_Const.I2C_Device_Id,
+      --           Heart_Rate_Monitor_Const.I2C_Slave_Address,
+      --           REG_PROXY_INT_THR'Enum_Rep,
+      --           16#14#);
+
+      --
+      --  Put heart rate monitor to sleep by default, to save power:
+      --
+      Reg_Mode_Cfg_Value.Mode := Off_Mode;
+      Reg_Mode_Cfg_Value.Sleep := 1;
       I2C_Write (Heart_Rate_Monitor_Const.I2C_Device_Id,
                  Heart_Rate_Monitor_Const.I2C_Slave_Address,
-                 REG_PROXY_INT_THR'Enum_Rep,
-                 16#14#);
+                 REG_MODE_CFG'Enum_Rep,
+                 Reg_Mode_Cfg_Value.Value);
 
       Set_Private_Data_Region (Heart_Rate_Monitor_Var'Address,
                                Heart_Rate_Monitor_Var'Size,
@@ -257,10 +279,9 @@ package body Heart_Rate_Monitor is
    procedure Power_On_Heart_Rate_Monitor
    is
    begin
-      Deactivate_Output_Pin (Heart_Rate_Monitor_Const.Power_Pin);
-      delay until Clock + Milliseconds (1);
       Activate_Output_Pin (Heart_Rate_Monitor_Const.Power_Pin);
-      delay until Clock + Milliseconds (50);
+      Activate_Output_Pin (Heart_Rate_Monitor_Const.Volt_3V3B_Pin);
+      --delay until Clock + Milliseconds (50);
    end Power_On_Heart_Rate_Monitor;
 
    -----------------------------------
@@ -271,6 +292,7 @@ package body Heart_Rate_Monitor is
    is
    begin
       Deactivate_Output_Pin (Heart_Rate_Monitor_Const.Power_Pin);
+      Deactivate_Output_Pin (Heart_Rate_Monitor_Const.Volt_3V3B_Pin);
    end Power_Off_Heart_Rate_Monitor;
 
    ---------------------
@@ -279,11 +301,26 @@ package body Heart_Rate_Monitor is
 
    procedure Read_Heart_Rate (Reading_Value : out Reading_Type)
    is
+      Reg_Fifo_Wr_Ptr_Value : Byte;
+      Reg_Fifo_Rd_Ptr_Value : Byte;
       Reading_Buffer : Bytes_Array_Type (1 .. 3);
       Raw_Reading_Value : Unsigned_16;
    begin
-      Suspend_Until_True (
-         Heart_Rate_Monitor_Var.Heart_Rate_Reading_Ready_Susp_Obj);
+      Reg_Fifo_Wr_Ptr_Value :=
+         I2C_Read (Heart_Rate_Monitor_Const.I2C_Device_Id,
+                   Heart_Rate_Monitor_Const.I2C_Slave_Address,
+                   REG_FIFO_WR_PTR'Enum_Rep);
+
+      Reg_Fifo_Rd_Ptr_Value :=
+         I2C_Read (Heart_Rate_Monitor_Const.I2C_Device_Id,
+                 Heart_Rate_Monitor_Const.I2C_Slave_Address,
+                 REG_FIFO_RD_PTR'Enum_Rep);
+
+      if Reg_Fifo_Rd_Ptr_Value = Reg_Fifo_Wr_Ptr_Value then
+         --  FIFO is empty
+         Suspend_Until_True (
+            Heart_Rate_Monitor_Var.Heart_Rate_Reading_Ready_Susp_Obj);
+      end if;
 
       I2C_Read (Heart_Rate_Monitor_Const.I2C_Device_Id,
                 Heart_Rate_Monitor_Const.I2C_Slave_Address,
@@ -308,6 +345,11 @@ package body Heart_Rate_Monitor is
       Reg_Mode_Cfg_Value : Reg_Mode_Cfg_Type;
       Reg_Int_Enable_1_Value : Reg_Int_Enable_1_Type;
    begin
+      Reg_Mode_Cfg_Value.Value :=
+         I2C_Read (Heart_Rate_Monitor_Const.I2C_Device_Id,
+                   Heart_Rate_Monitor_Const.I2C_Slave_Address,
+                   REG_MODE_CFG'Enum_Rep);
+
       Reg_Mode_Cfg_Value.Mode := Heart_Rate_Mode;
       Reg_Mode_Cfg_Value.Sleep := 0;
       I2C_Write (Heart_Rate_Monitor_Const.I2C_Device_Id,
@@ -315,7 +357,10 @@ package body Heart_Rate_Monitor is
                  REG_MODE_CFG'Enum_Rep,
                  Reg_Mode_Cfg_Value.Value);
 
-      --  clear FIFO pointers
+      --
+      --  Flush FIFO (by clearing the FIFO read/write pointers):
+      --
+
       I2C_Write (Heart_Rate_Monitor_Const.I2C_Device_Id,
                  Heart_Rate_Monitor_Const.I2C_Slave_Address,
                  REG_FIFO_WR_PTR'Enum_Rep,
@@ -331,7 +376,14 @@ package body Heart_Rate_Monitor is
                  REG_FIFO_OV_PTR'Enum_Rep,
                  16#0#);
 
-      Reg_Int_Enable_1_Value.Prox_Int_En := 1;
+      --
+      --  Enable data-ready interrupt:
+      --
+      Reg_Int_Enable_1_Value.Value :=
+         I2C_Read (Heart_Rate_Monitor_Const.I2C_Device_Id,
+                   Heart_Rate_Monitor_Const.I2C_Slave_Address,
+                   REG_INT_ENABLE_1'Enum_Rep);
+      Reg_Int_Enable_1_Value.Ppg_Rdy_En := 1;
       I2C_Write (Heart_Rate_Monitor_Const.I2C_Device_Id,
                  Heart_Rate_Monitor_Const.I2C_Slave_Address,
                  REG_INT_ENABLE_1'Enum_Rep,
@@ -346,12 +398,23 @@ package body Heart_Rate_Monitor is
       Reg_Mode_Cfg_Value : Reg_Mode_Cfg_Type;
       Reg_Int_Enable_1_Value : Reg_Int_Enable_1_Type;
    begin
-      Reg_Int_Enable_1_Value.Prox_Int_En := 0;
+      --
+      --  Disable data-ready interrupt:
+      --
+      Reg_Int_Enable_1_Value.Value :=
+         I2C_Read (Heart_Rate_Monitor_Const.I2C_Device_Id,
+                   Heart_Rate_Monitor_Const.I2C_Slave_Address,
+                   REG_INT_ENABLE_1'Enum_Rep);
       Reg_Int_Enable_1_Value.Ppg_Rdy_En := 0;
       I2C_Write (Heart_Rate_Monitor_Const.I2C_Device_Id,
                  Heart_Rate_Monitor_Const.I2C_Slave_Address,
                  REG_INT_ENABLE_1'Enum_Rep,
                  Reg_Int_Enable_1_Value.Value);
+
+      Reg_Mode_Cfg_Value.Value :=
+         I2C_Read (Heart_Rate_Monitor_Const.I2C_Device_Id,
+                   Heart_Rate_Monitor_Const.I2C_Slave_Address,
+                   REG_MODE_CFG'Enum_Rep);
 
       Reg_Mode_Cfg_Value.Mode := Off_Mode;
       Reg_Mode_Cfg_Value.Sleep := 1;
@@ -367,7 +430,6 @@ package body Heart_Rate_Monitor is
 
    task body Interrupt_Task is
       Reg_Int_Status_1_Value : Reg_Int_Status_1_Type;
-      Reg_Int_Enable_1_Value : Reg_Int_Enable_1_Type;
    begin
       Suspend_Until_True (Heart_Rate_Monitor_Var.Interrupt_Task_Susp_Obj);
       Runtime_Logs.Info_Print ("Heart_Rate_Monitor Interrupt task started");
@@ -390,33 +452,15 @@ package body Heart_Rate_Monitor is
 
          Runtime_Logs.Debug_Print ("Heart rate monitor interrupt (Status" &
                                    Reg_Int_Status_1_Value.Value'Image &
-                                   ")"); --???
-
-         if Reg_Int_Status_1_Value.Prox_Int_En = 1 then
-            Runtime_Logs.Debug_Print ("Heart rate monitor proximity interrupt");
-
-            Reg_Int_Enable_1_Value.Value :=
-               I2C_Read (Heart_Rate_Monitor_Const.I2C_Device_Id,
-                         Heart_Rate_Monitor_Const.I2C_Slave_Address,
-                         REG_INT_ENABLE_1'Enum_Rep);
-
-            --
-            --  Enable generation of data sample ready interrupt
-            --`
-            Reg_Int_Enable_1_Value.Ppg_Rdy_En := 1;
-            I2C_Write (Heart_Rate_Monitor_Const.I2C_Device_Id,
-                       Heart_Rate_Monitor_Const.I2C_Slave_Address,
-                       REG_INT_ENABLE_1'Enum_Rep,
-                       Reg_Int_Enable_1_Value.Value);
-         end if;
+                                   ")");
 
          if Reg_Int_Status_1_Value.Ppg_Rdy_En = 1 then
-            Runtime_Logs.Debug_Print ("Heart rate sample ready interrupt");
+            Runtime_Logs.Debug_Print ("> Heart rate sample ready interrupt");
             Set_True (Heart_Rate_Monitor_Var.Heart_Rate_Reading_Ready_Susp_Obj);
          end if;
 
          if Reg_Int_Status_1_Value.Pwr_Rdy_En = 1 then
-            Runtime_Logs.Debug_Print ("Heart rate Powered on interrupt");
+            Runtime_Logs.Debug_Print ("> Heart rate powered on interrupt");
          end if;
       end loop;
    end Interrupt_Task;

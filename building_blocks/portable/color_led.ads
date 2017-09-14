@@ -54,6 +54,14 @@ package Color_Led is
    --  Initializes the multi-color LED peripheral
    --
 
+   procedure Set_Color (Color : Led_Color_Type)
+      with Pre => Initialized;
+   --
+   --  Set the current color of the multi-color LED
+   --
+   --  @param Color color to be set on the LED
+   --
+
    function Set_Color (New_Color : Led_Color_Type) return Led_Color_Type
      with Pre => Initialized;
    --

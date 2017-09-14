@@ -31,12 +31,9 @@ with Runtime_Logs;
 with Reset_Counter;
 with Microcontroller.MCU_Specific;
 with Pin_Mux_Driver;
-with Color_Led;
 with Serial_Console;
-with Bluetooth;
 with Command_Parser;
 with GNAT.Source_Info;
-with Ada.Real_Time;
 with Last_Chance_Handler;
 with Memory_Protection;
 with Nor_Flash_Driver;
@@ -75,14 +72,7 @@ procedure Main is
 
    -- ** --
 
-   Heartbeat_Period_Ms : constant Ada.Real_Time.Time_Span :=
-     Ada.Real_Time.Milliseconds (500);
-
-   Old_Color : Color_Led.Led_Color_Type with Unreferenced;
-
-   -- ** --
-
-begin -- Hexiwear_Iot_Stack
+begin -- Main
    Memory_Protection.Enable_MPU;
 
    Runtime_Logs.Initialize;
@@ -90,15 +80,11 @@ begin -- Hexiwear_Iot_Stack
 
    --  Initialize devices used:
    Pin_Mux_Driver.Initialize;
-   Color_Led.Initialize;
    Serial_Console.Initialize;
    Nor_Flash_Driver.Initialize;
    DMA_Driver.Initialize;
-   --Old_Color := Color_Led.Set_Color (Color_Led.Blue);
-   --Color_Led.Turn_On_Blinker (Heartbeat_Period_Ms);
 
    Print_Console_Greeting;
-   Bluetooth.Initialize;
    Command_Parser.Initialize;
    Watch.Initialize;
    loop

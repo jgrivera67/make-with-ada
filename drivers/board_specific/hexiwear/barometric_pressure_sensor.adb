@@ -89,8 +89,8 @@ package body Barometric_Pressure_Sensor is
       Int2_Task_Susp_Obj : Suspension_Object;
       Altitude_Changed_Susp_Obj : Suspension_Object;
       Temperature_Changed_Susp_Obj : Suspension_Object;
-      Latest_Altitude_Reading : Reading_Protected_Type;
-      Latest_Temperature_Reading : Reading_Protected_Type;
+      Altitude_Data_Ready_Susp_Obj : Suspension_Object;
+      Temperature_Data_Ready_Susp_Obj : Suspension_Object;
    end record with Alignment => MPU_Region_Alignment;
 
    Barometric_Pressure_Sensor_Var : Barometric_Pressure_Sensor_Type;
@@ -114,36 +114,6 @@ package body Barometric_Pressure_Sensor is
 
    function Decode_2bit_Fractional_Part (Encoded_Value : Byte)
       return Unsigned_8;
-
-   -----------------------------------------
-   -- Activate_Barometric_Pressure_Sensor --
-   -----------------------------------------
-
-   procedure Activate_Barometric_Pressure_Sensor is
-      Reg_Ctrl_Reg1_Value : Reg_Ctrl_Reg1_Type;
-   begin
-      --
-      --   Activate barometric pressure sensor:
-      --
-      Reg_Ctrl_Reg1_Value.Value :=
-         I2C_Read (Barometric_Pressure_Sensor_Const.I2C_Device_Id,
-                   Barometric_Pressure_Sensor_Const.I2C_Slave_Address,
-                   REG_CTRL_REG1'Enum_Rep);
-
-      Reg_Ctrl_Reg1_Value.SBYB := 1;
-      I2C_Write (Barometric_Pressure_Sensor_Const.I2C_Device_Id,
-                 Barometric_Pressure_Sensor_Const.I2C_Slave_Address,
-                 REG_CTRL_REG1'Enum_Rep,
-                 Reg_Ctrl_Reg1_Value.Value);
-
-      Reg_Ctrl_Reg1_Value.Value :=
-         I2C_Read (Barometric_Pressure_Sensor_Const.I2C_Device_Id,
-                   Barometric_Pressure_Sensor_Const.I2C_Slave_Address,
-                   REG_CTRL_REG1'Enum_Rep);
-
-      pragma Assert (Reg_Ctrl_Reg1_Value.SBYB = 1);
-
-   end Activate_Barometric_Pressure_Sensor;
 
    ---------------------------------------
    -- Build_18bit_Signed_Pressure_Value --
@@ -183,32 +153,6 @@ package body Barometric_Pressure_Sensor is
 
       return Integer_16 (Value);
    end Build_16bit_Signed_Altitude_Value;
-
-   -------------------------------------------
-   -- Deactivate_Barometric_Pressure_Sensor --
-   -------------------------------------------
-
-   procedure Deactivate_Barometric_Pressure_Sensor is
-      Reg_Ctrl_Reg1_Value : Reg_Ctrl_Reg1_Type;
-   begin
-      Reg_Ctrl_Reg1_Value.Value :=
-         I2C_Read (Barometric_Pressure_Sensor_Const.I2C_Device_Id,
-                   Barometric_Pressure_Sensor_Const.I2C_Slave_Address,
-                   REG_CTRL_REG1'Enum_Rep);
-
-      Reg_Ctrl_Reg1_Value.SBYB := 0;
-      I2C_Write (Barometric_Pressure_Sensor_Const.I2C_Device_Id,
-                 Barometric_Pressure_Sensor_Const.I2C_Slave_Address,
-                 REG_CTRL_REG1'Enum_Rep,
-                 Reg_Ctrl_Reg1_Value.Value);
-
-      Reg_Ctrl_Reg1_Value.Value :=
-         I2C_Read (Barometric_Pressure_Sensor_Const.I2C_Device_Id,
-                   Barometric_Pressure_Sensor_Const.I2C_Slave_Address,
-                   REG_CTRL_REG1'Enum_Rep);
-
-      pragma Assert (Reg_Ctrl_Reg1_Value.SBYB = 0);
-   end Deactivate_Barometric_Pressure_Sensor;
 
    ---------------------------------
    -- Decode_2bit_Fractional_Part --
@@ -262,28 +206,20 @@ package body Barometric_Pressure_Sensor is
    -- Detect_Altitude_Change --
    ----------------------------
 
-   procedure Detect_Altitude_Change (New_Altitude : out Reading_Type)
-   is
+   procedure Detect_Altitude_Change is
    begin
       Suspend_Until_True (
          Barometric_Pressure_Sensor_Var.Altitude_Changed_Susp_Obj);
-
-      Barometric_Pressure_Sensor_Var.Latest_Altitude_Reading.Read (
-         New_Altitude);
    end Detect_Altitude_Change;
 
    -------------------------------
    -- Detect_Temperature_Change --
    -------------------------------
 
-   procedure Detect_Temperature_Change (New_Temperature : out Reading_Type)
-   is
+   procedure Detect_Temperature_Change is
    begin
       Suspend_Until_True (
          Barometric_Pressure_Sensor_Var.Temperature_Changed_Susp_Obj);
-
-      Barometric_Pressure_Sensor_Var.Latest_Temperature_Reading.Read (
-         New_Temperature);
    end Detect_Temperature_Change;
 
    ----------------
@@ -294,7 +230,6 @@ package body Barometric_Pressure_Sensor is
       Old_Region : MPU_Region_Descriptor_Type;
       Who_Am_I_Value : Byte;
       Reg_Ctrl_Reg1_Value : Reg_Ctrl_Reg1_Type;
-      Reg_Ctrl_Reg4_Value : Reg_Ctrl_Reg4_Type;
       Reg_Ctrl_Reg5_Value : Reg_Ctrl_Reg5_Type;
       Reg_Pt_Data_Cfg_Value : Reg_Pt_Data_Cfg_Type;
    begin
@@ -370,28 +305,11 @@ package body Barometric_Pressure_Sensor is
                  Reg_Pt_Data_Cfg_Value.Value);
 
       --
-      --  Enable temperature change and pressure/altitude change interrupts:
-      --
-
-      Reg_Ctrl_Reg4_Value.Value :=
-         I2C_Read (Barometric_Pressure_Sensor_Const.I2C_Device_Id,
-                   Barometric_Pressure_Sensor_Const.I2C_Slave_Address,
-                   REG_CTRL_REG4'Enum_Rep);
-
-      Reg_Ctrl_Reg4_Value.INT_EN_TCHG := 1;
-      Reg_Ctrl_Reg4_Value.INT_EN_PCHG := 1;
-      --Reg_Ctrl_Reg4_Value.INT_EN_DRDY := 1;
-      I2C_Write (Barometric_Pressure_Sensor_Const.I2C_Device_Id,
-                 Barometric_Pressure_Sensor_Const.I2C_Slave_Address,
-                 REG_CTRL_REG4'Enum_Rep,
-                 Reg_Ctrl_Reg4_Value.Value);
-
-      --
       --  Route interrupts to GPIO interrupt pins INT1 or INT2:
       --
       Reg_Ctrl_Reg5_Value.INT_CFG_TCHG := Int1;
       Reg_Ctrl_Reg5_Value.INT_CFG_PCHG := Int1;
-      --Reg_Ctrl_Reg4_Value.INT_CFG_DRDY := Int1;
+      Reg_Ctrl_Reg5_Value.INT_CFG_DRDY := Int1;
       I2C_Write (Barometric_Pressure_Sensor_Const.I2C_Device_Id,
                  Barometric_Pressure_Sensor_Const.I2C_Slave_Address,
                  REG_CTRL_REG5'Enum_Rep,
@@ -444,7 +362,6 @@ package body Barometric_Pressure_Sensor is
       --  INT1 pin has been cleared by the corresponding pin port IRQ handler
       --
       Set_True (Barometric_Pressure_Sensor_Var.Int1_Task_Susp_Obj);
-      Runtime_Logs.Debug_Print ("Barometric pressure sensor INT1 interrupt");
    end Int1_Pin_Irq_Callback;
 
    ---------------------------
@@ -457,8 +374,245 @@ package body Barometric_Pressure_Sensor is
       --  INT2 pin has been cleared by the corresponding pin port IRQ handler
       --
       Set_True (Barometric_Pressure_Sensor_Var.Int2_Task_Susp_Obj);
-      Runtime_Logs.Debug_Print ("Barometric pressure sensor INT2 interrupt");
    end Int2_Pin_Irq_Callback;
+
+   -------------------
+   -- Read_Altitude --
+   -------------------
+
+   procedure Read_Altitude (New_Altitude : out Reading_Type)
+   is
+      Reg_Ctrl_Reg4_Value : Reg_Ctrl_Reg4_Type;
+      I2C_Data_Buffer : Bytes_Array_Type (1 .. 6);
+   begin
+      --
+      --  Read the following registers to clear any old data-ready interrupt:
+      --  - REG_OUT_P_MSB
+      --  - REG_OUT_P_CSB
+      --  - REG_OUT_P_LSB
+      --  - REG_OUT_T_MSB
+      --  - REG_OUT_T_LSB
+      --  - REG_DR_STATUS
+      --
+      I2C_Read (Barometric_Pressure_Sensor_Const.I2C_Device_Id,
+                Barometric_Pressure_Sensor_Const.I2C_Slave_Address,
+                REG_OUT_P_MSB'Enum_Rep,
+                I2C_Data_Buffer);
+
+      --  Enable data-ready interrupt:
+      --
+      Reg_Ctrl_Reg4_Value.Value :=
+         I2C_Read (Barometric_Pressure_Sensor_Const.I2C_Device_Id,
+                   Barometric_Pressure_Sensor_Const.I2C_Slave_Address,
+                   REG_CTRL_REG4'Enum_Rep);
+      Reg_Ctrl_Reg4_Value.INT_EN_DRDY := 1;
+      I2C_Write (Barometric_Pressure_Sensor_Const.I2C_Device_Id,
+                 Barometric_Pressure_Sensor_Const.I2C_Slave_Address,
+                 REG_CTRL_REG4'Enum_Rep,
+                 Reg_Ctrl_Reg4_Value.Value);
+
+      Suspend_Until_True (
+         Barometric_Pressure_Sensor_Var.Altitude_Data_Ready_Susp_Obj);
+
+      --
+      --  Read in one I2C bus transaction the following registers:
+      --  - REG_OUT_P_MSB
+      --  - REG_OUT_P_CSB
+      --  - REG_OUT_P_LSB
+      --
+      I2C_Read (Barometric_Pressure_Sensor_Const.I2C_Device_Id,
+                Barometric_Pressure_Sensor_Const.I2C_Slave_Address,
+                REG_OUT_P_MSB'Enum_Rep,
+                I2C_Data_Buffer (1 .. 3));
+
+      --
+      --  Disable data-ready interrupt:
+      --
+      Reg_Ctrl_Reg4_Value.Value :=
+         I2C_Read (Barometric_Pressure_Sensor_Const.I2C_Device_Id,
+                   Barometric_Pressure_Sensor_Const.I2C_Slave_Address,
+                   REG_CTRL_REG4'Enum_Rep);
+      Reg_Ctrl_Reg4_Value.INT_EN_DRDY := 0;
+      I2C_Write (Barometric_Pressure_Sensor_Const.I2C_Device_Id,
+                 Barometric_Pressure_Sensor_Const.I2C_Slave_Address,
+                 REG_CTRL_REG4'Enum_Rep,
+                 Reg_Ctrl_Reg4_Value.Value);
+
+      --
+      --  Return latest Altitude reading (in meters):
+      --
+      New_Altitude.Integer_Part :=
+         Integer_Part_Type (
+            Build_16bit_Signed_Altitude_Value (I2C_Data_Buffer (1 .. 2)));
+
+      New_Altitude.Fractional_Part :=
+         Fractional_Part_Type (
+            Decode_4bit_Fractional_Part (Shift_Right (I2C_Data_Buffer (3), 4)));
+   end Read_Altitude;
+
+   ----------------------
+   -- Read_Temperature --
+   ----------------------
+
+   procedure Read_Temperature (New_Temperature : out Reading_Type)
+   is
+      Reg_Ctrl_Reg4_Value : Reg_Ctrl_Reg4_Type;
+      I2C_Data_Buffer : Bytes_Array_Type (1 .. 6);
+   begin
+      --
+      --  Read the following registers to clear any old data-ready interrupt:
+      --  - REG_OUT_P_MSB
+      --  - REG_OUT_P_CSB
+      --  - REG_OUT_P_LSB
+      --  - REG_OUT_T_MSB
+      --  - REG_OUT_T_LSB
+      --  - REG_DR_STATUS
+      --
+      I2C_Read (Barometric_Pressure_Sensor_Const.I2C_Device_Id,
+                Barometric_Pressure_Sensor_Const.I2C_Slave_Address,
+                REG_OUT_P_MSB'Enum_Rep,
+                I2C_Data_Buffer);
+
+      --
+      --  Enable data-ready interrupt:
+      --
+      Reg_Ctrl_Reg4_Value.Value :=
+         I2C_Read (Barometric_Pressure_Sensor_Const.I2C_Device_Id,
+                   Barometric_Pressure_Sensor_Const.I2C_Slave_Address,
+                   REG_CTRL_REG4'Enum_Rep);
+      Reg_Ctrl_Reg4_Value.INT_EN_DRDY := 1;
+      I2C_Write (Barometric_Pressure_Sensor_Const.I2C_Device_Id,
+                 Barometric_Pressure_Sensor_Const.I2C_Slave_Address,
+                 REG_CTRL_REG4'Enum_Rep,
+                 Reg_Ctrl_Reg4_Value.Value);
+
+      Suspend_Until_True (
+         Barometric_Pressure_Sensor_Var.Temperature_Data_Ready_Susp_Obj);
+
+      --
+      --  Read in one I2C bus transaction the following registers:
+      --  - REG_OUT_T_MSB
+      --  - REG_OUT_T_LSB
+      --
+      I2C_Read (Barometric_Pressure_Sensor_Const.I2C_Device_Id,
+                Barometric_Pressure_Sensor_Const.I2C_Slave_Address,
+                REG_OUT_T_MSB'Enum_Rep,
+                I2C_Data_Buffer (1 .. 2));
+
+      --
+      --  Disable data-ready interrupt:
+      --
+      Reg_Ctrl_Reg4_Value.Value :=
+         I2C_Read (Barometric_Pressure_Sensor_Const.I2C_Device_Id,
+                   Barometric_Pressure_Sensor_Const.I2C_Slave_Address,
+                   REG_CTRL_REG4'Enum_Rep);
+      Reg_Ctrl_Reg4_Value.INT_EN_DRDY := 0;
+      I2C_Write (Barometric_Pressure_Sensor_Const.I2C_Device_Id,
+                 Barometric_Pressure_Sensor_Const.I2C_Slave_Address,
+                 REG_CTRL_REG4'Enum_Rep,
+                 Reg_Ctrl_Reg4_Value.Value);
+
+      --
+      --  Return latest temperature reading (in degrees Celsius):
+      --
+      New_Temperature.Integer_Part :=
+         Integer_Part_Type (Integer_8 (I2C_Data_Buffer (1)));
+      New_Temperature.Fractional_Part :=
+         Fractional_Part_Type (
+            Decode_4bit_Fractional_Part (Shift_Right (I2C_Data_Buffer (2), 4)));
+   end Read_Temperature;
+
+   --------------------------------------
+   -- Start_Barometric_Pressure_Sensor --
+   --------------------------------------
+
+   procedure Start_Barometric_Pressure_Sensor is
+      Reg_Ctrl_Reg1_Value : Reg_Ctrl_Reg1_Type;
+      Reg_Ctrl_Reg4_Value : Reg_Ctrl_Reg4_Type;
+   begin
+      --
+      --   Activate barometric pressure sensor:
+      --
+      Reg_Ctrl_Reg1_Value.Value :=
+         I2C_Read (Barometric_Pressure_Sensor_Const.I2C_Device_Id,
+                   Barometric_Pressure_Sensor_Const.I2C_Slave_Address,
+                   REG_CTRL_REG1'Enum_Rep);
+      Reg_Ctrl_Reg1_Value.SBYB := 1;
+      I2C_Write (Barometric_Pressure_Sensor_Const.I2C_Device_Id,
+                 Barometric_Pressure_Sensor_Const.I2C_Slave_Address,
+                 REG_CTRL_REG1'Enum_Rep,
+                 Reg_Ctrl_Reg1_Value.Value);
+
+      Reg_Ctrl_Reg1_Value.Value :=
+         I2C_Read (Barometric_Pressure_Sensor_Const.I2C_Device_Id,
+                   Barometric_Pressure_Sensor_Const.I2C_Slave_Address,
+                   REG_CTRL_REG1'Enum_Rep);
+
+      pragma Assert (Reg_Ctrl_Reg1_Value.SBYB = 1);
+
+      --
+      --  Enable temperature change and pressure/altitude change interrupts:
+      --
+      Reg_Ctrl_Reg4_Value.Value :=
+         I2C_Read (Barometric_Pressure_Sensor_Const.I2C_Device_Id,
+                   Barometric_Pressure_Sensor_Const.I2C_Slave_Address,
+                   REG_CTRL_REG4'Enum_Rep);
+      Reg_Ctrl_Reg4_Value.INT_EN_TCHG := 1;
+      Reg_Ctrl_Reg4_Value.INT_EN_PCHG := 1;
+      I2C_Write (Barometric_Pressure_Sensor_Const.I2C_Device_Id,
+                 Barometric_Pressure_Sensor_Const.I2C_Slave_Address,
+                 REG_CTRL_REG4'Enum_Rep,
+                 Reg_Ctrl_Reg4_Value.Value);
+   end Start_Barometric_Pressure_Sensor;
+
+   -------------------------------------
+   -- Stop_Barometric_Pressure_Sensor --
+   -------------------------------------
+
+   procedure Stop_Barometric_Pressure_Sensor is
+      Reg_Ctrl_Reg1_Value : Reg_Ctrl_Reg1_Type;
+      Reg_Ctrl_Reg4_Value : Reg_Ctrl_Reg4_Type;
+   begin
+      --
+      --  Disable temperature change and pressure/altitude change interrupts:
+      --
+      Reg_Ctrl_Reg4_Value.Value :=
+         I2C_Read (Barometric_Pressure_Sensor_Const.I2C_Device_Id,
+                   Barometric_Pressure_Sensor_Const.I2C_Slave_Address,
+                   REG_CTRL_REG4'Enum_Rep);
+      Reg_Ctrl_Reg4_Value.INT_EN_TCHG := 0;
+      Reg_Ctrl_Reg4_Value.INT_EN_PCHG := 0;
+      Reg_Ctrl_Reg4_Value.INT_EN_DRDY := 0;
+      I2C_Write (Barometric_Pressure_Sensor_Const.I2C_Device_Id,
+                 Barometric_Pressure_Sensor_Const.I2C_Slave_Address,
+                 REG_CTRL_REG4'Enum_Rep,
+                 Reg_Ctrl_Reg4_Value.Value);
+
+      Reg_Ctrl_Reg1_Value.Value :=
+         I2C_Read (Barometric_Pressure_Sensor_Const.I2C_Device_Id,
+                   Barometric_Pressure_Sensor_Const.I2C_Slave_Address,
+                   REG_CTRL_REG1'Enum_Rep);
+
+      --
+      --  Deactivate barometric pressure sensor:
+      --
+      Reg_Ctrl_Reg1_Value.Value :=
+         I2C_Read (Barometric_Pressure_Sensor_Const.I2C_Device_Id,
+                   Barometric_Pressure_Sensor_Const.I2C_Slave_Address,
+                   REG_CTRL_REG1'Enum_Rep);
+      Reg_Ctrl_Reg1_Value.SBYB := 0;
+      I2C_Write (Barometric_Pressure_Sensor_Const.I2C_Device_Id,
+                 Barometric_Pressure_Sensor_Const.I2C_Slave_Address,
+                 REG_CTRL_REG1'Enum_Rep,
+                 Reg_Ctrl_Reg1_Value.Value);
+
+      Reg_Ctrl_Reg1_Value.Value :=
+         I2C_Read (Barometric_Pressure_Sensor_Const.I2C_Device_Id,
+                   Barometric_Pressure_Sensor_Const.I2C_Slave_Address,
+                   REG_CTRL_REG1'Enum_Rep);
+
+      pragma Assert (Reg_Ctrl_Reg1_Value.SBYB = 0);
+   end Stop_Barometric_Pressure_Sensor;
 
    ---------------
    -- Int1_Task --
@@ -467,9 +621,6 @@ package body Barometric_Pressure_Sensor is
    task body Int1_Task is
       Reg_Int_Source_Value : Reg_Int_Source_Type;
       Reg_Dr_Status_Value : Reg_Dr_Status_Type;
-      I2C_Data_Buffer : Bytes_Array_Type (1 .. 6);
-      Altitude_Reading_Value : Reading_Type;
-      Temperature_Reading_Value : Reading_Type;
    begin
       Suspend_Until_True (Barometric_Pressure_Sensor_Var.Int1_Task_Susp_Obj);
       Runtime_Logs.Info_Print ("Barometric_Pressure_Sensor INT1 task started");
@@ -490,81 +641,38 @@ package body Barometric_Pressure_Sensor is
                       Barometric_Pressure_Sensor_Const.I2C_Slave_Address,
                       REG_INT_SOURCE'Enum_Rep);
 
-         Runtime_Logs.Debug_Print ("Barometric pressure sensor interrupt (Int source" &
-                                   Reg_Int_Source_Value.Value'Image &
-                                   ")"); --???
+         Runtime_Logs.Debug_Print (
+            "Barometric pressure sensor interrupt (Int_Source" &
+            Reg_Int_Source_Value.Value'Image & ")");
 
-         if Reg_Int_Source_Value.SRC_PCHG = 1 or else
-            Reg_Int_Source_Value.SRC_TCHG = 1
-         then
-            --
-            --  Read in one I2C bus transaction the following registers:
-            --  - REG_OUT_P_MSB
-            --  - REG_OUT_P_CSB
-            --  - REG_OUT_P_LSB
-            --  - REG_OUT_T_MSB
-            --  - REG_OUT_T_LSB
-            --  - REG_DR_STATUS
-            --
-            I2C_Read (Barometric_Pressure_Sensor_Const.I2C_Device_Id,
-                      Barometric_Pressure_Sensor_Const.I2C_Slave_Address,
-                      REG_OUT_P_MSB'Enum_Rep,
-                      I2C_Data_Buffer);
+         if Reg_Int_Source_Value.SRC_PCHG = 1 then
+            Runtime_Logs.Debug_Print ("> Altitude/Pressure changed interrupt");
+            Set_True (Barometric_Pressure_Sensor_Var.Altitude_Changed_Susp_Obj);
+         end if;
 
-            Reg_Dr_Status_Value.Value := I2C_Data_Buffer (6);
+         if Reg_Int_Source_Value.SRC_TCHG = 1 then
+            Runtime_Logs.Debug_Print ("> Temperature changed interrupt");
+            Set_True (
+               Barometric_Pressure_Sensor_Var.Temperature_Changed_Susp_Obj);
+         end if;
 
-            --pragma Assert (Reg_Dr_Status_Value.PTDR = 1);
-            --pragma Assert (Reg_Dr_Status_Value.PDR = 1 or else
-            --               Reg_Dr_Status_Value.TDR = 1);
+         if Reg_Int_Source_Value.SRC_DRDY = 1 then
+            Reg_Dr_Status_Value.Value :=
+               I2C_Read (Barometric_Pressure_Sensor_Const.I2C_Device_Id,
+                         Barometric_Pressure_Sensor_Const.I2C_Slave_Address,
+                         REG_DR_STATUS'Enum_Rep);
 
-           if Reg_Int_Source_Value.SRC_PCHG = 1 then
-               Runtime_Logs.Debug_Print ("Altitude/Pressure changed interrupt");
-               --pragma Assert (Reg_Dr_Status_Value.PDR = 1);
-
-               --
-               --  Get latest altitude reading (in meters):
-               --
-               Altitude_Reading_Value.Integer_Part :=
-                  Integer_Part_Type (
-                     Build_16bit_Signed_Altitude_Value (
-                        I2C_Data_Buffer (1 .. 2)));
-
-               Altitude_Reading_Value.Fractional_Part :=
-                  Fractional_Part_Type (
-                     Decode_4bit_Fractional_Part (
-                        Shift_Right (I2C_Data_Buffer (3), 4)));
-
-               Barometric_Pressure_Sensor_Var.Latest_Altitude_Reading.Write (
-                  Altitude_Reading_Value);
-
+            if Reg_Dr_Status_Value.PDR = 1 then
+               Runtime_Logs.Debug_Print ("> Altitude data ready interrupt");
                Set_True (
-                  Barometric_Pressure_Sensor_Var.Altitude_Changed_Susp_Obj);
+                  Barometric_Pressure_Sensor_Var.Altitude_Data_Ready_Susp_Obj);
             end if;
 
-            if Reg_Int_Source_Value.SRC_TCHG = 1 then
-               Runtime_Logs.Debug_Print ("Temperature changed interrupt");
-               --pragma Assert (Reg_Dr_Status_Value.TDR = 1);
-
-               --
-               --  Get latest temperature reading (in degrees Celsius):
-               --
-               Temperature_Reading_Value.Integer_Part :=
-                  Integer_Part_Type (Integer_8 (I2C_Data_Buffer (4)));
-
-               Temperature_Reading_Value.Fractional_Part :=
-                  Fractional_Part_Type (
-                     Decode_4bit_Fractional_Part (
-                        Shift_Right (I2C_Data_Buffer (5), 4)));
-
-               Barometric_Pressure_Sensor_Var.Latest_Temperature_Reading.Write (
-                  Temperature_Reading_Value);
-
+            if Reg_Dr_Status_Value.TDR = 1 then
+               Runtime_Logs.Debug_Print ("> Temperature data ready interrupt");
                Set_True (
-                  Barometric_Pressure_Sensor_Var.Temperature_Changed_Susp_Obj);
+                  Barometric_Pressure_Sensor_Var.Temperature_Data_Ready_Susp_Obj);
             end if;
-         else
-            Runtime_Logs.Error_Print (
-               "Unexpected INT1 interrupt from barometric pressure sensor");
          end if;
       end loop;
    end Int1_Task;

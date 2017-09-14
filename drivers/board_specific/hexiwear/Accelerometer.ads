@@ -28,10 +28,11 @@
 --
 --  @summary Accelerometer driver
 --
-with Interfaces;
+
+with Sensor_Reading;
 
 package Accelerometer is
-   use Interfaces;
+   use Sensor_Reading;
 
    function Initialized return Boolean
      with Inline;
@@ -41,29 +42,27 @@ package Accelerometer is
    procedure Initialize (Go_to_Sleep_Callback : Go_to_Sleep_Callback_Type)
      with Pre => not Initialized;
 
-   type Acceleration_Reading_Type is new Integer_16;
-
-   procedure Read_Acceleration (
-      X_Axis_Reading : in out Acceleration_Reading_Type;
-      Y_Axis_Reading : in out Acceleration_Reading_Type;
-      Z_Axis_Reading : in out Acceleration_Reading_Type;
-      Acceleration_Changed : out Boolean)
+   procedure Read_G_Forces (
+      X_Axis_Reading : out Reading_Type;
+      Y_Axis_Reading : out Reading_Type;
+      Z_Axis_Reading : out Reading_Type;
+      Use_Polling : Boolean := False)
       with Pre => Initialized;
+
+   procedure Enable_Motion_Detection_Interrupt;
+
+   procedure Disable_Motion_Detection_Interrupt;
 
    type Motion_Reading_Type is range -1 .. 1;
 
    procedure Detect_Motion (
-      X_Axis_Motion : out Unsigned_8;
-      Y_Axis_Motion : out Unsigned_8;
-      Z_Axis_Motion : out Unsigned_8)
+      X_Axis_Motion : out Motion_Reading_Type;
+      Y_Axis_Motion : out Motion_Reading_Type;
+      Z_Axis_Motion : out Motion_Reading_Type;
+      Use_Polling : Boolean := False)
       with Pre => Initialized;
 
    procedure Detect_Tapping (Double_Tap_Detected : out Boolean)
       with Pre => Initialized;
-
-   Type Milli_G_Type is new Integer;
-
-   function Convert_Acceleration_Reading_To_Milli_G (
-      Reading : Acceleration_Reading_Type) return Milli_G_Type;
 
 end Accelerometer;

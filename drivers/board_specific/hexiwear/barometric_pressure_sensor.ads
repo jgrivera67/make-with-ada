@@ -40,16 +40,22 @@ package Barometric_Pressure_Sensor is
    procedure Initialize
      with Pre => not Initialized;
 
-   procedure Activate_Barometric_Pressure_Sensor
+   procedure Start_Barometric_Pressure_Sensor
       with Pre => Initialized;
 
-   procedure Deactivate_Barometric_Pressure_Sensor
+   procedure Stop_Barometric_Pressure_Sensor
       with Pre => Initialized;
 
-   procedure Detect_Altitude_Change (New_Altitude : out Reading_Type)
+   procedure Detect_Altitude_Change
      with Pre => Initialized;
 
-   procedure Detect_Temperature_Change (New_Temperature : out Reading_Type)
+   procedure Read_Altitude (New_Altitude : out Reading_Type)
+     with Pre => Initialized;
+
+   procedure Detect_Temperature_Change
+     with Pre => Initialized;
+
+   procedure Read_Temperature (New_Temperature : out Reading_Type)
      with Pre => Initialized;
 
 end Barometric_Pressure_Sensor;

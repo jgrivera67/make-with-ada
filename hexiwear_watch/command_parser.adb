@@ -68,6 +68,8 @@ package body Command_Parser is
 
    procedure Cmd_Set_Watch_Time;
 
+   procedure Cmd_Set_Watch_Date;
+
    procedure Cmd_Test;
 
    procedure Cmd_Test_Hang;
@@ -95,6 +97,7 @@ package body Command_Parser is
      ASCII.HT & "set foreground-color <color: black, red, green, yellow, blue, magenta, cyan, white)> - Set watch display foreground color" & ASCII.LF &
      ASCII.HT & "set background-color <color: black, red, green, yellow, blue, magenta, cyan, white)> - Set watch display background color" & ASCII.LF &
      ASCII.HT & "set watch-time <hh:mm:ss> - " & "Set watch time" & ASCII.LF &
+     ASCII.HT & "set watch-date <yyyy/mm/dd> - " & "Set watch date" & ASCII.LF &
      ASCII.HT & "test color <color: black, red, green, yellow, blue, magenta, cyan, white)> - Test LED color" & ASCII.LF &
      ASCII.HT & "test assert - Test assert failure" & ASCII.LF &
      ASCII.HT & "test mpu write1 - Test forbidden write to global data" &
@@ -213,6 +216,8 @@ package body Command_Parser is
             Cmd_Set_Background_Color;
          elsif Set_Command = "watch-time" or else Set_Command = "wt" then
             Cmd_Set_Watch_Time;
+         elsif Set_Command = "watch-date" or else Set_Command = "wd" then
+            Cmd_Set_Watch_Date;
          else
             Serial_Console.Print_String
               ("Subcommand '" &
@@ -349,7 +354,106 @@ package body Command_Parser is
 
    -- ** --
 
-   procedure Cmd_Set_Watch_Time is
+   procedure Cmd_Set_Watch_Date is
+      use Watch;
+
+      function Parse_Date (Date_Str : String;
+                           Date_Secs : out Seconds_Count)
+         return Boolean;
+
+      ----------------
+      -- Parse_Date --
+      ----------------
+
+      function Parse_Date (Date_Str : String;
+                           Date_Secs : out Seconds_Count)
+                           return Boolean
+      is
+         Year: Unsigned_16;
+         Month : Unsigned_8;
+         Day : Unsigned_8;
+         Year_Days_Before_Today : Natural;
+         Conversion_Ok : Boolean;
+         Cursor : Positive range Date_Str'Range := Date_Str'First;
+      begin
+         if Date_Str'Length < 10 then
+            return False;
+         end if;
+
+         Decimal_String_To_Unsigned (Date_Str (Cursor .. Cursor + 3),
+                                     Year, Conversion_Ok);
+         if not Conversion_Ok or else Year < Reference_Year then
+            return False;
+         end if;
+
+         Cursor := Cursor + 4;
+         if Date_Str (Cursor) /= '/' then
+            return False;
+         end if;
+
+         Cursor := Cursor + 1;
+         Decimal_String_To_Unsigned (Date_Str (Cursor .. Cursor + 1),
+                                     Month, Conversion_Ok);
+         if not Conversion_Ok or else Month not in 1 .. 12 then
+            return False;
+         end if;
+
+         Cursor := Cursor + 2;
+         if Date_Str (Cursor) /= '/' then
+            return False;
+         end if;
+
+         Cursor := Cursor + 1;
+         Decimal_String_To_Unsigned (Date_Str (Cursor .. Cursor + 1),
+                                     Day, Conversion_Ok);
+         if not Conversion_Ok or else
+            Positive (Day) > Days_Per_Month (Month_Type (Month), Natural (Year))
+         then
+            return False;
+         end if;
+
+         Year_Days_Before_Today :=
+            (Natural (Year) - Reference_Year) * Days_Per_Normal_Year +
+            -- account for leap years:
+            (Natural (Year) - Reference_Year) / 4 +
+            Year_Days_Before_Month (Month_Type (Month),
+                                    Natural (Year)) +
+            Positive (Day) - 1;
+
+         Date_Secs := Seconds_Count (Year_Days_Before_Today) *
+                      Watch.Seconds_Per_Day;
+         return True;
+      end Parse_Date;
+
+      Token_Found : Boolean;
+      Token       : Command_Line.Token_Type;
+      Date_Secs : Seconds_Count;
+      Conversion_Ok : Boolean;
+
+   begin
+      Token_Found := Command_Line.Get_Next_Token (Token);
+      if not Token_Found then
+         Serial_Console.Print_String ("Error: Incomplete command" & ASCII.LF);
+         return;
+      end if;
+
+      Conversion_Ok := Parse_Date (Token.String_Value (1 .. Token.Length),
+                                   Date_Secs);
+
+      if not Conversion_Ok then
+         Serial_Console.Print_String
+           ("Error: Invalid argument " &
+              Token.String_Value (1 .. Token.Length) &
+              ASCII.LF);
+         return;
+      end if;
+
+     Watch.Set_Watch_Date (Date_Secs);
+   end Cmd_Set_Watch_Date;
+
+   -- ** --
+
+      procedure Cmd_Set_Watch_Time is
       function Parse_Wall_Time (Wall_Time_Str : String;
                                 Wall_Time_Secs : out Seconds_Count)
                                 return Boolean;
@@ -375,7 +479,7 @@ package body Command_Parser is
          Decimal_String_To_Unsigned (
             Wall_Time_Str (Cursor .. Cursor + 1),
             Hours, Conversion_Ok);
-         if not Conversion_Ok then
+         if not Conversion_Ok or else Hours > 23 then
             return False;
          end if;
 
@@ -388,7 +492,7 @@ package body Command_Parser is
          Decimal_String_To_Unsigned (
             Wall_Time_Str (Cursor .. Cursor + 1),
             Minutes, Conversion_Ok);
-         if not Conversion_Ok then
+         if not Conversion_Ok or else Minutes > 59 then
             return False;
          end if;
 
@@ -401,7 +505,7 @@ package body Command_Parser is
          Decimal_String_To_Unsigned (
             Wall_Time_Str (Cursor .. Cursor + 1),
             Seconds, Conversion_Ok);
-         if not Conversion_Ok then
+         if not Conversion_Ok or else Seconds > 59 then
             return False;
          end if;
 

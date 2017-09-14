@@ -146,19 +146,28 @@ package body Color_Led is
    -- Set_Color --
    ---------------
 
-   function Set_Color (New_Color : Led_Color_Type) return Led_Color_Type is
+   procedure Set_Color (Color : Led_Color_Type) is
       Old_Region : MPU_Region_Descriptor_Type;
-      Old_Color : Led_Color_Type;
    begin
       Set_Private_Data_Region (Rgb_Led'Address,
                                Rgb_Led'Size,
                                Read_Write,
                                Old_Region);
 
-      Old_Color := Rgb_Led.Current_Color;
-      Do_Set_Color (New_Color);
-      Rgb_Led.Current_Color := New_Color;
+      Do_Set_Color (Color);
+      Rgb_Led.Current_Color := Color;
       Restore_Private_Data_Region (Old_Region);
+   end Set_Color;
+
+   ---------------
+   -- Set_Color --
+   ---------------
+
+   function Set_Color (New_Color : Led_Color_Type) return Led_Color_Type is
+      Old_Color : Led_Color_Type;
+   begin
+      Old_Color := Rgb_Led.Current_Color;
+      Set_Color (New_Color);
       return Old_Color;
    end Set_Color;
 

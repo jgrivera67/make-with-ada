@@ -80,10 +80,7 @@ package body I2C_Driver is
       Use_Polling : Boolean;
       Buffer_Address : System.Address;
       Buffer_Length : Positive)
-      with Pre => I2C_Devices_Var (I2C_Device_Id).Current_Transaction.State =
-                    I2C_Transaction_Not_Started
-                    and
-                    Buffer_Address /= Null_Address;
+      with Pre => Buffer_Address /= Null_Address;
 
    procedure I2C_End_Transaction (I2C_Device_Id : I2C_Device_Id_Type);
 
@@ -163,6 +160,8 @@ package body I2C_Driver is
       C1_Value : I2C0_C1_Register;
    begin
       Suspend_Until_True (I2C_Device_Var.Mutex);
+      pragma Assert (I2C_Device_Var.Current_Transaction.State =
+                     I2C_Transaction_Not_Started);
 
       I2C_Start_Transaction (I2C_Device_Id,
                              I2C_Slave_Address,

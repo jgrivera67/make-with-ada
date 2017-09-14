@@ -179,7 +179,7 @@ package body RTC_Driver is
       end if;
 
       --
-      --  Disable generation of all RTC interrupt:
+      --  Disable generation of all RTC interrupts:
       --
       IER_Value.TIIE := IER_TIIE_Field_0;
       IER_Value.TOIE := IER_TOIE_Field_0;
@@ -206,12 +206,6 @@ package body RTC_Driver is
       RTC_Periph.SR := SR_Value;
 
       --
-      --  Enable the alarm interrupt:
-      --
-      IER_Value.TAIE := IER_TAIE_Field_1;
-      RTC_Periph.IER := IER_Value;
-
-      --
       --  Enable interrupts in the interrupt controller (NVIC):
       --  NOTE: This is implicitly done by the Ada runtime
       --
@@ -232,10 +226,19 @@ package body RTC_Driver is
                             RTC_Alarm_Callback : RTC_Callback_Type)
    is
       Old_Region : MPU_Region_Descriptor_Type;
+      IER_value : RTC_IER_Register;
       TAR_Value : Word;
       Old_Intmask : Word;
    begin
       Old_Intmask := Disable_Cpu_Interrupts;
+
+      --
+      --  Enable the alarm interrupt:
+      --
+      IER_Value := RTC_Periph.IER;
+      IER_Value.TAIE := IER_TAIE_Field_1;
+      RTC_Periph.IER := IER_Value;
+
       Set_Private_Data_Region (RTC_Var'Address,
                                RTC_Var'Size,
                                Read_Write,

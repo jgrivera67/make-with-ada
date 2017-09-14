@@ -36,6 +36,7 @@ with Ada.Real_Time;
 with Ada.Synchronous_Task_Control;
 with Runtime_Logs;
 with Low_Power_Driver;
+with Ada.Unchecked_Conversion;
 
 --
 -- Driver for the FXOS8700CQ accelerometer
@@ -44,6 +45,7 @@ package body Accelerometer is
    pragma SPARK_Mode (Off);
    use Memory_Protection;
    use Interfaces.Bit_Types;
+   use Interfaces;
    use I2C_Driver;
    use Devices.MCU_Specific;
    use Gpio_Driver;
@@ -101,6 +103,7 @@ package body Accelerometer is
       Int2_Task_Susp_Obj : Suspension_Object;
       Motion_Detected_Susp_Obj : Suspension_Object;
       Tapping_Detected_Susp_Obj : Suspension_Object;
+      Data_Ready_Susp_Obj : Suspension_Object;
       Go_to_Sleep_Callback : Go_to_Sleep_Callback_Type;
    end record with Alignment => MPU_Region_Alignment;
 
@@ -116,10 +119,17 @@ package body Accelerometer is
 
    procedure Activate_Accelerometer;
 
-   function Build_14bit_Signed_Value (Msb, Lsb : Byte)
-      return Acceleration_Reading_Type;
+   function Build_14bit_Signed_Value (Msb, Lsb : Byte) return Integer_16;
+
+   procedure Convert_Acceleration_Raw_Reading_To_G_Force (
+      Raw_Reading : Integer_16;
+      Scale : XYZ_Data_Cfg_FS_Type;
+      G_Force : out Reading_Type);
 
    procedure Deactivate_Accelerometer;
+
+
+   G_Conversion_Scale : constant XYZ_Data_Cfg_FS_Type := XYZ_Data_Cfg_FS_4g;
 
    ---------------------------------
    -- Accel_Int1_Pin_Irq_Callback --
@@ -132,7 +142,6 @@ package body Accelerometer is
       --  Int1 pin has been cleared by the corresponding pin port IRQ handler
       --
       Set_True (Accelerometer_Var.Int1_Task_Susp_Obj);
-      Runtime_Logs.Debug_Print ("Accelerometer INT1 interrupt");
    end Accel_Int1_Pin_Irq_Callback;
 
    ---------------------------------
@@ -146,7 +155,6 @@ package body Accelerometer is
       --  Int2 pin has been cleared by the corresponding pin port IRQ handler
       --
       Set_True (Accelerometer_Var.Int2_Task_Susp_Obj);
-      Runtime_Logs.Debug_Print ("Accelerometer INT2 interrupt");
    end Accel_Int2_Pin_Irq_Callback;
 
    ----------------------------
@@ -177,8 +185,11 @@ package body Accelerometer is
    -- Build_14bit_Signed_Value --
    ------------------------------
 
-   function Build_14bit_Signed_Value (Msb, Lsb : Byte)
-      return Acceleration_Reading_Type is
+   function Build_14bit_Signed_Value (Msb, Lsb : Byte) return Integer_16
+   is
+      function Unsigned_16_To_Integer_16 is
+         new Ada.Unchecked_Conversion (Source => Unsigned_16,
+                                       Target => Integer_16);
       Value : Unsigned_16;
    begin
       Value := Shift_Left (Unsigned_16 (Msb), 6) or
@@ -191,22 +202,36 @@ package body Accelerometer is
          Value := (Value or Shift_Left (Unsigned_16 (2#11#), 14));
       end if;
 
-      return Acceleration_Reading_Type (Value);
+      return Unsigned_16_To_Integer_16 (Value);
    end Build_14bit_Signed_Value;
 
-   ---------------------------------------------
-   -- Convert_Acceleration_Reading_To_Milli_G --
-   ---------------------------------------------
+   -------------------------------------------------
+   -- Convert_Acceleration_Raw_Reading_To_G_Force --
+   -------------------------------------------------
 
-   function Convert_Acceleration_Reading_To_Milli_G (
-      Reading : Acceleration_Reading_Type) return Milli_G_Type
+   procedure Convert_Acceleration_Raw_Reading_To_G_Force (
+      Raw_Reading : Integer_16;
+      Scale : XYZ_Data_Cfg_FS_Type;
+      G_Force : out Reading_Type)
    is
+      G_Factor : constant Float :=
+         (case Scale is
+            when XYZ_Data_Cfg_FS_2g =>
+               --  each count corresponds to 1g/4096 = 0.25mg
+               1.0 / 4096.0,
+            when XYZ_Data_Cfg_FS_4g =>
+               --  each count corresponds to 1g/2048
+               1.0 / 2048.0,
+            when XYZ_Data_Cfg_FS_8g =>
+               --  each count corresponds to 1g/1024 = 0.98mg
+               1.0 / 1024.0);
+
+      G_Value : constant Float := Float (Raw_Reading) * G_Factor;
    begin
-      --
-      --  1 reading unit = 0.25mg
-      --
-      return Milli_G_Type (Reading / 4);
-   end Convert_Acceleration_Reading_To_Milli_G;
+      G_Force.Integer_Part := Integer_Part_Type (G_Value);
+      G_Force.Fractional_Part :=
+         Fractional_Part_Type (Natural ((abs G_Value) * 1000.0) mod 1000);
+   end Convert_Acceleration_Raw_Reading_To_G_Force;
 
    ------------------------------
    -- Deactivate_Accelerometer --
@@ -241,22 +266,38 @@ package body Accelerometer is
    -------------------
 
    procedure Detect_Motion (
-      X_Axis_Motion : out Unsigned_8;
-      Y_Axis_Motion : out Unsigned_8;
-      Z_Axis_Motion : out Unsigned_8)
+      X_Axis_Motion : out Motion_Reading_Type;
+      Y_Axis_Motion : out Motion_Reading_Type;
+      Z_Axis_Motion : out Motion_Reading_Type;
+      Use_Polling : Boolean := False)
    is
       FF_MT_Src_Value : Accel_FF_MT_SRC_Register_Type;
    begin
-      Suspend_Until_True (Accelerometer_Var.Motion_Detected_Susp_Obj);
+      if Use_Polling then
+         loop
+            FF_MT_Src_Value.Value :=
+               I2C_Read (Accelerometer_Const.I2C_Device_Id,
+                         Accelerometer_Const.I2C_Slave_Address,
+                         Accel_FF_MT_Src'Enum_Rep);
 
-      --
-      --  Read the accelerometer motion detection register to make the
-      --  accelerometer de-assert the INT1 pin:
-      --
-      FF_MT_Src_Value.Value := I2C_Read (Accelerometer_Const.I2C_Device_Id,
-                                         Accelerometer_Const.I2C_Slave_Address,
-                                         Accel_FF_MT_Src'Enum_Rep);
-      pragma Assert (FF_MT_Src_Value.EA = 1);
+            exit when FF_MT_Src_Value.EA = 1;
+
+            delay until Clock + Milliseconds (10);
+         end loop;
+      else
+         Suspend_Until_True (Accelerometer_Var.Motion_Detected_Susp_Obj);
+
+         --
+         --  Read the accelerometer motion detection register to make the
+         --  accelerometer de-assert the INT1 pin:
+         --
+         FF_MT_Src_Value.Value := I2C_Read (Accelerometer_Const.I2C_Device_Id,
+                                            Accelerometer_Const.I2C_Slave_Address,
+                                            Accel_FF_MT_Src'Enum_Rep);
+
+
+         pragma Assert (FF_MT_Src_Value.EA = 1);
+      end if;
 
       X_Axis_Motion := 0;
       Y_Axis_Motion := 0;
@@ -528,10 +569,9 @@ package body Accelerometer is
       --
       --  Set threshold value for motion detection of > 0.063g:
       --  0.063g/0.063g == 1.
-      --   or
-      --  TODO: Or to set threshold to about 0.25g, use 4.
+      --  (Or to set threshold to about 0.25g, use 4.)
       --
-      FF_MT_Threshold_Value.Threshold := 4; --??? 1;
+      FF_MT_Threshold_Value.Threshold := 4; --1;
       I2C_Write (Accelerometer_Const.I2C_Device_Id,
                  Accelerometer_Const.I2C_Slave_Address,
                  Accel_FF_MT_Threshold'Enum_Rep,
@@ -542,7 +582,7 @@ package body Accelerometer is
       --  sample rate with a requirement of 100 ms timer. See table 7 of AN4070
       --  100ms / 10ms = 10
       --
-      --  TODO: Or to set debounce to zero, use 0
+      --  (Or to set debounce to zero, use 0)
       --
       FF_MT_Count_Value := 10;
       I2C_Write (Accelerometer_Const.I2C_Device_Id,
@@ -552,6 +592,7 @@ package body Accelerometer is
 
       --
       --  Set HPF_OUT = 1 - high-pass filter enabled
+      --  Example:
       --  Set FS[1:0] = 0 - 2g scale:
       --  range -2g .. 2g (0.25mg increments):
       --  - A reading of 0x1fff (or 8191) corresponds to 1.99975g
@@ -565,7 +606,7 @@ package body Accelerometer is
       --   1 =  0.25mg
       --
       XYZ_Data_Cfg_Value.HPF_Out := 1;
-      XYZ_Data_Cfg_Value.FS := XYZ_Data_Cfg_FS_2g;
+      XYZ_Data_Cfg_Value.FS := G_Conversion_Scale;
       I2C_Write (Accelerometer_Const.I2C_Device_Id,
                  Accelerometer_Const.I2C_Slave_Address,
                  Accel_XYZ_Data_Cfg'Enum_Rep,
@@ -587,13 +628,16 @@ package body Accelerometer is
                  Ctrl_Reg3_Value.Value);
 
       --
-      --  Enable data-ready, auto-sleep, motion detection and tapping detection
-      --  interrupts:
-      --
+      --  Enable interrupts:
+      --  - Enable tapping detection interrupt
+      --  - If Go_to_Sleep_Callback not null, enable auto-sleep interrupt
       --Ctrl_Reg4_Value.Int_En_Drdy := 1;
       --Ctrl_Reg4_Value.Int_En_Ff_Mt := 1;
-      Ctrl_Reg4_Value.Int_En_Aslp := 1;
       Ctrl_Reg4_Value.Int_En_Pulse := 1;
+      if Go_to_Sleep_Callback /= null then
+         Ctrl_Reg4_Value.Int_En_Aslp := 1;
+      end if;
+
       I2C_Write (Accelerometer_Const.I2C_Device_Id,
                  Accelerometer_Const.I2C_Slave_Address,
                  Accel_Ctrl_Reg4'Enum_Rep,
@@ -602,8 +646,8 @@ package body Accelerometer is
       --
       --  Route interrupts to GPIO interrupt pins INT1 or INT2:
       --
-      --Ctrl_Reg5_Value.Int_Cfg_Drdy := Int1;
-      --Ctrl_Reg5_Value.Int_Cfg_Ff_Mt := Int1;
+      Ctrl_Reg5_Value.Int_Cfg_Drdy := Int1;
+      Ctrl_Reg5_Value.Int_Cfg_Ff_Mt := Int1;
       Ctrl_Reg5_Value.Int_Cfg_Aslp := Int1;
       Ctrl_Reg5_Value.Int_Cfg_Pulse := Int1;
       I2C_Write (Accelerometer_Const.I2C_Device_Id,
@@ -615,7 +659,6 @@ package body Accelerometer is
       --  Set sampling rates accelerometer:
       --  - ASLP rate: every 640ms (1.56 HZ)
       --  - data rate: 100 HZ (every 10ms)
-      --  - FSR=2g
       --
       Ctrl_Reg1_Value.Lnoise := 1;
       Ctrl_Reg1_Value.Aslp_Rate := Aslp_Rate_20Ms; --Aslp_Rate_640Ms;
@@ -707,47 +750,145 @@ package body Accelerometer is
 
    function Initialized return Boolean is (Accelerometer_Var.Initialized);
 
-   -----------------------
-   -- Read_Acceleration --
-   -----------------------
+   -------------------
+   -- Read_G_Forces --
+   -------------------
 
-   procedure Read_Acceleration (
-      X_Axis_Reading : in out Acceleration_Reading_Type;
-      Y_Axis_Reading : in out Acceleration_Reading_Type;
-      Z_Axis_Reading : in out Acceleration_Reading_Type;
-      Acceleration_Changed : out Boolean)
+   procedure Read_G_Forces (
+      X_Axis_Reading : out Reading_Type;
+      Y_Axis_Reading : out Reading_Type;
+      Z_Axis_Reading : out Reading_Type;
+      Use_Polling : Boolean := False)
    is
       Readings_Buffer :  Bytes_Array_Type (1 .. 6);
-      Status_Value : Accel_Status_Register_Type;
+      Reg_Status_Value : Accel_Status_Register_Type;
    begin
-      Status_Value.Value := I2C_Read (Accelerometer_Const.I2C_Device_Id,
-                                      Accelerometer_Const.I2C_Slave_Address,
-                                      Accel_Status'Enum_Rep);
+      Reg_Status_Value.Value := I2C_Read (Accelerometer_Const.I2C_Device_Id,
+                                          Accelerometer_Const.I2C_Slave_Address,
+                                          Accel_Status'Enum_Rep);
 
-     Acceleration_Changed := (Status_Value.ZYX_DR /= 0);
-     if not Acceleration_Changed then
-        return;
-     end if;
+      if Reg_Status_Value.ZYX_DR = 0 then
+         if Use_Polling then
+            loop
+               Reg_Status_Value.Value := I2C_Read (Accelerometer_Const.I2C_Device_Id,
+                                                   Accelerometer_Const.I2C_Slave_Address,
+                                                   Accel_Status'Enum_Rep);
 
-     --
-     --  Read the OUT_X_MSB, OUT_X_LSB, OUT_Y_MSB, OUT_Y_LSB, OUT_Z_MSB and
-     --  OUT_Z_LSB, in a single burst of 6 bytes.
-     --
-     I2C_Read (Accelerometer_Const.I2C_Device_Id,
-               Accelerometer_Const.I2C_Slave_Address,
-               Accel_Out_X_Msb'Enum_Rep,
-               Readings_Buffer);
+               exit when Reg_Status_Value.ZYX_DR = 1;
+               delay until Clock + Milliseconds (10);
+            end loop;
+         else
+            Suspend_Until_True (Accelerometer_Var.Data_Ready_Susp_Obj);
 
+            Reg_Status_Value.Value := I2C_Read (Accelerometer_Const.I2C_Device_Id,
+                                                Accelerometer_Const.I2C_Slave_Address,
+                                                Accel_Status'Enum_Rep);
 
-     X_Axis_Reading := Build_14bit_Signed_Value (Readings_Buffer (1),
-                                                 Readings_Buffer (2));
+            pragma Assert (Reg_Status_Value.ZYX_DR = 1);
+         end if;
+      end if;
 
-     Y_Axis_Reading := Build_14bit_Signed_Value (Readings_Buffer (3),
-                                                 Readings_Buffer (4));
+      --
+      --  Read the OUT_X_MSB, OUT_X_LSB, OUT_Y_MSB, OUT_Y_LSB, OUT_Z_MSB and
+      --  OUT_Z_LSB, in a single burst of 6 bytes.
+      --
+      I2C_Read (Accelerometer_Const.I2C_Device_Id,
+                Accelerometer_Const.I2C_Slave_Address,
+                Accel_Out_X_Msb'Enum_Rep,
+                Readings_Buffer);
 
-     Z_Axis_Reading := Build_14bit_Signed_Value (Readings_Buffer (5),
-                                                 Readings_Buffer (6));
-   end Read_Acceleration;
+      Convert_Acceleration_Raw_Reading_To_G_Force (
+         Build_14bit_Signed_Value (Readings_Buffer (1),
+                                   Readings_Buffer (2)),
+         G_Conversion_Scale,
+         X_Axis_Reading);
+
+      Convert_Acceleration_Raw_Reading_To_G_Force (
+         Build_14bit_Signed_Value (Readings_Buffer (3),
+                                   Readings_Buffer (4)),
+         G_Conversion_Scale,
+         Y_Axis_Reading);
+
+      Convert_Acceleration_Raw_Reading_To_G_Force (
+         Build_14bit_Signed_Value (Readings_Buffer (5),
+                                   Readings_Buffer (6)),
+         G_Conversion_Scale,
+         Z_Axis_Reading);
+   end Read_G_Forces;
+
+   ---------------------------------------
+   -- Enable_Motion_Detection_Interrupt --
+   ---------------------------------------
+
+   procedure Enable_Motion_Detection_Interrupt
+   is
+      Ctrl_Reg4_Value : Accel_Ctrl_Reg4_Register_Type;
+      FF_MT_Src_Value : Accel_FF_MT_SRC_Register_Type with Unreferenced;
+      Dummy_Readings_Buffer :  Bytes_Array_Type (1 .. 6) with Unreferenced;
+   begin
+      Deactivate_Accelerometer;
+
+      --
+      --  Clear any pending motion detection interrupt by reading the
+      --  accelerometer motion detection register:
+      --
+      FF_MT_Src_Value.Value := I2C_Read (Accelerometer_Const.I2C_Device_Id,
+                                         Accelerometer_Const.I2C_Slave_Address,
+                                         Accel_FF_MT_Src'Enum_Rep);
+
+      --
+      --  Clear any old data-ready interrupt by reading the following registers:
+      --  OUT_X_MSB, OUT_X_LSB, OUT_Y_MSB, OUT_Y_LSB, OUT_Z_MSB and
+      --  OUT_Z_LSB
+      --
+      I2C_Read (Accelerometer_Const.I2C_Device_Id,
+                Accelerometer_Const.I2C_Slave_Address,
+                Accel_Out_X_Msb'Enum_Rep,
+                Dummy_Readings_Buffer);
+
+      --
+      --  Enable motion detection and data-ready interrupts:
+      --
+      Ctrl_Reg4_Value.Value := I2C_Read (Accelerometer_Const.I2C_Device_Id,
+                                         Accelerometer_Const.I2C_Slave_Address,
+                                         Accel_Ctrl_Reg4'Enum_Rep);
+
+      Ctrl_Reg4_Value.Int_En_Ff_Mt := 1;
+      Ctrl_Reg4_Value.Int_En_Drdy := 1;
+      I2C_Write (Accelerometer_Const.I2C_Device_Id,
+                 Accelerometer_Const.I2C_Slave_Address,
+                 Accel_Ctrl_Reg4'Enum_Rep,
+                 Ctrl_Reg4_Value.Value);
+
+      Activate_Accelerometer;
+   end Enable_Motion_Detection_Interrupt;
+
+   ----------------------------------------
+   -- Disable_Motion_Detection_Interrupt --
+   ----------------------------------------
+
+   procedure Disable_Motion_Detection_Interrupt
+   is
+      Ctrl_Reg4_Value : Accel_Ctrl_Reg4_Register_Type;
+   begin
+      Deactivate_Accelerometer;
+
+      --
+      --  Disable motion detection and data-ready interrupts:
+      --
+      Ctrl_Reg4_Value.Value := I2C_Read (Accelerometer_Const.I2C_Device_Id,
+                                         Accelerometer_Const.I2C_Slave_Address,
+                                         Accel_Ctrl_Reg4'Enum_Rep);
+
+      Ctrl_Reg4_Value.Int_En_Ff_Mt := 0;
+      Ctrl_Reg4_Value.Int_En_Drdy := 0;
+      I2C_Write (Accelerometer_Const.I2C_Device_Id,
+                 Accelerometer_Const.I2C_Slave_Address,
+                 Accel_Ctrl_Reg4'Enum_Rep,
+                 Ctrl_Reg4_Value.Value);
+
+      Activate_Accelerometer;
+   end Disable_Motion_Detection_Interrupt;
 
    ---------------
    -- Int1_Task --
@@ -771,6 +912,10 @@ package body Accelerometer is
                                              Accelerometer_Const.I2C_Slave_Address,
                                              Accel_Int_Source'Enum_Rep);
 
+         Runtime_Logs.Debug_Print (
+            "Accelerometer interrupt (Int_Source" &
+            Int_Source_Value.Value'Image & ")");
+
          if Int_Source_Value.Int_En_Aslp = 1 then
             --
             --  Read the accelerometer SYSMOD register to make the
@@ -780,10 +925,10 @@ package body Accelerometer is
                                             Accelerometer_Const.I2C_Slave_Address,
                                             Accel_Sysmod'Enum_Rep);
             if Sysmod_Value.Sysmod = Sleep_Mode then
-               Runtime_Logs.Debug_Print ("Sleep mode interrupt");
+               Runtime_Logs.Debug_Print ("> Sleep mode interrupt");
                Accelerometer_Var.Go_to_Sleep_Callback.all;
             elsif Sysmod_Value.Sysmod = Wake_Mode then
-               Runtime_Logs.Debug_Print ("Wake mode interrupt");
+               Runtime_Logs.Debug_Print ("> Wake mode interrupt");
                -- TODO: Move CPU to normal mode, do callback?
 
                --
@@ -802,15 +947,19 @@ package body Accelerometer is
          end if;
 
          if Int_Source_Value.Int_En_Ff_Mt = 1 then
-            Runtime_Logs.Debug_Print ("Motion detected interrupt");
+            Runtime_Logs.Debug_Print ("> Motion detected interrupt");
             Set_True (Accelerometer_Var.Motion_Detected_Susp_Obj);
          end if;
 
          if Int_Source_Value.Int_En_Pulse = 1 then
-            Runtime_Logs.Debug_Print ("Tapping detected interrupt");
+            Runtime_Logs.Debug_Print ("> Tapping detected interrupt");
             Set_True (Accelerometer_Var.Tapping_Detected_Susp_Obj);
          end if;
 
+         if Int_Source_Value.Int_En_Drdy = 1 then
+            Runtime_Logs.Debug_Print ("> Accelerometer data ready interrupt");
+            Set_True (Accelerometer_Var.Data_Ready_Susp_Obj);
+         end if;
       end loop;
    end Int1_Task;
 

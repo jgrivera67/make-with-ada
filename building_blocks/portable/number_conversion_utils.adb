@@ -300,7 +300,6 @@ package body Number_Conversion_Utils is
       Tmp_Buffer : String (1 .. 10);
       Start_Index : Positive range Tmp_Buffer'Range := Tmp_Buffer'First;
       Value_Left : Unsigned_32 := Unsigned_32 (abs Value);
-      First_Digit_Index : Positive range Buffer'Range;
    begin
       for I in reverse Tmp_Buffer'Range loop
          Tmp_Buffer (I) := Character'Val ((Value_Left mod 10) +
@@ -315,18 +314,23 @@ package body Number_Conversion_Utils is
       Actual_Length := (Tmp_Buffer'Last - Start_Index) + 1;
       if Value < 0 then
          Actual_Length := Actual_Length + 1;
-         Buffer (Buffer'First) := '-';
-         First_Digit_Index := Buffer'First + 1;
-      else
-         First_Digit_Index := Buffer'First;
-      end if;
-
-      if Buffer'Length >= Actual_Length then
-         Buffer (First_Digit_Index .. First_Digit_Index + Actual_Length - 1) :=
+         if Buffer'Length >= Actual_Length then
+            Buffer (Buffer'First) := '-';
+            Buffer (Buffer'First + 1 .. Buffer'First + 1 + Actual_Length - 2) :=
                Tmp_Buffer (Start_Index .. Tmp_Buffer'Last);
+         else
+            raise Program_Error
+               with "Signed_To_Decimal_String: buffer too small";
+         end if;
+
       else
-         raise Program_Error
-            with "Signed_To_Decimal_String: buffer too small";
+         if Buffer'Length >= Actual_Length then
+            Buffer (Buffer'First .. Buffer'First + Actual_Length - 1) :=
+               Tmp_Buffer (Start_Index .. Tmp_Buffer'Last);
+         else
+            raise Program_Error
+               with "Signed_To_Decimal_String: buffer too small";
+         end if;
       end if;
 
    end Signed_To_Decimal_String;
