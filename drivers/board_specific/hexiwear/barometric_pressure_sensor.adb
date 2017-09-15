@@ -35,6 +35,7 @@ with Barometric_Pressure_Sensor.Mpl3115A2_Private;
 with Ada.Real_Time;
 with Ada.Synchronous_Task_Control;
 with Runtime_Logs;
+with Ada.Unchecked_Conversion;
 
 --
 --  Driver for the MPL3115A2 barometric pressure sensor
@@ -146,12 +147,15 @@ package body Barometric_Pressure_Sensor is
    function Build_16bit_Signed_Altitude_Value (Buffer : Bytes_Array_Type)
       return Integer_16
    is
+      function Unsigned_16_To_Integer_16 is
+         new Ada.Unchecked_Conversion (Source => Unsigned_16,
+                                       Target => Integer_16);
       Value : Unsigned_16;
    begin
       Value := Shift_Left (Unsigned_16 (Buffer (Buffer'First)), 8) or
                Unsigned_16 (Buffer (Buffer'First + 1));
 
-      return Integer_16 (Value);
+      return Unsigned_16_To_Integer_16 (Value);
    end Build_16bit_Signed_Altitude_Value;
 
    ---------------------------------
