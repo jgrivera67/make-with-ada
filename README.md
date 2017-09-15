@@ -4,6 +4,7 @@ This repository hosts my Ada projects for the Make-with-Ada Programming Competit
 ## Make With Ada 2017
 
 ### Project: A "Swiss Army Knife" watch for the Hexiwear wearable device
+http://www.makewithada.org/entry/smartwatch
 
 ## Make with Ada 2016
 
