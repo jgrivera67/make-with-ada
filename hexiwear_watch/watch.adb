@@ -47,7 +47,9 @@ package body Watch is
 
    procedure Display_Greeting;
 
-   procedure Display_Altitude (Altitude_Str : String);
+   procedure Display_Altitude_Feet (Altitude_Str : String);
+
+   procedure Display_Altitude_Meters (Altitude_Str : String);
 
    procedure Display_Date (Date_Str : String);
 
@@ -101,18 +103,31 @@ package body Watch is
          when 2 => (if Year mod 4 = 0 then 29 else 28),
          when  4 | 6 | 9 | 11 => 30);
 
-   ----------------------
-   -- Display_Altitude --
-   ----------------------
+   ---------------------------
+   -- Display_Altitude_Feet --
+   ---------------------------
 
-   procedure Display_Altitude (Altitude_Str : String)
+   procedure Display_Altitude_Feet (Altitude_Str : String)
    is
     begin
       LCD_Display.Set_Font (LCD_Display.Small_Font);
       LCD_Display.Print_String (16, 58, Altitude_Str,
                                 Watch_Var.Config_Parameters.Foreground_Color,
                                 Watch_Var.Config_Parameters.Background_Color);
-   end Display_Altitude;
+   end Display_Altitude_Feet;
+
+   -----------------------------
+   -- Display_Altitude_Meters --
+   -----------------------------
+
+   procedure Display_Altitude_Meters (Altitude_Str : String)
+   is
+    begin
+      LCD_Display.Set_Font (LCD_Display.Small_Font);
+      LCD_Display.Print_String (16, 46, Altitude_Str,
+                                Watch_Var.Config_Parameters.Foreground_Color,
+                                Watch_Var.Config_Parameters.Background_Color);
+   end Display_Altitude_Meters;
 
    -------------------------------------
    -- Display_G_Forces_Monitor_Screen --
@@ -238,11 +253,7 @@ package body Watch is
    begin
       LCD_Display.Clear_Screen (Watch_Var.Config_Parameters.Background_Color);
       LCD_Display.Set_Font (LCD_Display.Small_Font);
-      --LCD_Display.Print_String (1, 46, "Direction",
-      --                          Watch_Var.Config_Parameters.Foreground_Color,
-      --                          Watch_Var.Config_Parameters.Background_Color);
-
-      LCD_Display.Print_String (1, 58, "A",
+      LCD_Display.Print_String (1, 46, "A",
                                 Watch_Var.Config_Parameters.Foreground_Color,
                                 Watch_Var.Config_Parameters.Background_Color);
 
@@ -256,7 +267,8 @@ package body Watch is
 
       Display_Wall_Time ("00:00");
       Display_date ("01-JAN-0000");
-      Display_Altitude ("0 m");
+      Display_Altitude_Meters ("0 m");
+      Display_Altitude_Feet ("0 ft");
       Display_Temperature ("0 C 32 F");
    end Display_Watch_Screen;
 
@@ -363,10 +375,12 @@ package body Watch is
 
    procedure Refresh_Altitude
    is
-      Altitude_Str : String (1 .. 9);
+      Altitude_Meters_Str : String (1 .. 9);
+      Altitude_Feet_Str : String (1 .. 11);
       Str_Length : Positive;
       Str_Cursor : Positive;
       Reading_Value : Reading_Type;
+      Altitude_Feet : Integer_32;
    begin
       Barometric_Pressure_Sensor.Read_Altitude (Reading_Value);
       if Reading_Value = Watch_Var.Last_Altitude_Reading then
@@ -377,23 +391,48 @@ package body Watch is
 
       if Reading_Value.Integer_Part in -999_999 .. 999_999 then
          Signed_To_Decimal_String (Reading_Value.Integer_Part,
-                                   Altitude_Str,
+                                   Altitude_Meters_Str,
                                    Str_Length);
 
-         Str_Cursor := Altitude_Str'First + Str_Length;
+         Str_Cursor := Altitude_Meters_Str'First + Str_Length;
       else
-         Altitude_Str (Altitude_Str'First .. Altitude_Str'First + 6) :=
-            (others => '*');
-         Str_Cursor := Altitude_Str'First + 7;
+         Altitude_Meters_Str (Altitude_Meters_Str'First ..
+                              Altitude_Meters_Str'First + 6) := (others => '*');
+         Str_Cursor := Altitude_Meters_Str'First + 7;
       end if;
 
-      Altitude_Str (Str_Cursor .. Str_Cursor + 1) := " m";
+      Altitude_Meters_Str (Str_Cursor .. Str_Cursor + 1) := " m";
       Str_Cursor := Str_Cursor + 2;
-      if Str_Cursor <= Altitude_Str'Last then
-         Altitude_Str (Str_Cursor .. Altitude_Str'Last) := (others => ' ');
+      if Str_Cursor <= Altitude_Meters_Str'Last then
+         Altitude_Meters_Str (Str_Cursor ..
+                              Altitude_Meters_Str'Last) := (others => ' ');
       end if;
 
-      Display_Altitude (Altitude_Str);
+      Display_Altitude_Meters (Altitude_Meters_Str);
+
+      Altitude_Feet :=
+         Integer_32 (Float'Rounding (Float (Reading_Value.Integer_Part) *
+                                     3.28084));
+      if Altitude_Feet in -9_999_999 .. 9_999_999 then
+         Signed_To_Decimal_String (Altitude_Feet,
+                                   Altitude_Feet_Str,
+                                   Str_Length);
+
+         Str_Cursor := Altitude_Feet_Str'First + Str_Length;
+      else
+         Altitude_Feet_Str (Altitude_Feet_Str'First ..
+                            Altitude_Feet_Str'First + 7) := (others => '*');
+         Str_Cursor := Altitude_Feet_Str'First + 8;
+      end if;
+
+      Altitude_Feet_Str (Str_Cursor .. Str_Cursor + 2) := " ft";
+      Str_Cursor := Str_Cursor + 3;
+      if Str_Cursor <= Altitude_Feet_Str'Last then
+         Altitude_Feet_Str (Str_Cursor ..
+                            Altitude_Feet_Str'Last) := (others => ' ');
+      end if;
+
+      Display_Altitude_Feet (Altitude_Feet_Str);
    end Refresh_Altitude;
 
    ----------------------
