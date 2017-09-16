@@ -9,9 +9,6 @@
 --
 
 datatype ALPHABET =
-	    set_true | suspend_until_true |
-	    set_cond_true | wait_until_cond_true |
-            enable | fired | disable |
 	    initialize_serial_console |
 	    initialize_dma_engine |
 	    initialize_watch |
@@ -60,12 +57,6 @@ datatype ALPHABET =
 	    battery_charge_changed |
 	    tapping_detected |
 	    double_tapping_detected
-
-SUSPENSION_OBJECT_ALPHABET = { set_true, suspend_until_true }
-
-PROTECTED_ENTRY_ALPHABET = { set_cond_true, wait_until_cond_true }
-
-INTERRUPT_ALPHABET = { enable, fired, disable }
 
 APP_EVENTS_ALPHABET = { low_power_sleep_timeout,
 			low_power_sleep_wakeup,
@@ -122,51 +113,56 @@ APP_ACTIONS_ALPHABET = {
 -- Event Channels
 --
 
-channel watch_task_susp_obj : SUSPENSION_OBJECT_ALPHABET
-channel tapping_detection_task_susp_obj : SUSPENSION_OBJECT_ALPHABET
-channel serial_console_output_task_susp_obj : SUSPENSION_OBJECT_ALPHABET
-channel accelerometer_tapping_detected_isr_susp_obj : SUSPENSION_OBJECT_ALPHABET
-channel accelerometer_i2c_byte_transfer_completed_isr_susp_obj : SUSPENSION_OBJECT_ALPHABET
-channel display_dma_transfer_completed_isr_susp_obj : SUSPENSION_OBJECT_ALPHABET
-channel serial_console_uart_byte_received_isr_susp_obj : SUSPENSION_OBJECT_ALPHABET
-channel bluetooth_uart_byte_received_isr_susp_obj : SUSPENSION_OBJECT_ALPHABET
-channel heart_rate_monitor_proximity_sensed_isr_susp_obj : SUSPENSION_OBJECT_ALPHABET
-channel heart_rate_monitor_sample_ready_isr_susp_obj: SUSPENSION_OBJECT_ALPHABET
-channel altitude_changed_isr_susp_obj: SUSPENSION_OBJECT_ALPHABET
-channel temperature_changed_isr_susp_obj: SUSPENSION_OBJECT_ALPHABET
+channel watch_task_susp_obj
+channel tapping_detection_task_susp_obj
+channel serial_console_output_task_susp_obj
+channel tapping_detected_susp_obj
+channel accelerometer_tapping_detected_isr_susp_obj
+channel display_dma_transfer_completed_isr_susp_obj
+channel serial_console_uart_byte_received_isr_susp_obj
+channel bluetooth_uart_byte_received_isr_susp_obj
+channel heart_rate_monitor_proximity_sensed_isr_susp_obj
+channel heart_rate_monitor_sample_ready_isr_susp_obj
+channel heart_rate_monitor_task_susp_obj
+channel altitude_changed_isr_susp_obj
+channel altitude_sensor_task_susp_obj
+channel temperature_changed_isr_susp_obj
+channel temperature_sensor_task_susp_obj
 
-channel altitude_reading_prot_entry : PROTECTED_ENTRY_ALPHABET
-channel temperature_reading_prot_entry : PROTECTED_ENTRY_ALPHABET
+channel altitude_reading_prot_entry
+channel temperature_reading_prot_entry
 
-channel accelerometer_tapping_detected_interrupt : INTERRUPT_ALPHABET
-channel display_dma_transfer_completed_interrupt : INTERRUPT_ALPHABET
-channel accelerometer_i2c_byte_transfer_completed_interrupt : INTERRUPT_ALPHABET
-channel serial_console_uart_byte_received_interrupt : INTERRUPT_ALPHABET
-channel bluetooth_uart_byte_received_interrupt : INTERRUPT_ALPHABET
-channel low_leakage_stop_wakeup_interrupt : INTERRUPT_ALPHABET
-channel heart_rate_monitor_proximity_sensed_interrupt: INTERRUPT_ALPHABET
-channel heart_rate_monitor_sample_ready_interrupt: INTERRUPT_ALPHABET
-channel altitude_changed_interrupt: INTERRUPT_ALPHABET
-channel temperature_changed_interrupt: INTERRUPT_ALPHABET
-channel realtime_clock_alarm_interrupt : INTERRUPT_ALPHABET
-channel realtime_clock_seconds_interrupt : INTERRUPT_ALPHABET
+channel accelerometer_tapping_detected_interrupt
+channel display_dma_transfer_completed_interrupt
+channel accelerometer_i2c_byte_transfer_completed_interrupt
+channel serial_console_uart_byte_received_interrupt
+channel bluetooth_uart_byte_received_interrupt
+channel low_leakage_stop_wakeup_interrupt
+channel heart_rate_monitor_proximity_sensed_interrupt
+channel heart_rate_monitor_sample_ready_interrupt
+channel altitude_changed_interrupt
+channel temperature_changed_interrupt
+channel realtime_clock_alarm_interrupt
+channel realtime_clock_seconds_interrupt
 
 channel event : APP_EVENTS_ALPHABET
 channel action : APP_ACTIONS_ALPHABET
 
-SYNCHRONIZATION_EVENTS = Union ({ SUSPENSION_OBJECTS,
-                                  PROTECTED_ENTRIES,
-				  INTERRUPTS,
-				  {| event |} })
 
 SUSPENSION_OBJECTS = {| watch_task_susp_obj,
-                       tapping_detection_task_susp_obj,
-		       serial_console_output_task_susp_obj,
-		       accelerometer_tapping_detected_isr_susp_obj,
-		       accelerometer_i2c_byte_transfer_completed_isr_susp_obj,
-		       display_dma_transfer_completed_isr_susp_obj,
-		       serial_console_uart_byte_received_isr_susp_obj,
-		       heart_rate_monitor_sample_ready_isr_susp_obj |}
+		        tapping_detection_task_susp_obj,
+			serial_console_output_task_susp_obj,
+			accelerometer_tapping_detected_isr_susp_obj,
+			display_dma_transfer_completed_isr_susp_obj,
+			serial_console_uart_byte_received_isr_susp_obj,
+			bluetooth_uart_byte_received_isr_susp_obj,
+		        heart_rate_monitor_proximity_sensed_isr_susp_obj,
+			heart_rate_monitor_sample_ready_isr_susp_obj,
+			heart_rate_monitor_task_susp_obj,
+			altitude_changed_isr_susp_obj,
+			altitude_sensor_task_susp_obj,
+			temperature_changed_isr_susp_obj,
+			temperature_sensor_task_susp_obj |}
 
 PROTECTED_ENTRIES = {| altitude_reading_prot_entry,
                       temperature_reading_prot_entry |}
@@ -191,64 +187,63 @@ INTERRUPTS = {| accelerometer_tapping_detected_interrupt,
 --
 
 SMART_WATCH_APP =
-   (MAIN_TASK |||
-    WATCH_TASK |||
-    TAPPING_DETECTION_TASK |||
-    HEART_RATE_MONITOR_TASK |||
-    TEMPERATURE_SENSOR_TASK |||
-    ALTITUDE_SENSOR_TASK |||
-    SERIAL_CONSOLE_OUTPUT_TASK |||
-    ALTITUDE_CHANGED_ISR_TASK |||
-    TEMPERATURE_CHANGED_ISR_TASK |||
-    HEART_RATE_MONITOR_PROXIMITY_SENSED_ISR_TASK |||
+   ((MAIN_TASK
+      [| {| serial_console_output_task_susp_obj, watch_task_susp_obj |} |]
+      (SERIAL_CONSOLE_OUTPUT_TASK |||
+       WATCH_APP_TASKS))
+    [| SUSPENSION_OBJECTS |]
     INTERRUPT_HANDLERS)
-   [| SYNCHRONIZATION_EVENTS |]
-   (SUSPENSION_OBJECT_GHOSTS
-    |||
-    PROTECTED_ENTRY_GHOSTS
-    |||
-    INTERRUPT_GHOSTS)
 
 assert SMART_WATCH_APP :[deadlock free]
 
 assert SMART_WATCH_APP :[divergence free]
 
+WATCH_APP_TASKS =
+   WATCH_TASK
+   [| {| event |} |]
+   (TAPPING_DETECTION |||
+    HEART_RATE_MONITOR_TASK |||
+    TEMPERATURE_SENSOR_TASK |||
+    ALTITUDE_SENSOR_TASK)
+
+TAPPING_DETECTION =
+   TAPPING_DETECTION_TASK [| tapping_detected_susp_obj |]
+   (ACCELEROMETER_TAPPING_DETECTED_INT_TASK
+    [| accelerometer_tapping_detected_isr_susp_obj |]
+    ACCELEROMETER_TAPPING_DETECTED_ISR)
+
+HEART_RATE_MONITOR =
+   HEART_RATE_MONITOR_TASK [| |]
 INTERRUPT_HANDLERS =
-    ACCELEROMETER_TAPPING_DETECTED_ISR |||
-    ACCELEROMETER_I2C_BYTE_TRANSFER_COMPLETION_ISR |||
-    DISPLAY_DMA_TRANSFER_COMPLETION_ISR |||
     SERIAL_CONSOLE_UART_BYTE_RECEIVED_ISR |||
     BLUETOOTH_UART_BYTE_RECEIVED_ISR |||
     LOW_POWER_SLEEP_WAKEUP_ISR |||
-    HEART_RATE_MONITOR_PROXIMITY_SENSED_ISR |||
+    (HEART_RATE_MONITOR_PROXIMITY_SENSED_ISR
+     [| heart_rate_monitor_proximity_sensed_isr_susp_obj |]
+     HEART_RATE_MONITOR_PROXIMITY_SENSED_INT_TASK) |||
     HEART_RATE_MONITOR_SAMPLE_READY_ISR |||
-    ALTITUDE_CHANGED_ISR |||
-    TEMPERATURE_CHANGED_ISR |||
+    (ALTITUDE_CHANGED_ISR [| altitude_changed_isr_susp_obj |]
+     ALTITUDE_CHANGED_INT_TASK) |||
+    (TEMPERATURE_CHANGED_ISR [| temperature_changed_isr_susp_obj |]
+     TEMPERATURE_CHANGED_INT_TASK) |||
     REALTIME_CLOCK_ALARM_ISR |||
     REALTIME_CLOCK_SECONDS_ISR
 
 MAIN_TASK = action!initialize_serial_console ->
-	       serial_console_uart_byte_received_interrupt!enable ->
-	       serial_console_output_task_susp_obj!set_true ->
+	       serial_console_output_task_susp_obj! ->
 	    action!display_console_greeting ->
 	    action!initialize_dma_engine ->
 	    action!initialize_bluetooth ->
 	    action!initialize_watch ->
 	       action!initialize_low_power ->
-		  low_leakage_stop_wakeup_interrupt!enable ->
 	       action!initialize_accelerometer ->
 		  action!initialize_accelerometer_i2c_interface ->
-		     accelerometer_i2c_byte_transfer_completed_interrupt!enable ->
-		  accelerometer_tapping_detected_interrupt!enable ->
 	       action!initialize_heart_rate_monitor ->
 		  action!initialize_heart_rate_monitor_i2c_interface ->
 		  action!start_heart_rate_monitor ->
-		     heart_rate_monitor_proximity_sensed_interrupt!enable ->
 	       action!initialize_barometric_pressure_sensor ->
 		  action!initialize_barometric_pressure_sensor_i2c_interface ->
 		  action!activate_barometric_pressure_sensor ->
-		     temperature_changed_interrupt!enable ->
-		     altitude_changed_interrupt!enable ->
 	       watch_task_susp_obj.set_true ->
 	    READ_COMMAND_LOOP
 
@@ -268,8 +263,11 @@ WATCH_TASK =
    action!initialize_lcd_display ->
       action!initialize_lcd_display_spi_interface ->
    action!display_lcd_display_greeting ->
+   heart_rate_monitor_task_susp_obj!set_true ->
+   altitude_sensor_task_susp_obj!set_true ->
+   temperature_sensor_task_susp_obj!set_true ->
    action!refresh_whole_lcd_display ->
-      display_dma_transfer_completed_isr_susp_obj.suspend_until_true ->
+      display_dma_transfer_completed_isr_susp_obj ->
    WATCH_STATE_MACHINE
 
 WATCH_STATE_MACHINE = AWAKE_WATCH_MODE
@@ -308,112 +306,117 @@ AWAKE_WATCH_MODE =
 ASLEEP_WATCH_MODE =
   event.low_power_sleep_wakeup ->
      action!start_heart_rate_monitor ->
-	heart_rate_monitor_proximity_sensed_interrupt!enable ->
      action!activate_barometric_pressure_sensor ->
-	temperature_changed_interrupt!enable ->
-	altitude_changed_interrupt!enable ->
      action!turn_on_lcd_display ->
      action!refresh_whole_lcd_display ->
-        display_dma_transfer_completed_isr_susp_obj.suspend_until_true ->
+        display_dma_transfer_completed_isr_susp_obj ->
      AWAKE_WATCH_MODE
   []
   watch_task_susp_obj.suspend_until_true -> ASLEEP_WATCH_MODE
 
 TAPPING_DETECTION_TASK =
-   accelerometer_tapping_detected_isr_susp_obj.suspend_until_true ->
+   accelerometer_tapping_detected_isr_susp_obj ->
       (event!tapping_detected -> TAPPING_DETECTION_TASK
        |~|
        event!double_tapping_detected -> TAPPING_DETECTION_TASK)
 
 HEART_RATE_MONITOR_TASK =
+    heart_rate_monitor_task_susp_obj -> HEART_RATE_MONITOR_TASK_STARTED
+
+HEART_RATE_MONITOR_TASK_STARTED =
    action!read_heart_rate ->
-      heart_rate_monitor_sample_ready_isr_susp_obj.suspend_until_true ->
+      heart_rate_monitor_sample_ready_isr_susp_obj ->
       action!i2c_read ->
       (event!heart_rate_changed ->
-          watch_task_susp_obj!set_true -> HEART_RATE_MONITOR_TASK
+          watch_task_susp_obj! -> HEART_RATE_MONITOR_TASK_STARTED
        |~|
-       HEART_RATE_MONITOR_TASK)
+       HEART_RATE_MONITOR_TASK_STARTED)
 
 ALTITUDE_SENSOR_TASK =
+   altitude_sensor_task_susp_obj -> ALTITUDE_SENSOR_TASK_STARTED
+
+ALTITUDE_SENSOR_TASK_STARTED =
    action!read_altitude ->
-      altitude_reading_prot_entry.wait_until_cond_true ->
+      altitude_reading_prot_entry ->
       (event!altitude_changed ->
-          watch_task_susp_obj!set_true -> ALTITUDE_SENSOR_TASK
+          watch_task_susp_obj! -> ALTITUDE_SENSOR_TASK_STARTED
        |~|
-       ALTITUDE_SENSOR_TASK)
+       ALTITUDE_SENSOR_TASK_STARTED)
 
 TEMPERATURE_SENSOR_TASK =
+   temperature_sensor_task_susp_obj -> TEMPERATURE_SENSOR_TASK_STARTED
+
+TEMPERATURE_SENSOR_TASK_STARTED =
    action!read_temperature ->
-      temperature_reading_prot_entry.wait_until_cond_true ->
+      temperature_reading_prot_entry ->
       (event!temperature_changed ->
-          watch_task_susp_obj!set_true -> TEMPERATURE_SENSOR_TASK
+          watch_task_susp_obj! -> TEMPERATURE_SENSOR_TASK_STARTED
        |~|
-       TEMPERATURE_SENSOR_TASK)
+       TEMPERATURE_SENSOR_TASK_STARTED)
 
 ACCELEROMETER_TAPPING_DETECTED_ISR =
-   accelerometer_tapping_detected_interrupt.fired ->
-   accelerometer_tapping_detected_isr_susp_obj.set_true ->
+   accelerometer_tapping_detected_interrupt ->
+   accelerometer_tapping_detected_isr_susp_obj! ->
    ACCELEROMETER_TAPPING_DETECTED_ISR
 
-ACCELEROMETER_I2C_BYTE_TRANSFER_COMPLETION_ISR =
-   accelerometer_i2c_byte_transfer_completed_interrupt.fired ->
-   accelerometer_i2c_byte_transfer_completed_isr_susp_obj!set_true ->
-   ACCELEROMETER_I2C_BYTE_TRANSFER_COMPLETION_ISR
-
-DISPLAY_DMA_TRANSFER_COMPLETION_ISR =
-   display_dma_transfer_completed_interrupt.fired ->
-   display_dma_transfer_completed_isr_susp_obj.set_true ->
-   DISPLAY_DMA_TRANSFER_COMPLETION_ISR
+ACCELEROMETER_TAPPING_DETECTED_INT_TASK =
+   accelerometer_tapping_detected_isr_susp_obj ->
+   action!i2c_read ->
+   tapping_detected_susp_obj! ->
+  ACCELEROMETER_TAPPING_DETECTED_INT_TASK
 
 SERIAL_CONSOLE_UART_BYTE_RECEIVED_ISR =
-   serial_console_uart_byte_received_interrupt.fired ->
-   serial_console_uart_byte_received_isr_susp_obj!set_true ->
+   serial_console_uart_byte_received_interrupt ->
+   serial_console_uart_byte_received_isr_susp_obj! ->
    SERIAL_CONSOLE_UART_BYTE_RECEIVED_ISR
 
 BLUETOOTH_UART_BYTE_RECEIVED_ISR =
-   bluetooth_uart_byte_received_interrupt.fired ->
-   bluetooth_uart_byte_received_isr_susp_obj!set_true ->
+   bluetooth_uart_byte_received_interrupt ->
+   bluetooth_uart_byte_received_isr_susp_obj! ->
    BLUETOOTH_UART_BYTE_RECEIVED_ISR
 
 HEART_RATE_MONITOR_PROXIMITY_SENSED_ISR =
-   heart_rate_monitor_proximity_sensed_interrupt.fired ->
-   heart_rate_monitor_proximity_sensed_isr_susp_obj!set_true ->
+   heart_rate_monitor_proximity_sensed_interrupt ->
+   heart_rate_monitor_proximity_sensed_isr_susp_obj! ->
    HEART_RATE_MONITOR_PROXIMITY_SENSED_ISR
 
--- "Bottom half" ISR
-HEART_RATE_MONITOR_PROXIMITY_SENSED_ISR_TASK =
-   heart_rate_monitor_proximity_sensed_isr_susp_obj.suspend_until_true ->
-   heart_rate_monitor_sample_ready_interrupt!enable ->
-   HEART_RATE_MONITOR_PROXIMITY_SENSED_ISR_TASK
+HEART_RATE_MONITOR_PROXIMITY_SENSED_INT_TASK =
+   heart_rate_monitor_proximity_sensed_isr_susp_obj ->
+   heart_rate_monitor_sample_ready_interrupt_enable! ->
+   HEART_RATE_MONITOR_PROXIMITY_SENSED_INT_TASK
 
 HEART_RATE_MONITOR_SAMPLE_READY_ISR =
-   heart_rate_monitor_sample_ready_interrupt.fired ->
-   heart_rate_monitor_sample_ready_isr_susp_obj!set_true ->
+   heart_rate_monitor_sample_ready_interrupt_enable ->
+   HEART_RATE_MONITOR_SAMPLE_READY_ISR_ENABLED
+
+HEART_RATE_MONITOR_SAMPLE_READY_ISR_ENABLED =
+   heart_rate_monitor_sample_ready_interrupt ->
+      heart_rate_monitor_sample_ready_isr_susp_obj! ->
+      HEART_RATE_MONITOR_SAMPLE_READY_ISR_ENABLED
+   []
+   heart_rate_monitor_sample_ready_interrupt_disable ->
    HEART_RATE_MONITOR_SAMPLE_READY_ISR
 
 ALTITUDE_CHANGED_ISR =
-   altitude_changed_interrupt.fired ->
-   altitude_changed_isr_susp_obj!set_true ->
+   altitude_changed_interrupt -> altitude_changed_isr_susp_obj! ->
   ALTITUDE_CHANGED_ISR
 
--- "Bottom half" ISR
-ALTITUDE_CHANGED_ISR_TASK =
-   altitude_changed_isr_susp_obj.suspend_until_true ->
+ALTITUDE_CHANGED_INT_TASK =
+   altitude_changed_isr_susp_obj ->
    action!i2c_read ->
-   altitude_reading_prot_entry.set_cond_true ->
-   ALTITUDE_CHANGED_ISR_TASK
+   altitude_reading_prot_entry! ->
+   ALTITUDE_CHANGED_INT_TASK
 
 TEMPERATURE_CHANGED_ISR =
-   temperature_changed_interrupt.fired ->
-   temperature_changed_isr_susp_obj!set_true ->
+   temperature_changed_interrupt ->
+   temperature_changed_isr_susp_obj! ->
  TEMPERATURE_CHANGED_ISR
 
--- "Bottom half" ISR
-TEMPERATURE_CHANGED_ISR_TASK =
-   temperature_changed_isr_susp_obj.suspend_until_true ->
+TEMPERATURE_CHANGED_INT_TASK =
+   temperature_changed_isr_susp_obj ->
    action!i2c_read ->
-   temperature_reading_prot_entry.set_cond_true ->
-   TEMPERATURE_CHANGED_ISR_TASK
+   temperature_reading_prot_entry! ->
+   TEMPERATURE_CHANGED_INT_TASK
 
 REALTIME_CLOCK_ALARM_ISR =
    realtime_clock_alarm_interrupt.fired ->
@@ -435,71 +438,4 @@ LOW_POWER_SLEEP_WAKEUP_ISR =
       event!low_power_sleep_wakeup ->
       watch_task_susp_obj!set_true ->
    LOW_POWER_SLEEP_WAKEUP_ISR
-
-SUSPENSION_OBJECT_GHOSTS =
-   SUSPENSION_OBJECT_GHOST(watch_task_susp_obj)
-   |||
-   SUSPENSION_OBJECT_GHOST(tapping_detection_task_susp_obj)
-   |||
-   SUSPENSION_OBJECT_GHOST(serial_console_output_task_susp_obj)
-   |||
-   SUSPENSION_OBJECT_GHOST(accelerometer_tapping_detected_isr_susp_obj)
-   |||
-   SUSPENSION_OBJECT_GHOST(accelerometer_i2c_byte_transfer_completed_isr_susp_obj)
-   |||
-   SUSPENSION_OBJECT_GHOST(display_dma_transfer_completed_isr_susp_obj)
-   |||
-   SUSPENSION_OBJECT_GHOST(serial_console_uart_byte_received_isr_susp_obj)
-   |||
-   SUSPENSION_OBJECT_GHOST(heart_rate_monitor_sample_ready_isr_susp_obj)
-
-SUSPENSION_OBJECT_GHOST(obj) =
-  obj.set_true -> obj!suspend_until_true -> SUSPENSION_OBJECT_GHOST(obj)
-
-PROTECTED_ENTRY_GHOSTS =
-   PROTECTED_ENTRY_GHOST(altitude_reading_prot_entry)
-   |||
-   PROTECTED_ENTRY_GHOST(temperature_reading_prot_entry)
-
-PROTECTED_ENTRY_GHOST(entry) =
-  entry.set_cond_true -> entry!wait_until_cond_true -> PROTECTED_ENTRY_GHOST(entry)
-
-INTERRUPT_GHOSTS =
-   INTERRUPT_GHOST(accelerometer_tapping_detected_interrupt)
-   |||
-   INTERRUPT_GHOST(accelerometer_i2c_byte_transfer_completed_interrupt)
-   |||
-   INTERRUPT_GHOST(display_dma_transfer_completed_interrupt)
-   |||
-   INTERRUPT_GHOST(serial_console_uart_byte_received_interrupt)
-   |||
-   INTERRUPT_GHOST(bluetooth_uart_byte_received_interrupt)
-   |||
-   INTERRUPT_GHOST(low_leakage_stop_wakeup_interrupt)
-   |||
-   INTERRUPT_GHOST(realtime_clock_alarm_interrupt)
-   |||
-   INTERRUPT_GHOST(realtime_clock_alarm_interrupt)
-   |||
-   INTERRUPT_GHOST(realtime_clock_seconds_interrupt)
-   |||
-   INTERRUPT_GHOST(heart_rate_monitor_proximity_sensed_interrupt)
-   |||
-   INTERRUPT_GHOST(heart_rate_monitor_sample_ready_interrupt)
-   |||
-   INTERRUPT_GHOST(altitude_changed_interrupt)
-   |||
-   INTERRUPT_GHOST(temperature_changed_interrupt)
-   |||
-   INTERRUPT_GHOST(realtime_clock_alarm_interrupt)
-   |||
-   INTERRUPT_GHOST(realtime_clock_seconds_interrupt)
-
-INTERRUPT_GHOST(intr) =
-  intr.enable -> INTERRUPT_ENABLED_GHOST(intr)
-
-INTERRUPT_ENABLED_GHOST(intr) =
-  intr!fired -> INTERRUPT_ENABLED_GHOST(intr)
-  []
-  intr.disable -> INTERRUPT_GHOST(intr)
 
