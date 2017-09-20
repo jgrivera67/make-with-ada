@@ -119,6 +119,7 @@ private
       Low_Power_Sleep_Timeout,
       Low_Power_Sleep_Wakeup,
       Wall_Time_Changed,
+      Wall_Time_Set,
       Heart_Rate_Changed,
       Altitude_Changed,
       Temperature_Changed,
