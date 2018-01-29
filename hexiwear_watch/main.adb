@@ -64,7 +64,7 @@ procedure Main is
       Serial_Console.Lock;
       Serial_Console.Clear_Screen;
       Serial_Console.Print_String (
-        "IoT Stack (Written in Ada 2012, built on " & GNAT.Source_Info.Compilation_Date &
+        "Hexiwear Watch (Written in Ada 2012, built on " & GNAT.Source_Info.Compilation_Date &
         " at " & GNAT.Source_Info.Compilation_Time & ")" & ASCII.LF);
 
       Serial_Console.Unlock;

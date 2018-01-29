@@ -271,6 +271,8 @@ is
                                LLWU_Periph'Size,
                                Read_Write,
                                Old_Region);
+
+      -- See Table 3-15. Wakeup sources for LLWU inputs
       if Pin_Info.Pin_Port = PIN_PORT_C and then
          Pin_Info.Pin_Index = 1
       then

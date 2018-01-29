@@ -43,6 +43,10 @@ package body Uart_Driver is
 
    use Address_To_UART_Registers_Pointer;
 
+   procedure Enable_Rx_Interrupt (Uart_Device_Id : Uart_Device_Id_Type);
+
+   procedure Disable_Rx_Interrupt (Uart_Device_Id : Uart_Device_Id_Type);
+
    --
    --  Protected object to define Interrupt handlers for all UARTs
    --
@@ -74,26 +78,57 @@ package body Uart_Driver is
 
    Uart_Receive_Queue_Name : aliased constant String := "UART Rx queue";
 
+   Uart_Fifo_Sizes : constant array (Three_Bits) of Byte :=
+      (0 => 1,
+       1 => 4,
+       2 => 8,
+       3 => 16,
+       4 => 32,
+       5 => 64,
+       6 => 128,
+       7 => 255);
+
    -- ** --
 
-   function Can_Receive_Char (Uart_Device_Id : Uart_Device_Id_Type)
-                               return Boolean is
+   procedure Enable_Rx_Interrupt (Uart_Device_Id : Uart_Device_Id_Type)
+   is
+      C2_Value : UART.C2_Type;
       Uart_Registers_Ptr : access UART.Registers_Type renames
-        Uart_Devices (Uart_Device_Id).Registers_Ptr;
+         Uart_Devices (Uart_Device_Id).Registers_Ptr;
+      Old_Region : MPU_Region_Descriptor_Type;
    begin
-      return (Uart_Registers_Ptr.all.S1.RDRF = 1);
-   end Can_Receive_Char;
+      Set_Private_Data_Region (
+         To_Address (Object_Pointer (Uart_Registers_Ptr)),
+         UART.Registers_Type'Object_Size,
+         Read_Write,
+         Old_Region);
+
+      C2_Value := Uart_Registers_Ptr.all.C2;
+      C2_Value.RIE := 1;
+      Uart_Registers_Ptr.all.C2 := C2_Value;
+      Restore_Private_Data_Region (Old_Region);
+   end Enable_Rx_Interrupt;
 
    -- ** --
 
-   function Can_Transmit_Char
-     (Uart_Device_Id : Uart_Device_Id_Type) return Boolean is
-
+   procedure Disable_Rx_Interrupt (Uart_Device_Id : Uart_Device_Id_Type)
+   is
+      C2_Value : UART.C2_Type;
       Uart_Registers_Ptr : access UART.Registers_Type renames
-        Uart_Devices (Uart_Device_Id).Registers_Ptr;
+         Uart_Devices (Uart_Device_Id).Registers_Ptr;
+      Old_Region : MPU_Region_Descriptor_Type;
    begin
-      return (Uart_Registers_Ptr.all.S1.TDRE = 1);
-   end Can_Transmit_Char;
+      Set_Private_Data_Region (
+         To_Address (Object_Pointer (Uart_Registers_Ptr)),
+         UART.Registers_Type'Object_Size,
+         Read_Write,
+         Old_Region);
+
+      C2_Value := Uart_Registers_Ptr.all.C2;
+      C2_Value.RIE := 0;
+      Uart_Registers_Ptr.all.C2 := C2_Value;
+      Restore_Private_Data_Region (Old_Region);
+   end Disable_Rx_Interrupt;
 
    -- ** --
 
@@ -108,10 +143,35 @@ package body Uart_Driver is
                                Read_Write,
                                Old_Region);
 
-      Byte_Ring_Buffers.Read (Uart_Device_Var.Receive_Queue, Byte_Read);
+      if Uart_Device_Var.Rx_Buffering_On then
+         Byte_Ring_Buffers.Read (Uart_Device_Var.Receive_Queue, Byte_Read);
+      else
+         Enable_Rx_Interrupt (Uart_Device_Id);
+         Suspend_Until_True (Uart_Device_Var.Byte_Received_SuspObj);
+         Byte_Read := Uart_Device_Var.Byte_Received;
+      end if;
+
       Restore_Private_Data_Region (Old_Region);
       return Byte_Read;
    end Get_Byte;
+
+   -- ** --
+
+   function Get_Byte_By_Polling (Uart_Device_Id : Uart_Device_Id_Type)
+      return Byte
+   is
+      Uart_Device_Var : Uart_Device_Var_Type renames
+        Uart_Devices_Var (Uart_Device_Id);
+      Uart_Registers_Ptr : access UART.Registers_Type renames
+        Uart_Devices (Uart_Device_Id).Registers_Ptr;
+   begin
+      pragma Assert (not Uart_Device_Var.Rx_Buffering_On);
+      loop
+         exit when Uart_Registers_Ptr.S1.RDRF /= 0;
+      end loop;
+
+      return Uart_Registers_Ptr.D;
+   end Get_Byte_By_Polling;
 
    -- ** --
 
@@ -124,8 +184,10 @@ package body Uart_Driver is
 
    procedure Initialize (Uart_Device_Id : Uart_Device_Id_Type;
                          Baud_Rate : Baud_Rate_Type;
+                         Rx_Buffering_On : Boolean;
                          Use_Two_Stop_Bits : Boolean := False)
    is
+      use Interfaces;
       procedure Enable_Clock;
       procedure Set_Baud_Rate;
 
@@ -200,6 +262,7 @@ package body Uart_Driver is
 
       C2_Value : UART.C2_Type;
       C1_Value : UART.C1_Type;
+      PFIFO_Value : UART.PFIFO_Type;
       Old_Region : MPU_Region_Descriptor_Type;
 
    begin -- Initialize
@@ -230,10 +293,18 @@ package body Uart_Driver is
       --    empty)
       --  - Enable Tx and Rx FIFOs
       --  - Flush Tx and Rx FIFOs
-      Uart_Registers_Ptr.all.RWFIFO := 1;
-      Uart_Registers_Ptr.all.PFIFO := (RXFE => 1, TXFE => 1, others => 0);
-      Uart_Registers_Ptr.all.CFIFO := (RXFLUSH => 1, TXFLUSH => 1,
-                                       others => 0);
+      PFIFO_Value := Uart_Registers_Ptr.PFIFO;
+      if Uart_Fifo_Sizes (PFIFO_Value.RXFIFOSIZE) > 1 then
+         --  For proper operation, the value in RXWATER must be set to be less
+         --  than the receive FIFO/buffer size as indicated by PFIFO[RXFIFOSIZE]
+         --  and PFIFO[RXFE] and must be greater than 0.
+         Uart_Registers_Ptr.all.RWFIFO := 1;
+         Uart_Registers_Ptr.all.PFIFO := (RXFE => 1, TXFE => 1, others => 0);
+      else
+         Uart_Registers_Ptr.all.PFIFO := (RXFE => 0, TXFE => 1, others => 0);
+      end if;
+
+      Uart_Registers_Ptr.all.CFIFO := (RXFLUSH => 1, TXFLUSH => 1, others => 0);
 
       --  Configure Tx pin:
       Set_Pin_Function (Uart_Device.Tx_Pin,
@@ -264,7 +335,7 @@ package body Uart_Driver is
 
       --  Enable generation of Rx interrupts and disable generation of
       --  Tx interrupts:
-      C2_Value.RIE := 1;
+      C2_Value.RIE := (if Rx_Buffering_On then 1 else 0);
       C2_Value.TIE := 0;
       Uart_Registers_Ptr.all.C2 := C2_Value;
 
@@ -272,6 +343,13 @@ package body Uart_Driver is
       --  Enable interrupts in the interrupt controller (NVIC):
       --  NOTE: This is implicitly done by the Ada runtime
       --
+
+      --
+      --  Enable receiver hardware-based flow control:
+      --
+      --MODEM_Value := Uart_Registers_Ptr.MODEM;
+      --MODEM_Value.RXRTSE := 1;
+      --Uart_Registers_Ptr.MODEM := MODEM_Value;
 
       --  Enable UART's transmitter and receiver:
       C2_Value.TE := 1;
@@ -283,6 +361,7 @@ package body Uart_Driver is
                                Read_Write);
 
       Uart_Device_Var.Initialized := True;
+      Uart_Device_Var.Rx_Buffering_On := Rx_Buffering_On;
       Restore_Private_Data_Region (Old_Region);
    end Initialize;
 
@@ -365,7 +444,7 @@ package body Uart_Driver is
 
       procedure Uart_Irq_Common_Handler
         (Uart_Device_Id : Uart_Device_Id_Type) is
-
+         use Interfaces;
          Uart_Registers_Ptr : access UART.Registers_Type renames
            Uart_Devices (Uart_Device_Id).Registers_Ptr;
          Uart_Device_Var : Uart_Device_Var_Type renames
@@ -380,53 +459,67 @@ package body Uart_Driver is
          --  register full"
          pragma Assert (S1_Value.RDRF /= 0);
 
-         --  Read the first byte received to clear the interrupt source.
-         D_Value := Uart_Registers_Ptr.D;
-
          Set_Private_Data_Region (Uart_Device_Var'Address,
                                   Uart_Device_Var'Size,
                                   Read_Write,
                                   Old_Region);
-
-         Byte_Ring_Buffers.Write_Non_Blocking (Uart_Device_Var.Receive_Queue,
-                                               D_Value, Byte_Was_Stored);
-         if not Byte_Was_Stored then
-            Uart_Device_Var.Received_Bytes_Dropped :=
-              Uart_Device_Var.Received_Bytes_Dropped + 1;
-         end if;
-
-         Set_Private_Data_Region (
-            To_Address (Object_Pointer (Uart_Registers_Ptr)),
-            UART.Registers_Type'Object_Size,
-            Read_Write);
-
-         if S1_Value.IDLE /= 0 then
-            --  Clear idle condition
-            Uart_Registers_Ptr.S1.IDLE := 1;
-         end if;
 
          if  S1_Value.S1_OR /= 0 or else
              S1_Value.NF /= 0 or else
              S1_Value.FE /= 0 or else
              S1_Value.PF /= 0
          then
+            -- Read D register to clear error
+            D_Value := Uart_Registers_Ptr.D;
             Runtime_Logs.Error_Print (
                "UART" & Uart_Device_Id'Image & " Rx IRQ Error (" &
                "S1.S1_OR:" & S1_Value.S1_OR'Image &
                ", S1.NF:" & S1_Value.NF'Image &
                ", S1.FE:" & S1_Value.FE'Image &
-               ", S1.PF:" & S1_Value.PF'Image & ")");
+               ", S1.PF:" & S1_Value.PF'Image &
+               ", D:" & D_Value'Image & ")");
 
-            --  Clear error conditions:
-            S1_Value := (S1_OR | NF | FE | PF => 1, others => 0);
-            Uart_Registers_Ptr.S1 := S1_Value;
-
-            Set_Private_Data_Region (Uart_Device_Var'Address,
-                                     Uart_Device_Var'Size,
-                                     Read_Write);
             Uart_Device_Var.Errors := Uart_Device_Var.Errors + 1;
+            goto Common_Exit;
          end if;
 
+         --
+         --  Disable generation of further Rx interrupts
+         --
+         Disable_Rx_Interrupt (Uart_Device_Id);
+
+         if Uart_Device_Var.Rx_Buffering_On then
+            loop
+               --  Read the next byte received
+               D_Value := Uart_Registers_Ptr.D;
+
+               Byte_Ring_Buffers.Write_Non_Blocking (
+                  Uart_Device_Var.Receive_Queue,
+                  D_Value, Byte_Was_Stored);
+               if not Byte_Was_Stored then
+                  Runtime_Logs.Error_Print (
+                     "Byte received on UART" & Uart_Device_Id'Image &
+                     " dropped (Value:" & D_Value'Image & ")");
+
+                  Uart_Device_Var.Received_Bytes_Dropped :=
+                    Uart_Device_Var.Received_Bytes_Dropped + 1;
+               end if;
+
+               Data_Synchronization_Barrier;
+               S1_Value := Uart_Registers_Ptr.S1;
+               exit when S1_Value.RDRF = 0;
+            end loop;
+
+            --
+            --  Re-enable generation of further Rx interrupts
+            --
+            Enable_Rx_Interrupt (Uart_Device_Id);
+         else
+            Uart_Device_Var.Byte_Received := Uart_Registers_Ptr.D;
+            Set_True (Uart_Device_Var.Byte_Received_SuspObj);
+         end if;
+
+<<Common_Exit>>
          Restore_Private_Data_Region (Old_Region);
       end Uart_Irq_Common_Handler;
 

@@ -216,7 +216,7 @@ package body Serial_Console is
                                Read_Write,
                                Old_Region);
 
-      Uart_Driver.Initialize (Console_Var.Uart, Console_Uart_Baud_Rate);
+      Uart_Driver.Initialize (Console_Var.Uart, Console_Uart_Baud_Rate, True);
       Byte_Ring_Buffers.Initialize (Console_Var.Output_Buffer,
                                     Console_Output_Buffer_Name'Access);
       Set_True (Console_Var.Lock);
@@ -229,11 +229,6 @@ package body Serial_Console is
    -- ** --
 
    function Initialized return Boolean is (Console_Var.Initialized);
-
-   -- ** --
-
-   function Is_Input_Available return Boolean is
-      (Uart_Driver.Can_Receive_Char (Console_Var.Uart));
 
    -- ** --
 

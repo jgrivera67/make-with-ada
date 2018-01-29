@@ -707,7 +707,8 @@ package body Watch is
 
    procedure RTC_Alarm_Callback is
    begin
-      Signal_Event (Low_Power_Sleep_Timeout);
+      --??? Signal_Event (Low_Power_Sleep_Timeout);
+      null;
    end RTC_Alarm_Callback;
 
    --------------------------------------

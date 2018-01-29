@@ -41,6 +41,35 @@ package Bluetooth.FSCI is
    --
    FSCI_Packet_Header_Size : constant := 5;
 
+   type Opcode_Group_Type is (GATT,    --  Generic Attribute Profile
+                              GATT_DB, --  GATT Data Base
+                              GAP      --  Generic Access Profile
+                             ) with Size => Byte'Size;
+
+   for Opcode_Group_Type use (GATT => 16#44#,
+                              GATT_DB => 16#45#,
+                              GAP => 16#47#);
+
+   type GAP_Message_Opcode_Type is (GAP_BLE_Host_Initialize_Request,
+                                    GAP_Accept_Pairing_Request,
+                                    GAP_Add_Device_To_White_List_Request,
+                                    GAP_Create_Random_Device_Address_Request,
+                                    GAP_Confirm
+                                   ) with Size => Byte'Size;
+
+   for GAP_Message_Opcode_Type use
+     (GAP_BLE_Host_Initialize_Request => 16#01#,
+      GAP_Accept_Pairing_Request => 16#0f#,
+      GAP_Add_Device_To_White_List_Request => 16#23#,
+      GAP_Create_Random_Device_Address_Request => 16#26#,
+      GAP_Confirm => 16#80#);
+
+   type GATT_Message_Opcode_Type is (GATT_Confirm
+                                    ) with Size => Byte'Size;
+
+   for GATT_Message_Opcode_Type use
+     (GATT_Confirm => 16#80#);
+
    --
    --  FSCI protocol packet header
    --
@@ -67,7 +96,8 @@ package Bluetooth.FSCI is
       Length : Unsigned_16;
    end record
      with Size => FSCI_Packet_Header_Size * Byte'Size,
-          Bit_Order => System.Low_Order_First;
+          Bit_Order => System.Low_Order_First,
+          Alignment => 1;
 
    for FSCI_Packet_Header_Type use record
       STX          at 0 range 0 .. 7;
@@ -78,33 +108,15 @@ package Bluetooth.FSCI is
 
    STX_Value : constant Byte := 16#02#;
 
-   type FSCI_Packet_Header_Access_Type is access all FSCI_Packet_Header_Type;
+   subtype FSCI_Packet_Size_Type is
+      Positive range FSCI_Packet_Header_Size + 1 .. 255;
 
    type Byte_Access_Type is access all Byte;
 
-   function Packet_First_Byte_Ptr_To_Packet_Header_Ptr is
+   type FSCI_Packet_Header_Access_Type is access all FSCI_Packet_Header_Type;
+
+   function Byte_Ptr_To_Packet_Header_Ptr is
       new Ada.Unchecked_Conversion (Source => Byte_Access_Type,
                                     Target => FSCI_Packet_Header_Access_Type);
-
-   type Opcode_Group_Type is (GATT,    --  Generic Attribute Profile
-                              GATT_DB, --  GATT Data Base
-                              GAP      --  Generic Access Profile
-                             );
-
-   for Opcode_Group_Type use (GATT => 16#44#,
-                              GATT_DB => 16#45#,
-                              GAP => 16#47#);
-
-   type GAP_Message_Opcode_Type is (GAP_BLE_Host_Initialize_Request,
-                                    GAP_Accept_Pairing_Request,
-                                    GAP_Add_Device_To_White_List_Request,
-                                    GAP_Confirm);
-
-   for GAP_Message_Opcode_Type use
-     (GAP_BLE_Host_Initialize_Request => 16#01#,
-      GAP_Accept_Pairing_Request => 16#0f#,
-      GAP_Add_Device_To_White_List_Request => 16#23#,
-      GAP_Confirm => 16#80#
-     );
 
 end Bluetooth.FSCI;

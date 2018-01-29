@@ -119,37 +119,37 @@ package Microcontroller is
    --
 
    ADC_Interrupt_Priority  : constant System.Interrupt_Priority :=
-      System.Interrupt_Priority'First; --  highest
+      System.Interrupt_Priority'Last; --  highest (Cortex-M prio 1)
 
    I2C_Interrupt_Priority : constant System.Interrupt_Priority :=
-      System.Interrupt_Priority'First; --  highest
+      System.Interrupt_Priority'Last; --  highest
 
    DMA_Interrupt_Priority : constant System.Interrupt_Priority :=
-      System.Interrupt_Priority'First; --  highest
+      System.Interrupt_Priority'Last; --  highest
 
    LLWU_Interrupt_Priority : constant System.Interrupt_Priority :=
-      System.Interrupt_Priority'First; --  highest
+      System.Interrupt_Priority'Last; --  highest
 
    Timer_Interrupt_Priority : constant System.Interrupt_Priority :=
-      System.Interrupt_Priority'First + 1;
+      System.Interrupt_Priority'Last - 1;
 
    Periodic_Timer_Interrupt_Priority : constant System.Interrupt_Priority :=
-      System.Interrupt_Priority'First + 1;
+      System.Interrupt_Priority'Last - 1;
 
    Accelerometer_Interrupt_Priority : constant System.Interrupt_Priority :=
-      System.Interrupt_Priority'First + 2;
+      System.Interrupt_Priority'Last - 2;
 
    CAN_Interrupt_Priority : constant System.Interrupt_Priority :=
-      System.Interrupt_Priority'Last; --  lowest
+      System.Interrupt_Priority'First; --  lowest (Cortex-M prio 15)
 
    GPIO_Interrupt_Priority : constant System.Interrupt_Priority :=
-      System.Interrupt_Priority'Last; --  lowest
+      System.Interrupt_Priority'First; --  lowest
 
    UART_Interrupt_Priority : constant System.Interrupt_Priority :=
-      System.Interrupt_Priority'Last; --  lowest
+      System.Interrupt_Priority'First; --  lowest
 
    RTC_Interrupt_Priority : constant System.Interrupt_Priority :=
-      System.Interrupt_Priority'First; --  highest
+      System.Interrupt_Priority'Last; --  highest
 
    -- ** --
 

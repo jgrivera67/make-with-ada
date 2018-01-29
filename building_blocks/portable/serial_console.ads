@@ -201,7 +201,4 @@ package Serial_Console is
    procedure Get_Char (C : out Character)
      with Pre => Initialized;
 
-   function Is_Input_Available return Boolean
-     with Pre => Initialized;
-
 end Serial_Console;

@@ -31,6 +31,7 @@ private with Generic_Ring_Buffers;
 private with Pin_Mux_Driver;
 private with Microcontroller_Clocks;
 private with Memory_Protection;
+private with Ada.Synchronous_Task_Control;
 
 --
 --  @summary UART serial port driver
@@ -48,6 +49,7 @@ package Uart_Driver is
 
    procedure Initialize (Uart_Device_Id : Uart_Device_Id_Type;
                          Baud_Rate : Baud_Rate_Type;
+                         Rx_Buffering_On : Boolean;
                          Use_Two_Stop_Bits : Boolean := False)
      with Pre => not Initialized (Uart_Device_Id);
    --
@@ -55,17 +57,6 @@ package Uart_Driver is
    --
    --  @param Uart_Device_Id UART Id
    --  @param Baud_Rate      Baud rate
-   --
-
-   function Can_Transmit_Char (Uart_Device_Id : Uart_Device_Id_Type)
-                               return Boolean
-     with Pre => Initialized (Uart_Device_Id);
-   --
-   --  Tell if there is a character can be transmitted
-   --
-   --  @param Uart_Device_Id UART Id
-   --
-   --  @return True, if yes, False, otherwise
    --
 
    procedure Put_Byte (Uart_Device_Id : Uart_Device_Id_Type;
@@ -98,27 +89,26 @@ package Uart_Driver is
    --  @param Char           character ASCII code
    --
 
-   function Can_Receive_Char
-      (Uart_Device_Id : Uart_Device_Id_Type) return Boolean
-      with Pre => Initialized (Uart_Device_Id);
-   --
-   --  Tell if there is a character ready to be received
-   --
-   --  @param Uart_Device_Id UART Id
-   --
-   --  @return True, if yes, False, otherwise
-   --
-
    function Get_Byte
       (Uart_Device_Id : Uart_Device_Id_Type) return Byte
       with Inline, Pre => Initialized (Uart_Device_Id);
    --
-   --  Receives a byte of data on the given UART
+   --  Receives a byte of data on the given UART via an Rx Iiterrupt
    --
    --  @param Uart_Device_Id UART Id
    --
    --  @return Data byte received
    --
+
+   function Get_Byte_by_Polling
+      (Uart_Device_Id : Uart_Device_Id_Type) return Byte
+      with Inline, Pre => Initialized (Uart_Device_Id);
+   --
+   --  Receives a byte of data on the given UART doing polling
+   --
+   --  @param Uart_Device_Id UART Id
+   --
+   --  @return Data byte received
 
    function Get_Char
       (Uart_Device_Id : Uart_Device_Id_Type) return Character
@@ -136,6 +126,7 @@ private
    use Microcontroller_Clocks;
    use Pin_Mux_Driver;
    use Memory_Protection;
+   use Ada.Synchronous_Task_Control;
 
    --
    --  Size of a UART's ring buffer in bytes
@@ -174,9 +165,12 @@ private
    --
    type Uart_Device_Var_Type is limited record
       Initialized : Boolean := False;
+      Rx_Buffering_On : Boolean := False;
       Received_Bytes_Dropped : Natural := 0;
       Errors : Natural := 0;
       Receive_Queue : Byte_Ring_Buffers.Ring_Buffer_Type;
+      Byte_Received_SuspObj : Suspension_Object;
+      Byte_Received : Byte;
    end record with Alignment => MPU_Region_Alignment;
 
    --
