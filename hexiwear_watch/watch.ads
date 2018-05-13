@@ -88,6 +88,10 @@ package Watch is
    function Days_Per_Month (Month : Month_Type; Year : Natural)
       return Positive;
 
+   function Is_Leap_Year (Year : Natural) return Boolean is
+      (Year mod 4 = 0 and then
+       (Year mod 100 /= 0 or else Year mod 400 = 0));
+
 private
    pragma SPARK_Mode (Off);
    use Ada.Synchronous_Task_Control;

@@ -361,6 +361,27 @@ package body Command_Parser is
                            Date_Secs : out Seconds_Count)
          return Boolean;
 
+      function Num_Leap_Years_In_Between(Start_Year, End_Year : Natural)
+         return Natural;
+
+      -------------------------------
+      -- Num_Leap_Years_In_Between --
+      -------------------------------
+
+      function Num_Leap_Years_In_Between (Start_Year, End_Year : Natural)
+         return Natural
+      is
+        Leap_Year_Count : Natural := 0;
+      begin
+        for Year in Start_Year .. End_Year loop
+           if Is_Leap_Year (Year) then
+              Leap_Year_Count := Leap_Year_Count + 1;
+           end if;
+        end loop;
+
+        return Leap_Year_Count;
+      end Num_Leap_Years_In_Between;
+
       ----------------
       -- Parse_Date --
       ----------------
@@ -415,9 +436,8 @@ package body Command_Parser is
          Year_Days_Before_Today :=
             (Natural (Year) - Reference_Year) * Days_Per_Normal_Year +
             -- account for leap years:
-            (Natural (Year) - Reference_Year) / 4 +
-            Year_Days_Before_Month (Month_Type (Month),
-                                    Natural (Year)) +
+            Num_Leap_Years_In_Between (Reference_Year, Natural (Year) - 1) +
+            Year_Days_Before_Month (Month_Type (Month), Natural (Year)) +
             Positive (Day) - 1;
 
          Date_Secs := Seconds_Count (Year_Days_Before_Today) *

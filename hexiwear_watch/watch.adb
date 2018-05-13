@@ -100,7 +100,7 @@ package body Watch is
       return Positive is
       (case Month is
          when 1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
-         when 2 => (if Year mod 4 = 0 then 29 else 28),
+         when 2 => (if Is_Leap_Year (Year) then 29 else 28),
          when  4 | 6 | 9 | 11 => 30);
 
    ---------------------------
@@ -655,7 +655,7 @@ package body Watch is
 
          Display_Wall_Time (Wall_Time_Str);
 
-         Days_To_Date := Natural (Current_Wall_Time_Secs / Seconds_Per_Day) + 1;
+         Days_To_Date := Natural (Current_Wall_Time_Secs / Seconds_Per_Day);
          if Days_To_Date /= Watch_Var.Last_Days_To_Date or else
             Force_Refresh
          then
@@ -664,7 +664,7 @@ package body Watch is
             Year := Reference_Year;
             Days_Per_Year := Days_Per_Normal_Year;
             while Remaining_Days > Days_Per_Year loop
-               if Year mod 4 = 0 then
+               if Is_Leap_Year (Year) then
                   Days_Per_Year := Days_Per_Normal_Year + 1;
                else
                   Days_Per_Year := Days_Per_Normal_Year;
@@ -707,7 +707,7 @@ package body Watch is
 
    procedure RTC_Alarm_Callback is
    begin
-      --??? Signal_Event (Low_Power_Sleep_Timeout);
+      Signal_Event (Low_Power_Sleep_Timeout);
       null;
    end RTC_Alarm_Callback;
 
