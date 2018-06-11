@@ -55,15 +55,22 @@ package Search
       (if Index < A'Last then Elem < A(Index + 1)))
       with Ghost;
 
-   function Binary_Search(A : Array_Type;
-                          Elem : Elem_Type) return Natural
+   procedure Binary_Search(A : Array_Type; Elem : Elem_Type;
+                           Elem_Found : out Boolean;
+                           Elem_Index : out Natural)
       with Pre => A'Length >= 1 and then
                   A'Last < Positive'Last and then
-                  Is_Sorted_Ascending_Order(A),
-           Post => (if Elem_Exists(A, Elem) then
-                       Binary_Search'Result in A'Range
-                    elsif Elem < A(A'First) then
-                       Binary_Search'Result = A'First - 1
+                  Is_Sorted_Ascending_Order (A),
+           Post => Elem_Found = Elem_Exists (A, Elem) and
+                   (if Elem_Found then
+                       Elem_Index in A'Range and then
+                       A (Elem_Index) = Elem
                     else
-                       Elem_Belongs_After_Index(A, Elem, Binary_Search'Result));
+                       (if Elem < A (A'First) then
+                           Elem_Index = A'First - 1
+                        elsif Elem < A (A'Last) then
+                           Elem_Index in A'Range and then
+                           Elem_Belongs_After_Index (A, Elem, Elem_Index)
+                        else
+                           Elem_Index = A'Last + 1));
 end Search;

@@ -25,7 +25,6 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with System;
 with Interfaces;
 with Runtime_Logs;
 with Reset_Counter;
