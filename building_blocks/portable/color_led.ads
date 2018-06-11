@@ -34,7 +34,9 @@ private with Memory_Protection;
 --
 --  @summary Multi-color LED services
 --
-package Color_Led is
+package Color_Led
+   with SPARK_Mode => Off
+is
    use Ada.Real_Time;
 
    type Led_Color_Type is (Black,
