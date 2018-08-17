@@ -30,8 +30,9 @@ with Devices.MCU_Specific;
 --
 --  @summary MCU-specific GPIO declarations
 --
-private package Gpio_Driver.MCU_Specific_Private is
-   pragma SPARK_Mode (Off);
+private package Gpio_Driver.MCU_Specific_Private with
+   SPARK_Mode => Off
+is
    use Devices.MCU_Specific;
 
    --

@@ -1,0 +1,89 @@
+project RTS is
+
+   type CPU_Architecture_Type is ("arm_cortex_m0+", "arm_cortex_m4", "riscv32");
+
+   CPU_Architecture : CPU_Architecture_Type := External ("CPU_Architecture", "arm_cortex_m4");
+
+   for Languages use ("Ada");
+   for Library_Auto_Init use "False";
+   for Library_Name use "gnat";
+   for Library_Kind use "static";
+
+   Arch_Subdir := "";
+   CPU_Architecture_Switches := ();
+   case CPU_Architecture is
+      when "arm_cortex_m0+" =>
+	 Arch_Subdir := "arm_cortex_m";
+	 for Target use "arm-eabi";
+	 for Library_Dir use "arm_cortex_m_adalib";
+	 CPU_Architecture_Switches := ("-mcpu=cortex-m0plus",
+	 		               "-mthumb",
+			               --"-march=armv6-m",
+			               "-mlittle-endian",
+			               "-fno-omit-frame-pointer");
+
+      when "arm_cortex_m4" =>
+	 Arch_Subdir := "arm_cortex_m";
+	 for Target use "arm-eabi";
+	 for Library_Dir use "arm_cortex_m_adalib";
+	 CPU_Architecture_Switches := ("-mcpu=cortex-m4",
+	                               "-mthumb",
+	                               --"-march=armv7e-m",
+			               "-mlittle-endian",
+			               --"-mfloat-abi=softfp",
+			               "-mhard-float",
+			               "-mfpu=fpv4-sp-d16",
+				       "-fno-omit-frame-pointer");
+
+      when "riscv32" =>
+	 Arch_Subdir := "riscv32";
+	 for Target use "riscv32-elf";
+	 CPU_Architecture_Switches := ("-march=rv32imac",
+	                               "-mabi=ilp32",
+		                       "-mcmodel=medany",
+				       "-fno-builtin-printf");
+      when others =>
+	 null;
+   end case;
+
+   for Object_Dir use Arch_Subdir & "/obj";
+   for Library_Dir use Arch_Subdir & "/adalib";
+
+   for Source_Dirs use ("common",
+                        "zfp",
+			"fpu",
+			"extra");
+
+   for Runtime ("Ada") use Project'Project_Dir;
+
+   package Compiler is
+      --  COMMON_FLAGS here is common flags (used for C and Ada).
+      COMMON_FLAGS := CPU_Architecture_Switches &
+                  ("-fcallgraph-info=su,da",
+                   "-ffunction-sections",
+                   "-fdata-sections",
+                   -- "-fverbose-asm",
+		   "-Wall");
+
+      --  Per language flags (COMMON_FLAGS will be added later)
+      ADAFLAGS := ("-gnatg", "-nostdinc");
+      ASMFLAGS := ("");
+      CFLAGS := ("-DIN_RTS",
+                 "-Dinhibit_libc");
+
+      --COMMON_FLAGS := COMMON_FLAGS & ("-O2");
+      COMMON_FLAGS := COMMON_FLAGS & ("-O0", "-g");
+      ADAFLAGS := ADAFLAGS & ("-gnatp", "-gnatn2");
+      --ASMFLAGS := ASMFLAGS & ("-g");
+
+      --  Concatenate with common flags
+      ALL_ADAFLAGS := ADAFLAGS & COMMON_FLAGS;
+      ALL_CFLAGS := CFLAGS & COMMON_FLAGS;
+
+      for Switches ("C") use ALL_CFLAGS;
+      for Switches ("Ada") use ALL_ADAFLAGS;
+      for Switches ("Asm_Cpp") use ASMFLAGS;
+
+      for Local_Configuration_Pragmas use "../../gnat_pragmas.adc";
+  end Compiler;
+end RTS;

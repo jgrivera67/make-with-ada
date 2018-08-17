@@ -33,8 +33,9 @@ with Interfaces.Bit_Types;
 --
 --  @summary CPU-specfic declarations for the ARM Cortex-M4 core
 --
-package Microcontroller.CPU_Specific is
-   pragma Preelaborate;
+package Microcontroller.CPU_Specific with
+   No_Elaboration_Code_All
+is
    use Devices;
    use Interfaces.Bit_Types;
 

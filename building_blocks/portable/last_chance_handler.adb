@@ -25,19 +25,19 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 with System; use System;
-with Microcontroller.Arm_Cortex_M;
+with Microcontroller.Arch_Specific;
 with Microcontroller.MCU_Specific;
-with Runtime_Logs;
-with Ada.Text_IO;
+--??? with Runtime_Logs;
 with Interfaces.Bit_Types;
 with System.Storage_Elements;
 with Stack_Trace_Capture;
-with Number_Conversion_Utils;
 with Memory_Protection;
+with Low_Level_Debug;
 
-package body Last_Chance_Handler is
-   pragma SPARK_Mode (Off);
-   use Microcontroller.Arm_Cortex_M;
+package body Last_Chance_Handler with
+SPARK_Mode => Off
+is
+   use Microcontroller.Arch_Specific;
    use Interfaces.Bit_Types;
    use Interfaces;
    use System.Storage_Elements;
@@ -63,8 +63,8 @@ package body Last_Chance_Handler is
 
    procedure Last_Chance_Handler (Msg : System.Address; Line : Integer) is
       Msg_Text : String (1 .. 80) with Address => Msg;
-      Caller : constant Address :=
-        Return_Address_To_Call_Address (Get_LR_Register);
+      --??? Caller : constant Address :=
+      --???   Return_Address_To_Call_Address (Get_LR_Register);
       Msg_Length : Natural := 0;
       Old_Interrupt_Mask : Word with Unreferenced;
       Old_Region : MPU_Region_Descriptor_Type;
@@ -79,9 +79,11 @@ package body Last_Chance_Handler is
       end loop;
 
       if Last_Chance_Handler_Running then
-         Ada.Text_IO.Put_Line (
+         Low_Level_Debug.Print_String (
             "*** Recursive call to Last_Chance_Handler: " &
-            Msg_Text (1 .. Msg_Length) & "' at line " & Line'Image);
+            Msg_Text (1 .. Msg_Length) & "' at line ");
+         Low_Level_Debug.Print_Number_Decimal (Unsigned_32 (Line),
+                                               End_Line => True);
          loop
             null;
          end loop;
@@ -99,24 +101,26 @@ package body Last_Chance_Handler is
       --  Print exception message to error log and UART0:
       --
       if Line /= 0 then
-         Ada.Text_IO.New_Line;
-         Ada.Text_IO.Put_Line ("*** Exception: '"
-                               & Msg_Text (1 .. Msg_Length) &
-                                 "' at line " & Line'Image);
+         Low_Level_Debug.Print_String (
+            ASCII.LF & "*** Exception: '" & Msg_Text (1 .. Msg_Length) &
+            "' at line ");
+         Low_Level_Debug.Print_Number_Decimal (Unsigned_32 (Line),
+                                               End_Line => True);
+
          Print_Stack_Trace (Num_Entries_To_Skip => 0);
 
-         Runtime_Logs.Error_Print ("Exception: '" &
-                                   Msg_Text (1 .. Msg_Length) &
-                                   "' at line " & Line'Image, Caller);
+         --??? Runtime_Logs.Error_Print ("Exception: '" &
+         --???                          Msg_Text (1 .. Msg_Length) &
+         --???                          "' at line " & Line'Image, Caller);
       else
-         Ada.Text_IO.New_Line;
-         Ada.Text_IO.Put_Line ("*** Exception: '" &
-                               Msg_Text (1 .. Msg_Length) & "'");
-         Print_Stack_Trace (Num_Entries_To_Skip => 0);
+         Low_Level_Debug.Print_String (
+            ASCII.LF &
+            "*** Exception: '" & Msg_Text (1 .. Msg_Length) & "'" & ASCII.LF);
+         --??? Print_Stack_Trace (Num_Entries_To_Skip => 0);
 
-         Runtime_Logs.Error_Print ("Exception: '" &
-                                   Msg_Text (1 .. Msg_Length) &
-                                   "'", Caller);
+         --??? Runtime_Logs.Error_Print ("Exception: '" &
+         --???                           Msg_Text (1 .. Msg_Length) &
+         --???                          "'", Caller);
       end if;
 
       case Disposition is
@@ -124,7 +128,7 @@ package body Last_Chance_Handler is
             Microcontroller.MCU_Specific.System_Reset;
 
          when Break_Point =>
-            Microcontroller.Arm_Cortex_M.Break_Point;
+            Microcontroller.Arch_Specific.Break_Point;
             Microcontroller.MCU_Specific.System_Reset;
 
          when Dummy_Infinite_Loop =>
@@ -146,16 +150,15 @@ package body Last_Chance_Handler is
          Stack_Trace_Capture.Stack_Trace_Type (1 .. Max_Stack_Trace_Entries);
 
       Num_Entries_Captured : Natural;
-      Hex_Num_Str : String (1 .. 8);
    begin
       Stack_Trace_Capture.Get_Stack_Trace (Stack_Trace,
                                            Num_Entries_Captured);
       for Stack_Trace_Entry of
         Stack_Trace (1 + Num_Entries_To_Skip .. Num_Entries_Captured) loop
-         Ada.Text_IO.Put (ASCII.HT & "0x");
-         Number_Conversion_Utils.Unsigned_To_Hexadecimal_String (
-            Unsigned_32 (To_Integer (Stack_Trace_Entry)), Hex_Num_Str);
-         Ada.Text_IO.Put_Line (Hex_Num_Str);
+         Low_Level_Debug.Print_String (ASCII.HT & "0x");
+         Low_Level_Debug.Print_Number_Hexadecimal (
+            Unsigned_32 (To_Integer (Stack_Trace_Entry)),
+            End_Line => True);
       end loop;
    end Print_Stack_Trace;
 

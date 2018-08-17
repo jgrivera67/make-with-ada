@@ -24,23 +24,19 @@
 --  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 --  POSSIBILITY OF SUCH DAMAGE.
 --
-with Devices.MCU_Specific;
 with Uart_Driver;
-with Generic_Ring_Buffers;
+--??? with Generic_Ring_Buffers;
 with Number_Conversion_Utils;
-with Runtime_Logs;
-with Ada.Synchronous_Task_Control;
-with Ada.Task_Identification;
-with System;
+--??? with Runtime_Logs;
+with Devices.MCU_Specific;
 with Memory_Protection;
 
-package body Serial_Console is
-   pragma SPARK_Mode (Off);
-   use Devices.MCU_Specific;
-   use Ada.Synchronous_Task_Control;
-   use Ada.Task_Identification;
+package body Serial_Console with
+   SPARK_Mode => Off
+is
    use Number_Conversion_Utils;
    use Memory_Protection;
+   use Devices.MCU_Specific;
 
    --
    --  Baud rate for the console UART
@@ -55,35 +51,32 @@ package body Serial_Console is
    --
    --  Ring buffer of bytes
    --
-   package Byte_Ring_Buffers is
-     new Generic_Ring_Buffers (Max_Num_Elements => Console_Output_Buffer_Size,
-                               Element_Type => Byte);
+   --??? package Byte_Ring_Buffers is
+   --???  new Generic_Ring_Buffers (Max_Num_Elements => Console_Output_Buffer_Size,
+   --???                            Element_Type => Byte);
 
-   type Console_Type;
-
-   task type Console_Output_Task_Type (
-     Console_Ptr : not null access Console_Type)
-     with Priority => System.Priority'First + 1;
+   --??? task type Console_Output_Task_Type (
+   --???   Console_Ptr : not null access Console_Type)
+   --???  with Priority => System.Priority'First + 1;
 
    --
    --  State variables of the serial console
    --
    type Console_Type (Uart : Uart_Device_Id_Type) is limited record
       Initialized : Boolean := False;
-      Initialized_Condvar : Suspension_Object;
-      Output_Buffer : Byte_Ring_Buffers.Ring_Buffer_Type;
+      --??? Initialized_Condvar : Suspension_Object;
+      --??? Output_Buffer : Byte_Ring_Buffers.Ring_Buffer_Type;
       Current_Attributes : Attributes_Vector_Type;
       Saved_Attributes : Attributes_Vector_Type;
       Attributes_Were_Saved : Boolean := False;
-      Lock : Suspension_Object;
-      Lock_Owner_Task_Id : Task_Id;
-      Output_Task : Console_Output_Task_Type (Console_Type'Access);
-   end record with Alignment => MPU_Region_Alignment;
-
-   Console_Output_Buffer_Name : aliased constant String :=
-     "Console Output Buffer";
+      --??? Lock : Suspension_Object;
+      --??? Lock_Owner_Task_Id : Task_Id;
+      --??? Output_Task : Console_Output_Task_Type (Console_Type'Access);
+   end record with Alignment => Memory_Protection.MPU_Region_Alignment;
 
    Console_Var : aliased Console_Type (UART0);
+   Console_Output_Buffer_Name : aliased constant String :=
+     "Console Output Buffer";
 
    -- ** --
 
@@ -217,11 +210,11 @@ package body Serial_Console is
                                Old_Region);
 
       Uart_Driver.Initialize (Console_Var.Uart, Console_Uart_Baud_Rate, True);
-      Byte_Ring_Buffers.Initialize (Console_Var.Output_Buffer,
-                                    Console_Output_Buffer_Name'Access);
-      Set_True (Console_Var.Lock);
+      --??? Byte_Ring_Buffers.Initialize (Console_Var.Output_Buffer,
+      --???                              Console_Output_Buffer_Name'Access);
+      --??? Set_True (Console_Var.Lock);
       Console_Var.Initialized := True;
-      Set_True (Console_Var.Initialized_Condvar);
+      --??? Set_True (Console_Var.Initialized_Condvar);
 
       Restore_Private_Data_Region (Old_Region);
    end Initialize;
@@ -233,9 +226,10 @@ package body Serial_Console is
    -- ** --
 
    function Is_Lock_Mine return Boolean is
-      Current_Task_Id : constant Task_Id := Current_Task;
+      --??? Current_Task_Id : constant Task_Id := Current_Task;
    begin
-      return Console_Var.Lock_Owner_Task_Id = Current_Task_Id;
+      --??? return Console_Var.Lock_Owner_Task_Id = Current_Task_Id;
+      return True; --???
    end Is_Lock_Mine;
 
    -- ** --
@@ -252,9 +246,9 @@ package body Serial_Console is
                                Read_Write,
                                Old_Region);
 
-      Suspend_Until_True (Console_Var.Lock);
-      pragma Assert (Console_Var.Lock_Owner_Task_Id = Null_Task_Id);
-      Console_Var.Lock_Owner_Task_Id := Current_Task;
+      --??? Suspend_Until_True (Console_Var.Lock);
+      --??? pragma Assert (Console_Var.Lock_Owner_Task_Id = Null_Task_Id);
+      --??? Console_Var.Lock_Owner_Task_Id := Current_Task;
 
       Restore_Private_Data_Region (Old_Region);
    end Lock;
@@ -276,6 +270,7 @@ package body Serial_Console is
    -- ** --
 
    procedure Print_String (S : String) is
+      pragma Unreferenced (S);
       Old_Region : MPU_Region_Descriptor_Type;
    begin
       Set_Private_Data_Region (Console_Var'Address,
@@ -283,10 +278,10 @@ package body Serial_Console is
                                Read_Write,
                                Old_Region);
 
-      for C of S loop
-         Byte_Ring_Buffers.Write (Console_Var.Output_Buffer,
-                                  Byte (Character'Pos (C)));
-      end loop;
+      --??? for C of S loop
+      --???   Byte_Ring_Buffers.Write (Console_Var.Output_Buffer,
+      --???                            Byte (Character'Pos (C)));
+      --??? end loop;
 
       Restore_Private_Data_Region (Old_Region);
    end Print_String;
@@ -300,8 +295,8 @@ package body Serial_Console is
                                Read_Write,
                                Old_Region);
 
-      Byte_Ring_Buffers.Write (Console_Var.Output_Buffer,
-                               Byte (Character'Pos (C)));
+      --??? Byte_Ring_Buffers.Write (Console_Var.Output_Buffer,
+      --???                          Byte (Character'Pos (C)));
 
       Restore_Private_Data_Region (Old_Region);
    end Put_Char;
@@ -469,8 +464,8 @@ package body Serial_Console is
                                Read_Write,
                                Old_Region);
 
-      Console_Var.Lock_Owner_Task_Id := Null_Task_Id;
-      Set_True (Console_Var.Lock);
+      --??? Console_Var.Lock_Owner_Task_Id := Null_Task_Id;
+      --??? Set_True (Console_Var.Lock);
 
       Restore_Private_Data_Region (Old_Region);
    end Unlock;
@@ -480,29 +475,29 @@ package body Serial_Console is
    --
    --  Task that sends console output to the console's UART
    --
-   task body Console_Output_Task_Type is
-      Byte_Read : Byte;
-      Char : Character;
-   begin
-      Set_Private_Data_Region (Console_Var'Address,
-                               Console_Var'Size,
-                               Read_Write);
-
-      Suspend_Until_True (Console_Ptr.Initialized_Condvar);
-      Runtime_Logs.Info_Print ("Console output task started");
-
-      loop
-         Byte_Ring_Buffers.Read (Console_Ptr.Output_Buffer, Byte_Read);
-         Char := Character'Val (Byte_Read);
-
-         if Char = ASCII.LF then
-            Uart_Driver.Put_Char (Console_Ptr.Uart, ASCII.CR);
-            Uart_Driver.Put_Char (Console_Ptr.Uart, ASCII.LF);
-         else
-            Uart_Driver.Put_Char (Console_Ptr.Uart, Char);
-         end if;
-      end loop;
-
-   end Console_Output_Task_Type;
+   --??? task body Console_Output_Task_Type is
+   --???    Byte_Read : Byte;
+   --???    Char : Character;
+   --??? begin
+   --???    Set_Private_Data_Region (Console_Var'Address,
+   --???                             Console_Var'Size,
+   --???                            Read_Write);
+   --???
+   --???  Suspend_Until_True (Console_Ptr.Initialized_Condvar);
+   --???   Runtime_Logs.Info_Print ("Console output task started");
+   --???
+   --???   loop
+   --???      Byte_Ring_Buffers.Read (Console_Ptr.Output_Buffer, Byte_Read);
+   --???      Char := Character'Val (Byte_Read);
+   --???
+   --???     if Char = ASCII.LF then
+   --???        Uart_Driver.Put_Char (Console_Ptr.Uart, ASCII.CR);
+   --???        Uart_Driver.Put_Char (Console_Ptr.Uart, ASCII.LF);
+   --???     else
+   --???        Uart_Driver.Put_Char (Console_Ptr.Uart, Char);
+   --???     end if;
+   --???  end loop;
+   --???
+   --??? end Console_Output_Task_Type;
 
 end Serial_Console;

@@ -28,16 +28,16 @@
 with Interfaces.Bit_Types;
 with System.Storage_Elements;
 with System.Address_To_Access_Conversions;
-with Microcontroller.Arm_Cortex_M;
+with Microcontroller.Arch_Specific;
 with Microcontroller.MCU_Specific;
-with Task_Stack_Info;
+--??? with Task_Stack_Info;
 
 package body Stack_Trace_Capture is
    use Interfaces;
    use Interfaces.Bit_Types;
    use System.Storage_Elements;
    use Microcontroller;
-   use Microcontroller.Arm_Cortex_M;
+   use Microcontroller.Arch_Specific;
    use Microcontroller.MCU_Specific;
 
    function Find_Previous_Stack_Frame (
@@ -107,10 +107,11 @@ package body Stack_Trace_Capture is
          Stack_End := Interrupt_Stack_End_Entry'Address;
          Stack_Start := Interrupt_Stack_Start_Entry'Address;
       else
-         Task_Stack_Info.Get_Current_Task_Stack (Stack_Start, Stack_Size);
-         Stack_End :=
-              To_Address (To_Integer (Stack_Start) +
-                          Integer_Address (Stack_Size));
+         --??? Task_Stack_Info.Get_Current_Task_Stack (Stack_Start, Stack_Size);
+         --??? Stack_End :=
+         --???     To_Address (To_Integer (Stack_Start) +
+         --???                 Integer_Address (Stack_Size));
+         null; --???
       end if;
 
       if Frame_Pointer < Stack_Start or else Frame_Pointer >= Stack_End then

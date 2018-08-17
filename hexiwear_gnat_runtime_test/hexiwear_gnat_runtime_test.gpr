@@ -15,7 +15,8 @@ project hexiwear_gnat_runtime_test is
       for Default_Switches ("ada") use ("-g", "-O0");
    end Builder;
 
-   for Runtime ("Ada") use "ravenscar-sfp-kinetis_k64f_hexiwear";
+   --for Runtime ("Ada") use "ravenscar-sfp-kinetis_k64f_hexiwear";
+   for Runtime ("Ada") use "/home/jgrivera/my_apps/GNAT/2018-arm-elf/arm-eabi/BSPs/cortex-m/armv7-m/kinetis/k64f/hexiwear/zfp";
    for Target use "arm-eabi";
 
    package Ide is

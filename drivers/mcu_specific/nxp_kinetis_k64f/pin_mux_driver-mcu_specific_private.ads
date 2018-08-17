@@ -28,10 +28,9 @@
 --
 --  @summary Pin MUX driver private declarations
 --
-private package Pin_Mux_Driver.MCU_Specific_Private is
-   pragma Preelaborate;
-   pragma SPARK_Mode (Off);
-
+private package Pin_Mux_Driver.MCU_Specific_Private with
+   SPARK_Mode => Off
+is
    --
    --  Table of pointers to the PORT registers for each GPIO port
    --

@@ -33,8 +33,9 @@ with Microcontroller_Clocks;
 --
 --  @summary Micrcontroller operations
 --
-package Microcontroller is
-   pragma Preelaborate;
+package Microcontroller with
+   No_Elaboration_Code_All
+is
    use System;
    use Interfaces;
    use System.Storage_Elements;
@@ -111,45 +112,6 @@ package Microcontroller is
    --  Memory protection unit (MPU) region alignment in bytes
    --
    Mpu_Region_Alignment : constant Positive := 32;
-
-   -- ** --
-
-   --
-   --  Interrupt priorities
-   --
-
-   ADC_Interrupt_Priority  : constant System.Interrupt_Priority :=
-      System.Interrupt_Priority'Last; --  highest (Cortex-M prio 1)
-
-   I2C_Interrupt_Priority : constant System.Interrupt_Priority :=
-      System.Interrupt_Priority'Last; --  highest
-
-   DMA_Interrupt_Priority : constant System.Interrupt_Priority :=
-      System.Interrupt_Priority'Last; --  highest
-
-   LLWU_Interrupt_Priority : constant System.Interrupt_Priority :=
-      System.Interrupt_Priority'Last; --  highest
-
-   Timer_Interrupt_Priority : constant System.Interrupt_Priority :=
-      System.Interrupt_Priority'Last - 1;
-
-   Periodic_Timer_Interrupt_Priority : constant System.Interrupt_Priority :=
-      System.Interrupt_Priority'Last - 1;
-
-   Accelerometer_Interrupt_Priority : constant System.Interrupt_Priority :=
-      System.Interrupt_Priority'Last - 2;
-
-   CAN_Interrupt_Priority : constant System.Interrupt_Priority :=
-      System.Interrupt_Priority'First; --  lowest (Cortex-M prio 15)
-
-   GPIO_Interrupt_Priority : constant System.Interrupt_Priority :=
-      System.Interrupt_Priority'First; --  lowest
-
-   UART_Interrupt_Priority : constant System.Interrupt_Priority :=
-      System.Interrupt_Priority'First; --  lowest
-
-   RTC_Interrupt_Priority : constant System.Interrupt_Priority :=
-      System.Interrupt_Priority'Last; --  highest
 
    -- ** --
 

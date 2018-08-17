@@ -24,11 +24,12 @@
 --  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 --  POSSIBILITY OF SUCH DAMAGE.
 --
-with Interfaces;
+with Interfaces.C;
 with System.Storage_Elements;
 
-package Memory_Utils is
-   pragma Pure;
+package Memory_Utils with
+   No_Elaboration_Code_All
+is
    use Interfaces;
    use System.Storage_Elements;
 
@@ -70,5 +71,18 @@ package Memory_Utils is
        To_Integer (Block1_Start_Addr)
     else
        True);
+
+   function C_Memcpy (Dest_Addr, Src_Addr : System.Address;
+                      Num_Bytes : Interfaces.C.size_t) return System.Address
+     with Export,
+          Convention => C,
+          External_Name => "memcpy";
+
+   function C_Memset (Dest_Addr : System.Address;
+                      Byte_Value : Interfaces.C.int;
+                      Num_Bytes : Interfaces.C.size_t) return System.Address
+     with Export,
+          Convention => C,
+          External_Name => "memset";
 
 end Memory_Utils;

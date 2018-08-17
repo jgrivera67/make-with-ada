@@ -57,14 +57,14 @@ package Gpio_Driver is
 
    function Read_Input_Pin (Gpio_Pin : Gpio_Pin_Type) return Boolean;
 
-   procedure Enable_Pin_Irq (
-      Gpio_Pin : Gpio_Pin_Type;
-      Pin_Irq_Mode : Pin_Irq_Mode_Type;
-      Pin_Irq_Handler : GPIO_Pin_Irq_Handler_Type);
+   --??? procedure Enable_Pin_Irq (
+   --???   Gpio_Pin : Gpio_Pin_Type;
+   --???   Pin_Irq_Mode : Pin_Irq_Mode_Type;
+   --???   Pin_Irq_Handler : GPIO_Pin_Irq_Handler_Type);
 
-   procedure Disable_Pin_Irq (Gpio_Pin : Gpio_Pin_Type);
+   --??? procedure Disable_Pin_Irq (Gpio_Pin : Gpio_Pin_Type);
 
-   procedure Clear_Pin_Irq (Gpio_Pin : Gpio_Pin_Type);
+   --??? procedure Clear_Pin_Irq (Gpio_Pin : Gpio_Pin_Type);
 
 private
    type GPIO_Registers_Access_Type is

@@ -26,7 +26,6 @@
 --
 with Interfaces; use Interfaces;
 with Interfaces.Bit_Types; use Interfaces.Bit_Types;
-
 --
 --  Serial console services
 --
@@ -200,5 +199,4 @@ package Serial_Console is
 
    procedure Get_Char (C : out Character)
      with Pre => Initialized;
-
 end Serial_Console;

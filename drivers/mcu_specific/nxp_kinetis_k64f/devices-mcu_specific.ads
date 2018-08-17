@@ -40,9 +40,9 @@ with MK64F12.I2C;
 --
 --  @summary Devices in the Kinetis K64F MCU
 --
-package Devices.MCU_Specific is
-   pragma Preelaborate;
-
+package Devices.MCU_Specific with
+   No_Elaboration_Code_All
+is
    --
    --  Pin port names
    --

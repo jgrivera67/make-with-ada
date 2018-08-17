@@ -31,8 +31,9 @@ with Memory_Utils;
 --
 --  @summary DEclarations common to all devices
 --
-package Devices is
-   pragma Preelaborate;
+package Devices with
+   No_Elaboration_Code_All
+is
    use Interfaces;
    use Interfaces.Bit_Types;
 

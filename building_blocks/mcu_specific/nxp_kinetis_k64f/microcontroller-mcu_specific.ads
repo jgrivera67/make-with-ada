@@ -25,7 +25,11 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-package Microcontroller.MCU_Specific is
+with Kinetis_K64F.MPU;
+
+package Microcontroller.MCU_Specific with
+   No_Elaboration_Code_All
+is
    --
    --  NOR Flash base address
    --
@@ -56,6 +60,11 @@ package Microcontroller.MCU_Specific is
    --
    Mcu_Peripheral_Bridge_Min_Addr : constant Integer_Address := 16#40000000#;
    Mcu_Peripheral_Bridge_Max_Addr : constant Integer_Address := 16#400FFFFF#;
+
+   --
+   --  MPU region alignment (in bytes)
+   --
+   MPU_Region_Alignment : constant := Kinetis_K64F.MPU.MPU_Region_Alignment;
 
    -- ** --
 

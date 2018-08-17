@@ -25,14 +25,14 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
+with Microcontroller.Arch_Specific;
 with Microcontroller.CPU_Specific;
-with Microcontroller.Arm_Cortex_M;
 with Kinetis_K64F.RCM;
 with Interfaces.Bit_Types;
 
 package body Microcontroller.MCU_Specific is
+   use Microcontroller.Arch_Specific;
    use Microcontroller.CPU_Specific;
-   use Microcontroller.Arm_Cortex_M;
    use Kinetis_K64F;
    use Interfaces.Bit_Types;
 

@@ -30,8 +30,9 @@ with Memory_Protection;
 with System.Address_To_Access_Conversions;
 with Interfaces.Bit_Types;
 
-package body Pin_Mux_Driver is
-   pragma SPARK_Mode (Off);
+package body Pin_Mux_Driver with
+   SPARK_Mode => Off
+is
    use Pin_Mux_Driver.MCU_Specific_Private;
    use Memory_Protection;
    use Interfaces.Bit_Types;
