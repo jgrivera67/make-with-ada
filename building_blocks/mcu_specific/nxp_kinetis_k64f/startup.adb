@@ -31,7 +31,7 @@ with System.Machine_Code;
 with System.Storage_Elements;
 with Kinetis_K64F;
 with Microcontroller.Arch_Specific;
-with Microcontroller_Clocks;
+with Microcontroller.Clocks;
 with Reset_Counter;
 with Low_Level_Debug;
 
@@ -198,7 +198,7 @@ package body Startup is
       Low_Level_Debug.Initialize_Rgb_Led;
       Low_Level_Debug.Set_Rgb_Led(Red_On => True);
 
-      Microcontroller_Clocks.Initialize;
+      Microcontroller.Clocks.Initialize;
       Low_Level_Debug.Set_Rgb_Led(Green_On => True);
 
       --

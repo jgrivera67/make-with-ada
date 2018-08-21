@@ -28,7 +28,6 @@
 with System;
 with Interfaces;
 with System.Storage_Elements;
-with Microcontroller_Clocks;
 
 --
 --  @summary Micrcontroller operations
@@ -39,12 +38,10 @@ is
    use System;
    use Interfaces;
    use System.Storage_Elements;
-   use Microcontroller_Clocks;
+
+   type Hertz_Type is range 1 .. 1_000_000_000;
 
    type Mega_Hertz_Type is range 1 .. (Hertz_Type'Last / 1_000_000);
-
-   Cpu_Clock_Frequency_MHz : constant Mega_Hertz_Type :=
-     Mega_Hertz_Type (Cpu_Clock_Frequency / 1_000_000);
 
    type Cpu_Byte_Order_Type is (Little_Endian, Big_Endian);
 

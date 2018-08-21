@@ -43,7 +43,7 @@ _DEFAULT_STACK_SIZE = 2*1024;
 
 OUTPUT_ARCH("riscv")
 
-ENTRY(Reset_Handler);
+ENTRY(_start);
 
 MEMORY
 {

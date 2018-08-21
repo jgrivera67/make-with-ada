@@ -1,5 +1,5 @@
 --
---  Copyright (c) 2018, German Rivera
+--  Copyright (c) 2016, German Rivera
 --  All rights reserved.
 --
 --  Redistribution and use in source and binary forms, with or without
@@ -25,20 +25,30 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
---
---  @summary Startup code
---
-package Startup with
-   No_Elaboration_Code_All
-is
+with Interfaces.Bit_Types;
+with System.Storage_Elements;
+with System.Address_To_Access_Conversions;
+with Microcontroller.Arch_Specific;
+with Microcontroller.MCU_Specific;
+--??? with Task_Stack_Info;
 
-   procedure Reset_Handler with Export,
-                                Convention => Asm,
-                                External_Name => "reset_handler",
-                                No_Return;
-   --pragma Machine_Attribute (Reset_Handler, "naked");
-   --
-   --  Reset exception handler
-   --
+package body Stack_Trace_Capture is
+   use Interfaces;
+   use Interfaces.Bit_Types;
+   use System.Storage_Elements;
+   use Microcontroller;
+   use Microcontroller.Arch_Specific;
+   use Microcontroller.MCU_Specific;
 
-end Startup;
+   --
+   --  NOTE: This subprogram and subprograms invoked from it cannot use
+   --  assertions, since this subprogram is invoked indirectly from
+   --  Last_Chance_Handler. Otherwise, an infinite will happen.
+   --
+   procedure Get_Stack_Trace (Stack_Trace : out Stack_Trace_Type;
+                              Num_Entries_Captured : out Natural) is
+   begin
+      Num_Entries_Captured := 0;
+   end Get_Stack_Trace;
+
+end Stack_Trace_Capture;

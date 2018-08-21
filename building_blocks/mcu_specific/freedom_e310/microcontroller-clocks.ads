@@ -1,5 +1,5 @@
 --
---  Copyright (c) 2018, German Rivera
+--  Copyright (c) 2016, German Rivera
 --  All rights reserved.
 --
 --  Redistribution and use in source and binary forms, with or without
@@ -24,21 +24,11 @@
 --  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 --  POSSIBILITY OF SUCH DAMAGE.
 --
+pragma Restrictions (No_Elaboration_Code);
 
---
---  @summary Startup code
---
-package Startup with
+package Microcontroller.Clocks with
    No_Elaboration_Code_All
 is
+   procedure Initialize;
 
-   procedure Reset_Handler with Export,
-                                Convention => Asm,
-                                External_Name => "reset_handler",
-                                No_Return;
-   --pragma Machine_Attribute (Reset_Handler, "naked");
-   --
-   --  Reset exception handler
-   --
-
-end Startup;
+end Microcontroller.Clocks;

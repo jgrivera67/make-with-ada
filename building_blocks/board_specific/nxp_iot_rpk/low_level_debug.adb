@@ -30,14 +30,14 @@ with Kinetis_K64F.SIM;
 with Kinetis_K64F.PORT;
 with Kinetis_K64F.GPIO;
 with Interfaces.Bit_Types;
-with Microcontroller_Clocks;
+with Microcontroller.Clocks;
 with Microcontroller.Arch_Specific;
 with Number_Conversion_Utils;
 
 package body Low_Level_Debug is
    use Kinetis_K64F;
    use Interfaces.Bit_Types;
-   use Microcontroller_Clocks;
+   use Microcontroller.Clocks;
    use Microcontroller.Arch_Specific;
 
    Baud_Rate : constant := 115_200;

@@ -82,7 +82,7 @@ procedure Main is
 begin -- Main
    Memory_Protection.Initialize (MPU_Enabled => False);
    --Low_Level_Debug.Set_Rgb_Led (Red_On => True);--???
-
+   Low_Level_Debug.Set_Rgb_Led (Blue_On => True);
    --??? Runtime_Logs.Initialize;
    Log_Start_Info;
 

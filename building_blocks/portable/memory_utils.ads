@@ -74,14 +74,14 @@ is
 
    function C_Memcpy (Dest_Addr, Src_Addr : System.Address;
                       Num_Bytes : Interfaces.C.size_t) return System.Address
-     with Export,
+     with Import,
           Convention => C,
           External_Name => "memcpy";
 
    function C_Memset (Dest_Addr : System.Address;
                       Byte_Value : Interfaces.C.int;
                       Num_Bytes : Interfaces.C.size_t) return System.Address
-     with Export,
+     with Import,
           Convention => C,
           External_Name => "memset";
 

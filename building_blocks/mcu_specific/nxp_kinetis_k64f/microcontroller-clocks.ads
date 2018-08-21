@@ -26,12 +26,13 @@
 --
 pragma Restrictions (No_Elaboration_Code);
 
-package Microcontroller_Clocks with
+package Microcontroller.Clocks with
    No_Elaboration_Code_All
 is
-   type Hertz_Type is range 1 .. 1_000_000_000;
-
    Cpu_Clock_Frequency : constant Hertz_Type := 120_000_000;
+
+   Cpu_Clock_Frequency_MHz : constant Mega_Hertz_Type :=
+     Mega_Hertz_Type (Cpu_Clock_Frequency / 1_000_000);
 
    System_Clock_Frequency : constant Hertz_Type := Cpu_Clock_Frequency;
 
@@ -39,4 +40,4 @@ is
 
    procedure Initialize;
 
-end Microcontroller_Clocks;
+end Microcontroller.Clocks;

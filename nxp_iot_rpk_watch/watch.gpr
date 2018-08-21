@@ -4,16 +4,14 @@ project watch is
 
    Executable_Prefix := "watch";
    Board := "nxp_iot_rpk";
-   CPU_Arch := "arm_cortex_m";
-   CPU_Core := "arm_cortex_m4";
 
-   for Languages use ("ada");
+   for Languages use ("Ada", "C");
 
    for Main use ("main.adb");
 
    for Runtime ("Ada") use RTS'Runtime ("Ada");
 
-   for Target use "arm-eabi"; --???
+   for Target use RTS'Target;
 
    type MCU_Type is ("nxp_kinetis_k64f", "stm32f401", "stm32f479", "freedom_e310");
 
@@ -32,7 +30,7 @@ project watch is
    end case;
 
    FreeRTOS_Port_Subdir := "";
-   case RTS.CPU_Architecture is
+   case RTS.CPU_Core is
       when "arm_cortex_m0+" =>
 	 FreeRTOS_Port_Subdir := "GCC/ARM_CM0";
       when "arm_cortex_m4" =>
@@ -45,18 +43,18 @@ project watch is
 
    for Source_Dirs use (".",
                         "../building_blocks/portable",
-                        "../building_blocks/arch_specific/" & CPU_Arch,
-                        "../building_blocks/cpu_specific/" & CPU_Core,
-                        "../building_blocks/mcu_specific/" & MCU,
                         "../building_blocks/board_specific/" & Board,
+                        "../building_blocks/mcu_specific/" & MCU,
+                        "../building_blocks/cpu_specific/" & RTS.CPU_Core,
+                        "../building_blocks/arch_specific/" & RTS.CPU_Arch,
                         "../drivers/portable",
-                        "../drivers/mcu_specific/" & MCU,
                         "../drivers/board_specific/" & Board,
+                        "../drivers/mcu_specific/" & MCU,
                         "../third_party",
-                        "../third_party/CMSIS",
-                        "../third_party/FreeRTOS/Source",
-                        "../third_party/FreeRTOS/Source/portable/" & FreeRTOS_Port_Subdir,
-                        "../third_party/SVD/nxp_kinetis_k64f");
+                        --"../third_party/CMSIS",
+                        --"../third_party/FreeRTOS/Source",
+                        --"../third_party/FreeRTOS/Source/portable/" & FreeRTOS_Port_Subdir,
+                        "../third_party/SVD/" & MCU);
 
    for Object_Dir use "obj";
 

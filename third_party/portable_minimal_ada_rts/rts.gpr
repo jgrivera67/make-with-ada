@@ -1,53 +1,52 @@
 project RTS is
 
-   type CPU_Architecture_Type is ("arm_cortex_m0+", "arm_cortex_m4", "riscv32");
+   type CPU_Core_Type is ("arm_cortex_m0+", "arm_cortex_m4", "riscv32");
 
-   CPU_Architecture : CPU_Architecture_Type := External ("CPU_Architecture", "arm_cortex_m4");
+   CPU_Core : CPU_Core_Type := External ("CPU_Core", "arm_cortex_m4");
 
    for Languages use ("Ada");
    for Library_Auto_Init use "False";
    for Library_Name use "gnat";
    for Library_Kind use "static";
 
-   Arch_Subdir := "";
-   CPU_Architecture_Switches := ();
-   case CPU_Architecture is
+   CPU_Arch := "";
+   CPU_Core_Switches := ();
+   case CPU_Core is
       when "arm_cortex_m0+" =>
-	 Arch_Subdir := "arm_cortex_m";
+	 CPU_Arch := "arm_cortex_m";
 	 for Target use "arm-eabi";
 	 for Library_Dir use "arm_cortex_m_adalib";
-	 CPU_Architecture_Switches := ("-mcpu=cortex-m0plus",
-	 		               "-mthumb",
-			               --"-march=armv6-m",
-			               "-mlittle-endian",
-			               "-fno-omit-frame-pointer");
+	 CPU_Core_Switches := ("-mcpu=cortex-m0plus",
+	 		       "-mthumb",
+			       --"-march=armv6-m",
+			       "-mlittle-endian",
+			       "-fno-omit-frame-pointer");
 
       when "arm_cortex_m4" =>
-	 Arch_Subdir := "arm_cortex_m";
+	 CPU_Arch := "arm_cortex_m";
 	 for Target use "arm-eabi";
 	 for Library_Dir use "arm_cortex_m_adalib";
-	 CPU_Architecture_Switches := ("-mcpu=cortex-m4",
-	                               "-mthumb",
-	                               --"-march=armv7e-m",
-			               "-mlittle-endian",
-			               --"-mfloat-abi=softfp",
-			               "-mhard-float",
-			               "-mfpu=fpv4-sp-d16",
-				       "-fno-omit-frame-pointer");
+	 CPU_Core_Switches := ("-mcpu=cortex-m4",
+	                       "-mthumb",
+	                       --"-march=armv7e-m",
+			       "-mlittle-endian",
+			       --"-mfloat-abi=softfp",
+			       "-mhard-float",
+			       "-mfpu=fpv4-sp-d16",
+			"-fno-omit-frame-pointer");
 
       when "riscv32" =>
-	 Arch_Subdir := "riscv32";
+	 CPU_Arch := "riscv32";
 	 for Target use "riscv32-elf";
-	 CPU_Architecture_Switches := ("-march=rv32imac",
-	                               "-mabi=ilp32",
-		                       "-mcmodel=medany",
-				       "-fno-builtin-printf");
+	 CPU_Core_Switches := ("-march=rv32imac",
+	                       "-mabi=ilp32",
+		               "-mcmodel=medany");
       when others =>
 	 null;
    end case;
 
-   for Object_Dir use Arch_Subdir & "/obj";
-   for Library_Dir use Arch_Subdir & "/adalib";
+   for Object_Dir use CPU_Arch & "/obj";
+   for Library_Dir use CPU_Arch & "/adalib";
 
    for Source_Dirs use ("common",
                         "zfp",
@@ -58,7 +57,7 @@ project RTS is
 
    package Compiler is
       --  COMMON_FLAGS here is common flags (used for C and Ada).
-      COMMON_FLAGS := CPU_Architecture_Switches &
+      COMMON_FLAGS := CPU_Core_Switches &
                   ("-fcallgraph-info=su,da",
                    "-ffunction-sections",
                    "-fdata-sections",
