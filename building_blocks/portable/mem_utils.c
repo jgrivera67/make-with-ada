@@ -16,6 +16,8 @@
 
 #define ROUND_DOWN(_m, _n)    (((uintptr_t)(_m) / (_n)) * (_n))
 
+#define UNROLL_TIMES	4
+
 /**
  * Copies a 32-bit aligned block of memory from one location to another
  *
@@ -33,18 +35,17 @@ static inline void memcpy32(uint32_t *dst, const uint32_t *src, size_t size)
 	register const uint32_t *src_cursor = src;
 
 	uint32_t num_words = size / sizeof(uint32_t);
-	register uint32_t *dst_end = dst + ((num_words / 4) * 4);
+	register uint32_t *dst_end =
+		dst + ((num_words / UNROLL_TIMES) * UNROLL_TIMES);
 
 	while (dst_cursor != dst_end) {
-		dst_cursor[0] = src_cursor[0];
-		dst_cursor[1] = src_cursor[1];
-		dst_cursor[2] = src_cursor[2];
-		dst_cursor[3] = src_cursor[3];
-		dst_cursor += 4;
-		src_cursor += 4;
+		*dst_cursor++ = *src_cursor++;
+		*dst_cursor++ = *src_cursor++;
+		*dst_cursor++ = *src_cursor++;
+		*dst_cursor++ = *src_cursor++;
 	}
 
-	switch (num_words % 4) {
+	switch (num_words % UNROLL_TIMES) {
 	case 3:
 		*dst_cursor++ = *src_cursor++;
 	case 2:
@@ -68,15 +69,17 @@ void *memcpy(void *dst, const void *src, size_t size)
 
       	switch (bytes_before_align) {
 	case 3:
-		dst_bytes[0] = src_bytes[0];
+		*dst_bytes++ = *src_bytes++;
 	case 2:
-		dst_bytes[1] = src_bytes[1];
+		*dst_bytes++ = *src_bytes++;
 	case 1:
-		dst_bytes[2] = src_bytes[2];
+		*dst_bytes++ = *src_bytes++;
 	}
    }
 
-   memcpy32(dst_words, src_words, aligned_size);
+   if (aligned_size != 0) {
+       memcpy32(dst_words, src_words, aligned_size);
+   }
 
    if (bytes_after_align != 0) {
       	uint8_t *dst_bytes = (uint8_t *)dst_words + aligned_size;
@@ -84,11 +87,11 @@ void *memcpy(void *dst, const void *src, size_t size)
 
       	switch (bytes_after_align) {
 	case 3:
-		dst_bytes[0] = src_bytes[0];
+		*dst_bytes++ = *src_bytes++;
 	case 2:
-		dst_bytes[1] = src_bytes[1];
+		*dst_bytes++ = *src_bytes++;
 	case 1:
-		dst_bytes[2] = src_bytes[2];
+		*dst_bytes++ = *src_bytes++;
 	}
    }
 
@@ -112,7 +115,7 @@ static inline void memset32(uint32_t *dst, uint_fast8_t byte_value,
 	register uint32_t word_value;
 
 	uint32_t num_words = size / sizeof(uint32_t);
-	register uint32_t *dst_end = dst + ((num_words / 4) * 4);
+	register uint32_t *dst_end = dst + ((num_words / UNROLL_TIMES) * UNROLL_TIMES);
 
 	if (byte_value != 0) {
 		word_value = (((uint32_t)byte_value << 24) |
@@ -124,14 +127,13 @@ static inline void memset32(uint32_t *dst, uint_fast8_t byte_value,
 	}
 
 	while (dst_cursor != dst_end) {
-		dst_cursor[0] = word_value;
-		dst_cursor[1] = word_value;
-		dst_cursor[2] = word_value;
-		dst_cursor[3] = word_value;
-		dst_cursor += 4;
+		*dst_cursor++ = word_value;
+		*dst_cursor++ = word_value;
+		*dst_cursor++ = word_value;
+		*dst_cursor++ = word_value;
 	}
 
-	switch (num_words % 4) {
+	switch (num_words % UNROLL_TIMES) {
 	case 3:
 		*dst_cursor++ = word_value;
 	case 2:
@@ -153,26 +155,28 @@ void *memset(void *dst, int byte_value, size_t size)
 
       	switch (bytes_before_align) {
 	case 3:
-		dst_bytes[0] = byte_value;
+		*dst_bytes++ = byte_value;
 	case 2:
-		dst_bytes[1] = byte_value;
+		*dst_bytes++ = byte_value;
 	case 1:
-		dst_bytes[2] = byte_value;
+		*dst_bytes++ = byte_value;
 	}
    }
 
-   memset32(dst_words, byte_value, aligned_size);
+   if (aligned_size != 0) {
+       memset32(dst_words, byte_value, aligned_size);
+   }
 
    if (bytes_after_align != 0) {
       	uint8_t *dst_bytes = (uint8_t *)dst_words + aligned_size;
 
       	switch (bytes_after_align) {
 	case 3:
-		dst_bytes[0] = byte_value;
+		*dst_bytes++ = byte_value;
 	case 2:
-		dst_bytes[1] = byte_value;
+		*dst_bytes++ = byte_value;
 	case 1:
-		dst_bytes[2] = byte_value;
+		*dst_bytes++ = byte_value;
 	}
    }
 
