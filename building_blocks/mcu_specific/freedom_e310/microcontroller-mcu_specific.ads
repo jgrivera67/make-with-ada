@@ -82,6 +82,4 @@ is
                          Mcu_Sram_Base_Addr,
                          Mcu_Sram_Size);
 
-   procedure Pre_Elaboration_Init;
-
 end Microcontroller.MCU_Specific;

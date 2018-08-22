@@ -27,6 +27,7 @@
 
 with Microcontroller.Clocks;
 with Microcontroller.Arch_Specific;
+with Memory_Utils;
 with Low_Level_Debug;
 with FE310.CLINT;
 
@@ -101,20 +102,6 @@ package body Microcontroller.MCU_Specific is
       --  Measrure for real:
       CPU_Clock_Frequency := Do_Measure_CPU_Frequency (10);
    end Measure_CPU_Frequency;
-
-   --------------------------
-   -- Pre_Elaboration_Init --
-   --------------------------
-
-   procedure Pre_Elaboration_Init is
-   begin
-      Microcontroller.Arch_Specific.Disable_Cpu_Interrupts;
-      Low_Level_Debug.Initialize_Rgb_Led;
-      Microcontroller.Clocks.Initialize;
-      Low_Level_Debug.Initialize_Uart;
-      Microcontroller.Arch_Specific.Interrupt_Handling_Init;
-      --Microcontroller.Arch_Specific.Enable_Cpu_Interrupts;
-   end Pre_Elaboration_Init;
 
    ------------------
    -- System_Reset --

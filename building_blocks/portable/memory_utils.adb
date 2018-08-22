@@ -42,6 +42,54 @@ package body Memory_Utils is
    pragma Import (Asm, Statically_Allocated_Sram_End_Marker, "_end");
    --  End address of the statically allocated portion of SRAM
 
+   -----------------------
+   -- Clear_BSS_Section --
+   -----------------------
+
+   procedure Clear_BSS_Section is
+      --  Start address of the .bss section in SRAM
+      BSS_Start : Unsigned_32;
+      pragma Import (Asm, BSS_Start, "__bss_start");
+
+      --  Size in 32-bit words of the .bss section
+      BSS_Words : constant Unsigned_32;
+      pragma Import (Asm, BSS_Words, "__bss_words");
+
+      Num_BSS_Words : constant Integer_Address :=
+        To_Integer (BSS_Words'Address);
+      BSS_Section : Words_Array_Type (1 .. Num_BSS_Words) with
+        Address => BSS_Start'Address;
+   begin
+      BSS_Section := (others => 0);
+   end Clear_BSS_Section;
+
+   -----------------------
+   -- Copy_Data_Section --
+   -----------------------
+
+   procedure Copy_Data_Section is
+      --  Start address of the .data section in SRAM
+      Data_Start : Unsigned_32;
+      pragma Import (Asm, Data_Start, "__data_start");
+
+      --  Size in 32-bit words of the .data section
+      Data_Words : constant Unsigned_32;
+      pragma Import (Asm, Data_Words, "__data_words");
+
+      --  Start address of the .data section in flash
+      Data_Load : constant Unsigned_32;
+      pragma Import (Asm, Data_Load, "__data_load");
+
+      Num_Data_Words : constant Integer_Address :=
+        To_Integer (Data_Words'Address);
+      Data_Section : Words_Array_Type (1 .. Num_Data_Words) with
+	 Address => Data_Start'Address;
+      Data_Section_Initializers : Words_Array_Type (1 .. Num_Data_Words) with
+	 Address => Data_Load'Address;
+   begin
+      Data_Section := Data_Section_Initializers;
+   end Copy_Data_Section;
+
    --------------------
    -- Get_Flash_Used --
    --------------------

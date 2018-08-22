@@ -33,6 +33,8 @@ is
    use Interfaces;
    use System.Storage_Elements;
 
+   type Words_Array_Type is array (Integer_Address range <>) of Unsigned_32;
+
    function Get_Flash_Used return Unsigned_32;
 
    function Get_Sram_Used return Unsigned_32;
@@ -85,4 +87,15 @@ is
           Convention => C,
           External_Name => "memset";
 
+   procedure Clear_BSS_Section;
+   --
+   --  Clear BSS section in SRAM
+   --  (C global and static non-initialized variables)
+   --
+
+   procedure Copy_Data_Section;
+   --
+   --  Copy data section from flash to SRAM
+   --  (C global and static initialized variables)
+   --
 end Memory_Utils;

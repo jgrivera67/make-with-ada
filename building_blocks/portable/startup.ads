@@ -36,7 +36,6 @@ is
                                 Convention => Asm,
                                 External_Name => "reset_handler",
                                 No_Return;
-   --pragma Machine_Attribute (Reset_Handler, "naked");
    --
    --  Reset exception handler
    --
