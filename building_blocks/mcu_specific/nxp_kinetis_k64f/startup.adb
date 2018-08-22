@@ -141,7 +141,7 @@ package body Startup is
       Num_BSS_Words : constant Integer_Address :=
         To_Integer (BSS_Words'Address);
       BSS_Section : Words_Array_Type (1 .. Num_BSS_Words) with
-	 Address => BSS_Start'Address;
+        Address => BSS_Start'Address;
    begin
       BSS_Section := (others => 0);
    end Clear_BSS_Section;
@@ -211,7 +211,9 @@ package body Startup is
       Reset_Counter.Update;
       Enable_FPU;
       Low_Level_Debug.Initialize_Uart;
-      Low_Level_Debug.Set_Rgb_Led; --  off
+      --???Low_Level_Debug.Set_Rgb_Led; --  off
+
+      Microcontroller.Arch_Specific.Interrupt_Handling_Init;
       Microcontroller.Arch_Specific.Enable_Cpu_Interrupts;
 
       --

@@ -15,4 +15,6 @@ void *memcpy(void *dst, const void *src, size_t size);
 
 void *memset(void *dst, int byte_value, size_t size);
 
+int memcmp(const void *src1, const void *src2, size_t size);
+
 #endif /* MEM_UTILS_H_ */

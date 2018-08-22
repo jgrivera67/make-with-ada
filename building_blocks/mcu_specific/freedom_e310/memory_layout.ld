@@ -113,7 +113,7 @@ SECTIONS
    *(COMMON)
 
    . = ALIGN(0x8);    /* Align the stack to 64 bits */
-
+   __bss_end = .;
    __stack_start = .;
    . += DEFINED (__stack_size) ? __stack_size : _DEFAULT_STACK_SIZE;
    . = ALIGN(0x8);
@@ -122,7 +122,6 @@ SECTIONS
    _end = .;
    __heap_start = .;
    __heap_end = ORIGIN(ram) + LENGTH(ram);
-   __bss_end = .;
   } > ram
 
    __bss_words = (__bss_end - __bss_start) >> 2;

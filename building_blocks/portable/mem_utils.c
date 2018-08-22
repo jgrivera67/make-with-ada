@@ -34,8 +34,8 @@ static inline void memcpy32(uint32_t *dst, const uint32_t *src, size_t size)
 	register uint32_t *dst_cursor = dst;
 	register const uint32_t *src_cursor = src;
 
-	uint32_t num_words = size / sizeof(uint32_t);
-	register uint32_t *dst_end =
+	const uint32_t num_words = size / sizeof(uint32_t);
+	register const uint32_t *const dst_end =
 		dst + ((num_words / UNROLL_TIMES) * UNROLL_TIMES);
 
 	while (dst_cursor != dst_end) {
@@ -57,17 +57,32 @@ static inline void memcpy32(uint32_t *dst, const uint32_t *src, size_t size)
 
 void *memcpy(void *dst, const void *src, size_t size)
 {
-   uint32_t *dst_words = (uint32_t *)ROUND_UP(dst, sizeof(uint32_t));
-   uint32_t *src_words = (uint32_t *)ROUND_UP(src, sizeof(uint32_t));
-   size_t bytes_before_align = (uintptr_t)dst_words - (uintptr_t)dst;
-   size_t bytes_after_align = (size - bytes_before_align) % sizeof(uint32_t);
-   size_t aligned_size = size - bytes_before_align - bytes_after_align;
+    uint32_t *dst_words = (uint32_t *)ROUND_UP(dst, sizeof(uint32_t));
+    const uint32_t *src_words = (uint32_t *)ROUND_UP(src, sizeof(uint32_t));
+    size_t dst_bytes_before_align = (uintptr_t)dst_words - (uintptr_t)dst;
+    size_t src_bytes_before_align = (uintptr_t)src_words - (uintptr_t)src;
 
-   if (bytes_before_align != 0) {
+    if (dst_bytes_before_align != src_bytes_before_align) {
+	/* slow path */
+	uint8_t *dst_bytes = dst;
+	uint8_t *const dst_end = dst_bytes + size;
+	const uint8_t *src_bytes = src;
+
+	while (dst_bytes != dst_end) {
+	    *dst_bytes++ = *src_bytes++;
+	}
+
+	return dst;
+   }
+
+   size_t bytes_after_align = (size - dst_bytes_before_align) % sizeof(uint32_t);
+   size_t aligned_size = size - dst_bytes_before_align - bytes_after_align;
+
+   if (dst_bytes_before_align != 0) {
 	uint8_t *dst_bytes = dst;
 	const uint8_t *src_bytes = src;
 
-      	switch (bytes_before_align) {
+      	switch (dst_bytes_before_align) {
 	case 3:
 		*dst_bytes++ = *src_bytes++;
 	case 2:
@@ -114,8 +129,8 @@ static inline void memset32(uint32_t *dst, uint_fast8_t byte_value,
 	register uint32_t *dst_cursor = dst;
 	register uint32_t word_value;
 
-	uint32_t num_words = size / sizeof(uint32_t);
-	register uint32_t *dst_end = dst + ((num_words / UNROLL_TIMES) * UNROLL_TIMES);
+	const uint32_t num_words = size / sizeof(uint32_t);
+	register const uint32_t *const dst_end = dst + ((num_words / UNROLL_TIMES) * UNROLL_TIMES);
 
 	if (byte_value != 0) {
 		word_value = (((uint32_t)byte_value << 24) |
@@ -183,4 +198,21 @@ void *memset(void *dst, int byte_value, size_t size)
    return dst;
 }
 
+int memcmp(const void *src1, const void *src2, size_t size)
+{
+    register const uint8_t *src1_bytes = src1;
+    register const uint8_t *const src1_end = src1_bytes + size;
+    register const uint8_t *src2_bytes = src2;
 
+    while (src1_bytes != src1_end) {
+	const uint8_t byte1 = *src1_bytes++;
+	const uint8_t byte2 = *src2_bytes++;
+	if (byte1 < byte2) {
+	    return -1;
+	} else if (byte1 > byte2) {
+	    return 1;
+	}
+    }
+
+    return 0;
+}

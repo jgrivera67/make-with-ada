@@ -262,6 +262,9 @@ is
       Stmdb_Sp_Instruction : Thumb_32bit_Instruction_Type)
       return Storage_Offset;
 
+   procedure Interrupt_Handling_Init;
+   --  Architecture-specfic interrupt handling initialization
+
    function Is_Caller_An_Interrupt_Handler return Boolean is
       (Is_Cpu_Using_MSP_Stack_Pointer);
    --  Tell if the caller is an ISR or a CPU exception handler

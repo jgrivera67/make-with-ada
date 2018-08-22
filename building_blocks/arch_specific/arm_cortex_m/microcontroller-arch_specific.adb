@@ -264,6 +264,15 @@ package body Microcontroller.Arch_Specific is
       return To_Address (Integer_Address (Reg_Value));
    end Get_SP_Register;
 
+   -----------------------------
+   -- Interrupt_Handling_Init --
+   -----------------------------
+
+   procedure Interrupt_Handling_Init is
+   begin
+      null;
+   end Interrupt_Handling_Init;
+
    --------------------------
    -- Is_32bit_Instruction --
    --------------------------
