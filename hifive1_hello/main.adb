@@ -29,15 +29,15 @@ with Interfaces;
 -- ??? with Runtime_Logs;
 with Reset_Counter;
 --??? with Microcontroller.MCU_Specific;
-with Pin_Mux_Driver;
+--??? with Pin_Mux_Driver;
 --??? with Serial_Console;
 with Low_Level_Debug;
 --??? with Command_Parser;
 with GNAT.Source_Info;
-with Startup;
 with Last_Chance_Handler;
 with Number_Conversion_Utils;
-with Memory_Protection;
+with Startup;
+--??? with Memory_Protection;
 --??? with Nor_Flash_Driver;
 --??? with DMA_Driver;
 --??? with Watch;
@@ -70,7 +70,7 @@ procedure Main is
       --Serial_Console.Clear_Screen;
       --Serial_Console.Print_String (
       Low_Level_Debug.Print_String (
-        "NXP-IoT-RPK Watch (Written in Ada 2012, built on " &
+        "HiFive Hello (Written in Ada 2012, built on " &
         GNAT.Source_Info.Compilation_Date &
         " at " & GNAT.Source_Info.Compilation_Time & ")" & ASCII.LF);
 
@@ -94,13 +94,15 @@ procedure Main is
    Led_On : Boolean := True;
 
 begin -- Main
-   Memory_Protection.Initialize (MPU_Enabled => False);
-   --Low_Level_Debug.Set_Rgb_Led (Red_On => True);--???
+   --??? Memory_Protection.Initialize (MPU_Enabled => False);
+   --???Low_Level_Debug.Set_Rgb_Led (Red_On => True);--???
+   --???Low_Level_Debug.Set_Rgb_Led (Green_On => True);--???
+
    --??? Runtime_Logs.Initialize;
    Log_Start_Info;
 
    --  Initialize devices used:
-   Pin_Mux_Driver.Initialize;
+   --??? Pin_Mux_Driver.Initialize;
    --???Serial_Console.Initialize;
    --??? Nor_Flash_Driver.Initialize;
    --??? DMA_Driver.Initialize;
@@ -109,7 +111,6 @@ begin -- Main
    --??? Command_Parser.Initialize;
    --??? Watch.Initialize;
    loop
-      --??? Command_Parser.Parse_Command;
       if Led_On then
          Low_Level_Debug.Set_Rgb_Led (Blue_On => True);
          Led_On := False;
