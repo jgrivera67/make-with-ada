@@ -20,7 +20,7 @@ project watch is
    C_MCU_Switches := ();
    case MCU is
       when "nxp_kinetis_k64f"  =>
-	 C_MCU_Switches := ("-DK64F");
+	 C_MCU_Switches := ("-DK64F_MCU");
       when "stm32f401"  =>
 	 C_MCU_Switches := ("-DSTM32F401_MCU");
       when "stm32f479"  =>
@@ -51,9 +51,9 @@ project watch is
                         "../drivers/board_specific/" & Board,
                         "../drivers/mcu_specific/" & MCU,
                         "../third_party",
-                        --"../third_party/CMSIS",
-                        --"../third_party/FreeRTOS/Source",
-                        --"../third_party/FreeRTOS/Source/portable/" & FreeRTOS_Port_Subdir,
+                        "../third_party/CMSIS",
+                        "../third_party/FreeRTOS/Source",
+                        "../third_party/FreeRTOS/Source/portable/" & FreeRTOS_Port_Subdir,
                         "../third_party/SVD/" & MCU);
 
    for Object_Dir use "obj";
@@ -85,9 +85,9 @@ project watch is
                                      C_MCU_Switches &
                                      ("-std=gnu11",
 				      --"-ffreestanding",
-				      "-I../third_party/CMSIS",
-				      "-I../third_party/FreeRTOS/Source/include",
-	                              "-I../third_party/FreeRTOS/Source/portable/" & FreeRTOS_Port_Subdir,
+				      "-I..",
+				      "-I../../third_party/FreeRTOS/Source/include",
+	                              "-I../../third_party/FreeRTOS/Source/portable/" & FreeRTOS_Port_Subdir,
                                       "-Wstrict-prototypes",
                                       "-fms-extensions",
                                       "-Wextra",
