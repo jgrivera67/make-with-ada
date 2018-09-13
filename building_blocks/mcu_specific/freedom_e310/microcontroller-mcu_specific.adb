@@ -51,8 +51,8 @@ package body Microcontroller.MCU_Specific is
    -- Get_CPU_Clock_Frequency --
    -----------------------------
 
-   function Get_CPU_Clock_Frequency return Hertz_Type is
-     (CPU_Clock_Frequency);
+   function Get_CPU_Clock_Frequency return Unsigned_32 is
+     (Unsigned_32 (CPU_Clock_Frequency));
 
    ---------------------------
    -- Measure_CPU_Frequency --

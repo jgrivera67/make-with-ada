@@ -38,6 +38,7 @@ with Startup;
 with Last_Chance_Handler;
 with Number_Conversion_Utils;
 with Memory_Protection;
+with RTOS.API;
 --??? with Nor_Flash_Driver;
 --??? with DMA_Driver;
 --??? with Watch;
@@ -90,6 +91,20 @@ procedure Main is
    end Naive_Delay;
 
    -- ** --
+   procedure Print_FreeRTOS_Struct_Sizes is
+   begin
+      Low_Level_Debug.Print_String("StaticTask_t size: ");
+      Low_Level_Debug.Print_Number_Decimal(RTOS.Get_Freertos_StaticTask_t_Size,
+                                           End_Line => True);
+      Low_Level_Debug.Print_String("StaticSemaphore_t size: ");
+      Low_Level_Debug.Print_Number_Decimal(RTOS.Get_Freertos_StaticSemaphore_t_Size,
+                                           End_Line => True);
+      Low_Level_Debug.Print_String("StaticTimer_t size: ");
+      Low_Level_Debug.Print_Number_Decimal(RTOS.Get_Freertos_StaticTimer_t_Size,
+                                           End_Line => True);
+   end Print_FreeRTOS_Struct_Sizes;
+
+   -- ** --
 
    Led_On : Boolean := True;
 
@@ -106,8 +121,10 @@ begin -- Main
    --??? DMA_Driver.Initialize;
 
    Print_Console_Greeting;
+   Print_FreeRTOS_Struct_Sizes;
    --??? Command_Parser.Initialize;
    --??? Watch.Initialize;
+
    loop
       --??? Command_Parser.Parse_Command;
       if Led_On then

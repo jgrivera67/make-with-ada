@@ -45,8 +45,8 @@ project RTS is
 	 null;
    end case;
 
-   for Object_Dir use CPU_Arch & "/obj";
-   for Library_Dir use CPU_Arch & "/adalib";
+   for Object_Dir use CPU_Arch & "_obj/obj";
+   for Library_Dir use CPU_Arch & "_obj/adalib";
 
    for Source_Dirs use ("common",
                         "zfp",

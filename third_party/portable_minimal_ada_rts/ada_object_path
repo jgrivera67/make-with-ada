@@ -1,2 +1,2 @@
-arm_cortex_m/adalib
-riscv32/adalib
+arm_cortex_m_obj
+riscv32_obj

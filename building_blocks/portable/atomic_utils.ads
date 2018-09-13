@@ -36,7 +36,7 @@ package Atomic_Utils is
 
    function Atomic_Fetch_Add (Counter : aliased in out Unsigned_32;
                               Value : Unsigned_32) return Unsigned_32
-      with Inline;
+     with Inline;
 
    function Atomic_Fetch_Add (Counter : aliased in out Unsigned_16;
                               Value : Unsigned_16) return Unsigned_16

@@ -70,7 +70,8 @@ is
 
    function Find_System_Reset_Cause return System_Reset_Causes_Type;
 
-   function Get_CPU_Clock_Frequency return Hertz_Type with Inline;
+   function Get_CPU_Clock_Frequency return Unsigned_32 with
+     Export, Convention => C, External_Name => "get_cpu_clock_frequency";
 
    procedure Measure_CPU_Frequency;
 

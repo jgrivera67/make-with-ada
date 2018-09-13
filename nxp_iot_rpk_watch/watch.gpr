@@ -4,6 +4,7 @@ project watch is
 
    Executable_Prefix := "watch";
    Board := "nxp_iot_rpk";
+   RTOS := "freertos";
 
    for Languages use ("Ada", "C");
 
@@ -41,20 +42,33 @@ project watch is
 	 null;
    end case;
 
+   C_RTOS_Switches := ();
+   RTOS_Src_Dirs := ();
+   case RTOS is
+      when "freertos" =>
+	 C_RTOS_Switches := ("-I../../third_party/FreeRTOS/Source/include",
+	                     "-I../../third_party/FreeRTOS/Source/portable/" & FreeRTOS_Port_Subdir);
+         RTOS_Src_Dirs := ("../third_party/FreeRTOS/Source",
+                           "../third_party/FreeRTOS/Source/portable/" & FreeRTOS_Port_Subdir);
+      when others =>
+	 null;
+   end case;
+
    for Source_Dirs use (".",
                         "../building_blocks/portable",
                         "../building_blocks/board_specific/" & Board,
                         "../building_blocks/mcu_specific/" & MCU,
                         "../building_blocks/cpu_specific/" & RTS.CPU_Core,
                         "../building_blocks/arch_specific/" & RTS.CPU_Arch,
+                        "../building_blocks/rtos_specific/" & RTOS,
                         "../drivers/portable",
                         "../drivers/board_specific/" & Board,
                         "../drivers/mcu_specific/" & MCU,
                         "../third_party",
-                        "../third_party/CMSIS",
                         "../third_party/FreeRTOS/Source",
                         "../third_party/FreeRTOS/Source/portable/" & FreeRTOS_Port_Subdir,
-                        "../third_party/SVD/" & MCU);
+                        "../third_party/SVD/" & MCU) &
+			RTOS_Src_Dirs;
 
    for Object_Dir use "obj";
 
@@ -83,11 +97,10 @@ project watch is
 
       for Default_Switches ("C") use RTS.Compiler.COMMON_FLAGS &
                                      C_MCU_Switches &
+                                     C_RTOS_Switches &
                                      ("-std=gnu11",
 				      --"-ffreestanding",
-				      "-I..",
-				      "-I../../third_party/FreeRTOS/Source/include",
-	                              "-I../../third_party/FreeRTOS/Source/portable/" & FreeRTOS_Port_Subdir,
+				      "-I../../building_blocks/rtos_specific/" & RTOS & "/" & RTS.CPU_Arch,
                                       "-Wstrict-prototypes",
                                       "-fms-extensions",
                                       "-Wextra",

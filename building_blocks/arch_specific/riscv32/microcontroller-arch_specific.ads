@@ -36,7 +36,7 @@ is
    use Interfaces.Bit_Types;
 
    --
-   --  Entries in the execution stack for an ARM Cortex-M processor
+   --  Entries in the execution stack for a RISCV32 processor
    --
    type Stack_Entry_Type is new Unsigned_32;
 
