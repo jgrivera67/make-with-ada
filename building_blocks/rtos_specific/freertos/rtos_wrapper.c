@@ -78,7 +78,7 @@ bool rtos_initialized(void)
     return g_rtos.state == INITIALIZED;
 }
 
-bool rtos_sched_started(void)
+bool rtos_scheduler_started(void)
 {
     return g_rtos.state == SCHED_STARTED;
 }
@@ -161,6 +161,7 @@ static void rtos_task_internal_callback(void *task_func_addr)
     rtos_task_function_t *const task_func_p =
        (rtos_task_function_t *)task_func_addr;
 
+  configASSERT(0);//???
     task_func_p();
 }
 
@@ -168,7 +169,7 @@ static void rtos_task_internal_callback(void *task_func_addr)
  * Create an RTOS-level task
  */
 void rtos_task_init(struct rtos_task *rtos_task_p,
-                    const char *task_name_p,
+                    rtos_task_id_t task_id,
                     rtos_task_function_t *task_function_p,
                     rtos_task_priority_t task_prio)
 {
@@ -179,6 +180,7 @@ void rtos_task_init(struct rtos_task *rtos_task_p,
 
 
     configASSERT(rtos_task_p != NULL);
+    configASSERT(task_id != INVALID_TASK_ID);
     configASSERT(task_function_p != NULL);
     configASSERT(task_prio >= LOWEST_APP_TASK_PRIORITY &&
                  task_prio <= HIGHEST_APP_TASK_PRIORITY);
@@ -186,6 +188,7 @@ void rtos_task_init(struct rtos_task *rtos_task_p,
     set_private_data_region(rtos_task_p, sizeof(*rtos_task_p), READ_WRITE, &old_region);
 #endif
     rtos_task_p->tsk_initialized = true;
+    rtos_task_p->tsk_id = task_id;
     rtos_task_p->tsk_max_stack_entries_used = 0;
 
     /*
@@ -195,7 +198,7 @@ void rtos_task_init(struct rtos_task *rtos_task_p,
     old_write_enabled = set_writable_background_region(true);
 #endif
     rtos_task_p->tsk_handle = xTaskCreateStatic(rtos_task_internal_callback,
-    						task_name_p,
+    						NULL,
 						APP_TASK_STACK_SIZE,
 	                                        task_function_p,
 						task_prio,
@@ -216,11 +219,11 @@ void rtos_task_init(struct rtos_task *rtos_task_p,
 
 
 /**
- * Returns that pointer to the current task
+ * Returns the pointer to the current task
  *
  * @return task object pointer
  */
-struct rtos_task *rtos_task_get_current(void)
+static struct rtos_task *rtos_task_get_current(void)
 {
     TaskHandle_t task_handle = xTaskGetCurrentTaskHandle();
     struct rtos_task *task_p = (void *)xTaskGetApplicationTaskTag(task_handle);
@@ -229,20 +232,22 @@ struct rtos_task *rtos_task_get_current(void)
 }
 
 /**
- * Returns that pointer to the calling task
+ * Returns the pointer to the calling task
  *
  * @return task object pointer
  */
-struct rtos_task *rtos_task_self(void)
+rtos_task_id_t rtos_task_self(void)
 {
     if (g_rtos.nested_ISR_count != 0) {
         /*
          * Caller is an exception handler:
          */
-        return NULL;
+        return INVALID_TASK_ID;
     }
 
-    return rtos_task_get_current();
+    struct rtos_task *const task_p = rtos_task_get_current();
+
+    return task_p->tsk_id;
 }
 
 
@@ -274,13 +279,13 @@ void rtos_task_delay_until(rtos_ticks_t *prev_wake_ticks_p, uint32_t ms)
  */
 void rtos_task_semaphore_wait(void)
 {
-    struct rtos_task *curr_task_p  = rtos_task_self();
-
-    if (curr_task_p == NULL) {
+    if (g_rtos.nested_ISR_count != 0) {
 	FATAL_ERROR();
     }
 
-    rtos_semaphore_wait(&curr_task_p->tsk_semaphore);
+    struct rtos_task *const task_p = rtos_task_get_current();
+
+    rtos_semaphore_wait(&task_p->tsk_semaphore);
 }
 
 

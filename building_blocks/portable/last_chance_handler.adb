@@ -35,7 +35,7 @@ with Memory_Protection;
 with Low_Level_Debug;
 
 package body Last_Chance_Handler with
-SPARK_Mode => Off
+   SPARK_Mode => Off
 is
    use Microcontroller.Arch_Specific;
    use Interfaces.Bit_Types;

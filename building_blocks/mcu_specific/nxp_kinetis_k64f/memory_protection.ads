@@ -44,6 +44,8 @@ package Memory_Protection is
    use Interfaces.Bit_Types;
    use Interfaces;
 
+   MPU_Region_Alignment : constant := 32;
+
    --
    --  MPU regions assignment
    --
@@ -358,10 +360,14 @@ private
 
    pragma Compile_Time_Error (MPU_Region_Descriptor_Type'Size /=
                               Kinetis_K64F.MPU.Region_Descriptor_Type'Size,
-                              "MPU_Region_Descriptor_TYpe has the wrong size");
+                              "MPU_Region_Descriptor_Type has the wrong size");
 
    function Size_Is_MPU_Region_Aligned (Size_In_Bits : Integer_Address)
       return Boolean
    is ((Size_In_Bits / Byte'Size) mod MPU_Region_Alignment = 0);
+
+   pragma Compile_Time_Error (MPU_Region_Alignment /=
+                                 Kinetis_K64F.MPU.MPU_Region_Alignment,
+                              "MPU_Region_Alignment is wrong");
 
 end Memory_Protection;

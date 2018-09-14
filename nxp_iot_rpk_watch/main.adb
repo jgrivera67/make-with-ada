@@ -26,19 +26,22 @@
 --
 
 with Interfaces;
--- ??? with Runtime_Logs;
+with Runtime_Logs;
 with Reset_Counter;
 --??? with Microcontroller.MCU_Specific;
 with Pin_Mux_Driver;
---??? with Serial_Console;
+--???with Serial_Console;
 with Low_Level_Debug;
---??? with Command_Parser;
+--???with Command_Parser;
 with GNAT.Source_Info;
 with Startup;
 with Last_Chance_Handler;
 with Number_Conversion_Utils;
 with Memory_Protection;
 with RTOS.API;
+with Color_Led;
+with System.Storage_Elements;
+with  Ada.Unchecked_Conversion; --???
 --??? with Nor_Flash_Driver;
 --??? with DMA_Driver;
 --??? with Watch;
@@ -47,6 +50,11 @@ pragma Unreferenced (Startup);
 pragma Unreferenced (Last_Chance_Handler);
 
 procedure Main is
+   --???
+   use System.Storage_Elements;
+   function Proc_Access_to_Address is new Ada.Unchecked_Conversion (Source => RTOS.API.Task_Procedure_Ptr_Type,
+                                                                    Target => System.Address);
+   --???
 
    procedure Log_Start_Info is
       Reset_Count : constant Interfaces.Unsigned_32 := Reset_Counter.Get;
@@ -80,61 +88,49 @@ procedure Main is
 
    -- ** --
 
-   procedure Naive_Delay (N : Interfaces.Unsigned_32) is
-      use Interfaces;
-      Count : Unsigned_32 := N;
-   begin
-      loop
-         exit when Count = 0;
-         Count := Count - 1;
-      end loop;
-   end Naive_Delay;
+   use type RTOS.RTOS_Task_Priority_Type;
 
    -- ** --
-   procedure Print_FreeRTOS_Struct_Sizes is
-   begin
-      Low_Level_Debug.Print_String("StaticTask_t size: ");
-      Low_Level_Debug.Print_Number_Decimal(RTOS.Get_Freertos_StaticTask_t_Size,
-                                           End_Line => True);
-      Low_Level_Debug.Print_String("StaticSemaphore_t size: ");
-      Low_Level_Debug.Print_Number_Decimal(RTOS.Get_Freertos_StaticSemaphore_t_Size,
-                                           End_Line => True);
-      Low_Level_Debug.Print_String("StaticTimer_t size: ");
-      Low_Level_Debug.Print_Number_Decimal(RTOS.Get_Freertos_StaticTimer_t_Size,
-                                           End_Line => True);
-   end Print_FreeRTOS_Struct_Sizes;
-
-   -- ** --
-
-   Led_On : Boolean := True;
 
 begin -- Main
    Memory_Protection.Initialize (MPU_Enabled => False);
-   --Low_Level_Debug.Set_Rgb_Led (Red_On => True);--???
-   --??? Runtime_Logs.Initialize;
+   Runtime_Logs.Initialize;
    Log_Start_Info;
+   RTOS.API.RTOS_Init;
 
    --  Initialize devices used:
    Pin_Mux_Driver.Initialize;
+   Color_Led.Initialize; --???
    --???Serial_Console.Initialize;
    --??? Nor_Flash_Driver.Initialize;
    --??? DMA_Driver.Initialize;
 
    Print_Console_Greeting;
-   Print_FreeRTOS_Struct_Sizes;
-   --??? Command_Parser.Initialize;
+
+   RTOS.API.RTOS_Task_Init (
+      Task_Obj      => Color_Led.Led_Blinker_Task_Obj,
+      Task_Id       => 0,
+      Task_Proc_Ptr => Color_Led.Led_Blinker_Task_Proc'Access,
+      Task_Prio     => RTOS.Highest_App_Task_Priority - 1);
+
+   Color_Led.Turn_On_Blinker (500); --???
+   Low_Level_Debug.Print_String ("*** Before starting RTOS ", End_Line => True);
+   Low_Level_Debug.Print_Number_Hexadecimal (
+      Interfaces.Unsigned_32 (To_Integer (Proc_Access_to_Address (
+         Color_Led.Led_Blinker_Task_Proc'Access))),
+                                             End_Line => True);--???
+   Low_Level_Debug.Print_Number_Hexadecimal (
+      Interfaces.Unsigned_32 (To_Integer (Color_Led.Led_Blinker_Task_Proc'Address)),
+                                       End_Line => True);--???
+
+   RTOS.API.RTOS_Scheduler_Start;
+
+   pragma Assert (False);
+
+   --???Command_Parser.Initialize;
    --??? Watch.Initialize;
 
-   loop
-      --??? Command_Parser.Parse_Command;
-      if Led_On then
-         Low_Level_Debug.Set_Rgb_Led (Blue_On => True);
-         Led_On := False;
-      else
-         Low_Level_Debug.Set_Rgb_Led; -- Off
-         Led_On := True;
-      end if;
-
-      Naive_Delay (10_000_000);
-   end loop;
+   --???loop
+      --???Command_Parser.Parse_Command;
+   --???end loop;
 end Main;

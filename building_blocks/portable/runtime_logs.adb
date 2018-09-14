@@ -28,17 +28,16 @@
 with System.Storage_Elements;
 with Reset_Counter;
 with Stack_Trace_Capture;
-with Ada.Real_Time;
-with Ada.Task_Identification;
-with Ada.Unchecked_Conversion;
+--with Ada.Unchecked_Conversion;
 with Interfaces.Bit_Types;
-with Microcontroller.Arm_Cortex_M;
+with Microcontroller.Arch_Specific;
+with RTOS.API;
 
 package body Runtime_Logs is
    pragma SPARK_Mode (Off);
    use System.Storage_Elements;
    use Interfaces.Bit_Types;
-   use Microcontroller.Arm_Cortex_M;
+   use Microcontroller.Arch_Specific;
 
    procedure Log_Print_Stack_Trace (Runtime_Log : in out Runtime_Log_Type;
                                     Num_Entries_To_Skip : Natural);
@@ -82,18 +81,13 @@ package body Runtime_Logs is
                                 Msg : String;
                                 Code_Address : Address;
                                 With_Stack_Trace : Boolean := False) is
-      function Time_To_Unsigned_64 is
-        new Ada.Unchecked_Conversion (Source => Ada.Real_Time.Time,
-                                      Target => Unsigned_64);
-
-      function Task_Id_To_Unsigned_32 is
-        new Ada.Unchecked_Conversion (Source =>
-                                         Ada.Task_Identification.Task_Id,
-                                      Target => Unsigned_32);
-
+      use type RTOS.RTOS_Task_Id_Type;
       Old_Interrupt_Mask : Word;
-      Time_Stamp : constant Ada.Real_Time.Time := Ada.Real_Time.Clock;
-      Calling_Task_Id : Ada.Task_Identification.Task_Id;
+      Time_Stamp : constant RTOS.RTOS_Tick_Type :=
+        RTOS.API.RTOS_Get_Ticks_Since_Boot;
+      Calling_Task_Id : constant RTOS.RTOS_Task_Id_Type :=
+        RTOS.API.RTOS_Task_Self;
+
    begin
       Old_Interrupt_Mask := Disable_Cpu_Interrupts;
 
@@ -101,13 +95,12 @@ package body Runtime_Logs is
                                 Runtime_Log.Seq_Num);
 
       Log_Put_Char (Runtime_Log, ':');
-      Log_Print_Uint64_Decimal (
-         Runtime_Log, Time_To_Unsigned_64 (Time_Stamp));
+      Log_Print_Uint32_Decimal (
+         Runtime_Log, Unsigned_32 (Time_Stamp));
       Log_Put_Char (Runtime_Log, ':');
-      if not Is_Caller_An_Interrupt_Handler then
-         Calling_Task_Id := Ada.Task_Identification.Current_Task;
-         Log_Print_Uint32_Hexadecimal (
-            Runtime_Log, Task_Id_To_Unsigned_32 (Calling_Task_Id));
+      if Calling_Task_Id /= RTOS.Invalid_Task_id then
+         Log_Print_Uint32_Decimal (
+            Runtime_Log, Unsigned_32 (Calling_Task_Id));
       end if;
 
       Log_Put_Char (Runtime_Log, ':');

@@ -110,6 +110,16 @@ struct rtos_task
     bool tsk_initialized;
 
     /**
+     * Task ID assigned by the application
+     */
+    uint8_t tsk_id;
+
+    /**
+     * Maximum number of stack entries used (high water mark)
+     */
+    uint16_t tsk_max_stack_entries_used;
+
+    /**
      * Task control block
      */
     StaticTask_t tsk_var;
@@ -118,11 +128,6 @@ struct rtos_task
      * FreeRTOS task handle
      */
     TaskHandle_t tsk_handle;
-
-    /**
-     * Maximum number of stack entries used (high water mark)
-     */
-    uint16_t tsk_max_stack_entries_used;
 
     /**
      * Task semaphore
@@ -178,16 +183,18 @@ bool rtos_initialized(void);
 
 void rtos_scheduler_start(void);
 
-bool rtos_sched_started(void);
+bool rtos_scheduler_started(void);
+
+typedef uint8_t rtos_task_id_t;
+
+#define INVALID_TASK_ID UINT8_MAX
 
 void rtos_task_init(struct rtos_task *rtos_task_p,
-                    const char *task_name_p,
+                    rtos_task_id_t task_id,
                     rtos_task_function_t *task_function_p,
                     rtos_task_priority_t task_prio);
 
-struct rtos_task *rtos_task_get_current(void);
-
-struct rtos_task *rtos_task_self(void);
+rtos_task_id_t rtos_task_self(void);
 
 void rtos_task_change_self_priority(rtos_task_priority_t new_task_prio);
 

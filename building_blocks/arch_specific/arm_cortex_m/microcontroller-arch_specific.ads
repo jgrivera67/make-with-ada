@@ -174,6 +174,9 @@ is
    function Get_Control_Register return Word with Inline;
    --  Capture current value of the ARM core CONTROL register
 
+   function Get_IPSR_Register return Word with Inline;
+   --  Capture current value of the ARM core IPSR register
+
    function Get_PSP_Register return Word with Inline;
    --  Capture current value of the ARM core PSP register
 

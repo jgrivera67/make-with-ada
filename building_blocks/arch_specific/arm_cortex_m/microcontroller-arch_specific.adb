@@ -153,6 +153,18 @@ package body Microcontroller.Arch_Specific is
       return To_Address (Integer_Address (Reg_Value));
    end Get_Frame_Pointer_Register;
 
+   -----------------------
+   -- Get_IPSR_Register --
+   -----------------------
+
+   function Get_IPSR_Register return Word is
+      Reg_Value : Word;
+   begin
+      Asm ("mrs %0, ipsr", Outputs => Word'Asm_Output ("=r", Reg_Value),
+           Volatile => True);
+      return Reg_Value;
+   end Get_IPSR_Register;
+
    ---------------------
    -- Get_LR_Register --
    ---------------------

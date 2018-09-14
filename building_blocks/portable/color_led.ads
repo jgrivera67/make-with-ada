@@ -1,5 +1,5 @@
 --
---  Copyright (c) 2016, German Rivera
+--  Copyright (c) 2018, German Rivera
 --  All rights reserved.
 --
 --  Redistribution and use in source and binary forms, with or without
@@ -25,14 +25,15 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
+with RTOS;
 private with Gpio_Driver;
-private with Microcontroller.MCU_Specific;
+private with Memory_Protection;
 
 --
 --  @summary Multi-color LED services
 --
 package Color_Led is
-   --??? use Ada.Real_Time;
+   use type RTOS.RTOS_Time_Ms_Type;
 
    type Led_Color_Type is (Black,
                            Red,
@@ -75,29 +76,26 @@ package Color_Led is
    --  Toggle the given color. If the current LED color is 'Color',
    --
 
-   --??? procedure Turn_On_Blinker (Period : Time_Span)
-   --???  with Pre => Initialized and then
-   --???              Period /= Milliseconds (0);
+   procedure Turn_On_Blinker (Period : RTOS.RTOS_Time_Ms_Type)
+     with Pre => Initialized and then
+                 Period /= 0;
    --
    --  Turn on LED blinking every 'Period' milliseconds, using current color
    --
 
-   --??? procedure Turn_Off_Blinker
-   --???  with Pre => Initialized;
+   procedure Turn_Off_Blinker
+     with Pre => Initialized;
    --
    --  Turn off LED blinking, leaving the LED steady in the current color
    --
 
+   Led_Blinker_Task_Obj : RTOS.RTOS_Task_Type;
+
+   procedure Led_Blinker_Task_Proc
+     with Convention => C;
+
 private
-   pragma SPARK_Mode (Off);
    use Gpio_Driver;
-   use Microcontroller.MCU_Specific;
-
-   type Rgb_Led_Type;
-
-   --??? task type Led_Blinker_Task_Type (
-   --???   Rgb_Led_Ptr : not null access Rgb_Led_Type)
-   --???   with Priority => System.Priority'Last - 1;
 
    type Rgb_Led_Pins_Type is record
       Red_Pin : Gpio_Pin_Type;
@@ -109,12 +107,9 @@ private
       Pins_Ptr : not null access constant Rgb_Led_Pins_Type)
    is limited record
       Initialized : Boolean := False;
-      --??? Initialized_Condvar : Suspension_Object;
       Current_Color : Led_Color_Type := Black;
       Current_Toggle : Boolean := False;
-      --??? Blinking_Period : Time_Span := Milliseconds (0) with Volatile;
-      --??? Blinking_On_Condvar : Suspension_Object;
-      --??? Blinker_Task : Led_Blinker_Task_Type (Rgb_Led_Type'Access);
-   end record with Alignment => MPU_Region_Alignment;
+      Blinking_Period_Ms : RTOS.RTOS_Time_Ms_Type := 0;
+   end record with Alignment => Memory_Protection.MPU_Region_Alignment;
 
 end Color_Led;

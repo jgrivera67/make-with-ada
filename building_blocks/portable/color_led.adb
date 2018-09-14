@@ -26,12 +26,11 @@
 --
 
 with Color_Led.Board_Specific_Private;
-with Memory_Protection;
---??? with Runtime_Logs;
---??? with System.Address_To_Access_Conversions;
+with Runtime_Logs;
+with RTOS.API;
+with Low_Level_Debug; --???
 
 package body Color_Led is
-   pragma SPARK_Mode (Off);
    use Color_Led.Board_Specific_Private;
    use Memory_Protection;
 
@@ -61,7 +60,7 @@ package body Color_Led is
    --
    --  RGB LED singleton object
    --
-   Rgb_Led : aliased Rgb_Led_Type (Rgb_Led_Pins'Access);
+   Rgb_Led : Rgb_Led_Type (Rgb_Led_Pins'Access);
 
    -- ** --
 
@@ -135,7 +134,6 @@ package body Color_Led is
       Rgb_Led.Current_Color := Black;
       Rgb_Led.Initialized := True;
       Restore_Private_Data_Region (Old_Region);
-      --??? Set_True (Rgb_Led.Initialized_Condvar);
    end Initialize;
 
    -----------------
@@ -212,66 +210,61 @@ package body Color_Led is
    -- Turn_Off_Blinker --
    ----------------------
 
-   --??? procedure Turn_Off_Blinker
-   --??? is
-   --???    Old_Region : MPU_Region_Descriptor_Type;
-   --??? begin
-   --???    Set_Private_Data_Region (Rgb_Led'Address,
-   --???                             Rgb_Led'Size,
-   --???                             Read_Write,
-   --???                             Old_Region);
---???
-   --???    Rgb_Led.Blinking_Period := Milliseconds (0);
-   --???    Set_False (Rgb_Led.Blinking_On_Condvar);
-   --???    Restore_Private_Data_Region (Old_Region);
-   --??? end Turn_Off_Blinker;
+   procedure Turn_Off_Blinker
+   is
+       Old_Region : MPU_Region_Descriptor_Type;
+   begin
+       Set_Private_Data_Region (Rgb_Led'Address,
+                                Rgb_Led'Size,
+                                Read_Write,
+                                Old_Region);
+
+       Rgb_Led.Blinking_Period_Ms := 0;
+       Restore_Private_Data_Region (Old_Region);
+    end Turn_Off_Blinker;
 
    ---------------------
    -- Turn_On_Blinker --
    ---------------------
 
-   --??? procedure Turn_On_Blinker (Period : Time_Span)
-   --??? is
-   --???    Old_Region : MPU_Region_Descriptor_Type;
-   --??? begin
-   --???    Set_Private_Data_Region (Rgb_Led'Address,
-   --???                             Rgb_Led'Size,
-   --???                             Read_Write,
-   --???                             Old_Region);
---???
-   --???    Rgb_Led.Blinking_Period := Period;
-   --???    Set_True (Rgb_Led.Blinking_On_Condvar);
-   --???    Restore_Private_Data_Region (Old_Region);
-   --??? end Turn_On_Blinker;
+   procedure Turn_On_Blinker (Period : RTOS.RTOS_Time_Ms_Type)
+   is
+      Old_Region : MPU_Region_Descriptor_Type;
+   begin
+      Set_Private_Data_Region (Rgb_Led'Address,
+                               Rgb_Led'Size,
+                               Read_Write,
+                               Old_Region);
+
+      Rgb_Led.Blinking_Period_Ms := Period;
+      RTOS.API.RTOS_Task_Semaphore_Signal (Led_Blinker_Task_Obj);
+      Restore_Private_Data_Region (Old_Region);
+   end Turn_On_Blinker;
 
    -- ** --
 
    --
    --  LED Blinker task
    --
-   --??? task body Led_Blinker_Task_Type is
-   --???    package Address_To_Rgb_Led_Pointer is new
-   --???       System.Address_To_Access_Conversions (Rgb_Led_Type);
---???
-   --???    use Address_To_Rgb_Led_Pointer;
-   --???    Next_Time : Time := Clock;
-   --??? begin
-   --???    Set_Private_Data_Region (
-   --???       To_Address (Object_Pointer (Rgb_Led_Ptr)),
-   --???       Rgb_Led_Ptr.all'Size,
-   --???       Read_Write);
---???
-   --???    Suspend_Until_True (Rgb_Led_Ptr.Initialized_Condvar);
-   --???    Runtime_Logs.Info_Print ("LED Blinker task started");
-   --???    loop
-   --???       if Rgb_Led_Ptr.Blinking_Period = Milliseconds (0) then
-   --???          Suspend_Until_True (Rgb_Led_Ptr.Blinking_On_Condvar);
-   --???       end if;
---???
-   --???       Toggle_Color (Rgb_Led.Current_Color);
-   --???       Next_Time := Next_Time + Rgb_Led_Ptr.Blinking_Period;
-   --???       delay until Next_Time;
-   --???    end loop;
-   --??? end Led_Blinker_Task_Type;
+   procedure Led_Blinker_Task_Proc is
+      Last_Ticks : RTOS.RTOS_Tick_Type := RTOS.API.RTOS_Get_Ticks_Since_Boot;
+   begin
+      pragma ASSERT(False);--???
+      Low_Level_Debug.Print_String ("LED Blinker task started", End_Line => True); --???
+      Set_Private_Data_Region (Rgb_Led'Address,
+                               Rgb_Led'Size,
+                               Read_Write);
+
+      Runtime_Logs.Info_Print ("LED Blinker task started");
+      loop
+         if Rgb_Led.Blinking_Period_Ms = 0 then
+            RTOS.API.RTOS_Task_Semaphore_Wait;
+         end if;
+
+         Toggle_Color (Rgb_Led.Current_Color);
+         RTOS.API.RTOS_Task_Delay_Until (Last_Ticks,
+                                         Rgb_Led.Blinking_Period_Ms);
+      end loop;
+   end Led_Blinker_Task_Proc;
 
 end Color_Led;

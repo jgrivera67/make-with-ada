@@ -26,7 +26,7 @@
 --
 
 with System;
-with Interfaces.C;
+with Interfaces;
 private with Microcontroller.Arch_Specific;
 
 --
@@ -42,17 +42,35 @@ package RTOS is
    --  ConfigMax_Priorities from FreeRTOSConfig.h
    Max_Task_Priorities : constant := 8;
 
-   --  PortTICK_PERIOD_MS from FreeRTOSConfig.h
-   Tick_Period_Ms : constant := 1;
+   type RTOS_Time_Ms_Type is new Interfaces.Unsigned_32;
 
+   --  PortTICK_PERIOD_MS from FreeRTOSConfig.h
+   Tick_Period_Ms : constant RTOS_Time_Ms_Type := 1;
+
+   type RTOS_Tick_Type is new Interfaces.Unsigned_32;
+
+   --
+   --  For FreeRTOS, lower number means lower priority
+   --
    type RTOS_Task_Priority_Type is
       range 1 .. Max_Task_Priorities
       with Size => Interfaces.Unsigned_32'Size,
            Convention => C;
 
+   Highest_App_Task_Priority : constant RTOS_Task_Priority_Type :=
+      RTOS_Task_Priority_Type'Last - 1;
+
+   Lowest_App_Task_Priority : constant RTOS_Task_Priority_Type :=
+      RTOS_Task_Priority_Type'First + 1;
+
    type RTOS_Timer_Callback_Type is
       access procedure (Timer : RTOS_Timer_Type)
       with Convention => C;
+
+   type RTOS_Task_Id_Type is new Interfaces.Unsigned_8;
+
+   Invalid_Task_id : constant RTOS_Task_Id_Type :=
+     RTOS_Task_Id_Type (Interfaces.Unsigned_8'Last);
 
    function Get_Freertos_StaticTask_t_Size return Interfaces.Unsigned_32
         with Import,
@@ -120,10 +138,11 @@ private
    type RTOS_Task_Type is limited record
       Stack : Task_Stack_Type;
       Initialized : Boolean := False;
+      Task_Id : RTOS_Task_Id_Type := Invalid_Task_id;
+      Max_Stack_Entries_Used : Interfaces.Unsigned_16 := 0;
       Os_Var : FreeRTOS_StaticTask_t;
       Os_Handle : FreeRTOS_TaskHandle_t :=
         FreeRTOS_TaskHandle_t (System.Null_Address);
-      Max_Stack_Entries_Used : Interfaces.Unsigned_16 := 0;
       Semaphore : RTOS_Semaphore_Type;
    end record with Convention => C;
 

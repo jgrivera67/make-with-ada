@@ -25,12 +25,12 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
+with Interfaces.C;
+
 --
 --  @summary Portable RTOS API
 --
 package RTOS.API is
-
-   type RTOS_Tick_Type is new Interfaces.Unsigned_32;
 
    type Task_Procedure_Ptr_Type is access procedure
      with Convention => C;
@@ -43,7 +43,7 @@ package RTOS.API is
    function RTOS_Scheduler_Started return Boolean
       with Import,
            Convention => C,
-           External_Name => "rtos_sched_started";
+           External_Name => "rtos_scheduler_started";
 
    procedure RTOS_Init
      with Pre => not RTOS_Initialized,
@@ -57,24 +57,31 @@ package RTOS.API is
           Post => RTOS_Scheduler_Started,
           Import,
           Convention => C,
-          External_Name => "rtos_sched_start";
+          External_Name => "rtos_scheduler_start";
 
    function RTOS_Task_Initialized (Task_Obj : RTOS_Task_Type) return Boolean
      with Ghost;
 
    procedure RTOS_Task_Init (Task_Obj : in out RTOS_Task_Type;
-                             Task_Name : Interfaces.C.char_array;
+                             Task_Id : RTOS_Task_Id_Type;
                              Task_Proc_Ptr : Task_Procedure_Ptr_Type;
                              Task_Prio : RTOS_Task_Priority_Type)
      with Pre => RTOS_Initialized and
                  not RTOS_Task_Initialized (Task_Obj) and
+	         Task_id /= Invalid_Task_id and
 		 Task_Proc_Ptr /= null,
 	  Import,
           Convention => C,
           External_Name => "rtos_task_init";
 
+   function RTOS_Task_Self return RTOS_Task_Id_Type
+     with Pre => RTOS_Scheduler_Started,
+	  Import,
+          Convention => C,
+          External_Name => "rtos_task_self";
+
    procedure RTOS_Task_Delay_Until (Previous_Wake_Ticks : in out RTOS_Tick_Type;
-                                    Delay_Ms : Positive)
+                                    Delay_Ms : RTOS_Time_Ms_Type)
      with Pre => RTOS_Scheduler_Started,
      	  Import,
           Convention => C,
@@ -87,7 +94,7 @@ package RTOS.API is
           External_Name => "rtos_task_semaphore_wait";
 
    procedure RTOS_Task_Semaphore_Signal (Task_Obj : RTOS_Task_Type)
-     with Pre => RTOS_Scheduler_Started and
+     with Pre => RTOS_Initialized and
                  RTOS_Task_Initialized (Task_Obj),
      	  Import,
           Convention => C,
@@ -147,7 +154,7 @@ package RTOS.API is
            External_Name => "rtos_semaphore_wait";
 
    procedure RTOS_Semaphore_Wait (Semaphore_Obj : in out RTOS_Semaphore_Type;
-                                  Timeout_Ms : Interfaces.Unsigned_32)
+                                  Timeout_Ms : RTOS_Time_Ms_Type)
       with Pre => RTOS_Scheduler_Started and
                   RTOS_Semaphore_Initialized (Semaphore_Obj),
 	   Import,
@@ -155,7 +162,7 @@ package RTOS.API is
            External_Name => "rtos_semaphore_wait_timeout";
 
    procedure RTOS_Semaphore_Signal (Semaphore_Obj : in out RTOS_Semaphore_Type)
-      with Pre => RTOS_Scheduler_Started and
+      with Pre => RTOS_Initialized and
                   RTOS_Semaphore_Initialized (Semaphore_Obj),
 	   Import,
            Convention => C,
@@ -166,7 +173,7 @@ package RTOS.API is
 
    procedure RTOS_Timer_Init (Timer_Obj : in out RTOS_Timer_Type;
                               Timer_Name : Interfaces.C.char_array;
-			      Milliseconds : Interfaces.Unsigned_32;
+			      Milliseconds : RTOS_Time_Ms_Type;
 			      Periodic : Boolean;
 			      Timer_Callback : RTOS_Timer_Callback_Type)
       with Pre => RTOS_Initialized and
@@ -215,7 +222,7 @@ package RTOS.API is
           Convention => C,
           External_Name => "rtos_get_ticks_since_boot";
 
-   function RTOS_Get_Ticks_Since_Boot return Interfaces.Unsigned_32
+   function RTOS_Get_Tiime_Since_Boot return RTOS_Time_Ms_Type
      with Pre => RTOS_Initialized,
 	  Import,
           Convention => C,

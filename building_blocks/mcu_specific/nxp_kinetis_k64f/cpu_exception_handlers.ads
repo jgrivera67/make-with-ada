@@ -29,8 +29,9 @@ pragma Restrictions (No_Elaboration_Code);
 --
 --  @summary Cortex-M CPU core exception handlers
 --
-package Cpu_Exception_Handlers is
-
+package Cpu_Exception_Handlers
+   with No_Elaboration_Code_All
+is
    procedure Bus_Fault_Handler;
    pragma Export (C, Bus_Fault_Handler, "bus_fault_handler");
 

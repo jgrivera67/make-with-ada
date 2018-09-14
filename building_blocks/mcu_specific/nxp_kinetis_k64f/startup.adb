@@ -34,6 +34,7 @@ with Microcontroller.Arch_Specific;
 with Microcontroller.Clocks;
 with Reset_Counter;
 with Low_Level_Debug;
+with Cpu_Exception_Handlers;
 
 package body Startup is
    use Interfaces;
@@ -47,6 +48,21 @@ package body Startup is
 
    procedure Unexpected_Interrupt_Handler
       with Export, Convention => C;
+
+   procedure SVC_Handler
+     with Import,
+     Convention => C,
+     External_Name => "SVC_Handler";
+
+   procedure PendSV_Handler
+     with Import,
+     Convention => C,
+     External_Name => "PendSV_Handler";
+
+   procedure SysTick_Handler
+     with Import,
+     Convention => C,
+     External_Name => "SysTick_Handler";
 
    --  End address of the main stack (defined in memory_layout.ld)
    Main_Stack_End : constant Unsigned_32;
@@ -77,8 +93,26 @@ package body Startup is
        --  Synchronous exceptions and internal interrupts:
        1 =>
 	 Reset_Handler'Address,
-       2 .. 15 =>
-	 Unexpected_Interrupt_Handler'Address,
+       2 =>
+         Unexpected_Interrupt_Handler'Address,
+       3 =>
+         Cpu_Exception_Handlers.Hard_Fault_Handler'Address,
+       4 =>
+         Cpu_Exception_Handlers.Mem_Manage_Fault_Handler'Address,
+       5 =>
+         Cpu_Exception_Handlers.Bus_Fault_Handler'Address,
+       6 =>
+         Cpu_Exception_Handlers.Usage_Fault_Handler'Address,
+       7 .. 10 =>
+         Unexpected_Interrupt_Handler'Address,
+       11 =>
+         SVC_Handler'Address,
+       12 .. 13 =>
+         Unexpected_Interrupt_Handler'Address,
+       14 =>
+         PendSV_Handler'Address,
+       15 =>
+         SysTick_Handler'Address,
        --  External interrupts:
        IRQ_Vector_Base + External_Interrupt_Type'Pos(DMA0_IRQ) ..
        IRQ_Vector_Base + External_Interrupt_Type'Pos(ENET_Error_IRQ) =>
@@ -167,8 +201,15 @@ package body Startup is
 
    procedure Unexpected_Interrupt_Handler is
    begin
+      Low_Level_Debug.Print_String ("*** Unexpected Interrupt ");
+      Low_Level_Debug.Print_Number_Decimal (
+         Microcontroller.Arch_Specific.Get_IPSR_Register,
+         End_Line => True);
+
+      pragma Assert (False);
       loop
 	 null;
       end loop;
    end Unexpected_Interrupt_Handler;
+
 end Startup;
