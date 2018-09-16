@@ -195,9 +195,9 @@ package body Startup is
       end loop;
    end Reset_Handler;
 
-   -------------------
-   -- Reset_Handler --
-   -------------------
+   ----------------------------------
+   -- Unexpected_Interrupt_Handler --
+   ----------------------------------
 
    procedure Unexpected_Interrupt_Handler is
    begin

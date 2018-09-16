@@ -58,7 +58,7 @@ package RTOS is
            Convention => C;
 
    Highest_App_Task_Priority : constant RTOS_Task_Priority_Type :=
-      RTOS_Task_Priority_Type'Last - 1;
+      RTOS_Task_Priority_Type'Last - 2;
 
    Lowest_App_Task_Priority : constant RTOS_Task_Priority_Type :=
       RTOS_Task_Priority_Type'First + 1;
@@ -116,10 +116,10 @@ private
 	 FreeRTOS_SemaphoreHandle_t (System.Null_Address);
    end record with Convention => C;
 
-   type FreeRTOS_StaticTask_t is array (1 .. 136) of Interfaces.Unsigned_8
+   type FreeRTOS_StaticTask_t is array (1 .. 120) of Interfaces.Unsigned_8
      with Convention => C,
           Alignment => 4,
-          Size => 136 * Interfaces.Unsigned_8'Size;
+          Size => 120 * Interfaces.Unsigned_8'Size;
 
    type FreeRTOS_TaskHandle_t is new System.Address;
 

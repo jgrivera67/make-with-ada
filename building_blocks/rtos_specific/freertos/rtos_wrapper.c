@@ -13,7 +13,7 @@
  * Check sizes of FreeRTOS strucutures used in Ada code
  */
 uint32_t get_freertos_StaticTask_t_Size(void) {
-  static_assert(sizeof(StaticTask_t) == 136, "Wrong size of StaticTask_t");
+  static_assert(sizeof(StaticTask_t) == 120, "Wrong size of StaticTask_t");
   return sizeof(StaticTask_t);
 }
 
@@ -158,10 +158,10 @@ void rtos_exit_isr(void)
 
 static void rtos_task_internal_callback(void *task_func_addr)
 {
+    FATAL_ERROR();//???
     rtos_task_function_t *const task_func_p =
        (rtos_task_function_t *)task_func_addr;
 
-  configASSERT(0);//???
     task_func_p();
 }
 
@@ -631,5 +631,4 @@ void vApplicationGetTimerTaskMemory(StaticTask_t **ppxTimerTaskTCBBuffer,
 	*ppxTimerTaskStackBuffer = timer_task.tsk_stack;
 	*pulTimerTaskStackSize =
 		sizeof(timer_task.tsk_stack) / sizeof(timer_task.tsk_stack[0]);
-
 }

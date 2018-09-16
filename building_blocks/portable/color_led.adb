@@ -29,6 +29,7 @@ with Color_Led.Board_Specific_Private;
 with Runtime_Logs;
 with RTOS.API;
 with Low_Level_Debug; --???
+with System.Storage_Elements; --???
 
 package body Color_Led is
    use Color_Led.Board_Specific_Private;
@@ -267,4 +268,19 @@ package body Color_Led is
       end loop;
    end Led_Blinker_Task_Proc;
 
+
+   --???
+   procedure jgr_print_reg (reg : Interfaces.Unsigned_32) is
+      use System.Storage_Elements;
+      Stack_Frame : array (1 .. 8) of Interfaces.Unsigned_32
+        with Address => To_Address (Integer_Address (reg));
+   begin
+      Low_Level_Debug.Print_String("SP value ");
+      Low_Level_Debug.Print_Number_Hexadecimal (reg, End_Line => True);
+      for R of Stack_Frame loop
+         Low_Level_Debug.Print_String("Stack entry ");
+         Low_Level_Debug.Print_Number_Hexadecimal (R, End_Line => True);
+      end loop;
+   end jgr_print_reg;
+   --???
 end Color_Led;

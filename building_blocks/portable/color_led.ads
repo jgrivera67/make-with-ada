@@ -26,6 +26,7 @@
 --
 
 with RTOS;
+with Interfaces;--???
 private with Gpio_Driver;
 private with Memory_Protection;
 
@@ -93,6 +94,12 @@ package Color_Led is
 
    procedure Led_Blinker_Task_Proc
      with Convention => C;
+
+   --???
+   procedure jgr_print_reg (reg : Interfaces.Unsigned_32) with
+     Export,
+     Convention => C,
+     External_Name => "jgr_print_reg";
 
 private
    use Gpio_Driver;

@@ -88,6 +88,21 @@ procedure Main is
 
    -- ** --
 
+   procedure Print_FreeRTOS_Struct_Sizes is
+   begin
+      Low_Level_Debug.Print_String("StaticTask_t size: ");
+      Low_Level_Debug.Print_Number_Decimal(RTOS.Get_Freertos_StaticTask_t_Size,
+                                           End_Line => True);
+      Low_Level_Debug.Print_String("StaticSemaphore_t size: ");
+      Low_Level_Debug.Print_Number_Decimal(RTOS.Get_Freertos_StaticSemaphore_t_Size,
+                                           End_Line => True);
+      Low_Level_Debug.Print_String("StaticTimer_t size: ");
+      Low_Level_Debug.Print_Number_Decimal(RTOS.Get_Freertos_StaticTimer_t_Size,
+                                           End_Line => True);
+   end Print_FreeRTOS_Struct_Sizes;
+
+   -- ** --
+
    use type RTOS.RTOS_Task_Priority_Type;
 
    -- ** --
@@ -106,6 +121,7 @@ begin -- Main
    --??? DMA_Driver.Initialize;
 
    Print_Console_Greeting;
+   Print_FreeRTOS_Struct_Sizes; --???
 
    RTOS.API.RTOS_Task_Init (
       Task_Obj      => Color_Led.Led_Blinker_Task_Obj,
