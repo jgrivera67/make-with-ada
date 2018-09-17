@@ -222,7 +222,7 @@ package RTOS.API is
           Convention => C,
           External_Name => "rtos_get_ticks_since_boot";
 
-   function RTOS_Get_Tiime_Since_Boot return RTOS_Time_Ms_Type
+   function RTOS_Get_Time_Since_Boot return RTOS_Time_Ms_Type
      with Pre => RTOS_Initialized,
 	  Import,
           Convention => C,

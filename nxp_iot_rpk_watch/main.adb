@@ -129,8 +129,9 @@ begin -- Main
       Task_Proc_Ptr => Color_Led.Led_Blinker_Task_Proc'Access,
       Task_Prio     => RTOS.Highest_App_Task_Priority - 1);
 
+   Color_Led.Set_Color (Color_Led.Blue);--???
    Color_Led.Turn_On_Blinker (500); --???
-   Low_Level_Debug.Print_String ("*** Before starting RTOS ", End_Line => True);
+
    Low_Level_Debug.Print_Number_Hexadecimal (
       Interfaces.Unsigned_32 (To_Integer (Proc_Access_to_Address (
          Color_Led.Led_Blinker_Task_Proc'Access))),
@@ -138,7 +139,7 @@ begin -- Main
    Low_Level_Debug.Print_Number_Hexadecimal (
       Interfaces.Unsigned_32 (To_Integer (Color_Led.Led_Blinker_Task_Proc'Address)),
                                        End_Line => True);--???
-
+   Low_Level_Debug.Print_String ("*** Before starting RTOS ", End_Line => True);
    RTOS.API.RTOS_Scheduler_Start;
 
    pragma Assert (False);

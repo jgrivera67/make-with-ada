@@ -145,11 +145,7 @@ StackType_t *pxPortInitialiseStack( StackType_t *pxTopOfStack, TaskFunction_t px
 
 	*pxTopOfStack = portINITIAL_XPSR;	/* xPSR */
 	pxTopOfStack--;
-#if 0 /* This is wrong */
 	*pxTopOfStack = ( ( StackType_t ) pxCode ) & portSTART_ADDRESS_MASK;	/* PC */
-#else
-	*pxTopOfStack = ( ( StackType_t ) pxCode ) | 0x1;		/* PC */
-#endif
 	pxTopOfStack--;
 	*pxTopOfStack = ( StackType_t ) portTASK_RETURN_ADDRESS;	/* LR */
 
@@ -202,6 +198,8 @@ void vPortSVCHandler( void )
 					"	ldmia r0!, {r4-r11, r14}		\n" /* Pop the registers that are not automatically saved on exception entry and the critical nesting count. */
 					"	msr psp, r0						\n" /* Restore the task stack pointer. */
 					"	isb								\n"
+					"	mov r0, #0 						\n"
+					"	msr	basepri, r0					\n"
 					"	bx r14							\n"
 					"									\n"
 					"	.align 4						\n"

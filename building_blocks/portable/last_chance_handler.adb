@@ -62,7 +62,7 @@ is
    -------------------------
 
    procedure Last_Chance_Handler (Msg : System.Address; Line : Integer) is
-      Msg_Text : String (1 .. 80) with Address => Msg;
+      Msg_Text : String (1 .. 128) with Address => Msg;
       --??? Caller : constant Address :=
       --???   Return_Address_To_Call_Address (Get_LR_Register);
       Msg_Length : Natural := 0;

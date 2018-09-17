@@ -21,7 +21,7 @@ project watch is
    C_MCU_Switches := ();
    case MCU is
       when "nxp_kinetis_k64f"  =>
-	 C_MCU_Switches := ("-DK64F_MCU");
+	 C_MCU_Switches := ("-DK64F_MCU", "-D__FPU_PRESENT=1", "-D__MPU_PRESENT=0", "-DIRQn_Type=int", "-D__NVIC_PRIO_BITS=4", "-D__Vendor_SysTickConfig=1");
       when "stm32f401"  =>
 	 C_MCU_Switches := ("-DSTM32F401_MCU");
       when "stm32f479"  =>
@@ -47,9 +47,14 @@ project watch is
    case RTOS is
       when "freertos" =>
 	 C_RTOS_Switches := ("-I../../third_party/FreeRTOS/include",
+                             "-I../third_party/CMSIS",
 	                     "-I../../third_party/FreeRTOS/include/private",
 	                     "-I../../third_party/FreeRTOS/portable/" & FreeRTOS_Port_Subdir);
          RTOS_Src_Dirs := ("../third_party/FreeRTOS",
+                           "../third_party/CMSIS",
+                           "../third_party/FreeRTOS/include",
+                           "../third_party/FreeRTOS/include/private",
+                           "../third_party/FreeRTOS/portable/low_power_tickless",
                            "../third_party/FreeRTOS/portable/" & FreeRTOS_Port_Subdir);
       when others =>
 	 null;
@@ -66,11 +71,6 @@ project watch is
                         "../drivers/board_specific/" & Board,
                         "../drivers/mcu_specific/" & MCU,
                         "../third_party",
-                        "../third_party/FreeRTOS",
-                        "../third_party/FreeRTOS/include",
-                        "../third_party/FreeRTOS/include/private",
-                        "../third_party/FreeRTOS/portable/" & FreeRTOS_Port_Subdir,
-                        "../third_party/FreeRTOS/portable/low_power_tickless",
                         "../third_party/SVD/" & MCU) &
 			RTOS_Src_Dirs;
 

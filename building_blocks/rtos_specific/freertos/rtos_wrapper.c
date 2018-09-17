@@ -75,7 +75,7 @@ static struct rtos g_rtos = {
 
 bool rtos_initialized(void)
 {
-    return g_rtos.state == INITIALIZED;
+    return g_rtos.state >= INITIALIZED;
 }
 
 bool rtos_scheduler_started(void)
@@ -158,7 +158,6 @@ void rtos_exit_isr(void)
 
 static void rtos_task_internal_callback(void *task_func_addr)
 {
-    FATAL_ERROR();//???
     rtos_task_function_t *const task_func_p =
        (rtos_task_function_t *)task_func_addr;
 
