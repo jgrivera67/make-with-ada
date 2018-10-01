@@ -36,7 +36,7 @@ static_assert(HIGHEST_APP_TASK_PRIORITY > LOWEST_APP_TASK_PRIORITY,
 static_assert(APP_TASK_STACK_SIZE >= configMINIMAL_STACK_SIZE,
               "APP_TASK_STACK_SIZE is wrong");
 
-static_assert(sizeof(bool) == 1, "Unexpected bool size");
+static_assert(sizeof(bool) == sizeof(uint8_t), "Unexpected bool size");
 
 /**
  * application task default stack size in bytes
@@ -190,15 +190,18 @@ typedef uint8_t rtos_task_id_t;
 #define INVALID_TASK_ID UINT8_MAX
 
 void rtos_task_init(struct rtos_task *rtos_task_p,
-                    rtos_task_id_t task_id,
                     rtos_task_function_t *task_function_p,
                     rtos_task_priority_t task_prio);
 
-rtos_task_id_t rtos_task_self(void);
+rtos_task_id_t rtos_task_self_id(void);
+
+void rtos_task_get_current_stack(uintptr_t *start_addr_p, uint32_t *size_p);
 
 void rtos_task_change_self_priority(rtos_task_priority_t new_task_prio);
 
 void rtos_task_delay_until(rtos_ticks_t *prev_wake_ticks_p, uint32_t ms);
+
+void rtos_task_delay(uint32_t ms);
 
 void rtos_task_semaphore_wait(void);
 
@@ -217,10 +220,13 @@ void rtos_semaphore_init(struct rtos_semaphore *rtos_semaphore_p,
 
 void rtos_semaphore_wait(struct rtos_semaphore *rtos_semaphore_p);
 
-bool rtos_semaphore_wait_timeout(struct rtos_semaphore *rtos_semaphore_p,
-		                         uint32_t timeout_ms);
+void rtos_semaphore_wait_timeout(struct rtos_semaphore *rtos_semaphore_p,
+				 uint32_t timeout_ms,
+                                 uint8_t *status);
 
 void rtos_semaphore_signal(struct rtos_semaphore *rtos_semaphore_p);
+
+uint32_t rtos_semaphore_get_count(const struct rtos_semaphore *rtos_semaphore_p);
 
 void rtos_timer_init(struct rtos_timer *rtos_timer_p,
                      const char *timer_name_p,

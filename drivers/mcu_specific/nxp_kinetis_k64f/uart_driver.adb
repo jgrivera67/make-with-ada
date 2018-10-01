@@ -24,19 +24,21 @@
 --  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 --  POSSIBILITY OF SUCH DAMAGE.
 --
-with Ada.Interrupts;
-with Ada.Interrupts.Names;
 with System;
 with Uart_Driver.Board_Specific_Private;
-with Microcontroller.Arm_Cortex_M;
+with Microcontroller.Arch_Specific;
+with Number_Conversion_Utils;
 with System.Address_To_Access_Conversions;
 with Runtime_Logs;
+with Kinetis_K64F;
+with RTOS.API;
 
 package body Uart_Driver is
    pragma SPARK_Mode (Off);
-   use Ada.Interrupts;
    use Uart_Driver.Board_Specific_Private;
-   use Microcontroller.Arm_Cortex_M;
+   use Microcontroller.Arch_Specific;
+   use Microcontroller.CPU_Specific;
+   use Number_Conversion_Utils;
 
    package Address_To_UART_Registers_Pointer is new
       System.Address_To_Access_Conversions (UART.Registers_Type);
@@ -47,34 +49,38 @@ package body Uart_Driver is
 
    procedure Disable_Rx_Interrupt (Uart_Device_Id : Uart_Device_Id_Type);
 
-   --
-   --  Protected object to define Interrupt handlers for all UARTs
-   --
-   protected Uart_Interrupts_Object is
-      pragma Interrupt_Priority (Microcontroller.UART_Interrupt_Priority);
-   private
-      procedure Uart_Irq_Common_Handler (Uart_Device_Id : Uart_Device_Id_Type)
-         with Pre => not Are_Cpu_Interrupts_Disabled;
+   procedure Uart_Irq_Common_Handler (Uart_Device_Id : Uart_Device_Id_Type)
+      with Pre => not Are_Cpu_Interrupts_Disabled;
 
-      procedure Uart0_Irq_Handler;
-      pragma Attach_Handler (Uart0_Irq_Handler, Names.UART0_Interrupt);
+   procedure UART0_RX_TX_IRQ_Handler
+     with Export,
+     Convention => C,
+     External_Name => "UART0_RX_TX_IRQ_Handler";
 
-      procedure Uart1_Irq_Handler;
-      pragma Attach_Handler (Uart1_Irq_Handler, Names.UART1_Interrupt);
+   procedure UART1_RX_TX_IRQ_Handler
+     with Export,
+     Convention => C,
+     External_Name => "UART1_RX_TX_IRQ_Handler";
 
-      procedure Uart2_Irq_Handler;
-      pragma Attach_Handler (Uart2_Irq_Handler, Names.UART2_Interrupt);
+   procedure UART2_RX_TX_IRQ_Handler
+     with Export,
+     Convention => C,
+     External_Name => "UART2_RX_TX_IRQ_Handler";
 
-      procedure Uart3_Irq_Handler;
-      pragma Attach_Handler (Uart3_Irq_Handler, Names.UART3_Interrupt);
+   procedure UART3_RX_TX_IRQ_Handler
+     with Export,
+          Convention => C,
+          External_Name => "UART3_RX_TX_IRQ_Handler";
 
-      procedure Uart4_Irq_Handler;
-      pragma Attach_Handler (Uart4_Irq_Handler, Names.UART4_Interrupt);
+   procedure UART4_RX_TX_IRQ_Handler
+     with Export,
+     Convention => C,
+     External_Name => "UART4_RX_TX_IRQ_Handler";
 
-      procedure Uart5_Irq_Handler;
-      pragma Attach_Handler (Uart5_Irq_Handler, Names.UART5_Interrupt);
-   end Uart_Interrupts_Object;
-   pragma Unreferenced (Uart_Interrupts_Object);
+   procedure UART5_RX_TX_IRQ_Handler
+     with Export,
+     Convention => C,
+     External_Name => "UART5_RX_TX_IRQ_Handler";
 
    Uart_Receive_Queue_Name : aliased constant String := "UART Rx queue";
 
@@ -147,7 +153,7 @@ package body Uart_Driver is
          Byte_Ring_Buffers.Read (Uart_Device_Var.Receive_Queue, Byte_Read);
       else
          Enable_Rx_Interrupt (Uart_Device_Id);
-         Suspend_Until_True (Uart_Device_Var.Byte_Received_SuspObj);
+         RTOS.API.RTOS_Semaphore_Wait (Uart_Device_Var.Byte_Received_Semaphore);
          Byte_Read := Uart_Device_Var.Byte_Received;
       end if;
 
@@ -237,7 +243,7 @@ package body Uart_Driver is
 
       procedure Set_Baud_Rate is
          BDH_Value : UART.BDH_Type;
-         Clock_Freq : Hertz_Type renames
+         Clock_Freq : Microcontroller.Hertz_Type renames
            Uart_Device.Source_Clock_Freq_In_Hz;
          Calculated_SBR : Positive range 1 .. 16#1FFF#;
          Encoded_Baud_Rate : UART.Encoded_Baud_Rate_Type with
@@ -328,6 +334,9 @@ package body Uart_Driver is
       Byte_Ring_Buffers.Initialize (Uart_Device_Var.Receive_Queue,
                                     Uart_Receive_Queue_Name'Access);
 
+      RTOS.API.RTOS_Semaphore_Init (Uart_Device_Var.Byte_Received_Semaphore,
+                                    Initial_Count => 0);
+
       Set_Private_Data_Region (
          To_Address (Object_Pointer (Uart_Registers_Ptr)),
          UART.Registers_Type'Object_Size,
@@ -341,8 +350,9 @@ package body Uart_Driver is
 
       --
       --  Enable interrupts in the interrupt controller (NVIC):
-      --  NOTE: This is implicitly done by the Ada runtime
       --
+      NVIC_Setup_External_Interrupt(Uart_Device.IRQ_Index,
+                                    Kinetis_K64F.UART_Interrupt_Priority);
 
       --
       --  Enable receiver hardware-based flow control:
@@ -407,122 +417,125 @@ package body Uart_Driver is
 
    -- ** --
 
-   --
-   --  Interrupt handlers
-   --
-   protected body Uart_Interrupts_Object is
+   procedure UART0_RX_TX_IRQ_Handler is
+   begin
+      Uart_Irq_Common_Handler (UART0);
+   end UART0_RX_TX_IRQ_Handler;
 
-      procedure Uart0_Irq_Handler is
-      begin
-         Uart_Irq_Common_Handler (UART0);
-      end Uart0_Irq_Handler;
+   procedure UART1_RX_TX_IRQ_Handler is
+   begin
+      Uart_Irq_Common_Handler (UART1);
+   end UART1_RX_TX_IRQ_Handler;
 
-      procedure Uart1_Irq_Handler is
-      begin
-         Uart_Irq_Common_Handler (UART1);
-      end Uart1_Irq_Handler;
+   procedure UART2_RX_TX_IRQ_Handler is
+   begin
+      Uart_Irq_Common_Handler (UART2);
+   end UART2_RX_TX_IRQ_Handler;
 
-      procedure Uart2_Irq_Handler is
-      begin
-         Uart_Irq_Common_Handler (UART2);
-      end Uart2_Irq_Handler;
+   procedure UART3_RX_TX_IRQ_Handler is
+   begin
+      Uart_Irq_Common_Handler (UART3);
+   end UART3_RX_TX_IRQ_Handler;
 
-      procedure Uart3_Irq_Handler is
-      begin
-         Uart_Irq_Common_Handler (UART3);
-      end Uart3_Irq_Handler;
+   procedure UART4_RX_TX_IRQ_Handler is
+   begin
+      Uart_Irq_Common_Handler (UART4);
+   end UART4_RX_TX_IRQ_Handler;
 
-      procedure Uart4_Irq_Handler is
-      begin
-         Uart_Irq_Common_Handler (UART4);
-      end Uart4_Irq_Handler;
+   procedure UART5_RX_TX_IRQ_Handler is
+   begin
+      Uart_Irq_Common_Handler (UART5);
+   end UART5_RX_TX_IRQ_Handler;
 
-      procedure Uart5_Irq_Handler is
-      begin
-         Uart_Irq_Common_Handler (UART5);
-      end Uart5_Irq_Handler;
+   procedure Uart_Irq_Common_Handler
+     (Uart_Device_Id : Uart_Device_Id_Type) is
+      Uart_Registers_Ptr : access UART.Registers_Type renames
+	Uart_Devices (Uart_Device_Id).Registers_Ptr;
+      Uart_Device_Var : Uart_Device_Var_Type renames
+	Uart_Devices_Var (Uart_Device_Id);
+      S1_Value : UART.S1_Type;
+      D_Value : Byte;
+      Byte_Was_Stored : Boolean;
+      Old_Region : MPU_Region_Descriptor_Type;
+      Uart_Device_Id_Str : String (1 .. 2);
+      Uart_Device_Id_Str_Length : Positive;
+      D_Value_Str : String (1 .. 2);
+   begin
+      S1_Value := Uart_Registers_Ptr.S1;
+      --  The only interrupt source we are expecting is "Receive data
+      --  register full"
+      pragma Assert (S1_Value.RDRF /= 0);
 
-      procedure Uart_Irq_Common_Handler
-        (Uart_Device_Id : Uart_Device_Id_Type) is
-         use Interfaces;
-         Uart_Registers_Ptr : access UART.Registers_Type renames
-           Uart_Devices (Uart_Device_Id).Registers_Ptr;
-         Uart_Device_Var : Uart_Device_Var_Type renames
-           Uart_Devices_Var (Uart_Device_Id);
-         S1_Value : UART.S1_Type;
-         D_Value : Byte;
-         Byte_Was_Stored : Boolean;
-         Old_Region : MPU_Region_Descriptor_Type;
-      begin
-         S1_Value := Uart_Registers_Ptr.S1;
-         --  The only interrupt source we are expecting is "Receive data
-         --  register full"
-         pragma Assert (S1_Value.RDRF /= 0);
+      Set_Private_Data_Region (Uart_Device_Var'Address,
+			       Uart_Device_Var'Size,
+			       Read_Write,
+                               Old_Region);
 
-         Set_Private_Data_Region (Uart_Device_Var'Address,
-                                  Uart_Device_Var'Size,
-                                  Read_Write,
-                                  Old_Region);
+      Unsigned_To_Decimal_String (
+            Interfaces.Unsigned_32 (Uart_Device_Id'Enum_Rep),
+            Uart_Device_Id_Str, Uart_Device_Id_Str_Length);
 
-         if  S1_Value.S1_OR /= 0 or else
-             S1_Value.NF /= 0 or else
-             S1_Value.FE /= 0 or else
-             S1_Value.PF /= 0
-         then
-            -- Read D register to clear error
-            D_Value := Uart_Registers_Ptr.D;
-            Runtime_Logs.Error_Print (
-               "UART" & Uart_Device_Id'Image & " Rx IRQ Error (" &
-               "S1.S1_OR:" & S1_Value.S1_OR'Image &
-               ", S1.NF:" & S1_Value.NF'Image &
-               ", S1.FE:" & S1_Value.FE'Image &
-               ", S1.PF:" & S1_Value.PF'Image &
-               ", D:" & D_Value'Image & ")");
+      if  S1_Value.S1_OR /= 0 or else
+	  S1_Value.NF /= 0 or else
+	  S1_Value.FE /= 0 or else
+	  S1_Value.PF /= 0
+      then
+	 -- Read D register to clear error
+         D_Value := Uart_Registers_Ptr.D;
+         Unsigned_To_Hexadecimal_String (D_Value, D_Value_Str);
+	 Runtime_Logs.Error_Print (
+            "UART" & Uart_Device_Id_Str (1 .. Uart_Device_Id_Str_Length) &
+            " Rx IRQ Error (" &
+	    "S1.S1_OR: " & (if S1_Value.S1_OR = 1 then '1' else '0') &
+	    ", S1.NF: " & (if S1_Value.NF = 1 then '1' else '0') &
+	    ", S1.FE: " & (if S1_Value.FE = 1 then '1' else '0') &
+	    ", S1.PF: " & (if S1_Value.PF = 1 then '1' else '0') &
+	    ", D: 0x" & D_Value_Str & ")");
 
-            Uart_Device_Var.Errors := Uart_Device_Var.Errors + 1;
-            goto Common_Exit;
-         end if;
+	 Uart_Device_Var.Errors := Uart_Device_Var.Errors + 1;
+	 goto Common_Exit;
+      end if;
 
-         --
-         --  Disable generation of further Rx interrupts
-         --
-         Disable_Rx_Interrupt (Uart_Device_Id);
+      --
+      --  Disable generation of further Rx interrupts
+      --
+      Disable_Rx_Interrupt (Uart_Device_Id);
 
-         if Uart_Device_Var.Rx_Buffering_On then
-            loop
-               --  Read the next byte received
-               D_Value := Uart_Registers_Ptr.D;
+      if Uart_Device_Var.Rx_Buffering_On then
+	 loop
+	    --  Read the next byte received
+	    D_Value := Uart_Registers_Ptr.D;
 
-               Byte_Ring_Buffers.Write_Non_Blocking (
-                  Uart_Device_Var.Receive_Queue,
-                  D_Value, Byte_Was_Stored);
-               if not Byte_Was_Stored then
-                  Runtime_Logs.Error_Print (
-                     "Byte received on UART" & Uart_Device_Id'Image &
-                     " dropped (Value:" & D_Value'Image & ")");
+	    Byte_Ring_Buffers.Write_Non_Blocking (
+	       Uart_Device_Var.Receive_Queue,
+	       D_Value, Byte_Was_Stored);
+            if not Byte_Was_Stored then
+               Unsigned_To_Hexadecimal_String (D_Value, D_Value_Str);
+	       Runtime_Logs.Error_Print (
+                  "Byte received on UART" &
+                  Uart_Device_Id_Str (1 .. Uart_Device_Id_Str_Length) &
+		  " dropped (Value: 0x" & D_Value_Str & ")");
 
-                  Uart_Device_Var.Received_Bytes_Dropped :=
-                    Uart_Device_Var.Received_Bytes_Dropped + 1;
-               end if;
+	       Uart_Device_Var.Received_Bytes_Dropped :=
+		 Uart_Device_Var.Received_Bytes_Dropped + 1;
+	    end if;
 
-               Data_Synchronization_Barrier;
-               S1_Value := Uart_Registers_Ptr.S1;
-               exit when S1_Value.RDRF = 0;
-            end loop;
+	    Data_Synchronization_Barrier;
+	    S1_Value := Uart_Registers_Ptr.S1;
+	    exit when S1_Value.RDRF = 0;
+	 end loop;
 
-            --
-            --  Re-enable generation of further Rx interrupts
-            --
-            Enable_Rx_Interrupt (Uart_Device_Id);
-         else
-            Uart_Device_Var.Byte_Received := Uart_Registers_Ptr.D;
-            Set_True (Uart_Device_Var.Byte_Received_SuspObj);
-         end if;
+	 --
+	 --  Re-enable generation of further Rx interrupts
+	 --
+	 Enable_Rx_Interrupt (Uart_Device_Id);
+      else
+	 Uart_Device_Var.Byte_Received := Uart_Registers_Ptr.D;
+	 RTOS.API.RTOS_Semaphore_Signal (Uart_Device_Var.Byte_Received_Semaphore);
+      end if;
 
 <<Common_Exit>>
-         Restore_Private_Data_Region (Old_Region);
-      end Uart_Irq_Common_Handler;
-
-   end Uart_Interrupts_Object;
+      Restore_Private_Data_Region (Old_Region);
+   end Uart_Irq_Common_Handler;
 
 end Uart_Driver;

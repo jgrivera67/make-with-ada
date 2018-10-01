@@ -40,4 +40,10 @@ is
 
    procedure Initialize;
 
+   function Get_Cpu_Clock_Frequency_Hz return interfaces.Unsigned_32
+   is (Interfaces.Unsigned_32 (Cpu_Clock_Frequency))
+     with Export,
+          Convention => C,
+          External_Name => "get_cpu_clock_frequency_hz";
+
 end Microcontroller.Clocks;

@@ -27,7 +27,7 @@
 
 with Devices.MCU_Specific;
 with Interfaces.Bit_Types;
-with Microcontroller_Clocks;
+with Microcontroller.Clocks;
 with Devices;
 private with Generic_Ring_Buffers;
 private with Memory_Protection;
@@ -40,8 +40,8 @@ package SPI_Driver is
    use Devices.MCU_Specific;
    use Interfaces.Bit_Types;
    use Interfaces;
-   use Microcontroller_Clocks;
    use Devices;
+   use type Microcontroller.Hertz_Type;
 
    --
    --  SPI transfer frame size: 1 or 2 bytes
@@ -55,10 +55,10 @@ package SPI_Driver is
    procedure Initialize (SPI_Device_Id : SPI_Device_Id_Type;
                          Master_Mode : Boolean;
                          Frame_Size : SPI_Frame_Size_Type;
-                         Sck_Frequency_Hz : Hertz_Type;
+                         Sck_Frequency_Hz : Microcontroller.Hertz_Type;
                          LSB_First : Boolean := False)
      with Pre => not Initialized (SPI_Device_Id) and
-                 Sck_Frequency_Hz < Bus_Clock_Frequency;
+                 Sck_Frequency_Hz < Microcontroller.Clocks.Bus_Clock_Frequency;
    --
    --  Initialize the given SPI device
    --

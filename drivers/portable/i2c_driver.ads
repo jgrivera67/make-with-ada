@@ -27,10 +27,10 @@
 
 with Devices.MCU_Specific;
 with Interfaces.Bit_Types;
-with Microcontroller.Arm_Cortex_M;
+with Microcontroller.Arch_Specific;
 private with Memory_Protection;
-private with Ada.Synchronous_Task_Control;
 private with System;
+private with RTOS;
 
 --
 --  @summary I2C controller ADC driver
@@ -40,7 +40,7 @@ package I2C_Driver is
    use Devices;
    use Interfaces.Bit_Types;
    use Interfaces;
-   use Microcontroller.Arm_Cortex_M;
+   use Microcontroller.Arch_Specific;
 
    function Initialized (
       I2C_Device_Id : I2C_Device_Id_Type) return Boolean;
@@ -133,7 +133,6 @@ package I2C_Driver is
 private
    pragma SPARK_Mode (Off);
    use Memory_Protection;
-   use Ada.Synchronous_Task_Control;
    use System;
 
    --
@@ -162,7 +161,7 @@ private
       Buffer_Length : Positive;
       Buffer_Cursor : Positive;
       Num_Data_Bytes_Left : Natural := 0;
-      Byte_Transfer_Completed : Suspension_Object;
+      Byte_Transfer_Completed : RTOS.RTOS_Semaphore_Type;
    end record;
 
    --
@@ -181,7 +180,7 @@ private
    type I2C_Device_Var_Type is limited record
       Initialized : Boolean := False;
       Current_Transaction : I2C_Transaction_Type;
-      Mutex : Suspension_Object;
+      Mutex : RTOS.RTOS_Mutex_Type;
    end record with Alignment => MPU_Region_Alignment;
 
    --

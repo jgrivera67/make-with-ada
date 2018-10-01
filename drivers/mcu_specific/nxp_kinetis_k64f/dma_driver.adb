@@ -26,23 +26,25 @@
 --
 
 with MK64F12.SIM;
-with Microcontroller.Arm_Cortex_M;
-with Ada.Interrupts.Names;
+with Microcontroller.Arch_Specific;
+with Microcontroller.CPU_Specific;
+with Number_Conversion_Utils;
+with Kinetis_K64F;
 with Memory_Protection;
 with Interfaces.Bit_Types;
 with Runtime_Logs;
-with Ada.Synchronous_Task_Control;
+with RTOS.API;
 
 package body DMA_Driver is
    pragma SPARK_Mode (Off);
    use Interfaces;
    use MK64F12.SIM;
    use Devices.MCU_Specific.DMA;
-   use Microcontroller.Arm_Cortex_M;
-   use Ada.Interrupts.Names;
+   use Microcontroller.Arch_Specific;
+   use Microcontroller.CPU_Specific;
+   use Number_Conversion_Utils;
    use Memory_Protection;
    use Interfaces.Bit_Types;
-   use Ada.Synchronous_Task_Control;
 
    --
    --  State information kept for a DMA channel
@@ -51,7 +53,7 @@ package body DMA_Driver is
       Enabled : Boolean := False;
       Transfer_Triggered_By_Peripheral : Boolean := False;
       Transfer_Error_Count : Unsigned_32 := 0;
-      Transfer_Completed : Suspension_Object;
+      Transfer_Completed : RTOS.RTOS_Semaphore_Type;
    end record;
 
    type DMA_Channel_Array_Type is
@@ -63,71 +65,97 @@ package body DMA_Driver is
    type DMA_Engine_Type is limited record
       Initialized : Boolean := False;
       DMA_Channels : DMA_Channel_Array_Type;
-   end record with Alignment => MPU_Region_Alignment;
+   end record with Alignment => Memory_Protection.MPU_Region_Alignment;
 
    DMA_Engine_Var : DMA_Engine_Type;
 
-   --
-   --  Protected object to define Interrupt handlers for all DMA channels
-   --
-   protected DMA_Interrupts_Object is
-      pragma Interrupt_Priority (Microcontroller.DMA_Interrupt_Priority);
-   private
-      procedure DMA_Irq_Common_Handler (DMA_Channel : Valid_DMA_Channel_Type)
-         with Pre => not Are_Cpu_Interrupts_Disabled;
+   procedure DMA0_IRQ_Handler
+     with Export,
+     Convention => C,
+     External_Name => "DMA0_IRQ_Handler";
 
-      procedure DMA0_Irq_Handler;
-      pragma Attach_Handler (DMA0_Irq_Handler, DMA0_Interrupt);
+   procedure DMA1_IRQ_Handler
+     with Export,
+     Convention => C,
+     External_Name => "DMA1_IRQ_Handler";
 
-      procedure DMA1_Irq_Handler;
-      pragma Attach_Handler (DMA1_Irq_Handler, DMA1_Interrupt);
+   procedure DMA2_IRQ_Handler
+     with Export,
+     Convention => C,
+     External_Name => "DMA2_IRQ_Handler";
 
-      procedure DMA2_Irq_Handler;
-      pragma Attach_Handler (DMA2_Irq_Handler, DMA2_Interrupt);
+   procedure DMA3_IRQ_Handler
+     with Export,
+     Convention => C,
+     External_Name => "DMA3_IRQ_Handler";
 
-      procedure DMA3_Irq_Handler;
-      pragma Attach_Handler (DMA3_Irq_Handler, DMA3_Interrupt);
+   procedure DMA4_IRQ_Handler
+     with Export,
+     Convention => C,
+     External_Name => "DMA4_IRQ_Handler";
 
-      procedure DMA4_Irq_Handler;
-      pragma Attach_Handler (DMA4_Irq_Handler, DMA4_Interrupt);
+   procedure DMA5_IRQ_Handler
+     with Export,
+     Convention => C,
+     External_Name => "DMA5_IRQ_Handler";
 
-      procedure DMA5_Irq_Handler;
-      pragma Attach_Handler (DMA5_Irq_Handler, DMA5_Interrupt);
+   procedure DMA6_IRQ_Handler
+     with Export,
+     Convention => C,
+     External_Name => "DMA6_IRQ_Handler";
 
-      procedure DMA6_Irq_Handler;
-      pragma Attach_Handler (DMA6_Irq_Handler, DMA6_Interrupt);
+   procedure DMA7_IRQ_Handler
+     with Export,
+     Convention => C,
+     External_Name => "DMA7_IRQ_Handler";
 
-      procedure DMA7_Irq_Handler;
-      pragma Attach_Handler (DMA7_Irq_Handler, DMA7_Interrupt);
+   procedure DMA8_IRQ_Handler
+     with Export,
+     Convention => C,
+     External_Name => "DMA8_IRQ_Handler";
 
-      procedure DMA8_Irq_Handler;
-      pragma Attach_Handler (DMA8_Irq_Handler, DMA8_Interrupt);
+   procedure DMA9_IRQ_Handler
+     with Export,
+     Convention => C,
+     External_Name => "DMA9_IRQ_Handler";
 
-      procedure DMA9_Irq_Handler;
-      pragma Attach_Handler (DMA9_Irq_Handler, DMA9_Interrupt);
+   procedure DMA10_IRQ_Handler
+     with Export,
+     Convention => C,
+     External_Name => "DMA10_IRQ_Handler";
 
-      procedure DMA10_Irq_Handler;
-      pragma Attach_Handler (DMA10_Irq_Handler, DMA10_Interrupt);
+   procedure DMA11_IRQ_Handler
+     with Export,
+     Convention => C,
+     External_Name => "DMA11_IRQ_Handler";
 
-      procedure DMA11_Irq_Handler;
-      pragma Attach_Handler (DMA11_Irq_Handler, DMA11_Interrupt);
+   procedure DMA12_IRQ_Handler
+     with Export,
+     Convention => C,
+     External_Name => "DMA12_IRQ_Handler";
 
-      procedure DMA12_Irq_Handler;
-      pragma Attach_Handler (DMA12_Irq_Handler, DMA12_Interrupt);
+   procedure DMA13_IRQ_Handler
+     with Export,
+     Convention => C,
+     External_Name => "DMA13_IRQ_Handler";
 
-      procedure DMA13_Irq_Handler;
-      pragma Attach_Handler (DMA13_Irq_Handler, DMA13_Interrupt);
+   procedure DMA14_IRQ_Handler
+     with Export,
+     Convention => C,
+     External_Name => "DMA14_IRQ_Handler";
 
-      procedure DMA14_Irq_Handler;
-      pragma Attach_Handler (DMA14_Irq_Handler, DMA14_Interrupt);
+   procedure DMA15_IRQ_Handler
+     with Export,
+     Convention => C,
+     External_Name => "DMA15_IRQ_Handler";
 
-      procedure DMA15_Irq_Handler;
-      pragma Attach_Handler (DMA15_Irq_Handler, DMA15_Interrupt);
+   procedure DMA_Error_IRQ_Handler
+     with Export,
+     Convention => C,
+     External_Name => "DMA_Error_IRQ_Handler";
 
-      procedure DMA_Error_Irq_Handler;
-      pragma Attach_Handler (DMA_Error_Irq_Handler, DMA_Error_Interrupt);
-   end DMA_Interrupts_Object;
-   pragma Unreferenced (DMA_Interrupts_Object);
+   procedure DMA_IRQ_Common_Handler (DMA_Channel : Valid_DMA_Channel_Type)
+      with Pre => not Are_Cpu_Interrupts_Disabled;
 
    -----------------
    -- Initialized --
@@ -176,11 +204,14 @@ package body DMA_Driver is
       --
       for I in DMAMUX_Periph.CHCFG'Range loop
          DMAMUX_Periph.CHCFG (I) := DMAMUX_CHCFG_Disabled_Value;
+      end loop;
 
+      for Irq_Num in Kinetis_K64F.DMA0_IRQ .. Kinetis_K64F.DMA_Error_IRQ loop
          --
          --  Enable interrupts in the interrupt controller (NVIC):
-         --  NOTE: This is implicitly done by the Ada runtime
          --
+         NVIC_Setup_External_Interrupt (Irq_Num'Enum_Rep,
+                                        Kinetis_K64F.DMA_Interrupt_Priority);
       end loop;
 
       Set_Private_Data_Region (DMA_Periph'Address,
@@ -208,6 +239,11 @@ package body DMA_Driver is
       Set_Private_Data_Region (DMA_Engine_Var'Address,
                                DMA_Engine_Var'Size,
                                Read_Write);
+
+      for DMA_Channel of DMA_Engine_Var.DMA_Channels loop
+         RTOS.API.RTOS_Semaphore_Init (DMA_Channel.Transfer_Completed,
+                                       Initial_Count => 0);
+      end loop;
 
       DMA_Engine_Var.Initialized := True;
 
@@ -380,7 +416,8 @@ package body DMA_Driver is
         DMA_Engine_Var.DMA_Channels (DMA_Channel);
    begin
       pragma Assert (DMA_Channel_State.Enabled);
-      pragma Assert (not Current_State (DMA_Channel_State.Transfer_Completed));
+      pragma Assert (RTOS.API.RTOS_Semaphore_Get_Count (
+                        DMA_Channel_State.Transfer_Completed) = 0);
 
       Set_Private_Data_Region (DMA_Periph'Address,
                                DMA_Periph'Size,
@@ -535,168 +572,166 @@ package body DMA_Driver is
       DMA_Channel_State : DMA_Channel_State_Type renames
           DMA_Engine_Var.DMA_Channels (DMA_Channel);
    begin
-      Suspend_Until_True (DMA_Channel_State.Transfer_Completed);
+      RTOS.API.RTOS_Semaphore_Wait (DMA_Channel_State.Transfer_Completed);
    end Wait_Until_DMA_Completed;
 
-   --
-   --  Interrupt handlers
-   --
-   protected body DMA_Interrupts_Object is
+   procedure DMA0_IRQ_Handler is
+   begin
+      DMA_IRQ_Common_Handler (0);
+   end DMA0_IRQ_Handler;
 
-      procedure DMA0_Irq_Handler is
-      begin
-         DMA_Irq_Common_Handler (0);
-      end DMA0_Irq_Handler;
+   procedure DMA1_IRQ_Handler is
+   begin
+      DMA_IRQ_Common_Handler (1);
+   end DMA1_IRQ_Handler;
 
-      procedure DMA1_Irq_Handler is
-      begin
-         DMA_Irq_Common_Handler (1);
-      end DMA1_Irq_Handler;
+   procedure DMA2_IRQ_Handler is
+   begin
+      DMA_IRQ_Common_Handler (2);
+   end DMA2_IRQ_Handler;
 
-      procedure DMA2_Irq_Handler is
-      begin
-         DMA_Irq_Common_Handler (2);
-      end DMA2_Irq_Handler;
+   procedure DMA3_IRQ_Handler is
+   begin
+      DMA_IRQ_Common_Handler (3);
+   end DMA3_IRQ_Handler;
 
-      procedure DMA3_Irq_Handler is
-      begin
-         DMA_Irq_Common_Handler (3);
-      end DMA3_Irq_Handler;
+   procedure DMA4_IRQ_Handler is
+   begin
+      DMA_IRQ_Common_Handler (4);
+   end DMA4_IRQ_Handler;
 
-      procedure DMA4_Irq_Handler is
-      begin
-         DMA_Irq_Common_Handler (4);
-      end DMA4_Irq_Handler;
+   procedure DMA5_IRQ_Handler is
+   begin
+      DMA_IRQ_Common_Handler (5);
+   end DMA5_IRQ_Handler;
 
-      procedure DMA5_Irq_Handler is
-      begin
-         DMA_Irq_Common_Handler (5);
-      end DMA5_Irq_Handler;
+   procedure DMA6_IRQ_Handler is
+   begin
+      DMA_IRQ_Common_Handler (6);
+   end DMA6_IRQ_Handler;
 
-      procedure DMA6_Irq_Handler is
-      begin
-         DMA_Irq_Common_Handler (6);
-      end DMA6_Irq_Handler;
+   procedure DMA7_IRQ_Handler is
+   begin
+      DMA_IRQ_Common_Handler (7);
+   end DMA7_IRQ_Handler;
 
-      procedure DMA7_Irq_Handler is
-      begin
-         DMA_Irq_Common_Handler (7);
-      end DMA7_Irq_Handler;
+   procedure DMA8_IRQ_Handler is
+   begin
+      DMA_IRQ_Common_Handler (8);
+   end DMA8_IRQ_Handler;
 
-      procedure DMA8_Irq_Handler is
-      begin
-         DMA_Irq_Common_Handler (8);
-      end DMA8_Irq_Handler;
+   procedure DMA9_IRQ_Handler is
+   begin
+      DMA_IRQ_Common_Handler (9);
+   end DMA9_IRQ_Handler;
 
-      procedure DMA9_Irq_Handler is
-      begin
-         DMA_Irq_Common_Handler (9);
-      end DMA9_Irq_Handler;
+   procedure DMA10_IRQ_Handler is
+   begin
+      DMA_IRQ_Common_Handler (10);
+   end DMA10_IRQ_Handler;
 
-      procedure DMA10_Irq_Handler is
-      begin
-         DMA_Irq_Common_Handler (10);
-      end DMA10_Irq_Handler;
+   procedure DMA11_IRQ_Handler is
+   begin
+      DMA_IRQ_Common_Handler (11);
+   end DMA11_IRQ_Handler;
 
-      procedure DMA11_Irq_Handler is
-      begin
-         DMA_Irq_Common_Handler (11);
-      end DMA11_Irq_Handler;
+   procedure DMA12_IRQ_Handler is
+   begin
+      DMA_IRQ_Common_Handler (12);
+   end DMA12_IRQ_Handler;
 
-      procedure DMA12_Irq_Handler is
-      begin
-         DMA_Irq_Common_Handler (12);
-      end DMA12_Irq_Handler;
+   procedure DMA13_IRQ_Handler is
+   begin
+      DMA_IRQ_Common_Handler (13);
+   end DMA13_IRQ_Handler;
 
-      procedure DMA13_Irq_Handler is
-      begin
-         DMA_Irq_Common_Handler (13);
-      end DMA13_Irq_Handler;
+   procedure DMA14_IRQ_Handler is
+   begin
+      DMA_IRQ_Common_Handler (14);
+   end DMA14_IRQ_Handler;
 
-      procedure DMA14_Irq_Handler is
-      begin
-         DMA_Irq_Common_Handler (14);
-      end DMA14_Irq_Handler;
+   procedure DMA15_IRQ_Handler is
+   begin
+      DMA_IRQ_Common_Handler (15);
+   end DMA15_IRQ_Handler;
 
-      procedure DMA15_Irq_Handler is
-      begin
-         DMA_Irq_Common_Handler (15);
-      end DMA15_Irq_Handler;
+   ----------------------------
+   -- DMA_IRQ_Common_Handler --
+   ----------------------------
 
-      ----------------------------
-      -- DMA_Irq_Common_Handler --
-      ----------------------------
+   procedure DMA_IRQ_Common_Handler
+     (DMA_Channel : Valid_DMA_Channel_Type)
+   is
+      CINT_Value : DMA_CINT_Register;
+      ERR_Value : DMA_ERR_Register;
+      Old_Region : MPU_Region_Descriptor_Type;
+      DMA_Channel_State : DMA_Channel_State_Type renames
+	 DMA_Engine_Var.DMA_Channels (DMA_Channel);
+   begin
+      Set_Private_Data_Region (DMA_Periph'Address,
+			       DMA_Periph'Size,
+			       Read_Write,
+			       Old_Region);
 
-      procedure DMA_Irq_Common_Handler
-        (DMA_Channel : Valid_DMA_Channel_Type)
-      is
-         CINT_Value : DMA_CINT_Register;
-         ERR_Value : DMA_ERR_Register;
-         Old_Region : MPU_Region_Descriptor_Type;
-         DMA_Channel_State : DMA_Channel_State_Type renames
-            DMA_Engine_Var.DMA_Channels (DMA_Channel);
-      begin
-         Set_Private_Data_Region (DMA_Periph'Address,
-                                  DMA_Periph'Size,
-                                  Read_Write,
-                                  Old_Region);
+      CINT_Value.CINT := CINT_CINT_Field (DMA_Channel);
+      DMA_Periph.CINT := CINT_Value;
+      ERR_Value := DMA_Periph.ERR;
+      pragma Assert (ERR_Value.ERR.Arr (DMA_Channel) = ERR_ERR0_Field_0);
+      RTOS.API.RTOS_Semaphore_Signal (DMA_Channel_State.Transfer_Completed);
 
-         CINT_Value.CINT := CINT_CINT_Field (DMA_Channel);
-         DMA_Periph.CINT := CINT_Value;
-         ERR_Value := DMA_Periph.ERR;
-         pragma Assert (ERR_Value.ERR.Arr (DMA_Channel) = ERR_ERR0_Field_0);
-         Set_True (DMA_Channel_State.Transfer_Completed);
+      Restore_Private_Data_Region (Old_Region);
+   end DMA_IRQ_Common_Handler;
 
-         Restore_Private_Data_Region (Old_Region);
-      end DMA_Irq_Common_Handler;
+   ---------------------------
+   -- DMA_Error_IRQ_Handler --
+   ---------------------------
 
-      ---------------------------
-      -- DMA_Error_Irq_Handler --
-      ---------------------------
+   procedure DMA_Error_IRQ_Handler is
+      ERR_Value : DMA_ERR_Register;
+      CERR_Value : DMA_CERR_Register;
+      Old_Region : MPU_Region_Descriptor_Type;
+      Dec_Num_Str : String (1 .. 2);
+      Dec_Num_Str_Length : Positive;
+   begin
+      Set_Private_Data_Region (DMA_Periph'Address,
+			       DMA_Periph'Size,
+			       Read_Write,
+			       Old_Region);
 
-      procedure DMA_Error_Irq_Handler is
-         ERR_Value : DMA_ERR_Register;
-         CERR_Value : DMA_CERR_Register;
-         Old_Region : MPU_Region_Descriptor_Type;
-      begin
-         Set_Private_Data_Region (DMA_Periph'Address,
-                                  DMA_Periph'Size,
-                                  Read_Write,
-                                  Old_Region);
+      ERR_Value := DMA_Periph.ERR;
+      for Channel in Valid_DMA_Channel_Type loop
+         if ERR_Value.ERR.Arr (Channel) = ERR_ERR0_Field_1 then
+            Unsigned_To_Decimal_String (Unsigned_32 (Channel),
+                                        Dec_Num_Str,
+                                        Dec_Num_Str_Length);
+	    Runtime_Logs.Error_Print ("DMA error happened for channel " &
+			              Dec_Num_Str (1 .. Dec_Num_Str_Length));
 
-         ERR_Value := DMA_Periph.ERR;
-         for Channel in Valid_DMA_Channel_Type loop
-             if ERR_Value.ERR.Arr (Channel) = ERR_ERR0_Field_1 then
-                Runtime_Logs.Error_Print ("DMA error happened for channel" &
-                                          Channel'Image);
+	    --
+	    --  Clear error interrupt for the channel
+	    --
+	    CERR_Value.CERR := CERR_CERR_Field (Channel);
+	    DMA_Periph.CERR.CERR := CERR_Value.CERR;
+	 end if;
+      end loop;
 
-                --
-                --  Clear error interrupt for the channel
-                --
-                CERR_Value.CERR := CERR_CERR_Field (Channel);
-                DMA_Periph.CERR.CERR := CERR_Value.CERR;
-             end if;
-         end loop;
+      Set_Private_Data_Region (DMA_Engine_Var'Address,
+			       DMA_Engine_Var'Size,
+			       Read_Write);
 
-         Set_Private_Data_Region (DMA_Engine_Var'Address,
-                                  DMA_Engine_Var'Size,
-                                  Read_Write);
+      for Channel in Valid_DMA_Channel_Type loop
+	 if ERR_Value.ERR.Arr (Channel) = ERR_ERR0_Field_1 then
+	    declare
+	       DMA_Channel_State : DMA_Channel_State_Type renames
+		  DMA_Engine_Var.DMA_Channels (Channel);
+	    begin
+	       DMA_Channel_State.Transfer_Error_Count :=
+		  DMA_Channel_State.Transfer_Error_Count + 1;
+	    end;
+	 end if;
+      end loop;
 
-         for Channel in Valid_DMA_Channel_Type loop
-            if ERR_Value.ERR.Arr (Channel) = ERR_ERR0_Field_1 then
-               declare
-                  DMA_Channel_State : DMA_Channel_State_Type renames
-                     DMA_Engine_Var.DMA_Channels (Channel);
-               begin
-                  DMA_Channel_State.Transfer_Error_Count :=
-                     DMA_Channel_State.Transfer_Error_Count + 1;
-               end;
-            end if;
-         end loop;
-
-         Restore_Private_Data_Region (Old_Region);
-      end DMA_Error_Irq_Handler;
-
-   end DMA_Interrupts_Object;
+      Restore_Private_Data_Region (Old_Region);
+   end DMA_Error_IRQ_Handler;
 
 end DMA_Driver;

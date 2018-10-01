@@ -29,16 +29,14 @@
 --  Generic ring buffer abstract data type
 --
 
-with System;
-with Microcontroller.Arm_Cortex_M;
-private with Ada.Synchronous_Task_Control;
+with Microcontroller.Arch_Specific;
+private with RTOS;
 
 generic
    type Element_Type is private;
    Max_Num_Elements : Positive;
 package Generic_Ring_Buffers is
-   pragma Preelaborate;
-   use Microcontroller.Arm_Cortex_M;
+   use Microcontroller.Arch_Specific;
 
    type Ring_Buffer_Type is limited private;
 
@@ -60,8 +58,7 @@ package Generic_Ring_Buffers is
    procedure Write_Non_Blocking (Ring_Buffer : in out Ring_Buffer_Type;
                                  Element : Element_Type;
                                  Write_Ok : out Boolean)
-     with Pre => Initialized (Ring_Buffer) and then
-                 not Are_Cpu_Interrupts_Disabled;
+     with Pre => Initialized (Ring_Buffer);
 
    procedure Write (Ring_Buffer : in out Ring_Buffer_Type;
                     Element : Element_Type)
@@ -74,34 +71,10 @@ package Generic_Ring_Buffers is
                  not Are_Cpu_Interrupts_Disabled;
 
 private
-   use Ada.Synchronous_Task_Control;
 
    subtype Buffer_Index_Type is Positive range 1 .. Max_Num_Elements;
 
    type Buffer_Data_Type is array (Buffer_Index_Type) of Element_Type;
-
-   --
-   --  Buffer protected type
-   --
-   protected type Buffer_Protected_Type is
-      pragma Interrupt_Priority (System.Interrupt_Priority'Last);
-
-      procedure Write (Element : Element_Type;
-                       Write_Ok : out Boolean;
-                       Not_Empty_Condvar : in out Suspension_Object;
-                       Not_Full_Condvar : in out Suspension_Object);
-
-      procedure Read (Element : out Element_Type;
-                      Read_Ok : out Boolean;
-                      Not_Empty_Condvar : in out Suspension_Object;
-                      Not_Full_Condvar : in out Suspension_Object);
-
-   private
-      Buffer_Data : Buffer_Data_Type;
-      Write_Cursor : Buffer_Index_Type := Buffer_Index_Type'First;
-      Read_Cursor : Buffer_Index_Type := Buffer_Index_Type'First;
-      Num_Elements_Filled : Natural range 0 .. Max_Num_Elements := 0;
-   end Buffer_Protected_Type;
 
    --
    --  Ring buffer type
@@ -109,9 +82,12 @@ private
    type Ring_Buffer_Type is limited record
       Initialized : Boolean := False;
       Name : access constant String;
-      Buffer : Buffer_Protected_Type;
-      Not_Empty_Condvar : Suspension_Object;
-      Not_Full_Condvar : Suspension_Object;
+      Buffer_Data : Buffer_Data_Type;
+      Write_Cursor : Buffer_Index_Type := Buffer_Index_Type'First;
+      Read_Cursor : Buffer_Index_Type := Buffer_Index_Type'First;
+      Num_Elements_Filled : Natural range 0 .. Max_Num_Elements := 0;
+      Not_Empty_Semaphore : RTOS.RTOS_Semaphore_Type;
+      Not_Full_Semaphore : RTOS.RTOS_Semaphore_Type;
    end record;
 
 end Generic_Ring_Buffers;

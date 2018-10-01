@@ -31,7 +31,6 @@ with Memory_Protection;
 with System.Storage_Elements;
 
 package body Generic_App_Config is
-   use Nor_Flash_Driver;
    use Interfaces.Bit_Types;
    use Interfaces;
    use Memory_Protection;

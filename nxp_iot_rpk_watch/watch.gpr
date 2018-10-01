@@ -21,7 +21,7 @@ project watch is
    C_MCU_Switches := ();
    case MCU is
       when "nxp_kinetis_k64f"  =>
-	 C_MCU_Switches := ("-DK64F_MCU", "-D__FPU_PRESENT=1", "-D__MPU_PRESENT=0", "-DIRQn_Type=int", "-D__NVIC_PRIO_BITS=4", "-D__Vendor_SysTickConfig=1");
+	 C_MCU_Switches := ("-DK64F_MCU");
       when "stm32f401"  =>
 	 C_MCU_Switches := ("-DSTM32F401_MCU");
       when "stm32f479"  =>
@@ -67,6 +67,7 @@ project watch is
                         "../building_blocks/cpu_specific/" & RTS.CPU_Core,
                         "../building_blocks/arch_specific/" & RTS.CPU_Arch,
                         "../building_blocks/rtos_specific/" & RTOS,
+                        "../building_blocks/rtos_specific/" & RTOS & "/" & RTS.CPU_Arch,
                         "../drivers/portable",
                         "../drivers/board_specific/" & Board,
                         "../drivers/mcu_specific/" & MCU,

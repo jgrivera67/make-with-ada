@@ -25,7 +25,11 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
+with RTOS.API;
+with Interfaces;
+
 package body Generic_Ring_Buffers is
+   use Interfaces;
 
    function Initialized (Ring_Buffer : Ring_Buffer_Type) return Boolean is
      (Ring_Buffer.Initialized);
@@ -36,8 +40,11 @@ package body Generic_Ring_Buffers is
                          Name : not null access constant String) is
    begin
       pragma Assert (not Ring_Buffer.Initialized);
-      Set_False (Ring_Buffer.Not_Empty_Condvar);
-      Set_True (Ring_Buffer.Not_Full_Condvar);
+      RTOS.API.RTOS_Semaphore_Init (Ring_Buffer.Not_Empty_Semaphore,
+                                    Initial_Count => 0);
+      RTOS.API.RTOS_Semaphore_Init (Ring_Buffer.Not_Full_Semaphore,
+                                    Initial_Count =>
+                                      Unsigned_32 (Max_Num_Elements));
       Ring_Buffer.Name := Name;
       Ring_Buffer.Initialized := True;
    end Initialize;
@@ -46,32 +53,40 @@ package body Generic_Ring_Buffers is
 
    procedure Read (Ring_Buffer : in out Ring_Buffer_Type;
                    Element : out Element_Type) is
-      Read_Ok : Boolean;
+      Old_Intmask : Unsigned_32;
    begin
-      loop
-         Suspend_Until_True (Ring_Buffer.Not_Empty_Condvar);
-         Ring_Buffer.Buffer.Read (Element,
-                                  Read_Ok,
-                                  Ring_Buffer.Not_Empty_Condvar,
-                                  Ring_Buffer.Not_Full_Condvar);
-         exit when Read_Ok;
-      end loop;
+      RTOS.API.RTOS_Semaphore_Wait (Ring_Buffer.Not_Empty_Semaphore);
+      Old_Intmask := Disable_Cpu_Interrupts;
+
+      Element := Ring_Buffer.Buffer_Data (Ring_Buffer.Read_Cursor);
+      if Ring_Buffer.Read_Cursor < Buffer_Index_Type'Last then
+	 Ring_Buffer.Read_Cursor := Ring_Buffer.Read_Cursor + 1;
+      else
+	 Ring_Buffer.Read_Cursor := Buffer_Index_Type'First;
+      end if;
+
+      Restore_Cpu_Interrupts (Old_Intmask);
+      RTOS.API.RTOS_Semaphore_Signal (Ring_Buffer.Not_Full_Semaphore);
    end Read;
 
    -- ** --
 
    procedure Write (Ring_Buffer : in out Ring_Buffer_Type;
                     Element : Element_Type) is
-      Write_Ok : Boolean;
+      Old_Intmask : Unsigned_32;
    begin
-      loop
-         Suspend_Until_True (Ring_Buffer.Not_Full_Condvar);
-         Ring_Buffer.Buffer.Write (Element,
-                                   Write_Ok,
-                                   Ring_Buffer.Not_Empty_Condvar,
-                                   Ring_Buffer.Not_Full_Condvar);
-         exit when Write_Ok;
-      end loop;
+      RTOS.API.RTOS_Semaphore_Wait (Ring_Buffer.Not_Full_Semaphore);
+      Old_Intmask := Disable_Cpu_Interrupts;
+
+      Ring_Buffer.Buffer_Data (Ring_Buffer.Write_Cursor) := Element;
+      if Ring_Buffer.Write_Cursor < Buffer_Index_Type'Last then
+	 Ring_Buffer.Write_Cursor := Ring_Buffer.Write_Cursor + 1;
+      else
+	 Ring_Buffer.Write_Cursor := Buffer_Index_Type'First;
+      end if;
+
+      Restore_Cpu_Interrupts (Old_Intmask);
+      RTOS.API.RTOS_Semaphore_Signal (Ring_Buffer.Not_Empty_Semaphore);
    end Write;
 
    -- ** --
@@ -79,63 +94,28 @@ package body Generic_Ring_Buffers is
    procedure Write_Non_Blocking (Ring_Buffer : in out Ring_Buffer_Type;
                                  Element : Element_Type;
                                  Write_Ok : out Boolean) is
+     Old_Intmask : Unsigned_32;
+     Sem_status : Unsigned_8;
    begin
-      Ring_Buffer.Buffer.Write (Element,
-                                Write_Ok,
-                                Ring_Buffer.Not_Empty_Condvar,
-                                Ring_Buffer.Not_Full_Condvar);
+      RTOS.API.RTOS_Semaphore_Wait (Ring_Buffer.Not_Full_Semaphore,
+                                    Timeout_Ms => 0,
+                                    Status => Sem_Status);
+      if Sem_Status = 0 then
+	 Write_Ok := False;
+ 	 return;
+      end if;
+
+      Old_Intmask := Disable_Cpu_Interrupts;
+      Ring_Buffer.Buffer_Data (Ring_Buffer.Write_Cursor) := Element;
+      if Ring_Buffer.Write_Cursor < Buffer_Index_Type'Last then
+	 Ring_Buffer.Write_Cursor := Ring_Buffer.Write_Cursor + 1;
+      else
+	 Ring_Buffer.Write_Cursor := Buffer_Index_Type'First;
+      end if;
+
+      Restore_Cpu_Interrupts (Old_Intmask);
+      RTOS.API.RTOS_Semaphore_Signal (Ring_Buffer.Not_Empty_Semaphore);
+      Write_Ok := True;
    end Write_Non_Blocking;
-
-   -- ** --
-
-   protected body Buffer_Protected_Type is
-
-      procedure Read (Element : out Element_Type;
-                      Read_Ok : out Boolean;
-                      Not_Empty_Condvar : in out Suspension_Object;
-                      Not_Full_Condvar : in out Suspension_Object) is
-      begin
-         if Num_Elements_Filled = 0 then
-            Set_False (Not_Empty_Condvar);
-            Read_Ok := False;
-         else
-            Element := Buffer_Data (Read_Cursor);
-            if Read_Cursor < Buffer_Index_Type'Last then
-               Read_Cursor := Read_Cursor + 1;
-            else
-               Read_Cursor := 1;
-            end if;
-
-            Num_Elements_Filled := Num_Elements_Filled - 1;
-            Set_True (Not_Full_Condvar);
-            Read_Ok := True;
-         end if;
-      end Read;
-
-      -- ** --
-
-      procedure Write (Element : Element_Type;
-                       Write_Ok : out Boolean;
-                       Not_Empty_Condvar : in out Suspension_Object;
-                       Not_Full_Condvar : in out Suspension_Object) is
-      begin
-         if Num_Elements_Filled = Max_Num_Elements then
-            Set_False (Not_Full_Condvar);
-            Write_Ok := False;
-         else
-            Buffer_Data (Write_Cursor) := Element;
-            if Write_Cursor < Buffer_Index_Type'Last then
-               Write_Cursor := Write_Cursor + 1;
-            else
-               Write_Cursor := Buffer_Index_Type'First;
-            end if;
-
-            Num_Elements_Filled := Num_Elements_Filled + 1;
-            Set_True (Not_Empty_Condvar);
-            Write_Ok := True;
-         end if;
-      end Write;
-
-   end Buffer_Protected_Type;
 
 end Generic_Ring_Buffers;

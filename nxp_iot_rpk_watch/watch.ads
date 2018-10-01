@@ -1,5 +1,5 @@
 --
---  Copyright (c) 2017, German Rivera
+--  Copyright (c) 2017-2018, German Rivera
 --  All rights reserved.
 --
 --  Redistribution and use in source and binary forms, with or without
@@ -27,19 +27,18 @@
 
 with App_Configuration;
 with LCD_Display;
-with Ada.Real_Time;
-private with Ada.Synchronous_Task_Control;
+with Interfaces;
+with RTC_Driver;
 private with Memory_Protection;
-private with Interfaces;
-private with System;
 private with Sensor_Reading;
 private with Accelerometer;
+private with RTOS;
 
 --
 --  @summary Smart watch
 --
 package Watch is
-   use Ada.Real_Time;
+   use RTC_Driver;
 
    procedure Get_Configuration_Paramters (
       Config_Parameters : out App_Configuration.Config_Parameters_Type);
@@ -94,7 +93,6 @@ package Watch is
 
 private
    pragma SPARK_Mode (Off);
-   use Ada.Synchronous_Task_Control;
    use Memory_Protection;
    use Interfaces;
    use Sensor_Reading;
@@ -106,12 +104,17 @@ private
    type Watch_State_Type is (
       Watch_Uninitialized,
       Watch_Mode,
-      Heart_Rate_Monitor_Mode,
       G_Forces_Monitor_Mode,
       Asleep_Watch_Mode,
-      Asleep_Heart_Rate_Monitor_Mode,
       Asleep_G_Forces_Monitor_Mode)
       with Size => 3;
+
+   for Watch_State_Type use (
+      Watch_Uninitialized => 16#0#,
+      Watch_Mode => 16#1#,
+      G_Forces_Monitor_Mode => 16#2#,
+      Asleep_Watch_Mode => 16#3#,
+      Asleep_G_Forces_Monitor_Mode => 16#4#);
 
    --
    --  Possible events that cause state transitions
@@ -133,6 +136,19 @@ private
       Motion_Detected)
       with Size => 5;
 
+   for Watch_Event_Type use
+     (Low_Power_Sleep_Timeout => 16#0#,
+      Low_Power_Sleep_Wakeup => 16#1#,
+      Wall_Time_Changed => 16#2#,
+      Wall_Time_Set => 16#3#,
+      Heart_Rate_Changed => 16#4#,
+      Altitude_Changed => 16#5#,
+      Temperature_Changed => 16#6#,
+      Battery_Charge_Changed => 16#7#,
+      Tapping_Detected => 16#8#,
+      Double_Tapping_Detected => 16#9#,
+      Motion_Detected => 16#a#);
+
    type Pending_Events_Type is array (Watch_Event_Type) of Boolean
         with Component_Size => 1, Size => Unsigned_32'Size;
 
@@ -143,18 +159,19 @@ private
          when True =>
             Pending : Pending_Events_Type;
       end case;
-   end record with Unchecked_Union, Size => Unsigned_32'Size;
+   end record with Unchecked_Union,
+                   Size => Unsigned_32'Size;
 
-   protected type Watch_Events_Mailbox_Type is
-      pragma Interrupt_Priority (System.Interrupt_Priority'Last);
+   procedure Clear_All_Events (Events : Out Events_Type);
 
-      procedure Clear_All_Events;
-      procedure Clear_Event (Event : Watch_Event_Type);
-      function Event_Happened (Event : Watch_Event_Type) return Boolean;
-      procedure Set_Event (Event : Watch_Event_Type);
-   private
-      Events : Events_Type;
-   end Watch_Events_Mailbox_Type;
+   procedure Clear_Event (Events : In Out Events_Type;
+                          Event : Watch_Event_Type);
+
+   function Event_Happened (Events : Events_Type;
+                            Event : Watch_Event_Type) return Boolean;
+
+   procedure Set_Event (Events : In Out Events_Type;
+                        Event : Watch_Event_Type);
 
    subtype Minutes_Type is Natural range 0 .. 59;
 
@@ -165,24 +182,17 @@ private
       Initialized : Boolean := False;
       Config_Parameters : App_Configuration.Config_Parameters_Type;
       State : Watch_State_Type := Watch_Uninitialized with Volatile;
-      Events_Mailbox : Watch_Events_Mailbox_Type;
+      Events_Mailbox : Events_Type;
       Last_Minutes : Minutes_Type := 0;
       Last_Days_To_Date : Natural := 0;
-      Last_Heart_Rate_Reading : Reading_Protected_Type;
       Last_Altitude_Reading : Reading_Type;
       Last_Temperature_Reading : Reading_Type;
       Last_X_Axis_Motion : Motion_Reading_Type := 0;
       Last_Y_Axis_Motion : Motion_Reading_Type := 0;
       Last_Z_Axis_Motion : Motion_Reading_Type := 0;
-      Last_X_Axis_G_Force_Reading : Reading_Protected_Type;
-      Last_Y_Axis_G_Force_Reading : Reading_Protected_Type;
-      Last_Z_Axis_G_Force_Reading : Reading_Protected_Type;
-      Watch_Task_Suspension_Obj : Suspension_Object;
-      Motion_Detector_Task_Suspension_Obj : Suspension_Object;
-      Tapping_Detector_Task_Suspension_Obj : Suspension_Object;
-      Heart_Rate_Monitor_Task_Suspension_Obj : Suspension_Object;
-      Altitude_Sensor_Task_Suspension_Obj : Suspension_Object;
-      Temperature_Sensor_Task_Suspension_Obj : Suspension_Object;
+      Last_X_Axis_G_Force_Reading : Reading_Type;
+      Last_Y_Axis_G_Force_Reading : Reading_Type;
+      Last_Z_Axis_G_Force_Reading : Reading_Type;
    end record with Alignment => MPU_Region_Alignment;
 
    --
@@ -190,12 +200,22 @@ private
    --
    Watch_Var : Watch_Type;
 
-   task Watch_Task;
-   task Motion_Detector_Task;
-   task Tapping_Detector_Task;
-   task Heart_Rate_Monitor_Task;
-   task Altitude_Sensor_Task;
-   task Temperature_Sensor_Task;
+   Watch_Task_Obj : RTOS.RTOS_Task_Type;
+   Motion_Detector_Task_Obj : RTOS.RTOS_Task_Type;
+   Tapping_Detector_Task_Obj : RTOS.RTOS_Task_Type;
+   Altitude_Sensor_Task_Obj : RTOS.RTOS_Task_Type;
+   Temperature_Sensor_Task_Obj : RTOS.RTOS_Task_Type;
+
+   procedure Watch_Task_Proc
+      with Convention => C;
+   procedure Motion_Detector_Task_Proc
+      with Convention => C;
+   procedure Tapping_Detector_Task_Proc
+     with Convention => C;
+   procedure Altitude_Sensor_Task_Proc
+     with Convention => C;
+   procedure Temperature_Sensor_Task_Proc
+     with Convention => C;
 
    function Initialized return Boolean is
      (Watch_Var.Initialized);

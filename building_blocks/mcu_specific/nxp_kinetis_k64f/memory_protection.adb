@@ -27,8 +27,9 @@
 
 with System.Machine_Code;
 with Kinetis_K64F.SCS;
---??? with System.Address_To_Access_Conversions;
 with Low_Level_Debug;
+with Number_Conversion_Utils;
+with RTOS.API;
 
 package body Memory_Protection with
    SPARK_Mode => Off
@@ -564,19 +565,18 @@ is
          end case;
       end Print_Region_Name;
 
-      --??? Calling_Thread_Id : constant System.BB.Threads.Thread_Id :=
-      --???   System.BB.Threads.Thread_Self;
-      --??? Thread_Id_Addr : constant Address :=
-      --???   To_Address (Address_To_Thread_Id.Object_Pointer (Calling_Thread_Id));
-
+      Calling_Thread_Id : constant RTOS.RTOS_Task_Id_Type :=
+          RTOS.API.RTOS_Task_Self_Id;
       Saved_Region : MPU_Region_Descriptor_Type;
       RGDAAC_Value : RGDAAC_Register_Type;
       RGDAAC_As_Integer : Unsigned_32 with Address => RGDAAC_Value'Address;
+      Dec_Num_Str : String (1 .. 2);
+      Dec_Num_Str_Length : Positive;
    begin
-      Low_Level_Debug.Print_String (
-         "Current thread pointer ");
-      --??? Serial_Console.Debug.Print_Number_Hexadecimal (
-      --???   Unsigned_32 (To_Integer (Thread_Id_Addr)));
+      Number_Conversion_Utils.Unsigned_To_Decimal_String (
+         Unsigned_32 (Calling_Thread_Id), Dec_Num_Str, Dec_Num_Str_Length);
+      Low_Level_Debug.Print_String ("Current thread Id " &
+                                    Dec_Num_Str (1 .. Dec_Num_Str_Length));
       Low_Level_Debug.Print_String (
          ASCII.LF & "MPU region descriptors:" & ASCII.LF);
 
@@ -999,16 +999,12 @@ is
 
    procedure Restore_Thread_MPU_Regions (Thread_Regions : Thread_Regions_Type)
    is
-      --??? use System.Multiprocessors;
    begin
       if not Memory_Protection_Var.MPU_Enabled then
          return;
       end if;
 
       pragma Assert (Memory_Protection_Var.Initialized);
-      --  For now we only support systems with one CPU core
-      --??? pragma Assert (System.BB.Board_Support.Multiprocessors.Current_CPU =
-      --???               CPU'First);
 
       Restore_MPU_Region_Descriptor (
          Region_Id => Thread_Stack_Data_Region,

@@ -1,5 +1,5 @@
 --
---  Copyright (c) 2016, German Rivera
+--  Copyright (c) 2016-2018, German Rivera
 --  All rights reserved.
 --
 --  Redistribution and use in source and binary forms, with or without
@@ -25,16 +25,12 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with Interfaces.Bit_Types;
-
 --
 --  @summary ARM Cortex-M declarations
 --
 package Microcontroller.Arch_Specific with
    No_Elaboration_Code_All
 is
-   use Interfaces.Bit_Types;
-
    Bl_Instruction_Size : constant := 4;
    --  Size of of the "bl" instruction in bytes for ARM thumb-2
 
@@ -62,7 +58,7 @@ is
       SPSEL  : Bit;
       FPCA  : Bit;
    end record with
-     Size      => Word'Size,
+     Size      => Unsigned_32'Size,
      Bit_Order => Low_Order_First;
 
    for CONTROL_Type use record
@@ -77,8 +73,8 @@ is
    --  ARM Thumb instruction format
    --
    type Thumb_Instruction_Type is record
-      Operand : Byte;
-      Op_Code : Byte;
+      Operand : Unsigned_8;
+      Op_Code : Unsigned_8;
    end record with
      Size      => Unsigned_16'Size,
      Bit_Order => Low_Order_First,
@@ -93,8 +89,8 @@ is
    --  ARM Thumb instruction format
    --
    type Thumb_32bit_Instruction_Type is record
-      Operand1 : Byte;
-      Op_Code : Byte;
+      Operand1 : Unsigned_8;
+      Op_Code : Unsigned_8;
       Operand2 : Unsigned_16;
    end record with
      Size      => Unsigned_32'Size,
@@ -111,7 +107,7 @@ is
    --  Register list operand for ARM Cortex-M push instruction
    --
    type Register_List_Operand_Type is array (0 .. 7) of Bit with
-     Component_Size => 1, Size => Byte'Size;
+     Component_Size => 1, Size => Unsigned_8'Size;
 
    --
    --  Register list operand for ARM Cortex-M push instruction
@@ -127,21 +123,26 @@ is
    --
    --  'sub sp, #imm7' instruction immediate operand mask
    --
-   Sub_SP_Immeditate_Operand_Mask : constant Byte := 16#7F#;
+   Sub_SP_Immeditate_Operand_Mask : constant Unsigned_8 := 16#7F#;
 
    Instruction_Size : constant Storage_Offset :=
-     Thumb_Instruction_Type'Size / Byte'Size;
+     Thumb_Instruction_Type'Size / Unsigned_8'Size;
    --  Size of an ARM THUMB 16-bit instruction in bytes
 
    Stack_Entry_Size : constant Storage_Offset :=
-     Stack_Entry_Type'Size / Byte'Size;
+     Stack_Entry_Type'Size / Unsigned_8'Size;
    --  Size in bytes of an entry in the execution stack
+
+   --
+   --  Interrupt vector table indices for ARM core internal interrupts
+   --
+   subtype Internal_Interrupt_Index_Type is Natural range 1 .. 15;
 
    -- ** --
 
    procedure Disable_Cpu_Interrupts with Inline;
 
-   function Disable_Cpu_Interrupts return Word;
+   function Disable_Cpu_Interrupts return Unsigned_32;
    --
    --  Disable interrupts in the CPU and return the previous value of the
    --  Primask register
@@ -149,7 +150,7 @@ is
 
    procedure Enable_Cpu_Interrupts with Inline;
 
-   procedure Restore_Cpu_Interrupts (Old_Primask : Word);
+   procedure Restore_Cpu_Interrupts (Old_Primask : Unsigned_32);
    --  Restore interrupts enable state from Old_Primask
 
    function Are_Cpu_Interrupts_Disabled return Boolean with Inline;
@@ -171,13 +172,13 @@ is
    function Get_SP_Register return Address with Inline;
    --  Capture current value of the ARM core SP (r13) register
 
-   function Get_Control_Register return Word with Inline;
+   function Get_Control_Register return Unsigned_32 with Inline;
    --  Capture current value of the ARM core CONTROL register
 
-   function Get_IPSR_Register return Word with Inline;
+   function Get_IPSR_Register return Unsigned_32 with Inline;
    --  Capture current value of the ARM core IPSR register
 
-   function Get_PSP_Register return Word with Inline;
+   function Get_PSP_Register return Unsigned_32 with Inline;
    --  Capture current value of the ARM core PSP register
 
    function Is_Cpu_Using_MSP_Stack_Pointer return Boolean with Inline;

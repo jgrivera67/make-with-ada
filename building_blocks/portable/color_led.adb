@@ -61,6 +61,11 @@ package body Color_Led is
    --
    Rgb_Led : Rgb_Led_Type (Rgb_Led_Pins'Access);
 
+   Led_Blinker_Task_Obj : RTOS.RTOS_Task_Type;
+
+   procedure Led_Blinker_Task_Proc
+     with Convention => C;
+
    -- ** --
 
    ------------------
@@ -94,6 +99,7 @@ package body Color_Led is
 
    procedure Initialize is
       Old_Region : MPU_Region_Descriptor_Type;
+      use type RTOS.RTOS_Task_Priority_Type;
    begin
       --
       --  Configure Red pin:
@@ -133,6 +139,11 @@ package body Color_Led is
       Rgb_Led.Current_Color := Black;
       Rgb_Led.Initialized := True;
       Restore_Private_Data_Region (Old_Region);
+
+      RTOS.API.RTOS_Task_Init (
+         Task_Obj      => Led_Blinker_Task_Obj,
+         Task_Proc_Ptr => Led_Blinker_Task_Proc'Access,
+         Task_Prio     => RTOS.Highest_App_Task_Priority - 1);
    end Initialize;
 
    -----------------
@@ -246,13 +257,14 @@ package body Color_Led is
    --  LED Blinker task
    --
    procedure Led_Blinker_Task_Proc is
-      Last_Ticks : RTOS.RTOS_Tick_Type := RTOS.API.RTOS_Get_Ticks_Since_Boot;
+      Last_Ticks : RTOS.RTOS_Tick_Type;
    begin
       Set_Private_Data_Region (Rgb_Led'Address,
                                Rgb_Led'Size,
                                Read_Write);
 
       Runtime_Logs.Info_Print ("LED Blinker task started");
+      Last_Ticks := RTOS.API.RTOS_Get_Ticks_Since_Boot;
       loop
          if Rgb_Led.Blinking_Period_Ms = 0 then
             RTOS.API.RTOS_Task_Semaphore_Wait;

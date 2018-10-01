@@ -53,6 +53,11 @@ struct rtos {
     volatile uint8_t nested_ISR_count;
 
     /**
+     * Task ID for the next task to be initialized
+     */
+    rtos_task_id_t next_task_id;
+
+    /**
      * Flag to track when a task context switch needs to be done during
      * an ISR exit
      */
@@ -70,6 +75,7 @@ struct rtos {
 static struct rtos g_rtos = {
     .state = NOT_INITIALIZED,
     .nested_ISR_count = 0,
+    .next_task_id = 0,
     .task_context_switch_required = pdFALSE,
 };
 
@@ -168,7 +174,6 @@ static void rtos_task_internal_callback(void *task_func_addr)
  * Create an RTOS-level task
  */
 void rtos_task_init(struct rtos_task *rtos_task_p,
-                    rtos_task_id_t task_id,
                     rtos_task_function_t *task_function_p,
                     rtos_task_priority_t task_prio)
 {
@@ -177,9 +182,7 @@ void rtos_task_init(struct rtos_task *rtos_task_p,
     bool old_write_enabled;
 #endif
 
-
     configASSERT(rtos_task_p != NULL);
-    configASSERT(task_id != INVALID_TASK_ID);
     configASSERT(task_function_p != NULL);
     configASSERT(task_prio >= LOWEST_APP_TASK_PRIORITY &&
                  task_prio <= HIGHEST_APP_TASK_PRIORITY);
@@ -187,7 +190,8 @@ void rtos_task_init(struct rtos_task *rtos_task_p,
     set_private_data_region(rtos_task_p, sizeof(*rtos_task_p), READ_WRITE, &old_region);
 #endif
     rtos_task_p->tsk_initialized = true;
-    rtos_task_p->tsk_id = task_id;
+    configASSERT(g_rtos.next_task_id < INVALID_TASK_ID - 1);
+    rtos_task_p->tsk_id = g_rtos.next_task_id ++;
     rtos_task_p->tsk_max_stack_entries_used = 0;
 
     /*
@@ -231,11 +235,11 @@ static struct rtos_task *rtos_task_get_current(void)
 }
 
 /**
- * Returns the pointer to the calling task
+ * Returns the Id of the calling task
  *
- * @return task object pointer
+ * @return task Id
  */
-rtos_task_id_t rtos_task_self(void)
+rtos_task_id_t rtos_task_self_id(void)
 {
     if (g_rtos.nested_ISR_count != 0) {
         /*
@@ -249,6 +253,21 @@ rtos_task_id_t rtos_task_self(void)
     return task_p->tsk_id;
 }
 
+/**
+ * Returns the address range of the current task's stack
+ *
+ * @param start_addr_p Area where the stack's start address is to be
+ *                     returned
+ * @param size_p Area where the stack's size (in bytes) is to be
+ *                     returned
+ */
+void rtos_task_get_current_stack(uintptr_t *start_addr_p, uint32_t *size_p)
+{
+    struct rtos_task *const task_p = rtos_task_get_current();
+
+    *start_addr_p = (uintptr_t)task_p->tsk_stack;
+    *size_p = sizeof(task_p->tsk_stack);
+}
 
 /**
  * Changes the priority of the calling task
@@ -264,12 +283,23 @@ void rtos_task_change_self_priority(rtos_task_priority_t new_task_prio)
 
 
 /**
- * Delays the current task a given number of milliseconds
+ * Delays the current task a given number of milliseconds from the
+ * number of ticks specified in *prev_wake_ticks_p and updates
+ * *prev_wake_ticks_p with the current number of ticks upon return
  */
 void rtos_task_delay_until(rtos_ticks_t *prev_wake_ticks_p, uint32_t ms)
 {
     configASSERT(ms != 0);
     vTaskDelayUntil(prev_wake_ticks_p, ms / MS_PER_TIMER_TICK);
+}
+
+/**
+ * Delays the current task a given number of milliseconds
+ */
+void rtos_task_delay(uint32_t ms)
+{
+  configASSERT(ms != 0);
+  vTaskDelay(ms / MS_PER_TIMER_TICK);
 }
 
 
@@ -375,7 +405,8 @@ void rtos_mutex_unlock(struct rtos_mutex *rtos_mutex_p)
  */
 bool rtos_mutex_is_mine(const struct rtos_mutex *rtos_mutex_p)
 {
-    TaskHandle_t owner = xSemaphoreGetMutexHolder(rtos_mutex_p->mtx_os_mutex_handle);
+    TaskHandle_t owner =
+        xSemaphoreGetMutexHolder(rtos_mutex_p->mtx_os_mutex_handle);
 
     return owner == xTaskGetCurrentTaskHandle();
 }
@@ -438,12 +469,14 @@ void rtos_semaphore_wait(struct rtos_semaphore *rtos_semaphore_p)
  *
  * @param rtos_semaphore_p  pointer to the semaphore
  * @param timeout_ms        timeout in milliseconds
- *
- * @return true     if the semaphore was signaled before the timeout expired
- * @return false    otherwise
+ * @param success           *status is set to 1 if the semaphore was
+ *                          signaled before the timeout expired, or if
+ *                          timeout_ms is 0 and the semaphore count > 0.
+ *                          Otherwise, *success is set to 0.
  */
-bool rtos_semaphore_wait_timeout(struct rtos_semaphore *rtos_semaphore_p,
-                                 uint32_t timeout_ms)
+void rtos_semaphore_wait_timeout(struct rtos_semaphore *rtos_semaphore_p,
+				 uint32_t timeout_ms,
+                                 uint8_t *status)
 {
     BaseType_t rtos_status;
 
@@ -456,7 +489,7 @@ bool rtos_semaphore_wait_timeout(struct rtos_semaphore *rtos_semaphore_p,
     (void)set_writable_background_region(old_writable);
 #endif
 
-    return rtos_status == pdPASS;
+    *status = (rtos_status == pdPASS);
 }
 
 
@@ -479,6 +512,13 @@ void rtos_semaphore_signal(struct rtos_semaphore *rtos_semaphore_p)
 #endif
 }
 
+/**
+ * Returns the current count of a given counting semaphore
+ */
+uint32_t rtos_semaphore_get_count(const struct rtos_semaphore *rtos_semaphore_p)
+{
+    return uxSemaphoreGetCount(rtos_semaphore_p->sem_os_semaphore_handle);
+}
 
 static void rtos_timer_internal_callback(TimerHandle_t xTimer)
 {

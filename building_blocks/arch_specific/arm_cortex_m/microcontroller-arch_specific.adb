@@ -1,5 +1,5 @@
 --
---  Copyright (c) 2016, German Rivera
+--  Copyright (c) 2016-2018, German Rivera
 --  All rights reserved.
 --
 --  Redistribution and use in source and binary forms, with or without
@@ -33,10 +33,10 @@ package body Microcontroller.Arch_Specific is
    -----------------------------
 
    function Are_Cpu_Interrupts_Disabled return Boolean is
-      Reg_Value : Word;
+      Reg_Value : Unsigned_32;
    begin
       Asm ("mrs %0, primask" & ASCII.LF,
-           Outputs => Word'Asm_Output ("=r", Reg_Value),
+           Outputs => Unsigned_32'Asm_Output ("=r", Reg_Value),
            Volatile => True);
 
       return (Reg_Value and 16#1#) /= 0;
@@ -105,13 +105,13 @@ package body Microcontroller.Arch_Specific is
    -- Disable_Cpu_Interrupts --
    ----------------------------
 
-   function Disable_Cpu_Interrupts return Word is
-      Reg_Value : Word;
+   function Disable_Cpu_Interrupts return Unsigned_32 is
+      Reg_Value : Unsigned_32;
    begin
       Asm ("mrs %0, primask" & ASCII.LF &
            "cpsid i" & ASCII.LF &
            "isb" & ASCII.LF,
-           Outputs => Word'Asm_Output ("=r", Reg_Value),
+           Outputs => Unsigned_32'Asm_Output ("=r", Reg_Value),
            Volatile => True, Clobber => "memory");
 
       return Reg_Value;
@@ -133,10 +133,10 @@ package body Microcontroller.Arch_Specific is
    -- Get_Control_Register --
    --------------------------
 
-   function Get_Control_Register return Word is
-      Reg_Value : Word;
+   function Get_Control_Register return Unsigned_32 is
+      Reg_Value : Unsigned_32;
    begin
-      Asm ("mrs %0, control", Outputs => Word'Asm_Output ("=r", Reg_Value),
+      Asm ("mrs %0, control", Outputs => Unsigned_32'Asm_Output ("=r", Reg_Value),
            Volatile => True);
       return Reg_Value;
    end Get_Control_Register;
@@ -146,9 +146,9 @@ package body Microcontroller.Arch_Specific is
    --------------------------------
 
    function Get_Frame_Pointer_Register return Address is
-      Reg_Value : Word;
+      Reg_Value : Unsigned_32;
    begin
-      Asm ("mov %0, r7", Outputs => Word'Asm_Output ("=r", Reg_Value),
+      Asm ("mov %0, r7", Outputs => Unsigned_32'Asm_Output ("=r", Reg_Value),
            Volatile => True);
       return To_Address (Integer_Address (Reg_Value));
    end Get_Frame_Pointer_Register;
@@ -157,10 +157,10 @@ package body Microcontroller.Arch_Specific is
    -- Get_IPSR_Register --
    -----------------------
 
-   function Get_IPSR_Register return Word is
-      Reg_Value : Word;
+   function Get_IPSR_Register return Unsigned_32 is
+      Reg_Value : Unsigned_32;
    begin
-      Asm ("mrs %0, ipsr", Outputs => Word'Asm_Output ("=r", Reg_Value),
+      Asm ("mrs %0, ipsr", Outputs => Unsigned_32'Asm_Output ("=r", Reg_Value),
            Volatile => True);
       return Reg_Value;
    end Get_IPSR_Register;
@@ -170,9 +170,9 @@ package body Microcontroller.Arch_Specific is
    ---------------------
 
    function Get_LR_Register return Address is
-      Reg_Value : Word;
+      Reg_Value : Unsigned_32;
    begin
-      Asm ("mov %0, lr", Outputs => Word'Asm_Output ("=r", Reg_Value),
+      Asm ("mov %0, lr", Outputs => Unsigned_32'Asm_Output ("=r", Reg_Value),
            Volatile => True);
       return To_Address (Integer_Address (Reg_Value));
    end Get_LR_Register;
@@ -181,10 +181,10 @@ package body Microcontroller.Arch_Specific is
    -- Get_PSP_Register --
    ----------------------
 
-   function Get_PSP_Register return Word is
-      Reg_Value : Word;
+   function Get_PSP_Register return Unsigned_32 is
+      Reg_Value : Unsigned_32;
    begin
-      Asm ("mrs %0, psp", Outputs => Word'Asm_Output ("=r", Reg_Value),
+      Asm ("mrs %0, psp", Outputs => Unsigned_32'Asm_Output ("=r", Reg_Value),
            Volatile => True);
       return Reg_Value;
    end Get_PSP_Register;
@@ -269,9 +269,9 @@ package body Microcontroller.Arch_Specific is
    ---------------------
 
    function Get_SP_Register return Address is
-      Reg_Value : Word;
+      Reg_Value : Unsigned_32;
    begin
-      Asm ("mov %0, sp", Outputs => Word'Asm_Output ("=r", Reg_Value),
+      Asm ("mov %0, sp", Outputs => Unsigned_32'Asm_Output ("=r", Reg_Value),
            Volatile => True);
       return To_Address (Integer_Address (Reg_Value));
    end Get_SP_Register;
@@ -291,7 +291,7 @@ package body Microcontroller.Arch_Specific is
 
    function Is_32bit_Instruction (Instruction : Thumb_Instruction_Type)
                                   return Boolean is
-      Masked_Opcode : constant Byte := (Instruction.Op_Code and 2#11111000#);
+      Masked_Opcode : constant Unsigned_8 := (Instruction.Op_Code and 2#11111000#);
    begin
       return Masked_Opcode = 2#11101000# or else
         Masked_Opcode = 2#11110000# or else
@@ -303,7 +303,7 @@ package body Microcontroller.Arch_Specific is
    ------------------------------------
 
    function Is_Cpu_Using_MSP_Stack_Pointer return Boolean is
-      Reg_Value : Word := Get_Control_Register;
+      Reg_Value : Unsigned_32 := Get_Control_Register;
       Control : CONTROL_Type with Address => Reg_Value'Address;
    begin
       return Control.SPSEL = 0;
@@ -322,7 +322,7 @@ package body Microcontroller.Arch_Specific is
    -- Restore_Cpu_Interrupts --
    ----------------------------
 
-   procedure Restore_Cpu_Interrupts (Old_Primask : Word) is
+   procedure Restore_Cpu_Interrupts (Old_Primask : Unsigned_32) is
    begin
       if (Old_Primask and 16#1#) = 0 then
          Enable_Cpu_Interrupts;

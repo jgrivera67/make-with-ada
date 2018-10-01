@@ -53,7 +53,7 @@ package body SPI_Driver is
      (SPI_Device_Id : SPI_Device_Id_Type;
       Master_Mode : Boolean;
       Frame_Size : SPI_Frame_Size_Type;
-      Sck_Frequency_Hz : Hertz_Type;
+      Sck_Frequency_Hz : Microcontroller.Hertz_Type;
       LSB_First : Boolean := False)
    is
       procedure Enable_Clock (SPI_Device_Id : SPI_Device_Id_Type);

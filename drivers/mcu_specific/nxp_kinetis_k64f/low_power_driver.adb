@@ -28,7 +28,6 @@
 with MK64F12.LLWU;
 with MK64F12.SMC;
 with Microcontroller.CPU_Specific;
-with Ada.Interrupts.Names;
 with Devices.MCU_Specific;
 with Kinetis_K64F.PORT;
 with Runtime_Logs;
@@ -49,17 +48,10 @@ is
 
    procedure Set_Run_Mode (Low_Power : Boolean);
 
-   --
-   --  Protected object to define Interrupt handlers
-   --
-   protected Low_Power_Interrupts_Object is
-      pragma Interrupt_Priority (Microcontroller.LLWU_Interrupt_Priority);
-   private
-      procedure LLWU_Irq_Handler;
-      pragma Attach_Handler (LLWU_Irq_Handler,
-                             Ada.Interrupts.Names.LLWU_Interrupt);
-   end Low_Power_Interrupts_Object;
-   pragma Unreferenced (Low_Power_Interrupts_Object);
+   procedure LLWU_IRQ_Handler
+     with Export,
+     Convention => C,
+     External_Name => "LLWU_IRQ_Handler";
 
    ----------------
    -- Initialize --
@@ -90,8 +82,9 @@ is
 
       --
       --  Enable interrupts in the interrupt controller (NVIC):
-      --  NOTE: This is implicitly done by the Ada runtime
       --
+      NVIC_Setup_External_Interrupt (LLWU_IRQ'Enum_Rep,
+                                     Kinetis_K64F.LLWU_Interrupt_Priority);
 
       Low_Power_Var.Initialized := True;
       Restore_Private_Data_Region (Old_Region);
@@ -296,83 +289,76 @@ is
       Restore_Private_Data_Region (Old_Region);
    end Set_Low_Power_Wakeup_Source;
 
-   --
-   --  Interrupt handler
-   --
-   protected body Low_Power_Interrupts_Object is
+   ----------------------
+   -- LLWU_Irq_Handler --
+   ----------------------
 
-      ----------------------
-      -- LLWU_Irq_Handler --
-      ----------------------
+   procedure LLWU_Irq_Handler is
+      use MK64F12;
+      Old_Region : MPU_Region_Descriptor_Type;
+      F1_Value : LLWU_F1_Register;
+      PMSTAT_Value : SMC_PMSTAT_Register;
+      SCR_Value : SCR_Type;
+   begin
+      --
+      --  Low-leakage stop modes changed the MCG clock mode from PEE to PBE,
+      --  so we need to change the MCG clock mode back to PEE
+      --
+      MCG.Registers.C1 := (FRDIV => 5, IRCLKEN => 1, CLKS => 0,
+			   others => 0);
 
-      procedure LLWU_Irq_Handler is
-         use MK64F12;
-         Old_Region : MPU_Region_Descriptor_Type;
-         F1_Value : LLWU_F1_Register;
-         PMSTAT_Value : SMC_PMSTAT_Register;
-         SCR_Value : SCR_Type;
-      begin
-         --
-         --  Low-leakage stop modes changed the MCG clock mode from PEE to PBE,
-         --  so we need to change the MCG clock mode back to PEE
-         --
-         MCG.Registers.C1 := (FRDIV => 5, IRCLKEN => 1, CLKS => 0,
-                              others => 0);
+      --  Wait until output of the PLL is selected:
+      loop
+	 exit when MCG.Registers.S.CLKST = 2#11#;
+      end loop;
 
-         --  Wait until output of the PLL is selected:
-         loop
-            exit when MCG.Registers.S.CLKST = 2#11#;
-         end loop;
+      Set_Private_Data_Region (
+	 LLWU_Periph'Address,
+	 LLWU_Periph'Size,
+	 Read_Write,
+	 Old_Region);
 
-         Set_Private_Data_Region (
-            LLWU_Periph'Address,
-            LLWU_Periph'Size,
-            Read_Write,
-            Old_Region);
+      if Low_Power_Var.Wakeup_Pin.Pin_Port = PIN_PORT_C and then
+	 Low_Power_Var.Wakeup_Pin.Pin_Index = 1
+      then
+	 F1_Value := LLWU_Periph.F1;
+	 pragma Assert (F1_Value.WUF6 = F1_WUF6_Field_1);
 
-         if Low_Power_Var.Wakeup_Pin.Pin_Port = PIN_PORT_C and then
-            Low_Power_Var.Wakeup_Pin.Pin_Index = 1
-         then
-            F1_Value := LLWU_Periph.F1;
-            pragma Assert (F1_Value.WUF6 = F1_WUF6_Field_1);
+	 --
+	 --  Clear the wake-up flag (w1c):
+	 --
+	 F1_Value := (WUF6 => F1_WUF6_Field_1, others => <>);
+	 LLWU_Periph.F1 := F1_Value;
 
-            --
-            --  Clear the wake-up flag (w1c):
-            --
-            F1_Value := (WUF6 => F1_WUF6_Field_1, others => <>);
-            LLWU_Periph.F1 := F1_Value;
+	 --
+	 --  Disable deep sleep mode (stop mode) in the ARM Cortex-M core, so
+	 --  that the MCU goes to "wait" mode, instead of "stop" mode when
+	 --  executing a WFI instruction:
+	 --
+	 Set_Private_Data_Region (SCB'Address,
+				  SCB'Size,
+				  Read_Write);
+	 SCR_Value := SCB.SCR;
+	 SCR_Value.SLEEPDEEP := 0;
+	 SCB.SCR := SCR_Value;
+      else
+	 Runtime_Logs.Error_Print ("Unexpected low power wake-up Pin");
+      end if;
 
-            --
-            --  Disable deep sleep mode (stop mode) in the ARM Cortex-M core, so
-            --  that the MCU goes to "wait" mode, instead of "stop" mode when
-            --  executing a WFI instruction:
-            --
-            Set_Private_Data_Region (SCB'Address,
-                                     SCB'Size,
-                                     Read_Write);
-            SCR_Value := SCB.SCR;
-            SCR_Value.SLEEPDEEP := 0;
-            SCB.SCR := SCR_Value;
-         else
-            Runtime_Logs.Error_Print ("Unexpected low power wake-up Pin");
-         end if;
+      PMSTAT_Value := SMC_Periph.PMSTAT;
+      pragma Assert (PMSTAT_Value.PMSTAT = 2#0001#);
 
-         PMSTAT_Value := SMC_Periph.PMSTAT;
-         pragma Assert (PMSTAT_Value.PMSTAT = 2#0001#);
+      if Low_Power_Var.Low_Power_Run_Mode then
+	 Set_Low_Power_Run_Mode;
+      end if;
 
-         if Low_Power_Var.Low_Power_Run_Mode then
-            Set_Low_Power_Run_Mode;
-         end if;
+      Runtime_Logs.Debug_Print ("LLWU interrupt");
 
-         Runtime_Logs.Debug_Print ("LLWU interrupt");
+      if Low_Power_Var.Wakeup_Callback /= null then
+	 Low_Power_Var.Wakeup_Callback.all;
+      end if;
 
-         if Low_Power_Var.Wakeup_Callback /= null then
-            Low_Power_Var.Wakeup_Callback.all;
-         end if;
-
-         Restore_Private_Data_Region (Old_Region);
-      end LLWU_Irq_Handler;
-
-   end Low_Power_Interrupts_Object;
+      Restore_Private_Data_Region (Old_Region);
+   end LLWU_Irq_Handler;
 
 end Low_Power_Driver;

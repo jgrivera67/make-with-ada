@@ -25,14 +25,16 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
+with Kinetis_K64F;
 with I2C_Driver.MCU_Specific_Private;
 with I2C_Driver.Board_Specific_Private;
+with Microcontroller.CPU_Specific;
 with MK64F12.SIM;
+with Number_Conversion_Utils;
 with System.Address_To_Access_Conversions;
 with System.Storage_Elements;
-with Ada.Interrupts;
-with Ada.Interrupts.Names;
 with Pin_Mux_Driver;
+with RTOS.API;
 with Runtime_Logs;
 
 package body I2C_Driver is
@@ -42,7 +44,6 @@ package body I2C_Driver is
    use Devices.MCU_Specific.I2C;
    use MK64F12.SIM;
    use Pin_Mux_Driver;
-   use Ada.Interrupts;
    use System.Storage_Elements;
 
    package Address_To_I2C_Registers_Pointer is new
@@ -50,26 +51,23 @@ package body I2C_Driver is
 
    use Address_To_I2C_Registers_Pointer;
 
-   --
-   --  Protected object to define Interrupt handlers for all I2C controllers
-   --
-   protected I2C_Interrupts_Object is
-      pragma Interrupt_Priority (Microcontroller.I2C_Interrupt_Priority);
-   private
-      procedure I2C_Irq_Common_Handler (I2C_Device_Id : I2C_Device_Id_Type)
-         with Pre => not Are_Cpu_Interrupts_Disabled;
+   procedure I2C_Irq_Common_Handler (I2C_Device_Id : I2C_Device_Id_Type)
+     with Pre => not Are_Cpu_Interrupts_Disabled;
 
-      procedure I2C0_Irq_Handler;
-      pragma Attach_Handler (I2C0_Irq_Handler, Names.I2C0_Interrupt);
+   procedure I2C0_IRQ_Handler
+     with Export,
+     Convention => C,
+     External_Name => "I2C0_IRQ_Handler";
 
-      procedure I2C1_Irq_Handler;
-      pragma Attach_Handler (I2C1_Irq_Handler, Names.I2C1_Interrupt);
+   procedure I2C1_IRQ_Handler
+     with Export,
+     Convention => C,
+     External_Name => "I2C1_IRQ_Handler";
 
-      procedure I2C2_Irq_Handler;
-      pragma Attach_Handler (I2C2_Irq_Handler, Names.I2C2_Interrupt);
-
-   end I2C_Interrupts_Object;
-   pragma Unreferenced (I2C_Interrupts_Object);
+   procedure I2C2_IRQ_Handler
+     with Export,
+     Convention => C,
+     External_Name => "I2C2_IRQ_Handler";
 
    procedure Do_I2C_Transaction (
       I2C_Device_Id : I2C_Device_Id_Type;
@@ -159,7 +157,7 @@ package body I2C_Driver is
       Old_Region : MPU_Region_Descriptor_Type;
       C1_Value : I2C0_C1_Register;
    begin
-      Suspend_Until_True (I2C_Device_Var.Mutex);
+      RTOS.API.RTOS_Mutex_Lock (I2C_Device_Var.Mutex);
       pragma Assert (I2C_Device_Var.Current_Transaction.State =
                      I2C_Transaction_Not_Started);
 
@@ -192,7 +190,8 @@ package body I2C_Driver is
             --  Clear IICIF bit (w1c)
             I2C_Registers_Ptr.S := S_Value;
          else
-            Suspend_Until_True (Current_Transaction.Byte_Transfer_Completed);
+            RTOS.API.RTOS_Semaphore_Wait (
+               Current_Transaction.Byte_Transfer_Completed);
          end if;
 
          S_Value := I2C_Registers_Ptr.S;
@@ -216,7 +215,7 @@ package body I2C_Driver is
       I2C_Device_Var.Current_Transaction.State := I2C_Transaction_Not_Started;
       Restore_Private_Data_Region (Old_Region);
 
-      Set_True (I2C_Device_Var.Mutex);
+      RTOS.API.RTOS_Mutex_Unlock (I2C_Device_Var.Mutex);
    end Do_I2C_Transaction;
 
    ----------------
@@ -307,17 +306,26 @@ package body I2C_Driver is
       C1_Value.IICEN := C1_IICEN_Field_1;
       I2C_Registers_Ptr.C1 := C1_Value;
 
+      RTOS.API.RTOS_Mutex_Init (I2C_Device_Var.Mutex);
+      RTOS.API.RTOS_Semaphore_Init (
+         I2C_Device_Var.Current_Transaction.Byte_Transfer_Completed,
+         Initial_Count => 0);
+
       --
       --  Enable I2C interrupts in the interrupt controller (NVIC):
-      --  NOTE: This is implicitly done by the Ada runtime
       --
+      Microcontroller.CPU_Specific.NVIC_Setup_External_Interrupt (
+         I2C_Device.Irq_Number,
+         Kinetis_K64F.I2C_Interrupt_Priority);
 
-      Set_True (I2C_Device_Var.Mutex);
       Set_Private_Data_Region (I2C_Device_Var'Address,
                                I2C_Device_Var'Size,
                                Read_Write);
       I2C_Device_Var.Initialized := True;
-      Runtime_Logs.Info_Print ("I2C: Initialized I2C" & I2C_Device_Id'Image);
+      Runtime_Logs.Info_Print (
+         "I2C: Initialized I2C" &
+         Character'Val (Character'Pos ('0') +
+                        I2C_Device_Id_Type'Pos (I2C_Device_Id)));
 
       Restore_Private_Data_Region (Old_Region);
    end Initialize;
@@ -594,7 +602,7 @@ package body I2C_Driver is
       I2C_Registers_Ptr.C1 := C1_Value;
 
       for I in 1 .. 6 loop  -- ???
-         Microcontroller.Arm_Cortex_M.Nop;
+         Microcontroller.Arch_Specific.Nop;
       end loop;
 
       --
@@ -677,6 +685,7 @@ package body I2C_Driver is
       Data_Buffer : Bytes_Array_Type (1 .. Current_Transaction.Buffer_Length)
          with Address => Current_Transaction.Buffer_Address;
       Old_Region : MPU_Region_Descriptor_Type;
+      Hex_Num_Str : String (1 .. 2);
    begin
       S_Value := I2C_Registers_Ptr.S;
       pragma Assert (S_Value.TCF /= S_TCF_Field_0);
@@ -699,7 +708,8 @@ package body I2C_Driver is
             --
             Runtime_Logs.Error_Print (
                "ACK signal not received from i2C slave for I2C controller" &
-               I2C_Device_Id'Image);
+               Character'Val (Character'Pos ('0') +
+               I2C_Device_Id_Type'Pos (I2C_Device_Id)));
 
             I2C_End_Transaction (I2C_Device_Id);
 
@@ -879,85 +889,94 @@ package body I2C_Driver is
            --  sent by the slave from a previously aborted or failed I2C
            --  transaction
            --
+           Number_Conversion_Utils.Unsigned_To_Hexadecimal_String (
+              Unsigned_8 (Current_Transaction.State'Enum_Rep),
+              Hex_Num_Str);
            Runtime_Logs.Error_Print (
-              "Unexpected I2C interrupt in transaction state" &
-              Current_Transaction.State'Image);
+              "Unexpected I2C interrupt in transaction state " & Hex_Num_Str);
       end case;
 
    <<Common_Exit>>
       Restore_Private_Data_Region (Old_Region);
    end Run_I2C_Transaction_State_Machine;
 
-   --
-   --  Interrupt handlers
-   --
-   protected body I2C_Interrupts_Object is
+   ----------------------
+   -- I2C0_Irq_Handler --
+   ----------------------
 
-      procedure I2C0_Irq_Handler is
-      begin
-         I2C_Irq_Common_Handler (I2C0);
-      end I2C0_Irq_Handler;
+   procedure I2C0_Irq_Handler is
+   begin
+      I2C_Irq_Common_Handler (I2C0);
+   end I2C0_Irq_Handler;
 
-      procedure I2C1_Irq_Handler is
-      begin
-         I2C_Irq_Common_Handler (I2C1);
-      end I2C1_Irq_Handler;
+   ----------------------
+   -- I2C1_Irq_Handler --
+   ----------------------
 
-      procedure I2C2_Irq_Handler is
-      begin
-         I2C_Irq_Common_Handler (I2C2);
-      end I2C2_Irq_Handler;
+   procedure I2C1_Irq_Handler is
+   begin
+      I2C_Irq_Common_Handler (I2C1);
+   end I2C1_Irq_Handler;
 
-      ----------------------------
-      -- I2C_Irq_Common_Handler --
-      ----------------------------
+   ----------------------
+   -- I2C2_Irq_Handler --
+   ----------------------
 
-      procedure I2C_Irq_Common_Handler
-        (I2C_Device_Id : I2C_Device_Id_Type) is
+   procedure I2C2_Irq_Handler is
+   begin
+      I2C_Irq_Common_Handler (I2C2);
+   end I2C2_Irq_Handler;
 
-         I2C_Device : I2C_Device_Const_Type renames
-            I2C_Devices_Const (I2C_Device_Id);
-         I2C_Device_Var : I2C_Device_Var_Type renames
-            I2C_Devices_Var (I2C_Device_Id);
-         Current_Transaction : I2C_Transaction_Type renames
-            I2C_Device_Var.Current_Transaction;
-         I2C_Registers_Ptr : access I2C_Peripheral renames
-            I2C_Device.Registers_Ptr;
-         S_Value : I2C0_S_Register;
-         Old_Region : MPU_Region_Descriptor_Type;
-      begin
-         S_Value := I2C_Registers_Ptr.S;
-         pragma Assert (S_Value.IICIF /= S_IICIF_Field_0);
-         pragma Assert (S_Value.BUSY /= S_BUSY_Field_0);
+   ----------------------------
+   -- I2C_Irq_Common_Handler --
+   ----------------------------
 
-         Set_Private_Data_Region (
-            To_Address (Object_Pointer (I2C_Registers_Ptr)),
-            I2C_Peripheral'Object_Size,
-            Read_Write,
-            Old_Region);
+   procedure I2C_Irq_Common_Handler
+     (I2C_Device_Id : I2C_Device_Id_Type) is
 
-         --
-         --  Clear the interrupt flag, by writing 1 to it:
-         --
-         if S_Value.ARBL = S_ARBL_Field_1 then
-            S_Value := (IICIF => S_IICIF_Field_1,
-                        ARBL => S_ARBL_Field_1,
-                        others => <>);
-         else
-            S_Value := (IICIF => S_IICIF_Field_1,
-                        others => <>);
-         end if;
+      I2C_Device : I2C_Device_Const_Type renames
+	 I2C_Devices_Const (I2C_Device_Id);
+      I2C_Device_Var : I2C_Device_Var_Type renames
+	 I2C_Devices_Var (I2C_Device_Id);
+      Current_Transaction : I2C_Transaction_Type renames
+	 I2C_Device_Var.Current_Transaction;
+      I2C_Registers_Ptr : access I2C_Peripheral renames
+	 I2C_Device.Registers_Ptr;
+      S_Value : I2C0_S_Register;
+      Old_Region : MPU_Region_Descriptor_Type;
+   begin
+      S_Value := I2C_Registers_Ptr.S;
+      pragma Assert (S_Value.IICIF /= S_IICIF_Field_0);
+      pragma Assert (S_Value.BUSY /= S_BUSY_Field_0);
 
-         I2C_Registers_Ptr.S := S_Value;
+      Set_Private_Data_Region (
+	 To_Address (Object_Pointer (I2C_Registers_Ptr)),
+	 I2C_Peripheral'Object_Size,
+	 Read_Write,
+	 Old_Region);
 
-         S_Value := I2C_Registers_Ptr.S;
-         pragma Assert (S_Value.IICIF = S_IICIF_Field_0);
-         pragma Assert (S_Value.ARBL = S_ARBL_Field_0);
+      --
+      --  Clear the interrupt flag, by writing 1 to it:
+      --
+      if S_Value.ARBL = S_ARBL_Field_1 then
+	 S_Value := (IICIF => S_IICIF_Field_1,
+		     ARBL => S_ARBL_Field_1,
+		     others => <>);
+      else
+	 S_Value := (IICIF => S_IICIF_Field_1,
+		     others => <>);
+      end if;
 
-         Set_True (Current_Transaction.Byte_Transfer_Completed);
-         Restore_Private_Data_Region (Old_Region);
-      end I2C_Irq_Common_Handler;
+      I2C_Registers_Ptr.S := S_Value;
 
-   end I2C_Interrupts_Object;
+      S_Value := I2C_Registers_Ptr.S;
+      pragma Assert (S_Value.IICIF = S_IICIF_Field_0);
+      pragma Assert (S_Value.ARBL = S_ARBL_Field_0);
+
+      RTOS.API.RTOS_Semaphore_Signal (
+         Current_Transaction.Byte_Transfer_Completed);
+
+      Restore_Private_Data_Region (Old_Region);
+   end I2C_Irq_Common_Handler;
 
 end I2C_Driver;

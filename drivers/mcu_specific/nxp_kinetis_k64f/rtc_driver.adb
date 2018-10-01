@@ -27,8 +27,9 @@
 
 with MK64F12.SIM;
 with MK64F12.RTC;
-with Microcontroller.Arm_Cortex_M;
-with Ada.Interrupts.Names;
+with Kinetis_K64F;
+with Microcontroller.Arch_Specific;
+with Microcontroller.CPU_Specific;
 with Runtime_Logs;
 
 package body RTC_Driver is
@@ -36,23 +37,18 @@ package body RTC_Driver is
    use MK64F12.SIM;
    use MK64F12.RTC;
    use MK64F12;
-   use Microcontroller.Arm_Cortex_M;
+   use Microcontroller.Arch_Specific;
+   use Microcontroller.CPU_Specific;
 
-   --
-   --  Protected object to define Interrupt handlers
-   --
-   protected RTC_Interrupts_Object is
-      pragma Interrupt_Priority (Microcontroller.RTC_Interrupt_Priority);
-   private
-      procedure RTC_Irq_Handler;
-      pragma Attach_Handler (RTC_Irq_Handler,
-                             Ada.Interrupts.Names.RTC_Interrupt);
+   procedure RTC_IRQ_Handler
+     with Export,
+     Convention => C,
+     External_Name => "RTC_IRQ_Handler";
 
-      procedure RTC_Second_Irq_Handler;
-      pragma Attach_Handler (RTC_Second_Irq_Handler,
-                             Ada.Interrupts.Names.RTC_Seconds_Interrupt);
-   end RTC_Interrupts_Object;
-   pragma Unreferenced (RTC_Interrupts_Object);
+   procedure RTC_Seconds_IRQ_Handler
+     with Export,
+     Convention => C,
+     External_Name => "RTC_Seconds_IRQ_Handler";
 
    -----------------------------------------------
    -- Disable_RTC_Periodic_One_Second_Interrupt --
@@ -207,8 +203,11 @@ package body RTC_Driver is
 
       --
       --  Enable interrupts in the interrupt controller (NVIC):
-      --  NOTE: This is implicitly done by the Ada runtime
       --
+      NVIC_Setup_External_Interrupt (Kinetis_K64F.RTC_IRQ'Enum_Rep,
+                                     Kinetis_K64F.RTC_Interrupt_Priority);
+      NVIC_Setup_External_Interrupt (Kinetis_K64F.RTC_Seconds_IRQ'Enum_Rep,
+                                     Kinetis_K64F.RTC_Interrupt_Priority);
 
       Set_Private_Data_Region (RTC_Var'Address,
                                RTC_Var'Size,
@@ -295,55 +294,48 @@ package body RTC_Driver is
       Restore_Private_Data_Region (Old_Region);
    end Set_RTC_Time;
 
-   --
-   --  Interrupt handler
-   --
-   protected body RTC_Interrupts_Object is
+   ---------------------
+   -- RTC_IRQ_Handler --
+   ---------------------
 
-      ---------------------
-      -- RTC_Irq_Handler --
-      ---------------------
+   procedure RTC_IRQ_Handler is
+      Old_Region : MPU_Region_Descriptor_Type;
+      SR_Value : RTC_SR_Register;
+      TAR_Value : MK64F12.Word;
+   begin
+      Set_Private_Data_Region (
+	 RTC_Periph'Address,
+	 RTC_Periph'Size,
+	 Read_Write,
+	 Old_Region);
 
-      procedure RTC_Irq_Handler is
-         Old_Region : MPU_Region_Descriptor_Type;
-         SR_Value : RTC_SR_Register;
-         TAR_Value : MK64F12.Word;
-      begin
-         Set_Private_Data_Region (
-            RTC_Periph'Address,
-            RTC_Periph'Size,
-            Read_Write,
-            Old_Region);
+      SR_Value := RTC_Periph.SR;
+      if SR_Value.TAF = SR_TAF_Field_1 then
+  	 --
+ 	 --  Clear interrupt source:
+	 --
+	 TAR_Value := 0;
+	 RTC_Periph.TAR := TAR_Value;
 
-        SR_Value := RTC_Periph.SR;
-        if SR_Value.TAF = SR_TAF_Field_1 then
-           --
-           --  Clear interrupt source:
-           --
-           TAR_Value := 0;
-           RTC_Periph.TAR := TAR_Value;
+	 if RTC_Var.Alarm_Callback /= null then
+	    RTC_Var.Alarm_Callback.all;
+	 end if;
+      else
+	 Runtime_Logs.Error_Print ("Unexpected RTC interrupt");
+      end if;
 
-           if RTC_Var.Alarm_Callback /= null then
-              RTC_Var.Alarm_Callback.all;
-           end if;
-        else
-           Runtime_Logs.Error_Print ("Unexpected RTC interrupt");
+      Restore_Private_Data_Region (Old_Region);
+   end RTC_IRQ_Handler;
 
-        end if;
-        Restore_Private_Data_Region (Old_Region);
-      end RTC_Irq_Handler;
+   ----------------------------
+   -- RTC_Second_IRQ_Handler --
+   ----------------------------
 
-      ----------------------------
-      -- RTC_Second_Irq_Handler --
-      ----------------------------
-
-      procedure RTC_Second_Irq_Handler is
-      begin
-        if RTC_Var.Periodic_One_Second_Callback /= null then
-           RTC_Var.Periodic_One_Second_Callback.all;
-        end if;
-      end RTC_Second_Irq_Handler;
-
-   end RTC_Interrupts_Object;
+   procedure RTC_Seconds_IRQ_Handler is
+   begin
+      if RTC_Var.Periodic_One_Second_Callback /= null then
+	 RTC_Var.Periodic_One_Second_Callback.all;
+      end if;
+   end RTC_Seconds_IRQ_Handler;
 
 end RTC_Driver;

@@ -30,7 +30,7 @@ with System.Storage_Elements;
 with System.Address_To_Access_Conversions;
 with Microcontroller.Arch_Specific;
 with Microcontroller.MCU_Specific;
---??? with Task_Stack_Info;
+with RTOS.API;
 
 package body Stack_Trace_Capture is
    use Interfaces;
@@ -107,11 +107,9 @@ package body Stack_Trace_Capture is
          Stack_End := Interrupt_Stack_End_Entry'Address;
          Stack_Start := Interrupt_Stack_Start_Entry'Address;
       else
-         --??? Task_Stack_Info.Get_Current_Task_Stack (Stack_Start, Stack_Size);
-         --??? Stack_End :=
-         --???     To_Address (To_Integer (Stack_Start) +
-         --???                 Integer_Address (Stack_Size));
-         null; --???
+         RTOS.API.RTOS_Task_Get_Current_Stack (Stack_Start, Stack_Size);
+         Stack_End := To_Address (To_Integer (Stack_Start) +
+                                  Integer_Address (Stack_Size));
       end if;
 
       if Frame_Pointer < Stack_Start or else Frame_Pointer >= Stack_End then

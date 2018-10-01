@@ -1,5 +1,5 @@
 --
---  Copyright (c) 2017-2018, German Rivera
+--  Copyright (c) 2017, German Rivera
 --  All rights reserved.
 --
 --  Redistribution and use in source and binary forms, with or without
@@ -26,25 +26,36 @@
 --
 
 --
---  @summary sensor reading
+--  @summary barometric pressure sensor driver
 --
 
-with Interfaces;
+with Sensor_Reading;
 
-package Sensor_Reading is
-   use Interfaces;
+package Barometric_Pressure_Sensor is
+   use Sensor_Reading;
 
-   subtype Integer_Part_Type is Integer_32;
-   subtype Fractional_Part_Type is Unsigned_16;
+   function Initialized return Boolean
+     with Inline;
 
-   type Reading_Type is record
-      Integer_Part : Integer_Part_Type := 0;
-      Fractional_Part : Fractional_Part_Type := 0;
-   end record;
+   procedure Initialize
+     with Pre => not Initialized;
 
-   --
-   --  Atomic copy of a sensor reading
-   --
-   procedure Copy_Reading (Dest_Reading : out Reading_Type;
-                           Src_Reading : in Reading_Type);
-end Sensor_Reading;
+   procedure Start_Barometric_Pressure_Sensor
+      with Pre => Initialized;
+
+   procedure Stop_Barometric_Pressure_Sensor
+      with Pre => Initialized;
+
+   procedure Detect_Altitude_Change
+     with Pre => Initialized;
+
+   procedure Read_Altitude (New_Altitude : out Reading_Type)
+     with Pre => Initialized;
+
+   procedure Detect_Temperature_Change
+     with Pre => Initialized;
+
+   procedure Read_Temperature (New_Temperature : out Reading_Type)
+     with Pre => Initialized;
+
+end Barometric_Pressure_Sensor;

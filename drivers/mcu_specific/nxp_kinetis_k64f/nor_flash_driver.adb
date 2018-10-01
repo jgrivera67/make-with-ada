@@ -26,7 +26,8 @@
 --
 
 with Devices.MCU_Specific;
-with Microcontroller.Arm_Cortex_M;
+with Microcontroller.Arch_Specific;
+with Number_Conversion_Utils;
 with Runtime_Logs;
 with MK64F12;
 with Memory_Utils;
@@ -36,7 +37,8 @@ with System.Address_To_Access_Conversions;
 package body Nor_Flash_Driver is
    pragma SPARK_Mode (Off);
    use Devices.MCU_Specific;
-   use Microcontroller.Arm_Cortex_M;
+   use Microcontroller.Arch_Specific;
+   use Number_Conversion_Utils;
    use Memory_Utils;
    use Memory_Protection;
 
@@ -117,7 +119,6 @@ package body Nor_Flash_Driver is
    function Erase_Sector (Sector_Address : System.Address) return Boolean
    is
       use NOR;
-      use MK64F12;
       FSTAT_Value : FTFE_FSTAT_Register;
       Sector_Addr_Value : constant Unsigned_32 :=
          Unsigned_32 (To_Integer (Sector_Address));
@@ -244,6 +245,7 @@ package body Nor_Flash_Driver is
          Mcu_Flash_Base_Addr + Integer_Address (Get_Flash_Used);
       Erase_Ok : Boolean;
       Write_Ok : Boolean;
+      Hex_Num_Str : String (1 .. 8);
    begin
       pragma Assert (Memory_Map.Valid_Flash_Address (Dest_Addr));
       pragma Assert (Dest_Addr_Value mod Nor_Flash_Sector_Size = 0);
@@ -257,9 +259,10 @@ package body Nor_Flash_Driver is
          --
          --  Destination address overlaps with code
          --
+         Unsigned_To_Hexadecimal_String (Unsigned_32 (Dest_Addr_Value),
+                                         Hex_Num_Str);
          Runtime_Logs.Error_Print (
-            "NOR flash cannot be written at given address: " &
-            Dest_Addr_Value'Image);
+            "NOR flash cannot be written at given address: " & Hex_Num_Str);
 
          return False;
       end if;
@@ -296,7 +299,6 @@ package body Nor_Flash_Driver is
                            Section_Size : Unsigned_32) return Boolean
    is
       use NOR;
-      use MK64F12;
       Num_128bit_Chunks : constant Unsigned_16 :=
          Unsigned_16 (How_Many (Section_Size, 16));
       Num_Words : constant Unsigned_32 := Section_Size / Word_Size;

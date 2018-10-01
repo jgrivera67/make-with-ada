@@ -29,6 +29,7 @@ pragma Restrictions (No_Elaboration_Code);
 
 with Interfaces;
 with Interfaces.Bit_Types;
+with Microcontroller.CPU_Specific;
 
 --
 --  @summary Parent package for rI/O egister definitions for the Kinetis K64F
@@ -145,11 +146,7 @@ is
      (External_Interrupt_Type'Pos (DMA0_IRQ) /= 0,
       "First IRQ number must be 0");
 
-   --
-   --  Interrupt priorities in the NVIC interrupt controller
-   --
-
-   type Interrupt_Priority_Type is range 0 .. 15;
+   use Microcontroller.CPU_Specific;
 
    Highest_Interrupt_Priority : constant Interrupt_Priority_Type :=
      Interrupt_Priority_Type'First;

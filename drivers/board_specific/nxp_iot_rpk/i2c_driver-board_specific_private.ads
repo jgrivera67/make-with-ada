@@ -25,27 +25,54 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with Devices.MCU_Specific;
-with Microcontroller.CPU_Specific;
+with Kinetis_K64F;
+with I2C_Driver.MCU_Specific_Private;
 with Pin_Mux_Driver;
 
-private package I2C_Driver.MCU_Specific_Private is
+--
+--  @summary Board-specific I2C driver private declarations
+--
+private package I2C_Driver.Board_Specific_Private is
    pragma SPARK_Mode (Off);
+   use I2C_Driver.MCU_Specific_Private;
    use Pin_Mux_Driver;
 
    --
-   --  Type for the constant portion of a I2C device object
+   --  Array of I2C device constant objects to be placed on
+   --  flash:
    --
-   --  @field Registers_Ptr Pointer to I/O registers for the I2C peripheral
-   --  @field Scl_Pin_Info SCL signal pin (board specific)
-   --  @field Sda_Pin_Info SDA signal pin (board specific)
-   --  @field Irq_Number : IRQ number associated with the device
-   --
-   type I2C_Device_Const_Type is limited record
-      Registers_Ptr : not null access Devices.MCU_Specific.I2C.I2C_Peripheral;
-      Scl_Pin_Info : Pin_Info_Type;
-      Sda_Pin_Info : Pin_Info_Type;
-      Irq_Number : Microcontroller.CPU_Specific.IRQ_Index_Type;
-   end record;
+   I2C_Devices_Const :
+     constant array (I2C_Device_Id_Type) of I2C_Device_Const_Type :=
+     (I2C0 =>
+        (Registers_Ptr => I2C.I2C0_Periph'Access,
+         Scl_Pin_Info =>
+            (Pin_Port => PIN_PORT_B,
+             Pin_Index => 2,
+             Pin_Function => PIN_FUNCTION_ALT2),
+         Sda_Pin_Info =>
+            (Pin_Port => PIN_PORT_B,
+             Pin_Index => 3,
+             Pin_Function => PIN_FUNCTION_ALT2),
+         Irq_Number => Kinetis_K64F.I2C0_IRQ'Enum_Rep
+        ),
 
-end I2C_Driver.MCU_Specific_Private;
+      I2C1 =>
+        (Registers_Ptr => I2C.I2C1_Periph'Access,
+         Scl_Pin_Info =>
+            (Pin_Port => PIN_PORT_C,
+             Pin_Index => 10,
+             Pin_Function => PIN_FUNCTION_ALT2),
+         Sda_Pin_Info =>
+            (Pin_Port => PIN_PORT_C,
+             Pin_Index => 11,
+             Pin_Function => PIN_FUNCTION_ALT2),
+         Irq_Number => Kinetis_K64F.I2C1_IRQ'Enum_Rep
+        ),
+
+      I2C2 =>
+        (Registers_Ptr => I2C.I2C2_Periph'Access,
+         others => <>
+        )
+     );
+
+end I2C_Driver.Board_Specific_Private;

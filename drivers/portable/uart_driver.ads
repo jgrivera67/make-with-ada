@@ -1,5 +1,5 @@
 --
---  Copyright (c) 2016, German Rivera
+--  Copyright (c) 2016-2018, German Rivera
 --  All rights reserved.
 --
 --  Redistribution and use in source and binary forms, with or without
@@ -29,9 +29,9 @@ with Devices.MCU_Specific;
 with Interfaces.Bit_Types;
 private with Generic_Ring_Buffers;
 private with Pin_Mux_Driver;
-private with Microcontroller_Clocks;
+private with Microcontroller.CPU_Specific;
 private with Memory_Protection;
-private with Ada.Synchronous_Task_Control;
+private with RTOS;
 
 --
 --  @summary UART serial port driver
@@ -123,10 +123,8 @@ package Uart_Driver is
 
 private
    pragma SPARK_Mode (Off);
-   use Microcontroller_Clocks;
    use Pin_Mux_Driver;
    use Memory_Protection;
-   use Ada.Synchronous_Task_Control;
 
    --
    --  Size of a UART's ring buffer in bytes
@@ -157,7 +155,8 @@ private
       Tx_Pin : aliased Pin_Info_Type;
       Rx_Pin : aliased Pin_Info_Type;
       Rx_Pin_Pullup_Resistor_Enabled : Boolean;
-      Source_Clock_Freq_In_Hz : Hertz_Type;
+      Source_Clock_Freq_In_Hz : Microcontroller.Hertz_Type;
+      IRQ_Index : Microcontroller.CPU_Specific.IRQ_Index_Type;
    end record;
 
    --
@@ -169,7 +168,7 @@ private
       Received_Bytes_Dropped : Natural := 0;
       Errors : Natural := 0;
       Receive_Queue : Byte_Ring_Buffers.Ring_Buffer_Type;
-      Byte_Received_SuspObj : Suspension_Object;
+      Byte_Received_Semaphore : RTOS.RTOS_Semaphore_Type;
       Byte_Received : Byte;
    end record with Alignment => MPU_Region_Alignment;
 

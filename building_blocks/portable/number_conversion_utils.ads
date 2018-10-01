@@ -67,13 +67,15 @@ is
    procedure Signed_To_Decimal_String (Value : Integer_32;
                                        Buffer : out String;
                                        Actual_Length : out Positive)
-      with Pre => Buffer'Length >= 1;
+      with Pre => Buffer'Length >= 1,
+           Post => Actual_Length in Buffer'Range;
 
    procedure Unsigned_To_Decimal_String (Value : Unsigned_32;
                                          Buffer : out String;
                                          Actual_Length : out Positive;
                                          Add_Leading_Zeros : Boolean := False)
-      with Pre => Buffer'Length >= 1;
+     with Pre => Buffer'Length >= 1,
+          Post => Actual_Length in Buffer'Range;
 
    procedure Unsigned_To_Hexadecimal_String (Value : Unsigned_32;
                                              Buffer : out String);

@@ -1,5 +1,5 @@
 --
---  Copyright (c) 2016, German Rivera
+--  Copyright (c) 2016-2018, German Rivera
 --  All rights reserved.
 --
 --  Redistribution and use in source and binary forms, with or without
@@ -31,12 +31,13 @@ with Command_Parser_Common;
 with Memory_Protection;
 with MPU_Tests;
 with Interfaces.Bit_Types;
-with Microcontroller.Arm_Cortex_M;
+with Microcontroller.Arch_Specific;
 with Watch;
+with RTC_Driver;
 with LCD_Display;
 with App_Configuration;
 with Number_Conversion_Utils;
-with Ada.Real_Time;
+with RTOS.API;
 
 --
 --  Application-specific command parser implementation
@@ -46,9 +47,9 @@ package body Command_Parser is
    use Memory_Protection;
    use Interfaces.Bit_Types;
    use Interfaces;
-   use Microcontroller.Arm_Cortex_M;
+   use Microcontroller.Arch_Specific;
    use Number_Conversion_Utils;
-   use Ada.Real_Time;
+   use RTC_Driver;
 
    procedure Cmd_Print_Config_Params;
 
@@ -80,6 +81,14 @@ package body Command_Parser is
 
    function Parse_Color (Color_Name : String;
                          Color : out LCD_Display.Color_Type) return Boolean;
+
+   procedure Parse_Command
+     with Pre => Initialized;
+
+   procedure Command_Parser_Task_Proc
+      with Convention => C;
+
+   Command_Parser_Task_Obj : RTOS.RTOS_Task_Type;
 
    --
    --  Help message string
@@ -327,10 +336,9 @@ package body Command_Parser is
                                   Conversion_Ok);
 
       if not Conversion_Ok then
-         Serial_Console.Print_String
-           ("Error: Invalid argument " &
-              Token.String_Value (1 .. Token.Length) &
-              ASCII.LF);
+         Serial_Console.Print_String (
+            "Error: Invalid argument " &
+            Token.String_Value (1 .. Token.Length) & ASCII.LF);
          return;
       end if;
 
@@ -725,9 +733,9 @@ package body Command_Parser is
    -- ** --
 
    procedure Initialize is
+      use type RTOS.RTOS_Task_Priority_Type;
       Old_Region : MPU_Region_Descriptor_Type;
    begin
-      Command_Line.Initialize (Prompt'Access);
       Set_Private_Data_Region (Command_Parser_Var'Address,
                                Command_Parser_Var'Size,
                                Read_Write,
@@ -735,6 +743,11 @@ package body Command_Parser is
 
       Command_Parser_Var.Initialized := True;
       Restore_Private_Data_Region (Old_Region);
+
+      RTOS.API.RTOS_Task_Init (
+         Task_Obj      => Command_Parser_Task_Obj,
+         Task_Proc_Ptr => Command_Parser_Task_Proc'Access,
+         Task_Prio     => RTOS.Highest_App_Task_Priority - 1);
    end Initialize;
 
    -- ** --
@@ -820,5 +833,15 @@ package body Command_Parser is
       Command_Dispatcher (Token.String_Value (1 .. Token.Length));
       Serial_Console.Unlock;
    end Parse_Command;
+
+   -- ** --
+
+   procedure Command_Parser_Task_Proc is
+   begin
+      Command_Line.Initialize (Prompt'Access);
+      loop
+         Parse_Command;
+      end loop;
+   end Command_Parser_Task_Proc;
 
 end Command_Parser;

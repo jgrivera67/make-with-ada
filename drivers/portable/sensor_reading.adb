@@ -1,5 +1,5 @@
 --
---  Copyright (c) 2017, German Rivera
+--  Copyright (c) 2017-2018, German Rivera
 --  All rights reserved.
 --
 --  Redistribution and use in source and binary forms, with or without
@@ -30,47 +30,31 @@
 --
 
 with Memory_Protection;
+with Microcontroller.Arch_Specific;
 
 package body Sensor_Reading is
    use Memory_Protection;
+   use Microcontroller.Arch_Specific;
 
-   protected body Reading_Protected_Type is
+   ------------------
+   -- Copy_Reading --
+   ------------------
 
-      ----------
-      -- Read --
-      ----------
+   procedure Copy_Reading (Dest_Reading : out Reading_Type;
+                           Src_Reading : in Reading_Type)   is
+      Old_region : MPU_Region_Descriptor_Type;
+      Old_Primask : Unsigned_32;
+   begin
+      Set_Private_Data_Region (Dest_Reading'Address,
+			       Dest_Reading'Size,
+			       Read_Write,
+			       Old_Region);
 
-      procedure Read (Reading_Value : out Reading_Type)
-      is
-         Old_region : MPU_Region_Descriptor_Type;
-      begin
-         Set_Private_Data_Region (Reading_Value'Address,
-                                  Reading_Value'Size,
-                                  Read_Write,
-                                  Old_Region);
+      Old_Primask := Disable_Cpu_Interrupts;
+      Dest_Reading := Src_Reading;
+      Restore_Cpu_Interrupts (Old_Primask);
 
-         Reading_Value := Reading_Protected_Type.Reading_Value;
-
-         Restore_Private_Data_Region (Old_Region);
-      end Read;
-
-      -----------
-      -- Write --
-      -----------
-
-      procedure Write (Reading_Value : Reading_Type) is
-         Old_region : MPU_Region_Descriptor_Type;
-      begin
-         Set_Private_Data_Region (Reading_Protected_Type.Reading_Value'Address,
-                                  Reading_Protected_Type.Reading_Value'Size,
-                                  Read_Write,
-                                  Old_Region);
-
-         Reading_Protected_Type.Reading_Value := Reading_Value;
-
-         Restore_Private_Data_Region (Old_Region);
-      end Write;
-
-   end Reading_Protected_Type;
+      Restore_Private_Data_Region (Old_Region);
+   end Copy_Reading;
 
 end Sensor_Reading;

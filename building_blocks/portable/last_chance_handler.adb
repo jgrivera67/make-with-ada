@@ -27,7 +27,8 @@
 with System; use System;
 with Microcontroller.Arch_Specific;
 with Microcontroller.MCU_Specific;
---??? with Runtime_Logs;
+with Number_Conversion_Utils;
+with Runtime_Logs;
 with Interfaces.Bit_Types;
 with System.Storage_Elements;
 with Stack_Trace_Capture;
@@ -63,11 +64,13 @@ is
 
    procedure Last_Chance_Handler (Msg : System.Address; Line : Integer) is
       Msg_Text : String (1 .. 128) with Address => Msg;
-      --??? Caller : constant Address :=
-      --???   Return_Address_To_Call_Address (Get_LR_Register);
+      Caller : constant Address :=
+        Return_Address_To_Call_Address (Get_LR_Register);
       Msg_Length : Natural := 0;
       Old_Interrupt_Mask : Word with Unreferenced;
       Old_Region : MPU_Region_Descriptor_Type;
+      Dec_Num_Str : String (1 .. 4);
+      Dec_Num_Str_Length : Positive;
    begin
 
       --
@@ -108,19 +111,22 @@ is
                                                End_Line => True);
 
          Print_Stack_Trace (Num_Entries_To_Skip => 0);
-
-         --??? Runtime_Logs.Error_Print ("Exception: '" &
-         --???                          Msg_Text (1 .. Msg_Length) &
-         --???                          "' at line " & Line'Image, Caller);
+         Number_Conversion_Utils.Unsigned_To_Decimal_String (
+            Unsigned_32 (Line), Dec_Num_Str, Dec_Num_Str_Length);
+         Runtime_Logs.Error_Print ("Exception: '" &
+                                   Msg_Text (1 .. Msg_Length) &
+                                   "' at line " &
+                                   Dec_Num_Str (1 .. Dec_Num_Str_Length),
+                                   Caller);
       else
          Low_Level_Debug.Print_String (
             ASCII.LF &
             "*** Exception: '" & Msg_Text (1 .. Msg_Length) & "'" & ASCII.LF);
-         --??? Print_Stack_Trace (Num_Entries_To_Skip => 0);
+         Print_Stack_Trace (Num_Entries_To_Skip => 0);
 
-         --??? Runtime_Logs.Error_Print ("Exception: '" &
-         --???                           Msg_Text (1 .. Msg_Length) &
-         --???                          "'", Caller);
+         Runtime_Logs.Error_Print ("Exception: '" &
+                                    Msg_Text (1 .. Msg_Length) &
+                                   "'", Caller);
       end if;
 
       case Disposition is

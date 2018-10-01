@@ -30,7 +30,6 @@ with Interfaces.Bit_Types;
 with Serial_Console;
 with Devices;
 with System.Storage_Elements;
-with System.Address_To_Access_Conversions;
 
 package body MPU_Tests is
    pragma SPARK_Mode (Off);
@@ -39,11 +38,6 @@ package body MPU_Tests is
    use Interfaces;
    use Devices;
    use System.Storage_Elements;
-
-   package Address_To_Unsigned_32_Pointer is new
-      System.Address_To_Access_Conversions (Unsigned_32);
-
-   use Address_To_Unsigned_32_Pointer;
 
    type My_Global_Data_Type is record
       Value : Unsigned_32 := 0;

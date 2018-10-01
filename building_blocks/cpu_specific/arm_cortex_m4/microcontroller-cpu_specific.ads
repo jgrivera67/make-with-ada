@@ -29,6 +29,7 @@ pragma Restrictions (No_Elaboration_Code);
 
 with Devices;
 with Interfaces.Bit_Types;
+with Microcontroller.Arch_Specific;
 
 --
 --  @summary CPU-specfic declarations for the ARM Cortex-M4 core
@@ -38,6 +39,7 @@ package Microcontroller.CPU_Specific with
 is
    use Devices;
    use Interfaces.Bit_Types;
+   use Microcontroller.Arch_Specific;
 
    --  CPUID base register
    type CPUID_Type is record
@@ -115,6 +117,8 @@ is
          SEVONPEND at 0 range 4 .. 4;
       end record;
 
+   type SCB_SHP_Array_Type is array (0 .. 12 - 1) of Unsigned_8;
+
    --
    --  SCB registers
    --
@@ -125,7 +129,7 @@ is
       AIRCR : AIRCR_Type;
       SCR : SCR_Type;
       CCR : Word;
-      SHP : Bytes_Array_Type (1 .. 12);
+      SHP : SCB_SHP_Array_Type;
       SHCSR : Word;
       CFSR : Word;
       HFSR : Word;
@@ -144,5 +148,65 @@ is
 
    SCB : aliased SCB_Type with
      Import, Address => System'To_Address (16#E000ED00#);
+
+   subtype IRQ_Index_Type is Natural range 0 .. 240 - 1;
+   subtype IRQ_Word_Index_Type is Natural range 0 .. 8 - 1;
+   subtype Word_Bit_Index_Type is Natural range 0 .. Word'Size - 1;
+
+   type Word_Bit_Array_Type is array (Word_Bit_Index_Type) of Bit
+     with Component_Size => 1, Size => Word'Size;
+
+   type IRQ_Word_Bitmap_Array_Type is
+     array (IRQ_Word_Index_Type) of Word_Bit_Array_Type;
+
+   type NVIC_IP_Array_Type is array (IRQ_Index_Type) of Unsigned_8;
+
+   --
+   --  NVIC registers
+   --
+   type NVIC_Type is record
+      ISER : IRQ_Word_Bitmap_Array_Type; --  Interrupt Set Enable Registers
+      Reserved1 : Words_Array_Type (1 .. 24);
+      ICER : IRQ_Word_Bitmap_Array_Type; --  Interrupt Clear Enable Registers
+      Reserved2 : Words_Array_Type (1 .. 24);
+      ISPR : IRQ_Word_Bitmap_Array_Type; --  Interrupt Set Pending Registers
+      Reserved3 : Words_Array_Type (1 .. 24);
+      ICPR : IRQ_Word_Bitmap_Array_Type; --  Interrupt Clear Pending Registers
+      Reserved4 : Words_Array_Type (1 .. 24);
+      IABR : IRQ_Word_Bitmap_Array_Type; --  Interrupt Active bit Register
+      Reserved5 : Words_Array_Type (1 .. 56);
+      IP : NVIC_IP_Array_Type; --  Interrupt Priority Registers
+      Reserved6 : Words_Array_Type (1 .. 644);
+      STIR  : Word; --  Software Trigger Interrupt Register
+   end record with Volatile, Size => 16#E04# * Byte'Size;
+
+   NVIC : aliased NVIC_Type with
+      Import, Address => System'To_Address (16#E000E100#);
+
+   --
+   --  Number of bits needed to represent interrupt priorities
+   --  (same as CMSIS __NVIC_PRIO_BITS #define)
+   --
+   Interrupt_Priority_Bits_Size : constant := 4;
+
+   --
+   --  Interrupt priorities in the NVIC interrupt controller
+   --  (0 is the highest priority)
+   --
+
+   type Interrupt_Priority_Type is
+      range 0 .. 2 ** Interrupt_Priority_Bits_Size - 1;
+
+   pragma Compile_Time_Error
+     (Unsigned_16 (Interrupt_Priority_Type'Last) > Unsigned_16 (Unsigned_8'Last),
+      "Interrupt_Priority_Type is too big");
+
+   procedure NVIC_Setup_External_Interrupt (IRQ_Number : IRQ_Index_Type;
+                                            Priority : Interrupt_Priority_Type);
+
+   procedure NVIC_Setup_Internal_Interrupt_Priority (
+      Internal_Interrupt_Index : Internal_Interrupt_Index_Type;
+      Priority : Interrupt_Priority_Type)
+      with Pre => Internal_Interrupt_Index >= 4;
 
 end Microcontroller.CPU_Specific;

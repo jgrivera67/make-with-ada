@@ -1,5 +1,5 @@
 --
---  Copyright (c) 2017-2018, German Rivera
+--  Copyright (c) 2017, German Rivera
 --  All rights reserved.
 --
 --  Redistribution and use in source and binary forms, with or without
@@ -26,25 +26,43 @@
 --
 
 --
---  @summary sensor reading
+--  @summary Accelerometer driver
 --
 
-with Interfaces;
+with Sensor_Reading;
 
-package Sensor_Reading is
-   use Interfaces;
+package Accelerometer is
+   use Sensor_Reading;
 
-   subtype Integer_Part_Type is Integer_32;
-   subtype Fractional_Part_Type is Unsigned_16;
+   function Initialized return Boolean
+     with Inline;
 
-   type Reading_Type is record
-      Integer_Part : Integer_Part_Type := 0;
-      Fractional_Part : Fractional_Part_Type := 0;
-   end record;
+   type Go_to_Sleep_Callback_Type is access procedure;
 
-   --
-   --  Atomic copy of a sensor reading
-   --
-   procedure Copy_Reading (Dest_Reading : out Reading_Type;
-                           Src_Reading : in Reading_Type);
-end Sensor_Reading;
+   procedure Initialize (Go_to_Sleep_Callback : Go_to_Sleep_Callback_Type)
+     with Pre => not Initialized;
+
+   procedure Read_G_Forces (
+      X_Axis_Reading : out Reading_Type;
+      Y_Axis_Reading : out Reading_Type;
+      Z_Axis_Reading : out Reading_Type;
+      Use_Polling : Boolean := False)
+      with Pre => Initialized;
+
+   procedure Enable_Motion_Detection_Interrupt;
+
+   procedure Disable_Motion_Detection_Interrupt;
+
+   type Motion_Reading_Type is range -1 .. 1;
+
+   procedure Detect_Motion (
+      X_Axis_Motion : out Motion_Reading_Type;
+      Y_Axis_Motion : out Motion_Reading_Type;
+      Z_Axis_Motion : out Motion_Reading_Type;
+      Use_Polling : Boolean := False)
+      with Pre => Initialized;
+
+   procedure Detect_Tapping (Double_Tap_Detected : out Boolean)
+      with Pre => Initialized;
+
+end Accelerometer;

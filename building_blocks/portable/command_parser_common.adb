@@ -32,8 +32,6 @@ with Reset_Counter;
 with Memory_Utils;
 with Runtime_Logs.Dump;
 with Color_Led;
-with Task_Stack_Info;
-with System.Storage_Elements;
 with Interfaces;
 with Number_Conversion_Utils;
 
@@ -41,8 +39,8 @@ with Number_Conversion_Utils;
 --  Command parser common services implementation
 --
 package body Command_Parser_Common is
-   use System.Storage_Elements;
    use Interfaces;
+   use Number_Conversion_Utils;
 
    function Parse_Color (Color_Name : String;
                          Color : out Color_Led.Led_Color_Type) return Boolean;
@@ -133,36 +131,32 @@ package body Command_Parser_Common is
          Microcontroller.MCU_Specific.Find_System_Reset_Cause;
       Flash_Used : constant Unsigned_32 := Memory_Utils.Get_Flash_Used;
       Sram_Used : constant Unsigned_32 := Memory_Utils.Get_Sram_Used;
-      Stack_Start : System.Address;
-      Stack_End : System.Address;
-      Stack_Size : Unsigned_32;
-      Hex_Num_Str : String (1 .. 8);
+      Dec_Num_Str : String (1 .. 10);
+      Dec_Num_Str_Length : Positive;
    begin
+      Unsigned_To_Decimal_String (Reset_Count,
+                                  Dec_Num_Str,
+                                  Dec_Num_Str_Length);
       Serial_Console.Print_String (
-        "Reset count: " & Reset_Count'Image & ASCII.LF);
+         "Reset count: " & Dec_Num_Str (1 .. Dec_Num_Str_Length) & ASCII.LF);
       Serial_Console.Print_String (
         "Last reset cause: " &
         Microcontroller.Reset_Cause_Strings (Reset_Cause).all & ASCII.LF);
 
+      Unsigned_To_Decimal_String (Flash_Used,
+                                  Dec_Num_Str,
+                                  Dec_Num_Str_Length);
       Serial_Console.Print_String (
-        "Flash used: " & Flash_Used'Image  & " bytes" & ASCII.LF);
+         "Flash used: " & Dec_Num_Str (1 .. Dec_Num_Str_Length)  & " bytes" &
+         ASCII.LF);
+
+      Unsigned_To_Decimal_String (Sram_Used,
+                                  Dec_Num_Str,
+                                  Dec_Num_Str_Length);
 
       Serial_Console.Print_String (
-        "SRAM used: " & Sram_Used'Image & " bytes" & ASCII.LF);
-
-      Task_Stack_Info.Get_Current_Task_Stack (Stack_Start, Stack_Size);
-      Stack_End := To_Address (To_Integer (Stack_Start) +
-                               Integer_Address (Stack_Size));
-
-      Number_Conversion_Utils.Unsigned_To_Hexadecimal_String (
-         Unsigned_32 (To_Integer (Stack_Start)), Hex_Num_Str);
-      Serial_Console.Print_String ("Env task stack start address: 0x" &
-                                   Hex_Num_Str & ASCII.LF);
-
-      Number_Conversion_Utils.Unsigned_To_Hexadecimal_String (
-         Unsigned_32 (To_Integer (Stack_End)), Hex_Num_Str);
-      Serial_Console.Print_String ("Env task stack end address: 0x" &
-                                   Hex_Num_Str & ASCII.LF);
+         "SRAM used: " & Dec_Num_Str (1 .. Dec_Num_Str_Length) & " bytes" &
+         ASCII.LF);
    end Cmd_Print_Stats;
 
    -- ** --

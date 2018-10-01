@@ -40,7 +40,9 @@
 
 #define configUSE_PREEMPTION                    1
 #define configUSE_TICKLESS_IDLE                 0
-#define configCPU_CLOCK_HZ                      UINT32_C(120000000) // 120 MHz
+#define configCPU_CLOCK_HZ                      get_cpu_clock_frequency_hz()
+extern uint32_t get_cpu_clock_frequency_hz(void);
+
 #define configTICK_RATE_HZ                      ((TickType_t)1000)
 #define configMAX_PRIORITIES                    8
 #define configMINIMAL_STACK_SIZE                UINT16_C(128)
@@ -54,7 +56,7 @@
 #define configUSE_ALTERNATIVE_API               0 /* Deprecated! */
 #define configQUEUE_REGISTRY_SIZE               8
 #define configUSE_QUEUE_SETS                    0
-#define configUSE_TIME_SLICING                  0
+#define configUSE_TIME_SLICING                  1
 #define configUSE_NEWLIB_REENTRANT              0
 #define configENABLE_BACKWARD_COMPATIBILITY     1
 #define configNUM_THREAD_LOCAL_STORAGE_POINTERS 5
@@ -110,6 +112,7 @@ extern void __gnat_last_chance_handler(const char *file_name, int line);
 #define INCLUDE_xTaskAbortDelay                 0
 #define INCLUDE_xTaskGetHandle                  0
 #define INCLUDE_xTaskResumeFromISR              1
+#define INCLUDE_xSemaphoreGetMutexHolder        1
 
 #ifdef __NVIC_PRIO_BITS
 /* __BVIC_PRIO_BITS will be specified when CMSIS is being used. */

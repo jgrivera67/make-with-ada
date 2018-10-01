@@ -89,11 +89,6 @@ package Color_Led is
    --  Turn off LED blinking, leaving the LED steady in the current color
    --
 
-   Led_Blinker_Task_Obj : RTOS.RTOS_Task_Type;
-
-   procedure Led_Blinker_Task_Proc
-     with Convention => C;
-
 private
    use Gpio_Driver;
 

@@ -25,6 +25,7 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 with Serial_Console;
+with Number_Conversion_Utils;
 
 package body Runtime_Logs.Dump is
 
@@ -48,6 +49,8 @@ package body Runtime_Logs.Dump is
       Wrap_Count : Unsigned_32;
       Dump_End_Index : Positive;
       Dump_Start_Index : Positive;
+      Dec_Num_Str : String (1 .. 10);
+      Dec_Num_Str_Length : Positive;
    begin
       Wrap_Count := Runtime_Log_Ptr.Wrap_Count;
       Dump_End_Index := Runtime_Log_Ptr.Cursor;
@@ -57,8 +60,11 @@ package body Runtime_Logs.Dump is
          Dump_Start_Index := Dump_End_Index;
       end if;
 
+      Number_Conversion_Utils.Unsigned_To_Decimal_String (
+         Wrap_Count, Dec_Num_Str, Dec_Num_Str_Length);
       Serial_Console.Print_String (
-         "Log wrap count:" & Wrap_Count'Image & ASCII.LF);
+          "Log wrap count: " &
+          Dec_Num_Str (1 .. Dec_Num_Str_Length) & ASCII.LF);
 
       Serial_Console.Print_String (
          "(sequence number:time stamp:task Id:[code addr]:message " &
@@ -153,6 +159,8 @@ package body Runtime_Logs.Dump is
       Dump_Start_Index : Positive;
       Dump_Cursor : Positive;
       Text_Lines_Left : Natural;
+      Dec_Num_Str : String (1 .. 10);
+      Dec_Num_Str_Length : Positive;
    begin
       Wrap_Count := Runtime_Log_Ptr.Wrap_Count;
       Dump_End_Index := Runtime_Log_Ptr.Cursor;
@@ -196,12 +204,17 @@ package body Runtime_Logs.Dump is
 
       --  Dump_Start_Index indicates the beginning of the first line to print
 
+      Number_Conversion_Utils.Unsigned_To_Decimal_String (
+         Unsigned_32 (Num_Tail_Lines - Text_Lines_Left), Dec_Num_Str,
+         Dec_Num_Str_Length);
       Serial_Console.Print_String (
-         "Last" &
-         Positive'Image (Num_Tail_Lines - Text_Lines_Left) &
+         "Last " & Dec_Num_Str (1 .. Dec_Num_Str_Length) &
          " lines" & ASCII.LF);
+
+      Number_Conversion_Utils.Unsigned_To_Decimal_String (
+         Wrap_Count, Dec_Num_Str, Dec_Num_Str_Length);
       Serial_Console.Print_String (
-         "Log wrap count:" & Wrap_Count'Image & ASCII.LF);
+         "Log wrap count: " & Dec_Num_Str (1 .. Dec_Num_Str_Length) & ASCII.LF);
 
       Serial_Console.Print_String (
          "(sequence number:time stamp:task Id:[code addr]:message " &

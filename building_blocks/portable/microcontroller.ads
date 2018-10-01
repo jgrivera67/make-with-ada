@@ -45,6 +45,9 @@ is
 
    type Cpu_Byte_Order_Type is (Little_Endian, Big_Endian);
 
+   type Bit is mod 2
+     with Size => 1;
+
    --
    --  System reset causes
    --

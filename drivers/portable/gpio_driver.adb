@@ -25,8 +25,10 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
+with Kinetis_K64F;
 with Interfaces.Bit_Types;
 with Microcontroller.Arch_Specific;
+with Microcontroller.CPU_Specific;
 with Gpio_Driver.MCU_Specific_Private;
 with Memory_Protection;
 with System.Address_To_Access_Conversions;
@@ -36,6 +38,7 @@ package body Gpio_Driver is
    use Interfaces.Bit_Types;
    use Interfaces;
    use Microcontroller.Arch_Specific;
+   use Microcontroller.CPU_Specific;
    use Gpio_Driver.MCU_Specific_Private;
    use Devices.MCU_Specific;
    use Memory_Protection;
@@ -45,46 +48,65 @@ package body Gpio_Driver is
 
    use Address_To_Gpio_Registers_Pointer;
 
-   --??? type GPIO_Pin_Irq_Info_Type is record
-   --???    Pin_Irq_Handler : GPIO_Pin_Irq_Handler_Type := null;
-   --???    Pin_Info : Pin_Info_Type;
-   --??? end record;
+   type GPIO_Pin_Irq_Info_Type is record
+      Pin_Irq_Handler : GPIO_Pin_Irq_Handler_Type := null;
+      Pin_Info : Pin_Info_Type;
+   end record;
 
    --
    --  Table of GPIO Pin IRQ handlers
    --
-   --??? type GPIO_Pin_Irq_Handlers_Type is
-   --???   array (Pin_Port_Type, Pin_Index_Type) of GPIO_Pin_Irq_Info_Type
-   --???   with Alignment => MPU_Region_Alignment,
-   --???        Size => 40 * MPU_Region_Alignment * Byte'Size;
+   type GPIO_Pin_Irq_Handlers_Type is
+     array (Pin_Port_Type, Pin_Index_Type) of GPIO_Pin_Irq_Info_Type
+     with Alignment => MPU_Region_Alignment,
+          Size => 40 * MPU_Region_Alignment * Byte'Size;
 
-   --??? GPIO_Pin_Irq_Handlers : GPIO_Pin_Irq_Handlers_Type;
+   GPIO_Pin_Irq_Handlers : GPIO_Pin_Irq_Handlers_Type;
 
-   --
-   --  Protected object to define Interrupt handlers for all GPIO ports
-   --
-   --???  protected GPIO_Interrupts_Object is
-   --???     pragma Interrupt_Priority (Microcontroller.GPIO_Interrupt_Priority);
-   --???  private
-   --???     procedure GPIO_Irq_Common_Handler (Pin_Port : Pin_Port_Type)
-   --???        with Pre => not Are_Cpu_Interrupts_Disabled;
---???
-   --???     procedure PORTA_Irq_Handler;
-   --???     pragma Attach_Handler (PORTA_Irq_Handler, PORTA_Interrupt);
---???
-   --???     procedure PORTB_Irq_Handler;
-   --???     pragma Attach_Handler (PORTB_Irq_Handler, PORTB_Interrupt);
---???
-   --???     procedure PORTC_Irq_Handler;
-   --???     pragma Attach_Handler (PORTC_Irq_Handler, PORTC_Interrupt);
---???
-   --???     procedure PORTD_Irq_Handler;
-   --???     pragma Attach_Handler (PORTD_Irq_Handler, PORTD_Interrupt);
---???
-   --???     procedure PORTE_Irq_Handler;
-   --???     pragma Attach_Handler (PORTE_Irq_Handler, PORTE_Interrupt);
-   --???  end GPIO_Interrupts_Object;
-   --???  pragma Unreferenced (GPIO_Interrupts_Object);
+   type GPIO_Port_IRQ_Info_Type is limited record
+      IRQ_Number : IRQ_Index_Type;
+      Enabled_In_NVIC : Boolean := False;
+   end record;
+
+   GPIO_Port_IRQs : array (Pin_Port_Type) of GPIO_Port_IRQ_Info_Type :=
+     (PIN_PORT_A => (IRQ_Number => Kinetis_K64F.PORTA_IRQ'Enum_Rep,
+                     others => <>),
+      PIN_PORT_B => (IRQ_Number => Kinetis_K64F.PORTB_IRQ'Enum_Rep,
+                     others => <>),
+      PIN_PORT_C => (IRQ_Number => Kinetis_K64F.PORTC_IRQ'Enum_Rep,
+                     others => <>),
+      PIN_PORT_D => (IRQ_Number => Kinetis_K64F.PORTD_IRQ'Enum_Rep,
+                     others => <>),
+      PIN_PORT_E => (IRQ_Number => Kinetis_K64F.PORTE_IRQ'Enum_Rep,
+                     others => <>));
+
+   procedure GPIO_Irq_Common_Handler (Pin_Port : Pin_Port_Type)
+     with Pre => not Are_Cpu_Interrupts_Disabled;
+
+   procedure PORTA_IRQ_Handler
+     with Export,
+     Convention => C,
+     External_Name => "PORTA_IRQ_Handler";
+
+   procedure PORTB_IRQ_Handler
+     with Export,
+     Convention => C,
+     External_Name => "PORTB_IRQ_Handler";
+
+   procedure PORTC_IRQ_Handler
+     with Export,
+     Convention => C,
+     External_Name => "PORTC_IRQ_Handler";
+
+   procedure PORTD_IRQ_Handler
+     with Export,
+     Convention => C,
+     External_Name => "PORTD_IRQ_Handler";
+
+   procedure PORTE_IRQ_Handler
+     with Export,
+     Convention => C,
+     External_Name => "PORTE_IRQ_Handler";
 
    -------------------------
    -- Activate_Output_Pin --
@@ -121,10 +143,10 @@ package body Gpio_Driver is
    -- Clear_Pin_Irq --
    -------------------
 
-   --??? procedure Clear_Pin_Irq (Gpio_Pin : Gpio_Pin_Type) is
-   --??? begin
-   --???   Pin_Mux_Driver.Clear_Pin_Irq (Gpio_Pin.Pin_Info);
-   --??? end Clear_Pin_Irq;
+   procedure Clear_Pin_Irq (Gpio_Pin : Gpio_Pin_Type) is
+   begin
+     Pin_Mux_Driver.Clear_Pin_Irq (Gpio_Pin.Pin_Info);
+   end Clear_Pin_Irq;
 
    -------------------
    -- Configure_Pin --
@@ -197,38 +219,45 @@ package body Gpio_Driver is
    -- Disable_Pin_Irq --
    ---------------------
 
-   --??? procedure Disable_Pin_Irq (Gpio_Pin : Gpio_Pin_Type) is
-   --??? begin
-   --???   Pin_Mux_Driver.Disable_Pin_Irq (Gpio_Pin.Pin_Info);
-   --??? end Disable_Pin_Irq;
+   procedure Disable_Pin_Irq (Gpio_Pin : Gpio_Pin_Type) is
+   begin
+     Pin_Mux_Driver.Disable_Pin_Irq (Gpio_Pin.Pin_Info);
+   end Disable_Pin_Irq;
 
    --------------------
    -- Enable_Pin_Irq --
    --------------------
 
-   --??? procedure Enable_Pin_Irq
-   --???   (Gpio_Pin : Gpio_Pin_Type;
-   --???    Pin_Irq_Mode : Pin_Irq_Mode_Type;
-   --???    Pin_Irq_Handler : GPIO_Pin_Irq_Handler_Type)
-   --??? is
-   --???    Old_Region : MPU_Region_Descriptor_Type;
-   --???    Old_Intmask : Unsigned_32;
-   --??? begin
-   --???    Set_Private_Data_Region (GPIO_Pin_Irq_Handlers'Address,
-   --???                             GPIO_Pin_Irq_Handlers'Size,
-   --???                             Read_Write,
-   --???                             Old_Region);
-   --???    Old_Intmask := Disable_Cpu_Interrupts;
+   procedure Enable_Pin_Irq
+     (Gpio_Pin : Gpio_Pin_Type;
+      Pin_Irq_Mode : Pin_Irq_Mode_Type;
+      Pin_Irq_Handler : GPIO_Pin_Irq_Handler_Type)
+   is
+      Old_Region : MPU_Region_Descriptor_Type;
+      Old_Intmask : Unsigned_32;
+   begin
+      Set_Private_Data_Region (GPIO_Pin_Irq_Handlers'Address,
+                               GPIO_Pin_Irq_Handlers'Size,
+                               Read_Write,
+                               Old_Region);
+      Old_Intmask := Disable_Cpu_Interrupts;
 
-   --???    GPIO_Pin_Irq_Handlers (Gpio_Pin.Pin_Info.Pin_Port,
-   --???                           Gpio_Pin.Pin_Info.Pin_Index) :=
-   --???      (Pin_Irq_Handler => Pin_Irq_Handler,
-   --???       Pin_Info => Gpio_Pin.Pin_Info);
+      if not GPIO_Port_IRQs (Gpio_Pin.Pin_Info.Pin_Port).Enabled_In_NVIC then
+         NVIC_Setup_External_Interrupt (
+            GPIO_Port_IRQs (Gpio_Pin.Pin_Info.Pin_Port).IRQ_Number,
+            Priority => Kinetis_K64F.GPIO_Interrupt_Priority);
+         GPIO_Port_IRQs (Gpio_Pin.Pin_Info.Pin_Port).Enabled_In_NVIC := True;
+      end if;
 
-   --???    Restore_Cpu_Interrupts (Old_Intmask);
-   --???    Restore_Private_Data_Region (Old_Region);
-   --???    Pin_Mux_Driver.Enable_Pin_Irq (Gpio_Pin.Pin_Info, Pin_Irq_Mode);
-   --??? end Enable_Pin_Irq;
+      GPIO_Pin_Irq_Handlers (Gpio_Pin.Pin_Info.Pin_Port,
+                             Gpio_Pin.Pin_Info.Pin_Index) :=
+        (Pin_Irq_Handler => Pin_Irq_Handler,
+         Pin_Info => Gpio_Pin.Pin_Info);
+
+      Restore_Cpu_Interrupts (Old_Intmask);
+      Restore_Private_Data_Region (Old_Region);
+      Pin_Mux_Driver.Enable_Pin_Irq (Gpio_Pin.Pin_Info, Pin_Irq_Mode);
+   end Enable_Pin_Irq;
 
    --------------------
    -- Read_Input_Pin --
@@ -271,58 +300,71 @@ package body Gpio_Driver is
       Restore_Private_Data_Region (Old_IO_Region);
    end Toggle_Output_Pin;
 
+   -----------------------
+   -- PORTA_IRQ_Handler --
+   -----------------------
 
-   --
-   --  Interrupt handlers
-   --
-   --??? protected body GPIO_Interrupts_Object is
---???
-   --???    procedure PORTA_Irq_Handler is
-   --???    begin
-   --???       GPIO_Irq_Common_Handler (PIN_PORT_A);
-   --???    end PORTA_Irq_Handler;
---???
-  --???     procedure PORTB_Irq_Handler is
-   --???    begin
-   --???       GPIO_Irq_Common_Handler (PIN_PORT_B);
-   --???    end PORTB_Irq_Handler;
---???
-  --???     procedure PORTC_Irq_Handler is
-  --???     begin
-  --???        GPIO_Irq_Common_Handler (PIN_PORT_C);
-  --???     end PORTC_Irq_Handler;
---???
-  --???     procedure PORTD_Irq_Handler is
-  --???     begin
-  --???        GPIO_Irq_Common_Handler (PIN_PORT_D);
-  --???     end PORTD_Irq_Handler;
---???
-  --???     procedure PORTE_Irq_Handler is
-  --???     begin
-  --???        GPIO_Irq_Common_Handler (PIN_PORT_E);
-  --???     end PORTE_Irq_Handler;
+   procedure PORTA_IRQ_Handler is
+   begin
+      GPIO_Irq_Common_Handler (PIN_PORT_A);
+   end PORTA_IRQ_Handler;
 
-      -----------------------------
-      -- GPIO_Irq_Common_Handler --
-      -----------------------------
+   -----------------------
+   -- PORTB_IRQ_Handler --
+   -----------------------
 
-      --??? procedure GPIO_Irq_Common_Handler (Pin_Port : Pin_Port_Type)
-      --??? is
-      --??? begin
-      --???    for Pin_Index in Pin_Index_Type loop
-      --???       declare
-      --???          Pin_Irq_Info : GPIO_Pin_Irq_Info_Type renames
-      --???             GPIO_Pin_Irq_Handlers (Pin_Port, Pin_Index);
-      --???       begin
-      --???          if Is_Irq_Raised (Pin_Irq_Info.Pin_Info) then
-      --???             Clear_Pin_Irq (Pin_Irq_Info.Pin_Info);
-      --???             if Pin_Irq_Info.Pin_Irq_Handler /= null then
-      --???                Pin_Irq_Info.Pin_Irq_Handler.all;
-      --???             end if;
-      --???          end if;
-      --???       end;
-      --???    end loop;
-      --??? end GPIO_Irq_Common_Handler;
-    --??? end GPIO_Interrupts_Object;
+   procedure PORTB_IRQ_Handler is
+   begin
+      GPIO_Irq_Common_Handler (PIN_PORT_B);
+   end PORTB_IRQ_Handler;
+
+   -----------------------
+   -- PORTC_IRQ_Handler --
+   -----------------------
+
+   procedure PORTC_IRQ_Handler is
+   begin
+      GPIO_Irq_Common_Handler (PIN_PORT_C);
+   end PORTC_IRQ_Handler;
+
+   -----------------------
+   -- PORTD_IRQ_Handler --
+   -----------------------
+
+   procedure PORTD_IRQ_Handler is
+   begin
+      GPIO_Irq_Common_Handler (PIN_PORT_D);
+   end PORTD_IRQ_Handler;
+
+   -----------------------
+   -- PORTE_IRQ_Handler --
+   -----------------------
+
+   procedure PORTE_IRQ_Handler is
+   begin
+      GPIO_Irq_Common_Handler (PIN_PORT_E);
+   end PORTE_IRQ_Handler;
+
+   -----------------------------
+   -- GPIO_Irq_Common_Handler --
+   -----------------------------
+
+   procedure GPIO_Irq_Common_Handler (Pin_Port : Pin_Port_Type)
+   is
+   begin
+      for Pin_Index in Pin_Index_Type loop
+	 declare
+	    Pin_Irq_Info : GPIO_Pin_Irq_Info_Type renames
+	       GPIO_Pin_Irq_Handlers (Pin_Port, Pin_Index);
+	 begin
+	    if Is_Irq_Raised (Pin_Irq_Info.Pin_Info) then
+	       Clear_Pin_Irq (Pin_Irq_Info.Pin_Info);
+	       if Pin_Irq_Info.Pin_Irq_Handler /= null then
+		  Pin_Irq_Info.Pin_Irq_Handler.all;
+	       end if;
+	    end if;
+	 end;
+      end loop;
+   end GPIO_Irq_Common_Handler;
 
 end Gpio_Driver;

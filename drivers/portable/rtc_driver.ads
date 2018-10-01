@@ -25,7 +25,6 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with Ada.Real_Time;
 with Interfaces;
 private with Memory_Protection;
 private with System;
@@ -33,8 +32,9 @@ private with System;
 --  @summary Real-Time Clock (RTC) driver
 --
 package RTC_Driver is
-   use Ada.Real_Time;
    use Interfaces;
+
+   type Seconds_Count is new Unsigned_32;
 
    function Initialized return Boolean;
    --  @private (Used only in contracts)

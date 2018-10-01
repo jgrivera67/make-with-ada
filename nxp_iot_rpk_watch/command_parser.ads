@@ -29,13 +29,11 @@
 --  @summary Application-specific command parser
 --
 package Command_Parser is
+
    function Initialized return Boolean
      with Inline;
 
    procedure Initialize
      with Pre => not Initialized;
-
-   procedure Parse_Command
-     with Pre => Initialized;
 
 end Command_Parser;

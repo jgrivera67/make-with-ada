@@ -86,7 +86,7 @@ package body Runtime_Logs is
       Time_Stamp : constant RTOS.RTOS_Tick_Type :=
         RTOS.API.RTOS_Get_Ticks_Since_Boot;
       Calling_Task_Id : constant RTOS.RTOS_Task_Id_Type :=
-        RTOS.API.RTOS_Task_Self;
+        RTOS.API.RTOS_Task_Self_Id;
 
    begin
       Old_Interrupt_Mask := Disable_Cpu_Interrupts;
