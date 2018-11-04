@@ -668,6 +668,7 @@ package body DMA_Driver is
       DMA_Channel_State : DMA_Channel_State_Type renames
 	 DMA_Engine_Var.DMA_Channels (DMA_Channel);
    begin
+      RTOS.API.RTOS_Enter_Isr;
       Set_Private_Data_Region (DMA_Periph'Address,
 			       DMA_Periph'Size,
 			       Read_Write,
@@ -680,6 +681,7 @@ package body DMA_Driver is
       RTOS.API.RTOS_Semaphore_Signal (DMA_Channel_State.Transfer_Completed);
 
       Restore_Private_Data_Region (Old_Region);
+      RTOS.API.RTOS_Exit_Isr;
    end DMA_IRQ_Common_Handler;
 
    ---------------------------
@@ -693,6 +695,7 @@ package body DMA_Driver is
       Dec_Num_Str : String (1 .. 2);
       Dec_Num_Str_Length : Positive;
    begin
+      RTOS.API.RTOS_Enter_Isr;
       Set_Private_Data_Region (DMA_Periph'Address,
 			       DMA_Periph'Size,
 			       Read_Write,
@@ -732,6 +735,7 @@ package body DMA_Driver is
       end loop;
 
       Restore_Private_Data_Region (Old_Region);
+      RTOS.API.RTOS_Exit_Isr;
    end DMA_Error_IRQ_Handler;
 
 end DMA_Driver;

@@ -31,7 +31,7 @@ with Microcontroller.Arch_Specific;
 --
 --  @summary Portable RTOS API
 --
-package RTOS.API is
+package RTOS.API with No_Elaboration_Code_All is
    use Microcontroller.Arch_Specific;
 
    type Task_Procedure_Ptr_Type is access procedure
@@ -59,7 +59,8 @@ package RTOS.API is
           Post => RTOS_Scheduler_Started,
           Import,
           Convention => C,
-          External_Name => "rtos_scheduler_start";
+          External_Name => "rtos_scheduler_start",
+          No_Return;
 
    function RTOS_Task_Initialized (Task_Obj : RTOS_Task_Type) return Boolean
      with Ghost;
@@ -68,8 +69,6 @@ package RTOS.API is
                              Task_Proc_Ptr : Task_Procedure_Ptr_Type;
                              Task_Prio : RTOS_Task_Priority_Type)
      with Pre => RTOS_Initialized and
-                 not RTOS_Scheduler_Started and
-                 not RTOS_Task_Initialized (Task_Obj) and
                  Task_Proc_Ptr /= null,
 	  Import,
           Convention => C,

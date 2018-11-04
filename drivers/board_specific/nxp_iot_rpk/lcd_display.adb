@@ -50,34 +50,35 @@ package body LCD_Display is
    --
    --  Type for the constant portion of the LCD display
    --
-   --  @field DC_Pin DC signal pin (board specific)
-   --  @field PWR_Pin Power supply signal pin (board specific)
-   --  @field RST_Pin Reset signal pin (board specific)
+   --  @field DISP_EN_Pin Power supply signal pin (board specific)
+   --  @field DISP_DISP_Pin Display on/off switching signal pin (board specific)
+   --  @field DISP_EXTMODE_Pin Display EXTCOMIN signal pin (board specific)
    --
    type LCD_Display_Const_Type is limited record
-      DC_Pin : Gpio_Pin_Type;
-      PWR_Pin : Gpio_Pin_Type;
-      RST_Pin : Gpio_Pin_Type;
+      DISP_EN_Pin : Gpio_Pin_Type;
+      DISP_DISP_Pin : Gpio_Pin_Type;
+      DISP_EXTMODE_Pin : Gpio_Pin_Type;
    end record;
 
    LCD_Display_Const : constant LCD_Display_Const_Type :=
-      (DC_Pin => (Pin_Info =>
-                      (Pin_Port => PIN_PORT_D,
-                       Pin_Index => 15,
+      (DISP_EN_Pin =>
+         (Pin_Info => (Pin_Port => PIN_PORT_D,
+                       Pin_Index => 9,
                        Pin_Function => PIN_FUNCTION_ALT1),
-                  Is_Active_High => True),
+          Is_Active_High => True),
 
-       PWR_Pin => (Pin_Info =>
-                      (Pin_Port => PIN_PORT_C,
-                        Pin_Index => 13,
+       DISP_DISP_Pin =>
+          (Pin_Info => (Pin_Port => PIN_PORT_D,
+                        Pin_Index => 15,
                         Pin_Function => PIN_FUNCTION_ALT1),
-                  Is_Active_High => True),
+           Is_Active_High => True),
 
-       RST_Pin => (Pin_Info =>
-                      (Pin_Port => PIN_PORT_E,
-                        Pin_Index => 6,
+
+       DISP_EXTMODE_Pin =>
+          (Pin_Info => (Pin_Port => PIN_PORT_E,
+                        Pin_Index => 11,
                         Pin_Function => PIN_FUNCTION_ALT1),
-                  Is_Active_High => True));
+           Is_Active_High => True));
 
 
    Bytes_Per_Pixel : constant Positive := Color_Type'Size / Byte'Size;
@@ -339,17 +340,17 @@ package body LCD_Display is
    procedure Initialize is
       Old_Region : MPU_Region_Descriptor_Type;
    begin
-      Configure_Pin (LCD_Display_Const.DC_Pin,
+      Configure_Pin (LCD_Display_Const.DISP_EN_Pin,
                      Drive_Strength_Enable => False,
                      Pullup_Resistor       => False,
                      Is_Output_Pin         => True);
 
-      Configure_Pin (LCD_Display_Const.PWR_Pin,
+      Configure_Pin (LCD_Display_Const.DISP_DISP_Pin,
                      Drive_Strength_Enable => False,
                      Pullup_Resistor       => False,
                      Is_Output_Pin         => True);
 
-      Configure_Pin (LCD_Display_Const.RST_Pin,
+      Configure_Pin (LCD_Display_Const.DISP_EXTMODE_Pin,
                      Drive_Strength_Enable => False,
                      Pullup_Resistor       => False,
                      Is_Output_Pin         => True);
@@ -363,14 +364,15 @@ package body LCD_Display is
       --
       --  Power on sequence
       --
-      Deactivate_Output_Pin (LCD_Display_Const.PWR_Pin);
+      Activate_Output_Pin (LCD_Display_Const.DISP_EN_Pin);
       RTOS.API.RTOS_Task_Delay (1);
-      Deactivate_Output_Pin (LCD_Display_Const.RST_Pin);
+      Activate_Output_Pin (LCD_Display_Const.DISP_DISP_Pin);
       RTOS.API.RTOS_Task_Delay (1);
-      Activate_Output_Pin (LCD_Display_Const.RST_Pin);
+      Activate_Output_Pin (LCD_Display_Const.DISP_EXTMODE_Pin);
       RTOS.API.RTOS_Task_Delay (1);
-      Activate_Output_Pin (LCD_Display_Const.PWR_Pin);
       RTOS.API.RTOS_Task_Delay (50);
+
+      --  TODO: Need to configure and start timer FTM3_CH1 (PTE6) as PWWM
 
       --
       --  Display hardware initialization:

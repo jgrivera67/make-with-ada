@@ -38,7 +38,6 @@ with Microcontroller.MCU_Specific;
 with Last_Chance_Handler;
 with Number_Conversion_Utils;
 with Memory_Protection;
-with RTOS.API;
 with Nor_Flash_Driver;
 with DMA_Driver;
 with Watch;
@@ -79,21 +78,30 @@ procedure Main is
    -- ** --
 
 begin -- Main
+   Low_Level_Debug.Print_String ("*** Here1", End_Line => True);--???
    Memory_Protection.Initialize (MPU_Enabled => False);
+   Low_Level_Debug.Print_String ("*** Here2", End_Line => True);--???
    Runtime_Logs.Initialize;
+   Low_Level_Debug.Print_String ("*** Here3", End_Line => True);--???
    Log_Start_Info;
-   RTOS.API.RTOS_Init;
+   Low_Level_Debug.Print_String ("*** Here4", End_Line => True);--???
 
    --  Initialize devices used:
    Pin_Mux_Driver.Initialize;
+   Low_Level_Debug.Print_String ("*** Here5", End_Line => True);--???
    Serial_Console.Initialize;
+   Low_Level_Debug.Print_String ("*** Here6", End_Line => True);--???
    Nor_Flash_Driver.Initialize;
+   Low_Level_Debug.Print_String ("*** Here7", End_Line => True);--???
    DMA_Driver.Initialize;
-
+   Low_Level_Debug.Print_String ("*** Here8", End_Line => True);--???
    Print_Console_Greeting;
-   Command_Parser.Initialize;
+   Low_Level_Debug.Print_String ("*** Here9", End_Line => True);--???
    Watch.Initialize;
-
-   RTOS.API.RTOS_Scheduler_Start;
-   pragma Assert (False);
+   Low_Level_Debug.Print_String ("*** Here10", End_Line => True);--???
+   Command_Parser.Initialize;
+   Low_Level_Debug.Print_String ("*** Here11", End_Line => True);--???
+   loop
+      Command_Parser.Parse_Command;
+   end loop;
 end Main;

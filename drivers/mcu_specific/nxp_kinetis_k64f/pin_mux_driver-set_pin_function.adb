@@ -101,6 +101,5 @@ separate (Pin_Mux_Driver)
          Read_Write);
 
       Pins_In_Use_Entry := True;
-
       Restore_Private_Data_Region (Old_Region);
    end Set_Pin_Function;

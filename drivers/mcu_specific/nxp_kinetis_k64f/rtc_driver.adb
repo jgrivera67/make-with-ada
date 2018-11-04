@@ -30,6 +30,7 @@ with MK64F12.RTC;
 with Kinetis_K64F;
 with Microcontroller.Arch_Specific;
 with Microcontroller.CPU_Specific;
+with RTOS.API;
 with Runtime_Logs;
 
 package body RTC_Driver is
@@ -303,6 +304,7 @@ package body RTC_Driver is
       SR_Value : RTC_SR_Register;
       TAR_Value : MK64F12.Word;
    begin
+      RTOS.API.RTOS_Enter_Isr;
       Set_Private_Data_Region (
 	 RTC_Periph'Address,
 	 RTC_Periph'Size,
@@ -325,6 +327,7 @@ package body RTC_Driver is
       end if;
 
       Restore_Private_Data_Region (Old_Region);
+      RTOS.API.RTOS_Exit_Isr;
    end RTC_IRQ_Handler;
 
    ----------------------------
@@ -333,9 +336,11 @@ package body RTC_Driver is
 
    procedure RTC_Seconds_IRQ_Handler is
    begin
+      RTOS.API.RTOS_Enter_Isr;
       if RTC_Var.Periodic_One_Second_Callback /= null then
 	 RTC_Var.Periodic_One_Second_Callback.all;
       end if;
+      RTOS.API.RTOS_Exit_Isr;
    end RTC_Seconds_IRQ_Handler;
 
 end RTC_Driver;

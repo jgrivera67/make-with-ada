@@ -461,6 +461,7 @@ package body Uart_Driver is
       Uart_Device_Id_Str_Length : Positive;
       D_Value_Str : String (1 .. 2);
    begin
+      RTOS.API.RTOS_Enter_Isr;
       S1_Value := Uart_Registers_Ptr.S1;
       --  The only interrupt source we are expecting is "Receive data
       --  register full"
@@ -536,6 +537,7 @@ package body Uart_Driver is
 
 <<Common_Exit>>
       Restore_Private_Data_Region (Old_Region);
+      RTOS.API.RTOS_Exit_Isr;
    end Uart_Irq_Common_Handler;
 
 end Uart_Driver;

@@ -1,5 +1,5 @@
 --
---  Copyright (c) 2016, German Rivera
+--  Copyright (c) 2018, German Rivera
 --  All rights reserved.
 --
 --  Redistribution and use in source and binary forms, with or without
@@ -25,18 +25,43 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
+with System;
+with Interfaces;
+private with Microcontroller.Arch_Specific;
+
 --
---  @summary Application-specific command parser
+--  @summary HiRTOS compile-time configuration parameters
 --
-package Command_Parser is
+package HiRTOS_Config with SPARK_Mode => On is
+   --
+   --  Maximum number of threads
+   --
+   Max_Num_Threads : constant := 32;
 
-   function Initialized return Boolean
-     with Inline;
+   --
+   --  Maximum number of condition variables
+   --
+   Max_Num_Condvars : constant := Max_Num_Threads + 32;
 
-   procedure Initialize
-     with Pre => not Initialized;
+   --
+   --  Maximum number of mutexes
+   --
+   Max_Num_Mutexes : constant := 32;
 
-   procedure Parse_Command
-     with Pre => Initialized;
+   --
+   --  Maximum number of timers
+   --
+   Max_Num_Timers : constant := Max_Num_Threads + 32;
 
-end Command_Parser;
+   --
+   --  Number of thread priorities
+   --
+   Num_Thread_Priorities : constant := 16;
+
+   --
+   --  Thread stack size in number of entries
+   --  (for 32-bit CPUs, each entry is 4 bytes long)
+   --
+   Thread_Stack_Num_Entries : constant := 256;
+
+end HiRTOS_Config;

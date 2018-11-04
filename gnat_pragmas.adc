@@ -9,4 +9,3 @@ pragma Restrictions (No_Allocators);
 pragma Restrictions (No_Dispatch);
 pragma Restrictions (No_Implicit_Dynamic_Code);
 pragma Restrictions (No_Secondary_Stack);
-

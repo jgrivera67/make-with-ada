@@ -32,7 +32,7 @@ private with Microcontroller.Arch_Specific;
 --
 --  @summary FreeRTOS-specific declarations
 --
-package RTOS is
+package RTOS with No_Elaboration_Code_All is
 
    type RTOS_Task_Type is limited private;
    type RTOS_Mutex_Type is limited private;
@@ -99,11 +99,14 @@ private
    --
    --  Wrapper for an RTOS semaphore object
    --
+   --  NOTE: field initializers cannot be used here, as that will cause
+   --  elaboration code to be generated which we cannot have for the main
+   --  task variable declared in startup.adb (a task has a semaphore field)
+   --
    type RTOS_Semaphore_Type is limited record
-      Initialized : Boolean := False;
+      Initialized : Boolean; -- := False;
       Os_Var : FreeRTOS_StaticSemaphore_t;
-      Os_Handle : FreeRTOS_SemaphoreHandle_t :=
-	 FreeRTOS_SemaphoreHandle_t (System.Null_Address);
+      Os_Handle : FreeRTOS_SemaphoreHandle_t; -- := FreeRTOS_SemaphoreHandle_t (System.Null_Address);
    end record;
 
    --
@@ -135,19 +138,19 @@ private
    --
    --  Wrapper for an RTOS task object
    --
+   --  NOTE: field initializers cannot be used here, as that will cause
+   --  elaboration code to be generated which we cannot have for the main
+   --  task variable declared in startup.adb
+   --
    type RTOS_Task_Type is limited record
       Stack : Task_Stack_Type;
-      Initialized : Boolean := False;
-      Task_Id : RTOS_Task_Id_Type := Invalid_Task_id;
-      Max_Stack_Entries_Used : Interfaces.Unsigned_16 := 0;
+      Initialized : Boolean; -- := False;
+      Task_Id : RTOS_Task_Id_Type; --:= Invalid_Task_id;
+      Max_Stack_Entries_Used : Interfaces.Unsigned_16; -- := 0;
       Os_Var : FreeRTOS_StaticTask_t;
-      Os_Handle : FreeRTOS_TaskHandle_t :=
-        FreeRTOS_TaskHandle_t (System.Null_Address);
+      Os_Handle : FreeRTOS_TaskHandle_t; --:= FreeRTOS_TaskHandle_t (System.Null_Address);
       Semaphore : RTOS_Semaphore_Type;
    end record with Convention => C;
-
-   function RTOS_Task_Initialized (Task_Obj : RTOS_Task_Type) return Boolean
-   is (Task_Obj.Initialized);
 
    type FreeRTOS_StaticTimer_t is array (1 .. 44) of Interfaces.Unsigned_8
      with Convention => C,

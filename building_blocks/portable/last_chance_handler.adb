@@ -72,7 +72,8 @@ is
       Dec_Num_Str : String (1 .. 4);
       Dec_Num_Str_Length : Positive;
    begin
-
+      Old_Interrupt_Mask := Disable_Cpu_Interrupts;
+      Low_Level_Debug.Set_Rgb_Led (Red_On => True);
       --
       --  Calculate length of the null-terminated 'Msg' string:
       --
@@ -138,7 +139,6 @@ is
             Microcontroller.MCU_Specific.System_Reset;
 
          when Dummy_Infinite_Loop =>
-            Old_Interrupt_Mask := Disable_Cpu_Interrupts;
             loop
                null;
             end loop;

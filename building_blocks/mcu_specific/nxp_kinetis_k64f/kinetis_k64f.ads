@@ -155,25 +155,25 @@ is
      Interrupt_Priority_Type'Last;
 
    ADC_Interrupt_Priority  : constant Interrupt_Priority_Type :=
-      Highest_Interrupt_Priority;
+      Highest_Interrupt_Priority + 2;
 
    I2C_Interrupt_Priority : constant Interrupt_Priority_Type :=
-     Highest_Interrupt_Priority;
+     Highest_Interrupt_Priority + 2;
 
    DMA_Interrupt_Priority : constant Interrupt_Priority_Type :=
-      Highest_Interrupt_Priority;
+      Highest_Interrupt_Priority + 2;
 
    LLWU_Interrupt_Priority : constant Interrupt_Priority_Type :=
-      Highest_Interrupt_Priority;
+      Highest_Interrupt_Priority + 2;
 
    Timer_Interrupt_Priority : constant Interrupt_Priority_Type :=
-      Highest_Interrupt_Priority + 1;
+      Highest_Interrupt_Priority + 3;
 
    Periodic_Timer_Interrupt_Priority : constant Interrupt_Priority_Type :=
-      Highest_Interrupt_Priority + 1;
+      Highest_Interrupt_Priority + 3;
 
    Accelerometer_Interrupt_Priority : constant Interrupt_Priority_Type :=
-      Highest_Interrupt_Priority + 2;
+      Highest_Interrupt_Priority + 4;
 
    CAN_Interrupt_Priority : constant Interrupt_Priority_Type :=
       Lowest_Interrupt_Priority;
@@ -185,5 +185,5 @@ is
       Lowest_Interrupt_Priority;
 
    RTC_Interrupt_Priority : constant Interrupt_Priority_Type :=
-      Highest_Interrupt_Priority;
+      Highest_Interrupt_Priority + 2;
 end Kinetis_K64F;

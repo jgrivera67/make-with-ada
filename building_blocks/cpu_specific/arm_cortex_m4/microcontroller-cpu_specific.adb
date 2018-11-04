@@ -39,7 +39,7 @@ package body Microcontroller.Cpu_Specific is
       IRQ_Word_Index : constant IRQ_Word_Index_Type :=
         IRQ_Word_Index_Type (Shift_Right (Unsigned_8 (IRQ_Number), 5));
       Word_Bit_Index : constant Word_Bit_Index_Type :=
-        IRQ_Word_Index_Type (Unsigned_8 (IRQ_Number) and 16#1F#);
+        Word_Bit_Index_Type (Unsigned_8 (IRQ_Number) and 16#1F#);
       IRQ_Word_Bit_Mask : Word_Bit_Array_Type := (others => 0);
    begin
       --

@@ -31,6 +31,7 @@ with Microcontroller.Arch_Specific;
 with Microcontroller.CPU_Specific;
 with Gpio_Driver.MCU_Specific_Private;
 with Memory_Protection;
+with RTOS.API;
 with System.Address_To_Access_Conversions;
 
 package body Gpio_Driver is
@@ -352,6 +353,7 @@ package body Gpio_Driver is
    procedure GPIO_Irq_Common_Handler (Pin_Port : Pin_Port_Type)
    is
    begin
+      RTOS.API.RTOS_Enter_Isr;
       for Pin_Index in Pin_Index_Type loop
 	 declare
 	    Pin_Irq_Info : GPIO_Pin_Irq_Info_Type renames
@@ -365,6 +367,7 @@ package body Gpio_Driver is
 	    end if;
 	 end;
       end loop;
+      RTOS.API.RTOS_Exit_Isr;
    end GPIO_Irq_Common_Handler;
 
 end Gpio_Driver;

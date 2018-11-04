@@ -35,7 +35,7 @@ package body Reset_Counter is
    --  CPU reset counter object type
    --
    --  @field Count Number of CPU resets since last power-cycle
-   --  @filed Checksum Last checksum calculated for this object excluding
+   --  @field Checksum Last checksum calculated for this object excluding
    --         this field
    --
    --  NOTE: Since SRAM will contain garbage after power-cycling the

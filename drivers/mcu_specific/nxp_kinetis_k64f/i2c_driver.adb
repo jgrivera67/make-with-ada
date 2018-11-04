@@ -945,6 +945,7 @@ package body I2C_Driver is
       S_Value : I2C0_S_Register;
       Old_Region : MPU_Region_Descriptor_Type;
    begin
+      RTOS.API.RTOS_Enter_Isr;
       S_Value := I2C_Registers_Ptr.S;
       pragma Assert (S_Value.IICIF /= S_IICIF_Field_0);
       pragma Assert (S_Value.BUSY /= S_BUSY_Field_0);
@@ -977,6 +978,7 @@ package body I2C_Driver is
          Current_Transaction.Byte_Transfer_Completed);
 
       Restore_Private_Data_Region (Old_Region);
+      RTOS.API.RTOS_Exit_Isr;
    end I2C_Irq_Common_Handler;
 
 end I2C_Driver;

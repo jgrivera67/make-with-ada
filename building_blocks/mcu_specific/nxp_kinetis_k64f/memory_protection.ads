@@ -247,16 +247,17 @@ package Memory_Protection is
       First_Address : System.Address;
       Last_Address : System.Address;
       Old_Region : out MPU_Region_Descriptor_Type)
-      with Pre => To_Integer (First_Address) < To_Integer (Last_Address) and
-                  ((To_Integer (First_Address) >=
-                      To_Integer (Secret_Flash_Text_Start'Address) and
-                    To_Integer (Last_Address) <
-                      To_Integer (Secret_Flash_Text_End'Address)) or else
-                   (To_Integer (First_Address) >=
-                      To_Integer (Secret_RAM_Text_Start'Address)
-                    and
-                    To_Integer (Last_Address) <
-                      To_Integer (Secret_RAM_Text_End'Address)));
+     with Pre => To_Integer (First_Address) < To_Integer (Last_Address);
+                  --and
+                  --((To_Integer (First_Address) >=
+                  --    To_Integer (Secret_Flash_Text_Start'Address) and
+                  --  To_Integer (Last_Address) <
+                  --    To_Integer (Secret_Flash_Text_End'Address)) or else
+                  -- (To_Integer (First_Address) >=
+                  --    To_Integer (Secret_RAM_Text_Start'Address)
+                  --  and
+                  --  To_Integer (Last_Address) <
+                  --    To_Integer (Secret_RAM_Text_End'Address)));
       --  with Inline;
 
    procedure Set_Private_Code_Region (

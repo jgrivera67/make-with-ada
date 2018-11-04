@@ -30,6 +30,7 @@ with MK64F12.SMC;
 with Microcontroller.CPU_Specific;
 with Devices.MCU_Specific;
 with Kinetis_K64F.PORT;
+with RTOS.API;
 with Runtime_Logs;
 with Kinetis_K64F.MCG;
 
@@ -290,16 +291,17 @@ is
    end Set_Low_Power_Wakeup_Source;
 
    ----------------------
-   -- LLWU_Irq_Handler --
+   -- LLWU_IRQ_Handler --
    ----------------------
 
-   procedure LLWU_Irq_Handler is
+   procedure LLWU_IRQ_Handler is
       use MK64F12;
       Old_Region : MPU_Region_Descriptor_Type;
       F1_Value : LLWU_F1_Register;
       PMSTAT_Value : SMC_PMSTAT_Register;
       SCR_Value : SCR_Type;
    begin
+      RTOS.API.RTOS_Enter_Isr;
       --
       --  Low-leakage stop modes changed the MCG clock mode from PEE to PBE,
       --  so we need to change the MCG clock mode back to PEE
@@ -359,6 +361,7 @@ is
       end if;
 
       Restore_Private_Data_Region (Old_Region);
-   end LLWU_Irq_Handler;
+      RTOS.API.RTOS_Exit_Isr;
+   end LLWU_IRQ_Handler;
 
 end Low_Power_Driver;
