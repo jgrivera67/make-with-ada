@@ -32,9 +32,9 @@ with Devices.MCU_Specific;
 with Gpio_Driver;
 with Pin_Mux_Driver;
 with Barometric_Pressure_Sensor.Mpl3115A2_Private;
-with Ada.Real_Time;
-with Ada.Synchronous_Task_Control;
+with Number_Conversion_Utils;
 with Runtime_Logs;
+with RTOS.API;
 with Ada.Unchecked_Conversion;
 
 --
@@ -51,8 +51,6 @@ package body Barometric_Pressure_Sensor is
    use Pin_Mux_Driver;
    use Devices;
    use Barometric_Pressure_Sensor.Mpl3115A2_Private;
-   use Ada.Real_Time;
-   use Ada.Synchronous_Task_Control;
 
    --
    --  Type for the constant portion of the Heart rate monitor driver
@@ -86,19 +84,22 @@ package body Barometric_Pressure_Sensor is
    --
    type Barometric_Pressure_Sensor_Type is limited record
       Initialized : Boolean := False;
-      Int1_Task_Susp_Obj : Suspension_Object;
-      Int2_Task_Susp_Obj : Suspension_Object;
-      Altitude_Changed_Susp_Obj : Suspension_Object;
-      Temperature_Changed_Susp_Obj : Suspension_Object;
-      Altitude_Data_Ready_Susp_Obj : Suspension_Object;
-      Temperature_Data_Ready_Susp_Obj : Suspension_Object;
+      Altitude_Changed_Sem : RTOS.RTOS_Semaphore_Type;
+      Temperature_Changed_Sem : RTOS.RTOS_Semaphore_Type;
+      Altitude_Data_Ready_Sem : RTOS.RTOS_Semaphore_Type;
+      Temperature_Data_Ready_Sem : RTOS.RTOS_Semaphore_Type;
    end record with Alignment => MPU_Region_Alignment;
 
    Barometric_Pressure_Sensor_Var : Barometric_Pressure_Sensor_Type;
 
-   task Int1_Task;
+   Int1_Task_Obj : RTOS.RTOS_Task_Type;
+   Int2_Task_Obj : RTOS.RTOS_Task_Type;
 
-   task Int2_Task;
+   procedure Int1_Task_Proc
+     with Convention => C;
+
+   procedure Int2_Task_Proc
+     with Convention => C;
 
    procedure Int1_Pin_Irq_Callback;
 
@@ -212,8 +213,8 @@ package body Barometric_Pressure_Sensor is
 
    procedure Detect_Altitude_Change is
    begin
-      Suspend_Until_True (
-         Barometric_Pressure_Sensor_Var.Altitude_Changed_Susp_Obj);
+      RTOS.API.RTOS_Semaphore_Wait (
+         Barometric_Pressure_Sensor_Var.Altitude_Changed_Sem);
    end Detect_Altitude_Change;
 
    -------------------------------
@@ -222,8 +223,8 @@ package body Barometric_Pressure_Sensor is
 
    procedure Detect_Temperature_Change is
    begin
-      Suspend_Until_True (
-         Barometric_Pressure_Sensor_Var.Temperature_Changed_Susp_Obj);
+      RTOS.API.RTOS_Semaphore_Wait (
+         Barometric_Pressure_Sensor_Var.Temperature_Changed_Sem);
    end Detect_Temperature_Change;
 
    ----------------
@@ -231,6 +232,7 @@ package body Barometric_Pressure_Sensor is
    ----------------
 
    procedure Initialize is
+      use type RTOS.RTOS_Task_Priority_Type;
       Old_Region : MPU_Region_Descriptor_Type;
       Who_Am_I_Value : Byte;
       Reg_Ctrl_Reg1_Value : Reg_Ctrl_Reg1_Type;
@@ -277,7 +279,7 @@ package body Barometric_Pressure_Sensor is
                  Reg_Ctrl_Reg1_Value.Value);
 
       for Poll_Iteration in 1 .. 50 loop
-         delay until Clock + Milliseconds (1);
+         RTOS.API.RTOS_Task_Delay (1);
          Reg_Ctrl_Reg1_Value.Value :=
             I2C_Read (Barometric_Pressure_Sensor_Const.I2C_Device_Id,
                       Barometric_Pressure_Sensor_Const.I2C_Slave_Address,
@@ -326,8 +328,25 @@ package body Barometric_Pressure_Sensor is
 
       Barometric_Pressure_Sensor_Var.Initialized := True;
 
-      Set_True (Barometric_Pressure_Sensor_Var.Int1_Task_Susp_Obj);
-      Set_True (Barometric_Pressure_Sensor_Var.Int2_Task_Susp_Obj);
+      RTOS.API.RTOS_Semaphore_Init (
+         Barometric_Pressure_Sensor_Var.Altitude_Changed_Sem,
+                                    Initial_Count => 0);
+      RTOS.API.RTOS_Semaphore_Init (
+         Barometric_Pressure_Sensor_Var.Temperature_Changed_Sem,
+         Initial_Count => 0);
+      RTOS.API.RTOS_Semaphore_Init (
+         Barometric_Pressure_Sensor_Var.Altitude_Data_Ready_Sem,
+         Initial_Count => 0);
+      RTOS.API.RTOS_Semaphore_Init (
+         Barometric_Pressure_Sensor_Var.Temperature_Data_Ready_Sem,
+         Initial_Count => 0);
+
+      RTOS.API.RTOS_Task_Init (Int1_Task_Obj,
+                               Int1_Task_Proc'Access,
+                               RTOS.Highest_App_Task_Priority - 2);
+      RTOS.API.RTOS_Task_Init (Int2_Task_Obj,
+                               Int2_Task_Proc'Access,
+                               RTOS.Highest_App_Task_Priority - 2);
 
       --
       --  Enable GPIO interrupts from INT1 and INT2  pin:
@@ -365,7 +384,7 @@ package body Barometric_Pressure_Sensor is
       --
       --  INT1 pin has been cleared by the corresponding pin port IRQ handler
       --
-      Set_True (Barometric_Pressure_Sensor_Var.Int1_Task_Susp_Obj);
+      RTOS.API.RTOS_Task_Semaphore_Signal (Int1_Task_Obj);
    end Int1_Pin_Irq_Callback;
 
    ---------------------------
@@ -377,7 +396,7 @@ package body Barometric_Pressure_Sensor is
       --
       --  INT2 pin has been cleared by the corresponding pin port IRQ handler
       --
-      Set_True (Barometric_Pressure_Sensor_Var.Int2_Task_Susp_Obj);
+      RTOS.API.RTOS_Task_Semaphore_Signal (Int2_Task_Obj);
    end Int2_Pin_Irq_Callback;
 
    -------------------
@@ -415,8 +434,8 @@ package body Barometric_Pressure_Sensor is
                  REG_CTRL_REG4'Enum_Rep,
                  Reg_Ctrl_Reg4_Value.Value);
 
-      Suspend_Until_True (
-         Barometric_Pressure_Sensor_Var.Altitude_Data_Ready_Susp_Obj);
+      RTOS.API.RTOS_Semaphore_Wait (
+         Barometric_Pressure_Sensor_Var.Altitude_Data_Ready_Sem);
 
       --
       --  Read in one I2C bus transaction the following registers:
@@ -490,8 +509,8 @@ package body Barometric_Pressure_Sensor is
                  REG_CTRL_REG4'Enum_Rep,
                  Reg_Ctrl_Reg4_Value.Value);
 
-      Suspend_Until_True (
-         Barometric_Pressure_Sensor_Var.Temperature_Data_Ready_Susp_Obj);
+      RTOS.API.RTOS_Semaphore_Wait (
+         Barometric_Pressure_Sensor_Var.Temperature_Data_Ready_Sem);
 
       --
       --  Read in one I2C bus transaction the following registers:
@@ -618,15 +637,15 @@ package body Barometric_Pressure_Sensor is
       pragma Assert (Reg_Ctrl_Reg1_Value.SBYB = 0);
    end Stop_Barometric_Pressure_Sensor;
 
-   ---------------
-   -- Int1_Task --
-   ---------------
+   --------------------
+   -- Int1_Task_Proc --
+   --------------------
 
-   task body Int1_Task is
+   procedure Int1_Task_Proc is
       Reg_Int_Source_Value : Reg_Int_Source_Type;
       Reg_Dr_Status_Value : Reg_Dr_Status_Type;
+      Hex_Num_Str : String (1 .. 2);
    begin
-      Suspend_Until_True (Barometric_Pressure_Sensor_Var.Int1_Task_Susp_Obj);
       Runtime_Logs.Info_Print ("Barometric_Pressure_Sensor INT1 task started");
 
       Set_Private_Data_Region (Barometric_Pressure_Sensor_Var'Address,
@@ -634,7 +653,7 @@ package body Barometric_Pressure_Sensor is
                                Read_Write);
 
       loop
-         Suspend_Until_True (Barometric_Pressure_Sensor_Var.Int1_Task_Susp_Obj);
+         RTOS.API.RTOS_Task_Semaphore_Wait;
 
          --
          --  Read Barometric_Pressure_Sensor interrupt status register to clear the
@@ -645,19 +664,24 @@ package body Barometric_Pressure_Sensor is
                       Barometric_Pressure_Sensor_Const.I2C_Slave_Address,
                       REG_INT_SOURCE'Enum_Rep);
 
+         Number_Conversion_Utils.Unsigned_To_Hexadecimal_String (
+            Unsigned_32 (Reg_Int_Source_Value.Value),
+            Hex_Num_Str);
+
          Runtime_Logs.Debug_Print (
             "Barometric pressure sensor interrupt (Int_Source" &
-            Reg_Int_Source_Value.Value'Image & ")");
+            Hex_Num_Str & ")");
 
          if Reg_Int_Source_Value.SRC_PCHG = 1 then
             Runtime_Logs.Debug_Print ("> Altitude/Pressure changed interrupt");
-            Set_True (Barometric_Pressure_Sensor_Var.Altitude_Changed_Susp_Obj);
+            RTOS.API.RTOS_Semaphore_Signal (
+               Barometric_Pressure_Sensor_Var.Altitude_Changed_Sem);
          end if;
 
          if Reg_Int_Source_Value.SRC_TCHG = 1 then
             Runtime_Logs.Debug_Print ("> Temperature changed interrupt");
-            Set_True (
-               Barometric_Pressure_Sensor_Var.Temperature_Changed_Susp_Obj);
+            RTOS.API.RTOS_Semaphore_Signal (
+               Barometric_Pressure_Sensor_Var.Temperature_Changed_Sem);
          end if;
 
          if Reg_Int_Source_Value.SRC_DRDY = 1 then
@@ -668,26 +692,25 @@ package body Barometric_Pressure_Sensor is
 
             if Reg_Dr_Status_Value.PDR = 1 then
                Runtime_Logs.Debug_Print ("> Altitude data ready interrupt");
-               Set_True (
-                  Barometric_Pressure_Sensor_Var.Altitude_Data_Ready_Susp_Obj);
+               RTOS.API.RTOS_Semaphore_Signal (
+                  Barometric_Pressure_Sensor_Var.Altitude_Data_Ready_Sem);
             end if;
 
             if Reg_Dr_Status_Value.TDR = 1 then
                Runtime_Logs.Debug_Print ("> Temperature data ready interrupt");
-               Set_True (
-                  Barometric_Pressure_Sensor_Var.Temperature_Data_Ready_Susp_Obj);
+               RTOS.API.RTOS_Semaphore_Signal (
+                  Barometric_Pressure_Sensor_Var.Temperature_Data_Ready_Sem);
             end if;
          end if;
       end loop;
-   end Int1_Task;
+   end Int1_Task_Proc;
 
    ---------------
    -- Int2_Task --
    ---------------
 
-   task body Int2_Task is
+   procedure Int2_Task_Proc is
    begin
-      Suspend_Until_True (Barometric_Pressure_Sensor_Var.Int2_Task_Susp_Obj);
       Runtime_Logs.Info_Print ("Barometric_Pressure_Sensor INT2 task started");
 
       Set_Private_Data_Region (Barometric_Pressure_Sensor_Var'Address,
@@ -695,11 +718,10 @@ package body Barometric_Pressure_Sensor is
                                Read_Write);
 
       loop
-         Suspend_Until_True (Barometric_Pressure_Sensor_Var.Int2_Task_Susp_Obj);
-
+         RTOS.API.RTOS_Task_Semaphore_Wait;
          Runtime_Logs.Error_Print (
             "Unexpected INT2 interrupt from barometric pressure sensor");
       end loop;
-   end Int2_Task;
+   end Int2_Task_Proc;
 
 end Barometric_Pressure_Sensor;

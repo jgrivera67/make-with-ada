@@ -25,6 +25,7 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
+with Kinetis_K64F;
 with I2C_Driver.MCU_Specific_Private;
 with Pin_Mux_Driver;
 
@@ -51,7 +52,8 @@ private package I2C_Driver.Board_Specific_Private is
          Sda_Pin_Info =>
             (Pin_Port => PIN_PORT_B,
              Pin_Index => 1, --3,
-             Pin_Function => PIN_FUNCTION_ALT2)
+             Pin_Function => PIN_FUNCTION_ALT2),
+         Irq_Number => Kinetis_K64F.I2C0_IRQ'Enum_Rep
         ),
 
       I2C1 =>
@@ -63,7 +65,8 @@ private package I2C_Driver.Board_Specific_Private is
          Sda_Pin_Info =>
             (Pin_Port => PIN_PORT_C,
              Pin_Index => 11,
-             Pin_Function => PIN_FUNCTION_ALT2)
+             Pin_Function => PIN_FUNCTION_ALT2),
+         Irq_Number => Kinetis_K64F.I2C1_IRQ'Enum_Rep
         ),
 
       I2C2 =>

@@ -1,0 +1,33 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build",
+            "type": "shell",
+            "command": "gprbuild -P $GPR_FILE -XCPU_Core=arm_cortex_m4 -p",
+            "problemMatcher": {
+                "base": "$ada",
+                "fileLocation": [
+                    "absolute"
+                ]
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "gnatprove",
+            "type": "shell",
+            "command": "gnatprove -P $GPR_FILE -XCPU_Core=arm_cortex_m4 --checks-as-errors --level=0 --no-axiom-guard --report=all",
+            "problemMatcher": {
+                "base": "$ada",
+                "fileLocation": [
+                    "absolute"
+                ]
+            }
+        }
+    ]
+}

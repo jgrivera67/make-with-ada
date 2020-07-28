@@ -1283,7 +1283,7 @@ package body Watch is
       Refresh_Temperature (Force_Refresh => True);
 
       loop
-	 RTOS.API.RTOS_Task_Semaphore_Wait;
+	      RTOS.API.RTOS_Task_Semaphore_Wait;
          Run_Watch_State_Machine;
       end loop;
    end Watch_Task_Proc;

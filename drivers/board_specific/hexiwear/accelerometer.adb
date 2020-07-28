@@ -26,15 +26,15 @@
 --
 
 with Memory_Protection;
+with Number_Conversion_Utils;
 with Interfaces.Bit_Types;
 with I2C_Driver;
 with Devices.MCU_Specific;
 with Gpio_Driver;
 with Pin_Mux_Driver;
 with Accelerometer.Fxos8700cq_Private;
-with Ada.Real_Time;
-with Ada.Synchronous_Task_Control;
 with Runtime_Logs;
+with RTOS.API;
 with Low_Power_Driver;
 with Ada.Unchecked_Conversion;
 
@@ -52,8 +52,6 @@ package body Accelerometer is
    use Pin_Mux_Driver;
    use Devices;
    use Accelerometer.Fxos8700cq_Private;
-   use Ada.Real_Time;
-   use Ada.Synchronous_Task_Control;
 
    --
    --  Type for the constant portion of the Accelerometer driver
@@ -99,19 +97,22 @@ package body Accelerometer is
    --
    type Accelerometer_Type is limited record
       Initialized : Boolean := False;
-      Int1_Task_Susp_Obj : Suspension_Object;
-      Int2_Task_Susp_Obj : Suspension_Object;
-      Motion_Detected_Susp_Obj : Suspension_Object;
-      Tapping_Detected_Susp_Obj : Suspension_Object;
-      Data_Ready_Susp_Obj : Suspension_Object;
+      Motion_Detected_Semaphore : RTOS.RTOS_Semaphore_Type;
+      Tapping_Detected_Semaphore : RTOS.RTOS_Semaphore_Type;
+      Data_Ready_Semaphore : RTOS.RTOS_Semaphore_Type;
       Go_to_Sleep_Callback : Go_to_Sleep_Callback_Type;
    end record with Alignment => MPU_Region_Alignment;
 
    Accelerometer_Var : Accelerometer_Type;
 
-   task Int1_Task;
+   Int1_Task_Obj : RTOS.RTOS_Task_Type;
+   Int2_Task_Obj : RTOS.RTOS_Task_Type;
 
-   task Int2_Task;
+   procedure Int1_Task_Proc
+     with Convention => C;
+
+   procedure Int2_Task_Proc
+     with Convention => C;
 
    procedure Accel_Int1_Pin_Irq_Callback;
 
@@ -141,7 +142,7 @@ package body Accelerometer is
       --
       --  Int1 pin has been cleared by the corresponding pin port IRQ handler
       --
-      Set_True (Accelerometer_Var.Int1_Task_Susp_Obj);
+      RTOS.API.RTOS_Task_Semaphore_Signal (Int1_Task_Obj);
    end Accel_Int1_Pin_Irq_Callback;
 
    ---------------------------------
@@ -154,7 +155,7 @@ package body Accelerometer is
       --
       --  Int2 pin has been cleared by the corresponding pin port IRQ handler
       --
-      Set_True (Accelerometer_Var.Int2_Task_Susp_Obj);
+      RTOS.API.RTOS_Task_Semaphore_Signal (Int2_Task_Obj);
    end Accel_Int2_Pin_Irq_Callback;
 
    ----------------------------
@@ -272,8 +273,10 @@ package body Accelerometer is
       Use_Polling : Boolean := False)
    is
       FF_MT_Src_Value : Accel_FF_MT_SRC_Register_Type;
+      Last_Ticks : RTOS.RTOS_Tick_Type;
    begin
       if Use_Polling then
+         Last_Ticks := RTOS.API.RTOS_Get_Ticks_Since_Boot;
          loop
             FF_MT_Src_Value.Value :=
                I2C_Read (Accelerometer_Const.I2C_Device_Id,
@@ -282,10 +285,11 @@ package body Accelerometer is
 
             exit when FF_MT_Src_Value.EA = 1;
 
-            delay until Clock + Milliseconds (10);
+            RTOS.API.RTOS_Task_Delay_Until (Last_Ticks, 10);
          end loop;
       else
-         Suspend_Until_True (Accelerometer_Var.Motion_Detected_Susp_Obj);
+         RTOS.API.RTOS_Semaphore_Wait (
+            Accelerometer_Var.Motion_Detected_Semaphore);
 
          --
          --  Read the accelerometer motion detection register to make the
@@ -336,7 +340,8 @@ package body Accelerometer is
    is
       Pulse_Source_Value : Accel_Pulse_Source_Register_Type;
    begin
-      Suspend_Until_True (Accelerometer_Var.Tapping_Detected_Susp_Obj);
+      RTOS.API.RTOS_Semaphore_Wait (
+         Accelerometer_Var.Tapping_Detected_Semaphore);
 
       --
       --  Read the accelerometer pulse source register to make the
@@ -433,6 +438,7 @@ package body Accelerometer is
                     60);
       end Configure_Tapping_Detection;
 
+      use type RTOs.RTOS_Task_Priority_Type;
       Old_Region : MPU_Region_Descriptor_Type;
       Who_Am_I_Value : Byte;
       Ctrl_Reg1_Value : Accel_Ctrl_Reg1_Register_Type;
@@ -469,9 +475,9 @@ package body Accelerometer is
       --  Do a hard reset of the accelerometer, from its reset pin
       --
       Activate_Output_Pin (Accelerometer_Const.Reset_Pin);
-      delay until Clock + Milliseconds (1);
+      RTOS.API.RTOS_Task_Delay (1);
       Deactivate_Output_Pin (Accelerometer_Const.Reset_Pin);
-      delay until Clock + Milliseconds (50);
+      RTOS.API.RTOS_Task_Delay (50);
 
       if not I2C_Driver.Initialized (Accelerometer_Const.I2C_Device_Id) then
          I2C_Driver.Initialize (Accelerometer_Const.I2C_Device_Id);
@@ -711,8 +717,12 @@ package body Accelerometer is
 
       Accelerometer_Var.Initialized := True;
 
-      Set_True (Accelerometer_Var.Int1_Task_Susp_Obj);
-      Set_True (Accelerometer_Var.Int2_Task_Susp_Obj);
+      RTOS.API.RTOS_Task_Init (Int1_Task_Obj,
+                               Int1_Task_Proc'Access,
+                               RTOS.Highest_App_Task_Priority - 2);
+      RTOS.API.RTOS_Task_Init (Int2_Task_Obj,
+                               Int2_Task_Proc'Access,
+                               RTOS.Highest_App_Task_Priority - 2);
 
       --
       --  Set INT1 pin as a deep sleep wakeup source
@@ -762,6 +772,7 @@ package body Accelerometer is
    is
       Readings_Buffer :  Bytes_Array_Type (1 .. 6);
       Reg_Status_Value : Accel_Status_Register_Type;
+      Last_Ticks : RTOS.RTOS_Tick_Type;
    begin
       Reg_Status_Value.Value := I2C_Read (Accelerometer_Const.I2C_Device_Id,
                                           Accelerometer_Const.I2C_Slave_Address,
@@ -769,16 +780,19 @@ package body Accelerometer is
 
       if Reg_Status_Value.ZYX_DR = 0 then
          if Use_Polling then
+            Last_Ticks := RTOS.API.RTOS_Get_Ticks_Since_Boot;
             loop
                Reg_Status_Value.Value := I2C_Read (Accelerometer_Const.I2C_Device_Id,
                                                    Accelerometer_Const.I2C_Slave_Address,
                                                    Accel_Status'Enum_Rep);
 
                exit when Reg_Status_Value.ZYX_DR = 1;
-               delay until Clock + Milliseconds (10);
+               RTOS.API.RTOS_Task_Delay_Until (Last_Ticks, 10);
             end loop;
          else
-            Suspend_Until_True (Accelerometer_Var.Data_Ready_Susp_Obj);
+            RTOS.API.RTOS_Semaphore_Wait (
+               Accelerometer_Var.Data_Ready_Semaphore
+            );
 
             Reg_Status_Value.Value := I2C_Read (Accelerometer_Const.I2C_Device_Id,
                                                 Accelerometer_Const.I2C_Slave_Address,
@@ -890,20 +904,20 @@ package body Accelerometer is
       Activate_Accelerometer;
    end Disable_Motion_Detection_Interrupt;
 
-   ---------------
-   -- Int1_Task --
-   ---------------
+   --------------------
+   -- Int1_Task_Proc --
+   --------------------
 
-   task body Int1_Task is
+   procedure Int1_Task_Proc is
       Int_Source_Value : Accel_Ctrl_Reg4_Register_Type;
       Sysmod_Value : Accel_Sysmod_Register_Type;
       Aslp_Count_Value : Byte;
+      Hex_Num_Str : String (1 .. 2);
    begin
-      Suspend_Until_True (Accelerometer_Var.Int1_Task_Susp_Obj);
       Runtime_Logs.Info_Print ("Accelerometer INT1 task started");
 
       loop
-         Suspend_Until_True (Accelerometer_Var.Int1_Task_Susp_Obj);
+         RTOS.API.RTOS_Task_Semaphore_Wait;
 
          --
          --  Read Accelerometer interrupt status register:
@@ -912,9 +926,11 @@ package body Accelerometer is
                                              Accelerometer_Const.I2C_Slave_Address,
                                              Accel_Int_Source'Enum_Rep);
 
+         Number_Conversion_Utils.Unsigned_To_Hexadecimal_String (
+            Unsigned_32 (Int_Source_Value.Value), Hex_Num_Str);
          Runtime_Logs.Debug_Print (
             "Accelerometer interrupt (Int_Source" &
-            Int_Source_Value.Value'Image & ")");
+            Hex_Num_Str & ")");
 
          if Int_Source_Value.Int_En_Aslp = 1 then
             --
@@ -940,41 +956,46 @@ package body Accelerometer is
                           Accel_Aslp_Count'Enum_Rep,
                           Aslp_Count_Value);
             else
+               Number_Conversion_Utils.Unsigned_To_Hexadecimal_String (
+                  Unsigned_32 (Sysmod_Value.Value), Hex_Num_Str);
                Runtime_Logs.Error_Print (
                   "Unexpected system mode (Sysmod_Value" &
-                  Sysmod_Value.Value'Image & ")");
+                  Hex_Num_Str & ")");
             end if;
          end if;
 
          if Int_Source_Value.Int_En_Ff_Mt = 1 then
             Runtime_Logs.Debug_Print ("> Motion detected interrupt");
-            Set_True (Accelerometer_Var.Motion_Detected_Susp_Obj);
+            RTOS.API.RTOS_Semaphore_Signal (
+               Accelerometer_Var.Motion_Detected_Semaphore);
          end if;
 
          if Int_Source_Value.Int_En_Pulse = 1 then
             Runtime_Logs.Debug_Print ("> Tapping detected interrupt");
-            Set_True (Accelerometer_Var.Tapping_Detected_Susp_Obj);
+            RTOS.API.RTOS_Semaphore_Signal (
+               Accelerometer_Var.Tapping_Detected_Semaphore);
          end if;
 
          if Int_Source_Value.Int_En_Drdy = 1 then
             Runtime_Logs.Debug_Print ("> Accelerometer data ready interrupt");
-            Set_True (Accelerometer_Var.Data_Ready_Susp_Obj);
+            RTOS.API.RTOS_Semaphore_Signal (
+               Accelerometer_Var.Data_Ready_Semaphore);
          end if;
       end loop;
-   end Int1_Task;
+   end Int1_Task_Proc;
 
-   ---------------
-   -- Int2_Task --
-   ---------------
+   --------------------
+   -- Int2_Task_Proc --
+   --------------------
 
-   task body Int2_Task is
+   procedure Int2_Task_Proc is
       Int_Source_Value : Accel_Ctrl_Reg4_Register_Type;
+      Hex_Num_Str : String (1 .. 2);
    begin
-      Suspend_Until_True (Accelerometer_Var.Int2_Task_Susp_Obj);
       Runtime_Logs.Info_Print ("Accelerometer INT2 task started");
 
       loop
-         Suspend_Until_True (Accelerometer_Var.Int2_Task_Susp_Obj);
+         RTOS.API.RTOS_Task_Semaphore_Wait;
 
          --
          --  Read Accelerometer interrupt status register:
@@ -983,10 +1004,13 @@ package body Accelerometer is
                                              Accelerometer_Const.I2C_Slave_Address,
                                              Accel_Int_Source'Enum_Rep);
 
+         Number_Conversion_Utils.Unsigned_To_Hexadecimal_String (
+            Unsigned_32 (Int_Source_Value.Value), Hex_Num_Str);
+
          Runtime_Logs.Error_Print (
             "Unexpected accelerometer INT2 interrupt (Int_Source_Value" &
-            Int_Source_Value.Value'Image & ")");
+            Hex_Num_Str & ")");
       end loop;
-   end Int2_Task;
+   end Int2_Task_Proc;
 
 end Accelerometer;

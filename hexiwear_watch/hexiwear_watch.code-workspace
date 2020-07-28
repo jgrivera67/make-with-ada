@@ -1,0 +1,20 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../building_blocks"
+		},
+		{
+			"path": "../drivers"
+		},
+		{
+			"path": "../third_party"
+		},
+		{
+			"path": "../HiRTOS"
+		}
+	],
+	"settings": {}
+}

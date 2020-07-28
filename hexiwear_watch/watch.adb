@@ -28,20 +28,21 @@
 with Interfaces.Bit_Types;
 with Number_Conversion_Utils;
 with Runtime_Logs;
-with Microcontroller.Arm_Cortex_M;
-with RTC_Driver;
+with Microcontroller.Arch_Specific;
 with Low_Power_Driver;
 with Heart_Rate_Monitor;
 with Barometric_Pressure_Sensor;
 with Color_Led;
-with Bluetooth;
+--with Bluetooth;
+with RTOS.API;
 
-package body Watch is
-   pragma SPARK_Mode (Off);
+package body Watch with
+   SPARK_Mode => Off
+is
    use App_Configuration;
    use Number_Conversion_Utils;
    use Interfaces.Bit_Types;
-   use Microcontroller.Arm_Cortex_M;
+   use Microcontroller.Arch_Specific;
 
    procedure Display_Watch_Screen;
 
@@ -87,8 +88,7 @@ package body Watch is
 
    procedure Signal_Event (Event : Watch_Event_Type);
 
-   Heartbeat_Period_Ms : constant Ada.Real_Time.Time_Span :=
-      Ada.Real_Time.Milliseconds (500);
+   Heartbeat_Period_Ms : constant RTOS.RTOS_Time_Ms_Type := 500;
 
    Use_Polling_For_Motion_Detection : constant Boolean := True;
 
@@ -169,7 +169,7 @@ package body Watch is
                                 Watch_Var.Config_Parameters.Foreground_Color,
                                 Watch_Var.Config_Parameters.Background_Color);
 
-      delay until Clock + Milliseconds (1_000);
+      RTOS.API.RTOS_Task_Delay (1_000);
    end Display_Greeting;
 
    ------------------------
@@ -317,6 +317,7 @@ package body Watch is
 
    procedure Initialize
    is
+      use type RTOS.RTOS_Task_Priority_Type;
       Old_Region : MPU_Region_Descriptor_Type;
    begin
       Color_Led.Initialize;
@@ -329,7 +330,7 @@ package body Watch is
       Accelerometer.Initialize (Go_to_Sleep_Callback => null);
       Heart_Rate_Monitor.Initialize;
       Barometric_Pressure_Sensor.Initialize;
-      Bluetooth.Initialize;
+      --Bluetooth.Initialize;
 
       Set_Private_Data_Region (Watch_Var'Address,
                                Watch_Var'Size,
@@ -339,14 +340,37 @@ package body Watch is
       App_Configuration.Load_Config_Parameters (Watch_Var.Config_Parameters);
       Watch_Var.State := Watch_Mode;
       Watch_Var.Initialized := True;
-
-      Set_True (Watch_Var.Watch_Task_Suspension_Obj);
-      Set_True (Watch_Var.Motion_Detector_Task_Suspension_Obj);
-      Set_True (Watch_Var.Tapping_Detector_Task_Suspension_Obj);
-      Set_True (Watch_Var.Heart_Rate_Monitor_Task_Suspension_Obj);
-      Set_True (Watch_Var.Altitude_Sensor_Task_Suspension_Obj);
-      Set_True (Watch_Var.Temperature_Sensor_Task_Suspension_Obj);
       Restore_Private_Data_Region (Old_Region);
+
+      RTOS.API.RTOS_Task_Init (
+         Task_Obj      => Watch_Task_Obj,
+         Task_Proc_Ptr => Watch_Task_Proc'Access,
+         Task_Prio     => RTOS.Highest_App_Task_Priority - 3);
+
+      RTOS.API.RTOS_Task_Init (
+         Task_Obj      => Motion_Detector_Task_Obj,
+         Task_Proc_Ptr => Motion_Detector_Task_Proc'Access,
+         Task_Prio     => RTOS.Highest_App_Task_Priority - 3);
+
+      RTOS.API.RTOS_Task_Init (
+         Task_Obj      => Tapping_Detector_Task_Obj,
+         Task_Proc_Ptr => Tapping_Detector_Task_Proc'Access,
+         Task_Prio     => RTOS.Highest_App_Task_Priority - 3);
+
+      RTOS.API.RTOS_Task_Init (
+         Task_Obj      => Altitude_Sensor_Task_Obj,
+         Task_Proc_Ptr => Altitude_Sensor_Task_Proc'Access,
+         Task_Prio     => RTOS.Highest_App_Task_Priority - 3);
+
+      RTOS.API.RTOS_Task_Init (
+         Task_Obj      => Heart_Rate_Monitor_Task_Obj,
+         Task_Proc_Ptr => Heart_Rate_Monitor_Task_Proc'Access,
+         Task_Prio     => RTOS.Highest_App_Task_Priority - 3);
+
+      RTOS.API.RTOS_Task_Init (
+         Task_Obj      => Temperature_Sensor_Task_Obj,
+         Task_Proc_Ptr => Temperature_Sensor_Task_Proc'Access,
+         Task_Prio     => RTOS.Highest_App_Task_Priority - 3);
     end Initialize;
 
    -------------------------------
@@ -493,9 +517,12 @@ package body Watch is
       Z_Reading_Value : Reading_Type;
 
    begin
-      Watch_Var.Last_X_Axis_G_Force_Reading.Read (X_Reading_Value);
-      Watch_Var.Last_Y_Axis_G_Force_Reading.Read (Y_Reading_Value);
-      Watch_Var.Last_Z_Axis_G_Force_Reading.Read (Z_Reading_Value);
+      Sensor_Reading.Copy_Reading (X_Reading_Value,
+                                   Watch_Var.Last_X_Axis_G_Force_Reading);
+      Sensor_Reading.Copy_Reading (Y_Reading_Value,
+                                   Watch_Var.Last_Y_Axis_G_Force_Reading);
+      Sensor_Reading.Copy_Reading (Z_Reading_Value,
+                                   Watch_Var.Last_Z_Axis_G_Force_Reading);
 
       Format_G_Force_String (X_Reading_Value, Watch_Var.Last_X_Axis_Motion,
                              G_Force_Str);
@@ -521,7 +548,8 @@ package body Watch is
       Str_Cursor : Positive;
       Reading_Value : Reading_Type;
    begin
-      Watch_Var.Last_Heart_Rate_Reading.Read (Reading_Value);
+      Sensor_Reading.Copy_Reading (Reading_Value,
+                                   Watch_Var.Last_Heart_Rate_Reading);
       if abs Reading_Value.Integer_Part <= 99_999 then
          Signed_To_Decimal_String (Reading_Value.Integer_Part,
                                    Heart_Rate_Str,
@@ -731,6 +759,8 @@ package body Watch is
       procedure Asleep_Watch_Mode_Event_Handler (Event : Watch_Event_Type);
       procedure Heart_Rate_Monitor_Mode_Event_Handler (Event : Watch_Event_Type);
       procedure G_Forces_Monitor_Mode_Event_Handler (Event : Watch_Event_Type);
+      procedure Log_Unexpected_Event_Error(Event : Watch_Event_Type;
+                                           State : Watch_State_Type);
       procedure Watch_Mode_Event_Handler (Event : Watch_Event_Type);
 
       ------------------------------------------------
@@ -755,12 +785,10 @@ package body Watch is
                   RTC_Alarm_Callback'Access);
 
                Watch_Var.State := G_Forces_Monitor_Mode;
-               Set_True (Watch_Var.Motion_Detector_Task_Suspension_Obj);
+               RTOS.API.RTOS_Task_Semaphore_Signal (Motion_Detector_Task_Obj);
 
             when others =>
-               Runtime_Logs.Error_Print (
-                  "Watch state machine: unexpected event" & Event'Image &
-                  " in state" &  Watch_Var.State'Image);
+               Log_Unexpected_Event_Error(Event, Watch_Var.State);
          end case;
       end Asleep_G_Forces_Monitor_Mode_Event_Handler;
 
@@ -783,12 +811,10 @@ package body Watch is
                   RTC_Alarm_Callback'Access);
 
                Watch_Var.State := Heart_Rate_Monitor_Mode;
-               Set_True (Watch_Var.Heart_Rate_Monitor_Task_Suspension_Obj);
+               RTOS.API.RTOS_Task_Semaphore_Signal (Heart_Rate_Monitor_Task_Obj);
 
             when others =>
-               Runtime_Logs.Error_Print (
-                  "Watch state machine: unexpected event" & Event'Image &
-                  " in state" &  Watch_Var.State'Image);
+               Log_Unexpected_Event_Error (Event, Watch_Var.State);
          end case;
       end Asleep_Heart_Rate_Monitor_Mode_Event_Handler;
 
@@ -818,9 +844,7 @@ package body Watch is
                Watch_Var.State := Watch_Mode;
 
             when others =>
-               Runtime_Logs.Error_Print (
-                  "Watch state machine: unexpected event" & Event'Image &
-                  " in state" &  Watch_Var.State'Image);
+               Log_Unexpected_Event_Error(Event, Watch_Var.State);
          end case;
       end Asleep_Watch_Mode_Event_Handler;
 
@@ -845,8 +869,7 @@ package body Watch is
                Watch_Var.State := Asleep_G_Forces_Monitor_Mode;
 
                -- Cancel all remaining pending events:
-               Watch_Var.Events_Mailbox.Clear_All_Events;
-               Set_False (Watch_Var.Watch_Task_Suspension_Obj);
+               Clear_All_Events (Watch_Var.Events_Mailbox);
 
             when Motion_Detected =>
                Refresh_G_Forces;
@@ -876,9 +899,7 @@ package body Watch is
                   RTC_Alarm_Callback'Access);
 
             when others =>
-               Runtime_Logs.Error_Print (
-                  "Watch state machine: unexpected event" & Event'Image &
-                  " in state" &  Watch_Var.State'Image);
+               Log_Unexpected_Event_Error(Event, Watch_Var.State);
          end case;
       end G_Forces_Monitor_Mode_Event_Handler;
 
@@ -900,8 +921,7 @@ package body Watch is
                Watch_Var.State := Asleep_Heart_Rate_Monitor_Mode;
 
                -- Cancel all remaining pending events:
-               Watch_Var.Events_Mailbox.Clear_All_Events;
-               Set_False (Watch_Var.Watch_Task_Suspension_Obj);
+               Clear_All_Events (Watch_Var.Events_Mailbox);
 
             when Heart_Rate_Changed =>
                Refresh_Heart_Rate;
@@ -921,7 +941,7 @@ package body Watch is
                   RTC_Alarm_Callback'Access);
 
                Watch_Var.State := G_Forces_Monitor_Mode;
-               Set_True (Watch_Var.Motion_Detector_Task_Suspension_Obj);
+               RTOS.API.RTOS_Task_Semaphore_Signal (Motion_Detector_Task_Obj);
 
             when Tapping_Detected =>
                RTC_Driver.Set_RTC_Alarm (
@@ -929,11 +949,27 @@ package body Watch is
                   RTC_Alarm_Callback'Access);
 
             when others =>
-               Runtime_Logs.Error_Print (
-                  "Watch state machine: unexpected event" & Event'Image &
-                  " in state" &  Watch_Var.State'Image);
+               Log_Unexpected_Event_Error(Event, Watch_Var.State);
          end case;
       end Heart_Rate_Monitor_Mode_Event_Handler;
+
+      --------------------------------
+      -- Log_Unexpected_Event_Error --
+      --------------------------------
+
+      procedure Log_Unexpected_Event_Error(Event : Watch_Event_Type;
+                                           State : Watch_State_Type) is
+         Event_Str : String (1 .. 2);
+         State_Str : String (1 .. 2);
+      begin
+         Unsigned_To_Hexadecimal_String (Unsigned_8 (Event'Enum_Rep),
+					                          Event_Str);
+	      Unsigned_To_Hexadecimal_String (Unsigned_8 (State'Enum_Rep),
+		                         			  State_Str);
+	      Runtime_Logs.Error_Print (
+	         "Watch state machine: unexpected event 0x" & Event_Str &
+	         " in state 0x" &  State_Str);
+      end Log_Unexpected_Event_Error;
 
       ------------------------------
       -- Watch_Mode_Event_Handler --
@@ -954,8 +990,7 @@ package body Watch is
                Watch_Var.State := Asleep_Watch_Mode;
 
                -- Cancel all remaining pending events:
-               Watch_Var.Events_Mailbox.Clear_All_Events;
-               Set_False (Watch_Var.Watch_Task_Suspension_Obj);
+               Clear_All_Events (Watch_Var.Events_Mailbox);
 
             when Wall_Time_Changed =>
                Refresh_Wall_Time;
@@ -976,8 +1011,9 @@ package body Watch is
                RTC_Driver.Disable_RTC_Periodic_One_Second_Interrupt;
                Barometric_Pressure_Sensor.Stop_Barometric_Pressure_Sensor;
                Display_Heart_Rate_Monitor_Screen;
-               Watch_Var.Last_Heart_Rate_Reading.Write ((others => <>));
-               Heart_Rate_Monitor.Start_Heart_Rate_Monitor;
+               Sensor_Reading.Copy_Reading (Watch_Var.Last_Heart_Rate_Reading,
+                                            (others => <>));
+               RTOS.API.RTOS_Task_Semaphore_Signal (Heart_Rate_Monitor_Task_Obj);
                Refresh_Heart_Rate;
 
                RTC_Driver.Set_RTC_Alarm (
@@ -985,7 +1021,7 @@ package body Watch is
                   RTC_Alarm_Callback'Access);
 
                Watch_Var.State := Heart_Rate_Monitor_Mode;
-               Set_True (Watch_Var.Heart_Rate_Monitor_Task_Suspension_Obj);
+               RTOS.API.RTOS_Task_Semaphore_Signal (Heart_Rate_Monitor_Task_Obj);
 
             when Tapping_Detected =>
                RTC_Driver.Set_RTC_Alarm (
@@ -993,14 +1029,13 @@ package body Watch is
                   RTC_Alarm_Callback'Access);
 
             when others =>
-               Runtime_Logs.Error_Print (
-                  "Watch state machine: unexpected event" & Event'Image &
-                  " in state" &  Watch_Var.State'Image);
+               Log_Unexpected_Event_Error(Event, Watch_Var.State);
          end case;
       end Watch_Mode_Event_Handler;
 
       Old_Region : MPU_Region_Descriptor_Type;
       Old_state : Watch_State_Type;
+      State_str : String (1 .. 2);
 
    begin -- Run_Watch_State_Machine
       Set_Private_Data_Region (Watch_Var'Address,
@@ -1009,8 +1044,8 @@ package body Watch is
                                Old_Region);
 
       for Event in Watch_Event_Type loop
-         if Watch_Var.Events_Mailbox.Event_Happened (Event) then
-            Watch_Var.Events_Mailbox.Clear_Event (Event);
+         if Event_Happened (Watch_Var.Events_Mailbox, Event) then
+            Clear_Event (Watch_Var.Events_Mailbox, Event);
             Old_state := Watch_Var.State;
             case Watch_Var.State is
                when Watch_Mode =>
@@ -1036,8 +1071,9 @@ package body Watch is
             end case;
 
             if Watch_Var.State /= Old_State then
-               Runtime_Logs.Info_Print ("Watch moved to state" &
-                                        Watch_Var.State'Image);
+               Unsigned_To_Hexadecimal_String (
+                  Unsigned_8 (Watch_Var.State'Enum_Rep), State_Str);
+               Runtime_Logs.Info_Print ("Watch moved to state 0x" & State_Str);
             end if;
          end if;
       end loop;
@@ -1198,52 +1234,56 @@ package body Watch is
                                Read_Write,
                                Old_Region);
 
-      Watch_Var.Events_Mailbox.Set_Event (Event);
-      Set_True (Watch_Var.Watch_Task_Suspension_Obj);
+      Set_Event (Watch_Var.Events_Mailbox, Event);
+      RTOS.API.RTOS_Task_Semaphore_Signal (Watch_Task_Obj);
       Restore_Private_Data_Region (Old_Region);
    end Signal_Event;
 
-   -------------------------------
-   -- Watch_Events_Mailbox_Type --
-   -------------------------------
+   ----------------------
+   -- Clear_All_Events --
+   ----------------------
 
-   protected body Watch_Events_Mailbox_Type is
+   procedure Clear_All_Events (Events : Out Events_Type) is
+      Old_Primask : Unsigned_32;
+   begin
+      Old_Primask := Disable_Cpu_Interrupts;
+      Events.Value := 0;
+      Restore_Cpu_Interrupts (Old_Primask);
+   end Clear_All_Events;
 
-      ----------------------
-      -- Clear_All_Events --
-      ----------------------
+   -----------------
+   -- Clear_Event --
+   -----------------
 
-      procedure Clear_All_Events is
-      begin
-         Events.Value := 0;
-      end Clear_All_Events;
+   procedure Clear_Event (Events : In Out Events_Type;
+                          Event : Watch_Event_Type) is
+      Old_Primask : Unsigned_32;
+   begin
+      Old_Primask := Disable_Cpu_Interrupts;
+      Events.Pending (Event) := False;
+      Restore_Cpu_Interrupts (Old_Primask);
+   end Clear_Event;
 
-      -----------------
-      -- Clear_Event --
-      -----------------
+   --------------------
+   -- Event_Happened --
+   --------------------
 
-      procedure Clear_Event (Event : Watch_Event_Type) is
-      begin
-         Events.Pending (Event) := False;
-      end Clear_Event;
+   function Event_Happened (Events : Events_Type;
+                            Event : Watch_Event_Type) return Boolean is
+      (Events.Pending (Event));
 
-      --------------------
-      -- Event_Happened --
-      --------------------
+   ---------------
+   -- Set_Event --
+   ---------------
 
-      function Event_Happened (Event : Watch_Event_Type) return Boolean is
-         (Events.Pending (Event));
-
-      ---------------
-      -- Set_Event --
-      ---------------
-
-      procedure Set_Event (Event : Watch_Event_Type) is
-      begin
-         Events.Pending (Event) := True;
-      end Set_Event;
-
-   end Watch_Events_Mailbox_Type;
+   procedure Set_Event (Events : In Out Events_Type;
+                        Event : Watch_Event_Type) is
+      Old_Primask : Unsigned_32;
+   begin
+      Old_Primask := Disable_Cpu_Interrupts;
+      Events.Pending (Event) := True;
+      Restore_Cpu_Interrupts (Old_Primask);
+   end Set_Event;
 
    ----------------------------
    -- Year_Days_Before_Month --
@@ -1263,17 +1303,12 @@ package body Watch is
       return Days;
    end Year_Days_Before_Month;
 
-   --
-   --  Tasks
-   --
+   -------------------------------
+   -- Altitude_Sensor_Task_Proc --
+   -------------------------------
 
-   --------------------------
-   -- Altitude_Sensor_Task --
-   --------------------------
-
-   task body Altitude_Sensor_Task is
+   procedure Altitude_Sensor_Task_Proc is
    begin
-      Suspend_Until_True (Watch_Var.Altitude_Sensor_Task_Suspension_Obj);
       Runtime_Logs.Info_Print ("Altitude sensor task started");
       Set_Private_Data_Region (Watch_Var'Address,
                                Watch_Var'Size,
@@ -1283,28 +1318,29 @@ package body Watch is
          Barometric_Pressure_Sensor.Detect_Altitude_Change;
          Signal_Event (Altitude_Changed);
       end loop;
-   end Altitude_Sensor_Task;
+   end Altitude_Sensor_Task_Proc;
 
-   -----------------------------
-   -- Heart_Rate_Monitor_Task --
-   -----------------------------
+   ----------------------------------
+   -- Heart_Rate_Monitor_Task_Proc --
+   ----------------------------------
 
-   task body Heart_Rate_Monitor_Task is
+   procedure Heart_Rate_Monitor_Task_Proc is
       Old_Reading_Value : Reading_Type;
       New_Reading_Value : Reading_Type;
    begin
-      Suspend_Until_True (Watch_Var.Heart_Rate_Monitor_Task_Suspension_Obj);
       Runtime_Logs.Info_Print ("Heart rate monitor task started");
       Set_Private_Data_Region (Watch_Var'Address,
                                Watch_Var'Size,
                                Read_Write);
 
       loop
-         Suspend_Until_True (Watch_Var.Heart_Rate_Monitor_Task_Suspension_Obj);
+         RTOS.API.RTOS_Task_Semaphore_Wait;
          while Watch_Var.State = Heart_Rate_Monitor_Mode loop
-            Watch_Var.Last_Heart_Rate_Reading.Read (Old_Reading_Value);
+            Sensor_Reading.Copy_Reading (Old_Reading_Value,
+                                         Watch_Var.Last_Heart_Rate_Reading);
             Heart_Rate_Monitor.Read_Heart_Rate (New_Reading_Value);
-            Watch_Var.Last_Heart_Rate_Reading.Write (New_Reading_Value);
+            Sensor_Reading.Copy_Reading (Watch_Var.Last_Heart_Rate_Reading,
+                                         New_Reading_Value);
             if New_Reading_Value /= Old_Reading_Value then
                Signal_Event (Heart_Rate_Changed);
             end if;
@@ -1312,25 +1348,26 @@ package body Watch is
             --delay until Clock + Milliseconds (500);
          end loop;
       end loop;
-   end Heart_Rate_Monitor_Task;
+   end Heart_Rate_Monitor_Task_Proc;
 
-   --------------------------
-   -- Motion_Detector_Task --
-   --------------------------
+   -------------------------------
+   -- Motion_Detector_Task_Proc --
+   -------------------------------
 
-   task body Motion_Detector_Task is
+   procedure Motion_Detector_Task_Proc is
       X_Reading_Value : Reading_Type;
       Y_Reading_Value : Reading_Type;
       Z_Reading_Value : Reading_Type;
+      Last_Ticks : RTOS.RTOS_Tick_Type;
    begin
-      Suspend_Until_True (Watch_Var.Motion_Detector_Task_Suspension_Obj);
       Runtime_Logs.Info_Print ("Motion detector task started");
       Set_Private_Data_Region (Watch_Var'Address,
                                Watch_Var'Size,
                                Read_Write);
 
       loop
-         Suspend_Until_True (Watch_Var.Motion_Detector_Task_Suspension_Obj);
+         RTOS.API.RTOS_Task_Semaphore_Wait;
+         Last_Ticks := RTOS.API.RTOS_Get_Ticks_Since_Boot;
          while Watch_Var.State = G_Forces_Monitor_Mode loop
             Accelerometer.Detect_Motion (Watch_Var.Last_X_Axis_Motion,
                                          Watch_Var.Last_Y_Axis_Motion,
@@ -1344,26 +1381,28 @@ package body Watch is
                                          Z_Reading_Value,
                                          Use_Polling_For_Motion_Detection);
 
-            Watch_Var.Last_X_Axis_G_Force_Reading.Write (X_Reading_Value);
-            Watch_Var.Last_Y_Axis_G_Force_Reading.Write (Y_Reading_Value);
-            Watch_Var.Last_Z_Axis_G_Force_Reading.Write (Z_Reading_Value);
+            Sensor_Reading.Copy_Reading (Watch_Var.Last_X_Axis_G_Force_Reading,
+                                         X_Reading_Value);
+            Sensor_Reading.Copy_Reading (Watch_Var.Last_Y_Axis_G_Force_Reading,
+                                         Y_Reading_Value);
+            Sensor_Reading.Copy_Reading (Watch_Var.Last_Z_Axis_G_Force_Reading,
+                                         Z_Reading_Value);
 
             Signal_Event (Motion_Detected);
             if Use_Polling_For_Motion_Detection then
-               delay until clock + Milliseconds (100);
+               RTOS.API.RTOS_Task_Delay_Until (Last_Ticks, 100);
             end if;
          end loop;
       end loop;
-   end Motion_Detector_Task;
+   end Motion_Detector_Task_Proc;
 
-   ---------------------------
-   -- Tapping_Detector_Task --
-   ---------------------------
+   --------------------------------
+   -- Tapping_Detector_Task_Proc --
+   --------------------------------
 
-   task body Tapping_Detector_Task is
+   procedure Tapping_Detector_Task_Proc is
       Double_Tap_Detected : Boolean;
    begin
-      Suspend_Until_True (Watch_Var.Tapping_Detector_Task_Suspension_Obj);
       Runtime_Logs.Info_Print ("Tapping detector task started");
       Set_Private_Data_Region (Watch_Var'Address,
                                Watch_Var'Size,
@@ -1379,15 +1418,14 @@ package body Watch is
             Signal_Event (Tapping_Detected);
          end if;
       end loop;
-   end Tapping_Detector_Task;
+   end Tapping_Detector_Task_Proc;
 
-   -----------------------------
-   -- Temperature_Sensor_Task --
-   -----------------------------
+   ----------------------------------
+   -- Temperature_Sensor_Task_Proc --
+   ----------------------------------
 
-   task body Temperature_Sensor_Task is
+   procedure Temperature_Sensor_Task_Proc is
    begin
-      Suspend_Until_True (Watch_Var.Temperature_Sensor_Task_Suspension_Obj);
       Runtime_Logs.Info_Print ("Temperature sensor task started");
       Set_Private_Data_Region (Watch_Var'Address,
                                Watch_Var'Size,
@@ -1397,15 +1435,14 @@ package body Watch is
          Barometric_Pressure_Sensor.Detect_Temperature_Change;
          Signal_Event (Temperature_Changed);
       end loop;
-   end Temperature_Sensor_Task;
+   end Temperature_Sensor_Task_Proc;
 
-   ----------------
-   -- Watch_Task --
-   ----------------
+   ---------------------
+   -- Watch_Task_Proc --
+   ---------------------
 
-   task body Watch_Task is
+   procedure Watch_Task_Proc is
    begin
-      Suspend_Until_True (Watch_Var.Watch_Task_Suspension_Obj);
       Runtime_Logs.Info_Print ("Watch task started");
 
       Set_Private_Data_Region (Watch_Var'Address,
@@ -1432,9 +1469,9 @@ package body Watch is
       Refresh_Temperature (Force_Refresh => True);
 
       loop
-         Suspend_Until_True (Watch_Var.Watch_Task_Suspension_Obj);
+         RTOS.API.RTOS_Task_Semaphore_Wait;
          Run_Watch_State_Machine;
       end loop;
-   end Watch_Task;
+   end Watch_Task_Proc;
 
 end Watch;

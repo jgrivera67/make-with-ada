@@ -30,32 +30,29 @@ project watch is
 	 C_MCU_Switches := ("-DUSE_PLIC", "-DUSE_M_TIME");
    end case;
 
-   FreeRTOS_Port_Subdir := "";
-   case RTS.CPU_Core is
-      when "arm_cortex_m0+" =>
-	 FreeRTOS_Port_Subdir := "GCC/ARM_CM0";
-      when "arm_cortex_m4" =>
-	 FreeRTOS_Port_Subdir := "GCC/ARM_CM4F";
-      when "riscv32" =>
-	 FreeRTOS_Port_Subdir := "GCC/RISC32V";
-      when others =>
-	 null;
-   end case;
-
+   RTOS_Base_Dir := "";
+   RTOS_Port_Subdir := "";
    C_RTOS_Switches := ();
    RTOS_Src_Dirs := ();
    case RTOS is
       when "freertos" =>
-	 C_RTOS_Switches := ("-I../../third_party/FreeRTOS/include",
-                             "-I../third_party/CMSIS",
-	                     "-I../../third_party/FreeRTOS/include/private",
-	                     "-I../../third_party/FreeRTOS/portable/" & FreeRTOS_Port_Subdir);
-         RTOS_Src_Dirs := ("../third_party/FreeRTOS",
-                           "../third_party/CMSIS",
-                           "../third_party/FreeRTOS/include",
-                           "../third_party/FreeRTOS/include/private",
-                           "../third_party/FreeRTOS/portable/low_power_tickless",
-                           "../third_party/FreeRTOS/portable/" & FreeRTOS_Port_Subdir);
+	 RTOS_Base_Dir := "../third_party/FreeRTOS-Kernel";
+	 case RTS.CPU_Core is
+	    when "arm_cortex_m0+" =>
+	       RTOS_Port_Subdir := "GCC/ARM_CM0";
+	    when "arm_cortex_m4" =>
+	       RTOS_Port_Subdir := "GCC/ARM_CM4F";
+	    when "riscv32" =>
+	       RTOS_Port_Subdir := "GCC/RISC32V";
+	    when others =>
+	       null;
+	 end case;
+
+	 C_RTOS_Switches := ("-I" & RTOS_Base_Dir & "/include",
+	                     "-I" & RTOS_Base_Dir & "/portable/" & RTOS_Port_Subdir);
+         RTOS_Src_Dirs := (RTOS_Base_Dir,
+	                   RTOS_Base_Dir & "/include",
+	                   RTOS_Base_Dir & "/portable/" & RTOS_Port_Subdir);
       when others =>
 	 null;
    end case;
@@ -98,6 +95,7 @@ project watch is
              "-gnatVa",                     --  All validity checks
              -- "-gnaty3abcdefhiklmnoOprstux", --  Style checks
              -- "-gnatwe",                     --  Treat warnings as errors
+	          "-gnatef",
              "-gnat2012");                     --  Use Ada 2012
 
       for Default_Switches ("C") use RTS.Compiler.COMMON_FLAGS &
@@ -145,4 +143,3 @@ project watch is
    end Ide;
 
 end watch;
-

@@ -1,0 +1,6 @@
+{
+    "ada.projectFile": "hexiwear_watch.gpr",
+    "ada.scenarioVariables": {
+        "CPU_Core": "arm_cortex_m4"
+    }
+}

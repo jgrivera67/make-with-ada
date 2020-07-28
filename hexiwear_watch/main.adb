@@ -25,7 +25,6 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-with System;
 with Interfaces;
 with Runtime_Logs;
 with Reset_Counter;
@@ -36,22 +35,28 @@ with Command_Parser;
 with GNAT.Source_Info;
 with Last_Chance_Handler;
 with Memory_Protection;
+with Number_Conversion_Utils;
+
 with Nor_Flash_Driver;
 with DMA_Driver;
+with Startup;
 with Watch;
 
+pragma Unreferenced (Startup);
 pragma Unreferenced (Last_Chance_Handler);
 
 procedure Main is
-   pragma Priority (System.Priority'First + 2);
-
    procedure Log_Start_Info is
       Reset_Count : constant Interfaces.Unsigned_32 := Reset_Counter.Get;
       Reset_Cause : constant Microcontroller.System_Reset_Causes_Type :=
         Microcontroller.MCU_Specific.Find_System_Reset_Cause;
+      Str_Buf : String (1 .. 8);
+      Actual_Length : Positive;
    begin
+      Number_Conversion_Utils.Unsigned_To_Decimal_String (Reset_Count, Str_Buf,
+                                                          Actual_Length);
       Runtime_Logs.Info_Print (
-         "Main task started (reset count:" & Reset_Count'Image &
+         "Main task started (reset count:" & Str_Buf (1 .. Actual_Length) &
          ", last reset cause: " &
          Microcontroller.Reset_Cause_Strings (Reset_Cause).all & ")");
 
@@ -73,8 +78,7 @@ procedure Main is
    -- ** --
 
 begin -- Main
-   Memory_Protection.Enable_MPU;
-
+   Memory_Protection.Initialize (MPU_Enabled => False);
    Runtime_Logs.Initialize;
    Log_Start_Info;
 

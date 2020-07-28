@@ -31,12 +31,12 @@ with Command_Parser_Common;
 with Memory_Protection;
 with MPU_Tests;
 with Interfaces.Bit_Types;
-with Microcontroller.Arm_Cortex_M;
+with Microcontroller.Arch_Specific;
 with Watch;
+with RTC_Driver;
 with LCD_Display;
 with App_Configuration;
 with Number_Conversion_Utils;
-with Ada.Real_Time;
 
 --
 --  Application-specific command parser implementation
@@ -46,9 +46,9 @@ package body Command_Parser is
    use Memory_Protection;
    use Interfaces.Bit_Types;
    use Interfaces;
-   use Microcontroller.Arm_Cortex_M;
+   use Microcontroller.Arch_Specific;
    use Number_Conversion_Utils;
-   use Ada.Real_Time;
+   use RTC_Driver;
 
    procedure Cmd_Print_Config_Params;
 

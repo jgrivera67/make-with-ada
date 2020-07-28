@@ -31,7 +31,9 @@ private with Devices.MCU_Specific;
 --
 --  @summary GPIO driver
 --
-package Gpio_Driver is
+package Gpio_Driver with
+   SPARK_Mode => Off
+is
    use Pin_Mux_Driver;
 
    --

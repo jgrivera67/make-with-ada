@@ -32,9 +32,9 @@ with Devices.MCU_Specific;
 with Gpio_Driver;
 with Pin_Mux_Driver;
 with Heart_Rate_Monitor.Max30101_Private;
-with Ada.Real_Time;
-with Ada.Synchronous_Task_Control;
+with Number_Conversion_Utils;
 with Runtime_Logs;
+with RTOS.API;
 
 --
 --  Driver for the MAX30101 heart rate monitor
@@ -50,8 +50,6 @@ package body Heart_Rate_Monitor is
    use Pin_Mux_Driver;
    use Devices;
    use Heart_Rate_Monitor.Max30101_Private;
-   use Ada.Real_Time;
-   use Ada.Synchronous_Task_Control;
 
    --
    --  Type for the constant portion of the Heart rate monitor driver
@@ -92,15 +90,17 @@ package body Heart_Rate_Monitor is
    --
    type Heart_Rate_Monitor_Type is limited record
       Initialized : Boolean := False;
-      Interrupt_Task_Susp_Obj : Suspension_Object;
-      Heart_Rate_Reading_Ready_Susp_Obj : Suspension_Object;
+      Heart_Rate_Reading_Ready_Sem : RTOS.RTOS_Semaphore_Type;
    end record with Alignment => MPU_Region_Alignment;
 
    Heart_Rate_Monitor_Var : Heart_Rate_Monitor_Type;
 
-   task Interrupt_Task;
+   Interrupt_Task_Obj : RTOS.RTOS_Task_Type;
 
    procedure Int_Pin_Irq_Callback;
+
+   procedure Interrupt_Task_Proc
+     with Convention => C;
 
    procedure Power_On_Heart_Rate_Monitor;
 
@@ -109,6 +109,7 @@ package body Heart_Rate_Monitor is
    ----------------
 
    procedure Initialize is
+      use type RTOS.RTOS_Task_Priority_Type;
       Old_Region : MPU_Region_Descriptor_Type;
       Part_Id_Value : Byte;
       Reg_Mode_Cfg_Value : Reg_Mode_Cfg_Type;
@@ -146,7 +147,7 @@ package body Heart_Rate_Monitor is
                  Reg_Mode_Cfg_Value.Value);
 
       for Poll_Iteration in 1 .. 50 loop
-         delay until Clock + Milliseconds (1);
+         RTOS.API.RTOS_Task_Delay (1);
          Reg_Mode_Cfg_Value.Value :=
             I2C_Read (Heart_Rate_Monitor_Const.I2C_Device_Id,
                       Heart_Rate_Monitor_Const.I2C_Slave_Address,
@@ -160,7 +161,7 @@ package body Heart_Rate_Monitor is
          raise Program_Error with "Heart rate monitor reset timed-out";
       end if;
 
-      delay until Clock + Milliseconds (50); --  ???
+      RTOS.API.RTOS_Task_Delay (50); -- ???
 
       Part_Id_Value := I2C_Read (Heart_Rate_Monitor_Const.I2C_Device_Id,
                                  Heart_Rate_Monitor_Const.I2C_Slave_Address,
@@ -233,7 +234,13 @@ package body Heart_Rate_Monitor is
 
       Heart_Rate_Monitor_Var.Initialized := True;
 
-      Set_True (Heart_Rate_Monitor_Var.Interrupt_Task_Susp_Obj);
+      RTOS.API.RTOS_Semaphore_Init (
+         Heart_Rate_Monitor_Var.Heart_Rate_Reading_Ready_Sem,
+         Initial_Count => 0);
+
+      RTOS.API.RTOS_Task_Init (Interrupt_Task_Obj,
+                               Interrupt_Task_Proc'Access,
+                               RTOS.Highest_App_Task_Priority - 2);
 
       --
       --  Enable GPIO interrupts from INT pin:
@@ -268,7 +275,7 @@ package body Heart_Rate_Monitor is
       --
       --  INT pin has been cleared by the corresponding pin port IRQ handler
       --
-      Set_True (Heart_Rate_Monitor_Var.Interrupt_Task_Susp_Obj);
+      RTOS.API.RTOS_Task_Semaphore_Signal (Interrupt_Task_Obj);
       Runtime_Logs.Debug_Print ("heart rate monitor INT interrupt");
    end Int_Pin_Irq_Callback;
 
@@ -318,8 +325,8 @@ package body Heart_Rate_Monitor is
 
       if Reg_Fifo_Rd_Ptr_Value = Reg_Fifo_Wr_Ptr_Value then
          --  FIFO is empty
-         Suspend_Until_True (
-            Heart_Rate_Monitor_Var.Heart_Rate_Reading_Ready_Susp_Obj);
+         RTOS.API.RTOS_Semaphore_Wait (
+            Heart_Rate_Monitor_Var.Heart_Rate_Reading_Ready_Sem);
       end if;
 
       I2C_Read (Heart_Rate_Monitor_Const.I2C_Device_Id,
@@ -424,14 +431,14 @@ package body Heart_Rate_Monitor is
                  Reg_Mode_Cfg_Value.Value);
    end Stop_Heart_Rate_Monitor;
 
-   --------------------
-   -- Interrupt_Task --
-   --------------------
+   -------------------------
+   -- Interrupt_Task_Proc --
+   -------------------------
 
-   task body Interrupt_Task is
+   procedure Interrupt_Task_Proc is
       Reg_Int_Status_1_Value : Reg_Int_Status_1_Type;
+      Hex_Num_Str : String (1 .. 2);
    begin
-      Suspend_Until_True (Heart_Rate_Monitor_Var.Interrupt_Task_Susp_Obj);
       Runtime_Logs.Info_Print ("Heart_Rate_Monitor Interrupt task started");
 
       Set_Private_Data_Region (Heart_Rate_Monitor_Var'Address,
@@ -439,7 +446,7 @@ package body Heart_Rate_Monitor is
                                Read_Write);
 
       loop
-         Suspend_Until_True (Heart_Rate_Monitor_Var.Interrupt_Task_Susp_Obj);
+         RTOS.API.RTOS_Task_Semaphore_Wait;
 
          --
          --  Read Heart_Rate_Monitor interrupt status register to clear the
@@ -450,19 +457,23 @@ package body Heart_Rate_Monitor is
                       Heart_Rate_Monitor_Const.I2C_Slave_Address,
                       REG_INT_STATUS_1'Enum_Rep);
 
+         Number_Conversion_Utils.Unsigned_To_Hexadecimal_String (
+            Unsigned_32 (Reg_Int_Status_1_Value.Value),
+            Hex_Num_Str);
          Runtime_Logs.Debug_Print ("Heart rate monitor interrupt (Status" &
-                                   Reg_Int_Status_1_Value.Value'Image &
+                                   Hex_Num_Str &
                                    ")");
 
          if Reg_Int_Status_1_Value.Ppg_Rdy_En = 1 then
             Runtime_Logs.Debug_Print ("> Heart rate sample ready interrupt");
-            Set_True (Heart_Rate_Monitor_Var.Heart_Rate_Reading_Ready_Susp_Obj);
+            RTOS.API.RTOS_Semaphore_Signal (
+               Heart_Rate_Monitor_Var.Heart_Rate_Reading_Ready_Sem);
          end if;
 
          if Reg_Int_Status_1_Value.Pwr_Rdy_En = 1 then
             Runtime_Logs.Debug_Print ("> Heart rate powered on interrupt");
          end if;
       end loop;
-   end Interrupt_Task;
+   end Interrupt_Task_Proc;
 
 end Heart_Rate_Monitor;

@@ -31,8 +31,7 @@ with SPI_Driver;
 with Devices.MCU_Specific;
 with Gpio_Driver;
 with Pin_Mux_Driver;
-with Ada.Real_Time;
-with Ada.Task_Identification;
+with RTOS.API;
 
 --
 --  LCD display services implementation for the PSP27801 OLED color display
@@ -44,10 +43,9 @@ package body LCD_Display is
    use Devices.MCU_Specific;
    use Gpio_Driver;
    use Pin_Mux_Driver;
-   use Ada.Real_Time;
-   use Ada.Task_Identification;
    use Devices;
    use Interfaces;
+   use type RTOS.RTOS_Task_Id_Type;
 
    --
    --  Type for the constant portion of the LCD display
@@ -92,7 +90,7 @@ package body LCD_Display is
    --
    type LCD_Display_Type is limited record
       Initialized : Boolean := False;
-      Owner_Task_Id : Task_Id;
+      Owner_Task_Id : RTOS.RTOS_Task_Id_Type;
       Current_Font : Font_Type := Small_Font;
       Staging_Buffer : Display_Staging_Buffer_Type;
    end record with Alignment => MPU_Region_Alignment,
@@ -366,13 +364,13 @@ package body LCD_Display is
       --  Power on sequence
       --
       Deactivate_Output_Pin (LCD_Display_Const.PWR_Pin);
-      delay until Clock + Milliseconds (1);
+      RTOS.API.RTOS_Task_Delay (1);
       Deactivate_Output_Pin (LCD_Display_Const.RST_Pin);
-      delay until Clock + Milliseconds (1);
+      RTOS.API.RTOS_Task_Delay (1);
       Activate_Output_Pin (LCD_Display_Const.RST_Pin);
-      delay until Clock + Milliseconds (1);
+      RTOS.API.RTOS_Task_Delay (1);
       Activate_Output_Pin (LCD_Display_Const.PWR_Pin);
-      delay until Clock + Milliseconds (50);
+      RTOS.API.RTOS_Task_Delay (50);
 
       --
       --  Display hardware initialization:
@@ -435,7 +433,7 @@ package body LCD_Display is
                                Read_Write,
                                Old_Region);
 
-      LCD_Display_Var.Owner_Task_Id := Ada.Task_Identification.Current_Task;
+      LCD_Display_Var.Owner_Task_Id := RTOS.API.RTOS_Task_Self_Id;
       LCD_Display_Var.Initialized := True;
       Restore_Private_Data_Region (Old_Region);
    end Initialize;
@@ -446,7 +444,7 @@ package body LCD_Display is
 
    function Initialized return Boolean is
       (LCD_Display_Var.Initialized and then
-       LCD_Display_Var.Owner_Task_Id = Current_Task);
+       LCD_Display_Var.Owner_Task_Id = RTOS.API.RTOS_Task_Self_Id);
 
    ------------------
    -- Print_String --

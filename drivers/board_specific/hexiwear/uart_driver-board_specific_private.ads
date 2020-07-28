@@ -25,11 +25,15 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
+with Microcontroller.Clocks;
+with Kinetis_K64F;
+
 --
 -- @summary Board-specific UART driver private declarations
 --
 private package Uart_Driver.Board_Specific_Private is
    pragma SPARK_Mode (Off);
+   use Microcontroller.Clocks;
 
    --
    --  Array of UART device objects to be placed on flash:
@@ -46,7 +50,8 @@ private package Uart_Driver.Board_Specific_Private is
             Pin_Index => 16,
             Pin_Function => PIN_FUNCTION_ALT3),
          Rx_Pin_Pullup_Resistor_Enabled => False,
-         Source_Clock_Freq_In_Hz => System_Clock_Frequency --  see table 5-2
+         Source_Clock_Freq_In_Hz => System_Clock_Frequency, --  see table 5-2
+         IRQ_Index => Kinetis_K64F.UART0_RX_TX_IRQ'Enum_Rep
         ),
 
       UART1 =>
@@ -54,7 +59,8 @@ private package Uart_Driver.Board_Specific_Private is
          Tx_Pin => <>,
          Rx_Pin => <>,
          Rx_Pin_Pullup_Resistor_Enabled => False,
-         Source_Clock_Freq_In_Hz => System_Clock_Frequency
+         Source_Clock_Freq_In_Hz => System_Clock_Frequency,
+         IRQ_Index => Kinetis_K64F.UART1_RX_TX_IRQ'Enum_Rep
         ),
 
       UART2 =>
@@ -68,7 +74,8 @@ private package Uart_Driver.Board_Specific_Private is
             Pin_Index => 2,
             Pin_Function => PIN_FUNCTION_ALT3),
          Rx_Pin_Pullup_Resistor_Enabled => False,
-         Source_Clock_Freq_In_Hz => Bus_Clock_Frequency
+         Source_Clock_Freq_In_Hz => Bus_Clock_Frequency,
+         IRQ_Index => Kinetis_K64F.UART2_RX_TX_IRQ'Enum_Rep
         ),
 
       UART3 =>
@@ -82,7 +89,8 @@ private package Uart_Driver.Board_Specific_Private is
             Pin_Index => 16,
             Pin_Function => PIN_FUNCTION_ALT3),
          Rx_Pin_Pullup_Resistor_Enabled => False,
-         Source_Clock_Freq_In_Hz => Bus_Clock_Frequency
+         Source_Clock_Freq_In_Hz => Bus_Clock_Frequency,
+         IRQ_Index => Kinetis_K64F.UART3_RX_TX_IRQ'Enum_Rep
         ),
 
       UART4 =>
@@ -96,7 +104,8 @@ private package Uart_Driver.Board_Specific_Private is
             Pin_Index => 25,
             Pin_Function => PIN_FUNCTION_ALT3),
          Rx_Pin_Pullup_Resistor_Enabled => False,
-         Source_Clock_Freq_In_Hz => Bus_Clock_Frequency --  see table 5-2
+         Source_Clock_Freq_In_Hz => Bus_Clock_Frequency, --  see table 5-2
+         IRQ_Index => Kinetis_K64F.UART4_RX_TX_IRQ'Enum_Rep
         ),
 
       UART5 =>
@@ -104,7 +113,8 @@ private package Uart_Driver.Board_Specific_Private is
          Tx_Pin => <>,
          Rx_Pin => <>,
          Rx_Pin_Pullup_Resistor_Enabled => True,
-         Source_Clock_Freq_In_Hz => Bus_Clock_Frequency
+         Source_Clock_Freq_In_Hz => Bus_Clock_Frequency,
+         IRQ_Index => Kinetis_K64F.UART5_RX_TX_IRQ'Enum_Rep
         )
      );
 

@@ -28,21 +28,18 @@
 with Devices.MCU_Specific;
 with Uart_Driver;
 with Runtime_Logs;
-with Ada.Synchronous_Task_Control;
 with System;
 with Interfaces.Bit_Types;
 with Bluetooth.FSCI;
 with Memory_Protection;
 with Gpio_Driver;
 with Pin_Mux_Driver;
-with Ada.Real_Time;
 with System.Address_To_Access_Conversions;
 
 package body Bluetooth is
    pragma SPARK_Mode (Off);
    use Devices.MCU_Specific;
    use Devices;
-   use Ada.Synchronous_Task_Control;
    use Interfaces.Bit_Types;
    use Interfaces;
    use Bluetooth.FSCI;
@@ -50,7 +47,6 @@ package body Bluetooth is
    use Memory_Protection;
    use Gpio_Driver;
    use Pin_Mux_Driver;
-   use Ada.Real_Time;
 
    function Check_FSCI_Packet_Checksum (
       Packet_Buffer : Bytes_Array_Type) return Boolean;
@@ -93,7 +89,7 @@ package body Bluetooth is
 
    type Bluetooth_Serial_Interface_Type;
 
-   task type Bluetooth_Serial_Interface_Input_Task_Type (
+   procedure Bluetooth_Serial_Interface_Input_Task_Proc (
      Bluetooth_Serial_Interface_Const_Ptr :
         not null access constant Bluetooth_Serial_Interface_Const_Type;
      Bluetooth_Serial_Interface_Ptr :

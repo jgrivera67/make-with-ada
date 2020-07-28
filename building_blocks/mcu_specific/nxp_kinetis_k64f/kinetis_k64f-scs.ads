@@ -1757,7 +1757,6 @@ is
    SCS_Registers : aliased SCS_Registers_Type
      with Import, Address => System'To_Address (16#E000E000#);
 
-   pragma Compile_Time_Error (SCS_Registers.SCB'Address /=
-                              System'To_Address (16#E000ED00#),
-                              "SCB address is wrong");
+   pragma Compile_Time_Error (SCS_Registers.SCB'Position /= 16#D00#,
+                              "SCB offset is wrong");
 end Kinetis_K64F.SCS;

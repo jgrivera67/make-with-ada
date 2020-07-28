@@ -31,7 +31,9 @@ with Kinetis_K64F.PMC;
 with Kinetis_K64F.OSC;
 with Interfaces.Bit_Types;
 
-package body Microcontroller_Clocks is
+package body Microcontroller.Clocks with
+   SPARK_Mode => Off
+is
    use Kinetis_K64F;
    use Interfaces.Bit_Types;
 
@@ -177,4 +179,4 @@ package body Microcontroller_Clocks is
 
    end Initialize;
 
-end Microcontroller_Clocks;
+end Microcontroller.Clocks;
