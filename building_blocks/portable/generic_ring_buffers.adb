@@ -27,6 +27,9 @@
 
 with RTOS.API;
 with Interfaces;
+with Low_Level_Debug; --???
+with System.Storage_Elements; --???
+with Number_Conversion_Utils; --???
 
 package body Generic_Ring_Buffers is
    use Interfaces;
@@ -40,6 +43,7 @@ package body Generic_Ring_Buffers is
                          Name : not null access constant String) is
    begin
       pragma Assert (not Ring_Buffer.Initialized);
+
       RTOS.API.RTOS_Semaphore_Init (Ring_Buffer.Not_Empty_Semaphore,
                                     Initial_Count => 0);
       RTOS.API.RTOS_Semaphore_Init (Ring_Buffer.Not_Full_Semaphore,
@@ -55,7 +59,20 @@ package body Generic_Ring_Buffers is
                    Element : out Element_Type) is
       Old_Intmask : Unsigned_32;
    begin
+   Low_Level_Debug.Print_String ("*** Read before waiting", End_Line => True);--???
+   --???
+   pragma Assert (Ring_Buffer.Initialized);
+   pragma Assert (RTOS.API.RTOS_Semaphore_Initialized (Ring_Buffer.Not_Empty_Semaphore));
+   pragma Assert (RTOS.API.RTOS_Semaphore_Initialized (Ring_Buffer.Not_Full_Semaphore));
+   declare
+      Hex_str : String (1 .. 8);
+   begin
+      Number_Conversion_Utils.Unsigned_To_Hexadecimal_String (Unsigned_32 (System.Storage_Elements.To_Integer (Ring_Buffer'Address)), Hex_Str);
+      Low_Level_Debug.Print_String ("*** Read buffer address: " & Hex_Str, End_Line => True);
+   end;
+   --???
       RTOS.API.RTOS_Semaphore_Wait (Ring_Buffer.Not_Empty_Semaphore);
+   Low_Level_Debug.Print_String ("*** Read after waiting", End_Line => True);--???
       Old_Intmask := Disable_Cpu_Interrupts;
 
       Element := Ring_Buffer.Buffer_Data (Ring_Buffer.Read_Cursor);

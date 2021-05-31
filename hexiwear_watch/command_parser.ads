@@ -35,7 +35,4 @@ package Command_Parser is
    procedure Initialize
      with Pre => not Initialized;
 
-   procedure Parse_Command
-     with Pre => Initialized;
-
 end Command_Parser;

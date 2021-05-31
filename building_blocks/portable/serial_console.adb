@@ -31,6 +31,8 @@ with Runtime_Logs;
 with Devices.MCU_Specific;
 with Memory_Protection;
 with RTOS.API;
+with Low_Level_Debug; --????
+with System.Storage_Elements; --????
 
 package body Serial_Console with
    SPARK_Mode => Off
@@ -195,6 +197,7 @@ is
 
    procedure Get_Char (C : out Character) is
    begin
+   Low_Level_Debug.Print_String ("*** Here0.1", End_Line => True);--???
       C := Uart_Driver.Get_Char (Console_Var.Uart);
    end Get_Char;
 
@@ -210,8 +213,18 @@ is
                                Old_Region);
 
       Uart_Driver.Initialize (Console_Var.Uart, Console_Uart_Baud_Rate, True);
+   Low_Level_Debug.Print_String ("*** Here0.2", End_Line => True);--???
       Byte_Ring_Buffers.Initialize (Console_Var.Output_Buffer,
                                     Console_Output_Buffer_Name'Access);
+   Low_Level_Debug.Print_String ("*** Here0.3", End_Line => True);--???
+   --???
+   declare
+      Hex_Str : String (1 .. 8);
+   begin
+      Number_Conversion_Utils.Unsigned_To_Hexadecimal_String (Unsigned_32 (System.Storage_Elements.To_Integer (Console_Var.Output_Buffer'Address)), Hex_Str);
+      Low_Level_Debug.Print_String ("*** Console output buffer address: " & Hex_Str, End_Line => True);
+   end;
+   --???
       RTOS.API.RTOS_Mutex_Init (Console_Var.Lock);
       Console_Var.Initialized := True;
       Restore_Private_Data_Region (Old_Region);

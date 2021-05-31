@@ -70,7 +70,7 @@ package body Low_Level_Debug is
       --  Enable the GPIO port clocks for the LED pins:
       SCGC5_Value := SIM.Registers.SCGC5;
       SCGC5_Value.PORTC := 1;
-      SCGC5_Value.PORTE := 1;
+      SCGC5_Value.PORTD := 1;
       SIM.Registers.SCGC5 := SCGC5_Value;
 
       -- Configure Red LED (PC8):

@@ -28,15 +28,19 @@
 with Command_Line;
 with Serial_Console;
 with Command_Parser_Common;
+with GNAT.Source_Info;
 with Memory_Protection;
 with MPU_Tests;
 with Interfaces.Bit_Types;
 with Microcontroller.Arch_Specific;
 with Watch;
 with RTC_Driver;
+with RTOS.API;
+with Runtime_Logs;
 with LCD_Display;
 with App_Configuration;
 with Number_Conversion_Utils;
+with Low_Level_Debug; --???
 
 --
 --  Application-specific command parser implementation
@@ -80,6 +84,9 @@ package body Command_Parser is
 
    function Parse_Color (Color_Name : String;
                          Color : out LCD_Display.Color_Type) return Boolean;
+
+   procedure Command_Line_Task_Proc
+     with Convention => C;
 
    --
    --  Help message string
@@ -125,6 +132,7 @@ package body Command_Parser is
    --
    type Command_Parser_Type is limited record
       Initialized : Boolean := False;
+      Task_Obj : RTOS.RTOS_Task_Type;
    end record;
 
    Command_Parser_Var : Command_Parser_Type;
@@ -725,13 +733,18 @@ package body Command_Parser is
    -- ** --
 
    procedure Initialize is
+      use type RTOS.RTOS_Task_Priority_Type;
       Old_Region : MPU_Region_Descriptor_Type;
    begin
-      Command_Line.Initialize (Prompt'Access);
       Set_Private_Data_Region (Command_Parser_Var'Address,
                                Command_Parser_Var'Size,
                                Read_Write,
                                Old_Region);
+
+      RTOS.API.RTOS_Task_Init (
+         Task_Obj      => Command_Parser_Var.Task_Obj,
+         Task_Proc_Ptr => Command_Line_Task_Proc'Access,
+         Task_Prio     => RTOS.Highest_App_Task_Priority - 1);
 
       Command_Parser_Var.Initialized := True;
       Restore_Private_Data_Region (Old_Region);
@@ -773,7 +786,9 @@ package body Command_Parser is
 
    -- ** --
 
-   procedure Parse_Command is
+   procedure Parse_Command
+     with Pre => Initialized
+   is
       procedure Command_Dispatcher (Command : String);
 
       -- ** --
@@ -810,7 +825,9 @@ package body Command_Parser is
       Token_Found : Boolean;
 
    begin -- Parse_Command
+   Low_Level_Debug.Print_String ("*** Here -3", End_Line => True);--???
       Token_Found := Command_Line.Get_Next_Token (Token);
+   Low_Level_Debug.Print_String ("*** Here -2", End_Line => True);--???
       if not Token_Found then
          return;
       end if;
@@ -820,5 +837,28 @@ package body Command_Parser is
       Command_Dispatcher (Token.String_Value (1 .. Token.Length));
       Serial_Console.Unlock;
    end Parse_Command;
+
+   -- ** --
+
+   procedure Command_Line_Task_Proc is
+      procedure Print_Console_Greeting is
+      begin
+         Serial_Console.Lock;
+         Serial_Console.Clear_Screen;
+         Serial_Console.Print_String (
+            "Hexiwear Watch (Written in Ada 2012, built on " & GNAT.Source_Info.Compilation_Date &
+            " at " & GNAT.Source_Info.Compilation_Time & ")" & ASCII.LF);
+         Serial_Console.Unlock;
+      end Print_Console_Greeting;
+
+   begin
+      Runtime_Logs.Info_Print ("Command-line task started");
+
+      Print_Console_Greeting;
+      Command_Line.Initialize (Prompt'Access);
+      loop
+         Parse_Command;
+      end loop;
+   end Command_Line_Task_Proc;
 
 end Command_Parser;

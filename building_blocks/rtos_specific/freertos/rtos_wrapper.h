@@ -75,6 +75,10 @@ struct rtos_mutex
     SemaphoreHandle_t mtx_os_mutex_handle;
 };
 
+static_assert(sizeof(StaticSemaphore_t) == 80);
+static_assert(offsetof(struct rtos_mutex, mtx_os_mutex_var) == 4);
+static_assert(offsetof(struct rtos_mutex, mtx_os_mutex_handle) == 84);
+
 /**
  * Wrapper for an RTOS semaphore object
  */
@@ -93,6 +97,9 @@ struct rtos_semaphore
      */
     SemaphoreHandle_t sem_os_semaphore_handle;
 };
+
+static_assert(offsetof(struct rtos_semaphore, sem_os_semaphore_var) == 4);
+static_assert(offsetof(struct rtos_semaphore, sem_os_semaphore_handle) == 84);
 
 /**
  * Wrapper for an RTOS task object
@@ -135,6 +142,9 @@ struct rtos_task
     struct rtos_semaphore tsk_semaphore;
 };
 
+static_assert(sizeof(StaticTask_t) == 120);
+static_assert(offsetof(struct rtos_task, tsk_initialized) == 256*sizeof(uintptr_t));
+
 struct rtos_timer;
 
 /**
@@ -161,6 +171,8 @@ struct rtos_timer
 
     rtos_timer_callback_t *tmr_callback_p;
 };
+
+static_assert(sizeof(StaticTimer_t) == 44);
 
 /**
  * Task priority type

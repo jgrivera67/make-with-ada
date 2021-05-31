@@ -26,6 +26,7 @@
 --
 with Serial_Console;
 with Memory_Protection;
+with Low_Level_Debug; --???
 
 package body Command_Line is
    pragma SPARK_Mode (Off);
@@ -73,6 +74,7 @@ package body Command_Line is
          loop
             --  Wait for next character from the serial console:
             Serial_Console.Unlock;
+   Low_Level_Debug.Print_String ("*** Here0", End_Line => True);--???
             Serial_Console.Get_Char (Char_Read);
             Serial_Console.Lock;
 
@@ -113,12 +115,15 @@ package body Command_Line is
                                Read_Write,
                                Old_Region);
 
+   Low_Level_Debug.Print_String ("*** Here A", End_Line => True);--???
       case Command_Line_Var.State is
          when Command_Line_Empty =>
             Command_Line_Var.Buffer_Filled_Length := 0;
             loop
+   Low_Level_Debug.Print_String ("*** Here B", End_Line => True);--???
                Read_Command_Line (Command_Line_Var.Buffer,
                                   Command_Line_Var.Buffer_Filled_Length);
+   Low_Level_Debug.Print_String ("*** Here C", End_Line => True);--???
                exit when Command_Line_Var.Buffer_Filled_Length /= 0;
             end loop;
 

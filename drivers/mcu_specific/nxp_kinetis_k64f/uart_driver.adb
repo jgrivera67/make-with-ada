@@ -32,6 +32,7 @@ with System.Address_To_Access_Conversions;
 with Runtime_Logs;
 with Kinetis_K64F;
 with RTOS.API;
+with Low_Level_Debug; --???
 
 package body Uart_Driver is
    pragma SPARK_Mode (Off);
@@ -149,11 +150,16 @@ package body Uart_Driver is
                                Read_Write,
                                Old_Region);
 
+   Low_Level_Debug.Print_String ("*** Here1", End_Line => True);--???
       if Uart_Device_Var.Rx_Buffering_On then
+   Low_Level_Debug.Print_String ("*** Here2", End_Line => True);--???
          Byte_Ring_Buffers.Read (Uart_Device_Var.Receive_Queue, Byte_Read);
+   Low_Level_Debug.Print_String ("*** Here3", End_Line => True);--???
       else
          Enable_Rx_Interrupt (Uart_Device_Id);
+   Low_Level_Debug.Print_String ("*** Here4", End_Line => True);--???
          RTOS.API.RTOS_Semaphore_Wait (Uart_Device_Var.Byte_Received_Semaphore);
+   Low_Level_Debug.Print_String ("*** Here5", End_Line => True);--???
          Byte_Read := Uart_Device_Var.Byte_Received;
       end if;
 

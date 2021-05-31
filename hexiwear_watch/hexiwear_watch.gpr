@@ -4,7 +4,7 @@ project hexiwear_watch is
 
    Executable_Prefix := "hexiwear_watch";
    Board := "hexiwear";
-   RTOS := "freertos";
+   RTOS := "hirtos";
 
    for Languages use ("Ada", "C");
 
@@ -36,7 +36,7 @@ project hexiwear_watch is
    RTOS_Src_Dirs := ();
    case RTOS is
       when "freertos" =>
-         RTOS_Base_Dir := "../third_party/FreeRTOS-Kernel";
+         RTOS_Base_Dir := "../third_party/FreeRTOS";
          case RTS.CPU_Core is
             when "arm_cortex_m0+" =>
                RTOS_Port_Subdir := "GCC/ARM_CM0";
@@ -52,7 +52,24 @@ project hexiwear_watch is
                              "-I" & RTOS_Base_Dir & "/portable/" & RTOS_Port_Subdir);
          RTOS_Src_Dirs := (RTOS_Base_Dir,
                            RTOS_Base_Dir & "/include",
+                           RTOS_Base_Dir & "/include/private",
                            RTOS_Base_Dir & "/portable/" & RTOS_Port_Subdir);
+
+       when "hirtos" =>
+         RTOS_Base_Dir := "../HiRTOS";
+         case RTS.CPU_Core is
+            when "arm_cortex_m0+" =>
+               RTOS_Port_Subdir := "ARM_CM0";
+            when "arm_cortex_m4" =>
+               RTOS_Port_Subdir := "ARM_CM4F";
+            when "riscv32" =>
+               RTOS_Port_Subdir := "RISC32V";
+            when others =>
+               null;
+         end case;
+
+         RTOS_Src_Dirs := (RTOS_Base_Dir);
+
       when others =>
 	 null;
    end case;
@@ -64,7 +81,7 @@ project hexiwear_watch is
                         "../building_blocks/cpu_specific/" & RTS.CPU_Core,
                         "../building_blocks/arch_specific/" & RTS.CPU_Arch,
                         "../building_blocks/rtos_specific/" & RTOS,
-                        "../building_blocks/rtos_specific/" & RTOS & "/" & RTS.CPU_Arch,
+                        --"../building_blocks/rtos_specific/" & RTOS & "/" & RTS.CPU_Arch,
                         "../drivers/portable",
                         "../drivers/board_specific/" & Board,
                         "../drivers/mcu_specific/" & MCU,
@@ -102,9 +119,9 @@ project hexiwear_watch is
                                      C_MCU_Switches &
                                      C_RTOS_Switches &
                                      ("-std=gnu11",
-				                          --"-ffreestanding",
-				                          "-I../../building_blocks/rtos_specific/" & RTOS,
-				                          "-I../../building_blocks/rtos_specific/" & RTOS & "/" & RTS.CPU_Arch,
+				      --"-ffreestanding",
+				      "-I../../building_blocks/rtos_specific/" & RTOS,
+				      "-I../../building_blocks/rtos_specific/" & RTOS & "/" & RTS.CPU_Arch,
                                       "-Wstrict-prototypes",
                                       "-fms-extensions",
                                       "-Wextra",
@@ -135,6 +152,7 @@ project hexiwear_watch is
    end Linker;
 
    package Builder is
+      --for Executable ("main.adb") use Executable_Prefix & ".elf";
       for Executable ("main.adb") use Executable_Prefix & ".elf";
    end Builder;
 

@@ -32,15 +32,16 @@ with Microcontroller.MCU_Specific;
 with Pin_Mux_Driver;
 with Serial_Console;
 with Command_Parser;
-with GNAT.Source_Info;
 with Last_Chance_Handler;
 with Memory_Protection;
 with Number_Conversion_Utils;
 
 with Nor_Flash_Driver;
 with DMA_Driver;
+with RTOS.API;
 with Startup;
 with Watch;
+with Low_Level_Debug;--???
 
 pragma Unreferenced (Startup);
 pragma Unreferenced (Last_Chance_Handler);
@@ -59,39 +60,29 @@ procedure Main is
          "Main task started (reset count:" & Str_Buf (1 .. Actual_Length) &
          ", last reset cause: " &
          Microcontroller.Reset_Cause_Strings (Reset_Cause).all & ")");
-
    end Log_Start_Info;
-
-   -- ** --
-
-   procedure Print_Console_Greeting is
-   begin
-      Serial_Console.Lock;
-      Serial_Console.Clear_Screen;
-      Serial_Console.Print_String (
-        "Hexiwear Watch (Written in Ada 2012, built on " & GNAT.Source_Info.Compilation_Date &
-        " at " & GNAT.Source_Info.Compilation_Time & ")" & ASCII.LF);
-
-      Serial_Console.Unlock;
-   end Print_Console_Greeting;
 
    -- ** --
 
 begin -- Main
    Memory_Protection.Initialize (MPU_Enabled => False);
+   RTOS.API.RTOS_Init;
    Runtime_Logs.Initialize;
    Log_Start_Info;
 
    --  Initialize devices used:
    Pin_Mux_Driver.Initialize;
+   Low_Level_Debug.Print_String ("Here @1", End_Line => True); --???
    Serial_Console.Initialize;
+   Low_Level_Debug.Print_String ("Here @2", End_Line => True); --???
    Nor_Flash_Driver.Initialize;
    DMA_Driver.Initialize;
 
-   Print_Console_Greeting;
+   Low_Level_Debug.Print_String ("Here @3", End_Line => True); --???
    Command_Parser.Initialize;
+   Low_Level_Debug.Print_String ("Here @5", End_Line => True); --???
    Watch.Initialize;
-   loop
-      Command_Parser.Parse_Command;
-   end loop;
+   Low_Level_Debug.Print_String ("Here @6", End_Line => True); --???
+
+   RTOS.API.RTOS_Scheduler_Start;
 end Main;

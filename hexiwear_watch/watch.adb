@@ -39,7 +39,6 @@ with RTOS.API;
 package body Watch with
    SPARK_Mode => Off
 is
-   use App_Configuration;
    use Number_Conversion_Utils;
    use Interfaces.Bit_Types;
    use Microcontroller.Arch_Specific;
@@ -327,10 +326,6 @@ is
          Low_Power_Wakeup_Callback'Access);
 
       RTC_Driver.Initialize;
-      Accelerometer.Initialize (Go_to_Sleep_Callback => null);
-      Heart_Rate_Monitor.Initialize;
-      Barometric_Pressure_Sensor.Initialize;
-      --Bluetooth.Initialize;
 
       Set_Private_Data_Region (Watch_Var'Address,
                                Watch_Var'Size,
@@ -1313,6 +1308,7 @@ is
       Set_Private_Data_Region (Watch_Var'Address,
                                Watch_Var'Size,
                                Read_Write);
+      RTOS.API.RTOS_Task_Semaphore_Wait;
 
       loop
          Barometric_Pressure_Sensor.Detect_Altitude_Change;
@@ -1407,6 +1403,7 @@ is
       Set_Private_Data_Region (Watch_Var'Address,
                                Watch_Var'Size,
                                Read_Write);
+      RTOS.API.RTOS_Task_Semaphore_Wait;
 
       loop
          Accelerometer.Detect_Tapping (Double_Tap_Detected);
@@ -1430,6 +1427,7 @@ is
       Set_Private_Data_Region (Watch_Var'Address,
                                Watch_Var'Size,
                                Read_Write);
+      RTOS.API.RTOS_Task_Semaphore_Wait;
 
       loop
          Barometric_Pressure_Sensor.Detect_Temperature_Change;
@@ -1449,6 +1447,11 @@ is
                                Watch_Var'Size,
                                Read_Write);
 
+      Accelerometer.Initialize (Go_to_Sleep_Callback => null);
+      Heart_Rate_Monitor.Initialize;
+      Barometric_Pressure_Sensor.Initialize;
+      --Bluetooth.Initialize;
+
       LCD_Display.Initialize;
       Display_Greeting;
       Display_Watch_Screen;
@@ -1467,6 +1470,10 @@ is
       Refresh_Wall_Time (Force_Refresh => True);
       Refresh_Altitude (Force_Refresh => True);
       Refresh_Temperature (Force_Refresh => True);
+
+      RTOS.API.RTOS_Task_Semaphore_Signal (Altitude_Sensor_Task_Obj);
+      RTOS.API.RTOS_Task_Semaphore_Signal (Temperature_Sensor_Task_Obj);
+      RTOS.API.RTOS_Task_Semaphore_Signal (Tapping_Detector_Task_Obj);
 
       loop
          RTOS.API.RTOS_Task_Semaphore_Wait;

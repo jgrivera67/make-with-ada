@@ -1,5 +1,5 @@
 --
---  Copyright (c) 2018, German Rivera
+--  Copyright (c) 2020, German Rivera
 --  All rights reserved.
 --
 --  Redistribution and use in source and binary forms, with or without
@@ -27,10 +27,11 @@
 
 with System;
 with Interfaces;
+with HiRTOS;
 private with Microcontroller.Arch_Specific;
 
 --
---  @summary FreeRTOS-specific declarations
+--  @summary HiRTOS-specific declarations
 --
 package RTOS with No_Elaboration_Code_All is
 
@@ -39,29 +40,18 @@ package RTOS with No_Elaboration_Code_All is
    type RTOS_Semaphore_Type is limited private;
    type RTOS_Timer_Type is limited private;
 
-   --  ConfigMax_Priorities from FreeRTOSConfig.h
-   Max_Task_Priorities : constant := 8;
-
    type RTOS_Time_Ms_Type is new Interfaces.Unsigned_32;
 
-   --  PortTICK_PERIOD_MS from FreeRTOSConfig.h
-   Tick_Period_Ms : constant RTOS_Time_Ms_Type := 1;
-
-   type RTOS_Tick_Type is new Interfaces.Unsigned_32;
-
    --
-   --  For FreeRTOS, lower number means lower priority
+   --  For HiRTOS, lower number means higher priority
    --
-   type RTOS_Task_Priority_Type is
-      range 1 .. Max_Task_Priorities
-      with Size => Interfaces.Unsigned_32'Size,
-           Convention => C;
+   subtype RTOS_Task_Priority_Type is HiRTOS.Thread_Priority_Type;
 
    Highest_App_Task_Priority : constant RTOS_Task_Priority_Type :=
-      RTOS_Task_Priority_Type'Last - 2;
+      RTOS_Task_Priority_Type'First + 2;
 
    Lowest_App_Task_Priority : constant RTOS_Task_Priority_Type :=
-      RTOS_Task_Priority_Type'First + 1;
+      RTOS_Task_Priority_Type'Last - 1;
 
    type RTOS_Timer_Callback_Type is
       access procedure (Timer : RTOS_Timer_Type)
@@ -71,21 +61,6 @@ package RTOS with No_Elaboration_Code_All is
 
    Invalid_Task_id : constant RTOS_Task_Id_Type :=
      RTOS_Task_Id_Type (Interfaces.Unsigned_8'Last);
-
-   function Get_Freertos_StaticTask_t_Size return Interfaces.Unsigned_32
-        with Import,
-	     Convention => C,
-	     External_Name => "get_freertos_StaticTask_t_Size";
-
-   function Get_Freertos_StaticSemaphore_t_Size return Interfaces.Unsigned_32
-        with Import,
-	     Convention => C,
-	     External_Name => "get_freertos_StaticSemaphore_t_Size";
-
-   function Get_Freertos_StaticTimer_t_Size return Interfaces.Unsigned_32
-        with Import,
-	     Convention => C,
-	     External_Name => "get_freertos_StaticTimer_t_Size";
 
 private
 

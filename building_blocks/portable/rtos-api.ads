@@ -56,7 +56,6 @@ package RTOS.API with No_Elaboration_Code_All is
 
    procedure RTOS_Scheduler_Start
      with Pre => RTOS_Initialized,
-          Post => RTOS_Scheduler_Started,
           Import,
           Convention => C,
           External_Name => "rtos_scheduler_start",
@@ -75,7 +74,7 @@ package RTOS.API with No_Elaboration_Code_All is
           External_Name => "rtos_task_init";
 
    function RTOS_Task_Self_Id return RTOS_Task_Id_Type
-     with Pre => RTOS_Scheduler_Started,
+     with Pre => RTOS_Initialized,
 	  Import,
           Convention => C,
           External_Name => "rtos_task_self_id";
@@ -154,6 +153,7 @@ package RTOS.API with No_Elaboration_Code_All is
                                   Initial_Count : Interfaces.Unsigned_32)
       with Pre => RTOS_Initialized and
                   not RTOS_Semaphore_Initialized (Semaphore_Obj),
+           Post => RTOS_Semaphore_Initialized (Semaphore_Obj),
 	   Import,
            Convention => C,
            External_Name => "rtos_semaphore_init";
@@ -161,7 +161,7 @@ package RTOS.API with No_Elaboration_Code_All is
 
    procedure RTOS_Semaphore_Wait (Semaphore_Obj : in out RTOS_Semaphore_Type)
       with Pre => RTOS_Scheduler_Started and
-                  RTOS_Semaphore_Initialized (Semaphore_Obj) and
+                  --RTOS_Semaphore_Initialized (Semaphore_Obj) and
                   not Are_Cpu_Interrupts_Disabled,
 	   Import,
            Convention => C,

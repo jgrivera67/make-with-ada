@@ -39,9 +39,10 @@ package HiRTOS_Config with SPARK_Mode => On is
    Max_Num_Threads : constant := 32;
 
    --
-   --  Maximum number of condition variables
+   --  Maximum number of condition variables (not counting the condvar embedded
+   --  in each thread)
    --
-   Max_Num_Condvars : constant := Max_Num_Threads + 32;
+   Max_Num_Condvars : constant := 32;
 
    --
    --  Maximum number of mutexes
@@ -59,9 +60,8 @@ package HiRTOS_Config with SPARK_Mode => On is
    Num_Thread_Priorities : constant := 16;
 
    --
-   --  Thread stack size in number of entries
-   --  (for 32-bit CPUs, each entry is 4 bytes long)
+   --  Thread stack minimum size in bytes
    --
-   Thread_Stack_Num_Entries : constant := 256;
+   Thread_Stack_Min_Size : constant := 1024;
 
 end HiRTOS_Config;

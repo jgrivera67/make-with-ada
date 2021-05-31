@@ -137,27 +137,62 @@ is
                Stack (6);
             LR_At_Exception : constant Unsigned_32  :=
                Stack (5);
+            R12_At_Exception : constant Unsigned_32  :=
+               Stack (4);
+            R3_At_Exception : constant Unsigned_32  :=
+               Stack (3);
+            R2_At_Exception : constant Unsigned_32  :=
+               Stack (2);
+            R1_At_Exception : constant Unsigned_32  :=
+               Stack (1);
+            R0_At_Exception : constant Unsigned_32  :=
+               Stack (0);
          begin
             Low_Level_Debug.Print_String (
                ASCII.LF & "Code address where fault might have happened: ");
             Low_Level_Debug.Print_Number_Hexadecimal (
                (LR_At_Exception and not 16#1#) - (3 * Instruction_Size),
-	       End_Line => True);
+	            End_Line => True);
 
             Low_Level_Debug.Print_String (
-               ASCII.LF & "PC when fault happened: ");
+               "PC when fault happened: ");
             Low_Level_Debug.Print_Number_Hexadecimal (PC_At_Exception,
 	                                              End_Line => True);
 
             Low_Level_Debug.Print_String (
-               ASCII.LF & "LR when fault happened: ");
+               "LR when fault happened: ");
             Low_Level_Debug.Print_Number_Hexadecimal (LR_At_Exception,
-	                                              End_Line => True);
+	                                                   End_Line => True);
 
             Low_Level_Debug.Print_String (
-               ASCII.LF & "PSR when fault happened: ");
+               "PSR when fault happened: ");
             Low_Level_Debug.Print_Number_Hexadecimal (PSR_At_Exception,
-	                                              End_Line => True);
+	                                                   End_Line => True);
+
+            Low_Level_Debug.Print_String (
+               "R12 when fault happened: ");
+            Low_Level_Debug.Print_Number_Hexadecimal (R12_At_Exception,
+	                                                   End_Line => True);
+
+            Low_Level_Debug.Print_String (
+               "R3 when fault happened: ");
+            Low_Level_Debug.Print_Number_Hexadecimal (R3_At_Exception,
+	                                                   End_Line => True);
+
+            Low_Level_Debug.Print_String (
+               "R2 when fault happened: ");
+            Low_Level_Debug.Print_Number_Hexadecimal (R2_At_Exception,
+	                                                   End_Line => True);
+
+            Low_Level_Debug.Print_String (
+               "R1 when fault happened: ");
+            Low_Level_Debug.Print_Number_Hexadecimal (R1_At_Exception,
+	                                                   End_Line => True);
+
+            Low_Level_Debug.Print_String (
+               "R0 when fault happened: ");
+            Low_Level_Debug.Print_Number_Hexadecimal (R0_At_Exception,
+	                                                   End_Line => True);
 
             raise Program_Error with Msg;
          end;
