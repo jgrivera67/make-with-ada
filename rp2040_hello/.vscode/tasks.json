@@ -1,0 +1,103 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build",
+            "type": "shell",
+            "command": "gprbuild",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "args": [
+                "-p",
+                "-P",
+                "$GPR_FILE",
+                "-XCPU_Core=arm_cortex_m0plus",
+                //"-cargs",
+                "-gnatef"
+            ],
+            "problemMatcher": {
+                "base": "$ada",
+                "fileLocation": [
+                    "autoDetect",
+                    "${workspaceFolder}"
+                ],
+                //"fileLocation": [ "absolute" ],
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "prove",
+            "type": "shell",
+            "command": "gnatprove",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "args": [
+                "--report=all",
+                "--checks-as-errors --level=0 --no-axiom-guard",
+                "-P",
+                "$GPR_FILE",
+                "-XCPU_Core=arm_cortex_m0plus",
+                //"-cargs",
+                "-gnatef"
+            ],
+            "problemMatcher": [
+                {
+                    "owner": "ada",
+                    "fileLocation": [
+                        "autoDetect",
+                        "${workspaceFolder}"
+                    ],
+                    "severity": "error",
+                    "pattern": {
+                        "regexp": "(\\S+):(\\d+):(\\d+): error: (.+)",
+                        "file": 1,
+                        "line": 2,
+                        "column": 3,
+                        "message": 4
+                    }
+                },
+                {
+                    "owner": "ada",
+                    "fileLocation": [
+                        "autoDetect",
+                        "${workspaceFolder}"
+                    ],
+                    "severity": "warning",
+                    "pattern": {
+                        "regexp": "(\\S+):(\\d+):(\\d+): warning: (.+)",
+                        "file": 1,
+                        "line": 2,
+                        "column": 3,
+                        "message": 4
+                    }
+                },
+                {
+                    "owner": "ada",
+                    "fileLocation": [
+                        "autoDetect",
+                        "${workspaceFolder}"
+                    ],
+                    "severity": "info",
+                    "pattern": {
+                        "regexp": "(\\S+):(\\d+):(\\d+): info: (.+)",
+                        "file": 1,
+                        "line": 2,
+                        "column": 3,
+                        "message": 4
+                    }
+                }
+            ],
+            "group": {
+                "kind": "build",
+            //    "isDefault": true
+            }
+        }
+    ]
+}

@@ -1,0 +1,20 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../third_party/portable_minimal_ada_rts"
+		},
+		{
+			"path": "../building_blocks"
+		},
+		{
+			"path": "../drivers"
+		},
+		{
+			"path": "../third_party"
+		}
+	],
+	"settings": {}
+}

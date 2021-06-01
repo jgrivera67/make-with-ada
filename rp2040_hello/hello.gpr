@@ -1,0 +1,121 @@
+with "../third_party/portable_minimal_ada_rts/rts.gpr";
+
+project hello is
+
+   Executable_Prefix := "hello";
+   Board := "hifive1";
+   RTOS := "";
+
+   for Languages use ("Ada", "C", "Asm_Cpp");
+
+   for Main use ("main.adb");
+
+   for Runtime ("Ada") use RTS'Runtime ("Ada");
+
+   for Target use RTS'Target;
+
+   type MCU_Type is ("nxp_kinetis_k64f", "stm32f401", "stm32f479", "freedom_e310", "rp2040");
+
+   MCU : MCU_Type := External ("MCU", "rp2040");
+
+   C_MCU_Switches := ();
+   case MCU is
+      when "nxp_kinetis_k64f"  =>
+	      C_MCU_Switches := ("-DK64F");
+      when "stm32f401"  =>
+	      C_MCU_Switches := ("-DSTM32F401_MCU");
+      when "stm32f479"  =>
+	      C_MCU_Switches := ("-DSTM32F479_MCU");
+      when "freedom_e310"  =>
+	      C_MCU_Switches := ("-DUSE_PLIC",
+	                         "-DUSE_M_TIME",
+			                   "-fno-builtin-printf");
+      when "rp2040"  =>
+	      C_MCU_Switches := ("-DRP2040_MCU");
+   end case;
+
+   for Source_Dirs use (".",
+                        "../building_blocks/portable",
+                        "../building_blocks/board_specific/" & Board,
+                        "../building_blocks/mcu_specific/" & MCU,
+                        "../building_blocks/cpu_specific/" & RTS.CPU_Core,
+                        "../building_blocks/arch_specific/" & RTS.CPU_Arch,
+                        -- "../building_blocks/rtos_specific/" & RTOS,
+                        "../drivers/portable",
+                        "../drivers/board_specific/" & Board,
+                        "../drivers/mcu_specific/" & MCU,
+                        "../third_party",
+                        "../third_party/SVD/" & MCU);
+
+   for Object_Dir use "obj";
+
+   for Exec_Dir  use ".";
+
+   package Naming is
+      for Spec_Suffix ("C") use ".h";
+      for Body_Suffix ("C") use ".c";
+   end Naming;
+
+   package Compiler is
+      for Default_Switches ("Ada") use
+ 	    RTS.Compiler.COMMON_FLAGS &
+            ("-O0", "-g",
+	          "-gnatwa", "-gnatQ", "-gnat12",
+             -- "-fstack-check", --  Generate stack checking code (part of Ada)
+             "-gnata",           --  Enable assertions            (part of Ada)
+             "-gnato13",         --  Overflow checking            (part of Ada)
+             "-gnatn",           --  Inline subprograms marked for inlining
+             "-gnatf",                      --  Full, verbose error messages
+             "-gnatwa",                     --  All optional warnings
+             "-gnatVa",                     --  All validity checks
+             -- "-gnaty3abcdefhiklmnoOprstux", --  Style checks
+             -- "-gnatwe",                     --  Treat warnings as errors
+             "-gnat2012");                     --  Use Ada 2012
+
+      for Default_Switches ("C") use RTS.Compiler.COMMON_FLAGS &
+                                     C_MCU_Switches &
+                                     ("-std=gnu11",
+				                          --"-ffreestanding",
+				                          "-I../../building_blocks/rtos_specific/" & RTOS & "/" & RTS.CPU_Arch,
+                                      "-Wstrict-prototypes",
+                                      "-fms-extensions",
+                                      "-Wextra",
+                                      "-Wformat",
+                                      "-Wunreachable-code",
+                                      "-Wshadow",
+                                      "-Wmissing-prototypes",
+                                      "-Wpointer-arith",
+                                      "-Winline",
+                                      "-Werror",
+                                      "-Wstack-usage=224",
+                                      "-Wundef",
+                                      "-Wdouble-promotion",
+	                              "-DDEBUG");
+
+      for Default_Switches ("Asm_Cpp") use RTS.Compiler.COMMON_FLAGS &
+                                           C_MCU_Switches;
+
+      for Local_Configuration_Pragmas use "../gnat_pragmas.adc";
+
+   end Compiler;
+
+   package Linker is
+      for Default_Switches ("Ada") use RTS.Compiler.COMMON_FLAGS &
+                                     ("-nostartfiles",
+				      "-nostdlib",
+				      "-nolibc",
+				      "-Wl,-Map=" & Executable_Prefix & ".map",
+				      "-Xlinker", "--gc-sections",
+	               "-T../../building_blocks/mcu_specific/" & MCU & "/memory_layout.ld");
+   end Linker;
+
+   package Builder is
+      for Executable ("main.adb") use Executable_Prefix & ".elf";
+   end Builder;
+
+   package Ide is
+      for Program_Host use "localhost:4242";
+      for Communication_Protocol use "remote";
+   end Ide;
+
+end hello;

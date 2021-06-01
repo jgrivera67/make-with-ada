@@ -1,6 +1,6 @@
 project RTS is
 
-   type CPU_Core_Type is ("arm_cortex_m0+", "arm_cortex_m4", "riscv32");
+   type CPU_Core_Type is ("arm_cortex_m0plus", "arm_cortex_m4", "riscv32");
 
    CPU_Core : CPU_Core_Type := External ("CPU_Core", "arm_cortex_m4");
 
@@ -12,37 +12,37 @@ project RTS is
    CPU_Arch := "";
    CPU_Core_Switches := ();
    case CPU_Core is
-      when "arm_cortex_m0+" =>
-	 CPU_Arch := "arm_cortex_m";
-	 for Target use "arm-eabi";
-	 for Library_Dir use "arm_cortex_m_adalib";
-	 CPU_Core_Switches := ("-mcpu=cortex-m0plus",
-	 		       "-mthumb",
-			       --"-march=armv6-m",
-			       "-mlittle-endian",
-			       "-fno-omit-frame-pointer");
+      when "arm_cortex_m0plus" =>
+	      CPU_Arch := "arm_cortex_m";
+	      for Target use "arm-eabi";
+	      for Library_Dir use "arm_cortex_m_adalib";
+	      CPU_Core_Switches := ("-mcpu=cortex-m0plus",
+	 		                      "-mthumb",
+			                      --"-march=armv6-m",
+			                      "-mlittle-endian",
+			                      "-fno-omit-frame-pointer");
 
       when "arm_cortex_m4" =>
-	 CPU_Arch := "arm_cortex_m";
-	 for Target use "arm-eabi";
-	 for Library_Dir use "arm_cortex_m_adalib";
-	 CPU_Core_Switches := ("-mcpu=cortex-m4",
-	                       "-mthumb",
-	                       --"-march=armv7e-m",
-			       "-mlittle-endian",
-			       --"-mfloat-abi=softfp",
-			       "-mhard-float",
-			       "-mfpu=fpv4-sp-d16",
-			"-fno-omit-frame-pointer");
+	      CPU_Arch := "arm_cortex_m";
+	      for Target use "arm-eabi";
+	      for Library_Dir use "arm_cortex_m_adalib";
+	      CPU_Core_Switches := ("-mcpu=cortex-m4",
+	                            "-mthumb",
+	                            --"-march=armv7e-m",
+			                      "-mlittle-endian",
+			                      --"-mfloat-abi=softfp",
+			                      "-mhard-float",
+			                      "-mfpu=fpv4-sp-d16",
+			                      "-fno-omit-frame-pointer");
 
       when "riscv32" =>
-	 CPU_Arch := "riscv32";
-	 for Target use "riscv32-elf";
-	 CPU_Core_Switches := ("-march=rv32imac",
-	                       "-mabi=ilp32",
-		               "-mcmodel=medany");
+	      CPU_Arch := "riscv32";
+	      for Target use "riscv32-elf";
+	      CPU_Core_Switches := ("-march=rv32imac",
+	                            "-mabi=ilp32",
+		                         "-mcmodel=medany");
       when others =>
-	 null;
+	      null;
    end case;
 
    for Object_Dir use CPU_Arch & "_obj/obj";
@@ -50,8 +50,8 @@ project RTS is
 
    for Source_Dirs use ("common",
                         "zfp",
-			"fpu",
-			"extra");
+			               "fpu",
+			               "extra");
 
    for Runtime ("Ada") use Project'Project_Dir;
 
@@ -62,7 +62,7 @@ project RTS is
                    "-ffunction-sections",
                    "-fdata-sections",
                    -- "-fverbose-asm",
-		   "-Wall");
+		             "-Wall");
 
       --  Per language flags (COMMON_FLAGS will be added later)
       ADAFLAGS := ("-gnatg", "-nostdinc");
