@@ -6,7 +6,7 @@
 --                                                                          --
 --                                 S p e c                                  --
 --                                                                          --
---          Copyright (C) 2002-2018, Free Software Foundation, Inc.         --
+--          Copyright (C) 2002-2021, Free Software Foundation, Inc.         --
 --                                                                          --
 -- This specification is derived from the Ada Reference Manual for use with --
 -- GNAT. The copyright notice above, and the license provisions that follow --
@@ -39,9 +39,7 @@
 
 pragma Compiler_Unit_Warning;
 
-package System.Storage_Elements with
-   No_Elaboration_Code_All
-is
+package System.Storage_Elements is
    pragma Pure;
    --  Note that we take advantage of the implementation permission to make
    --  this unit Pure instead of Preelaborable; see RM 13.7.1(15). In Ada 2005,
@@ -58,8 +56,7 @@ is
      +(2 ** (Integer'(Standard'Address_Size) - 1)) - Long_Long_Integer'(1);
    --  Note: the reason for the Long_Long_Integer qualification here is to
    --  avoid a bogus ambiguity when this unit is analyzed in an rtsfind
-   --  context. It may be possible to remove this in the future, but it is
-   --  certainly harmless in any case ???
+   --  context.
 
    subtype Storage_Count is Storage_Offset range 0 .. Storage_Offset'Last;
 

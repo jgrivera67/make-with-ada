@@ -2,7 +2,7 @@
 --                                                                          --
 --                         GNAT COMPILER COMPONENTS                         --
 --                                                                          --
---                       S Y S T E M . F A T _ F L T                        --
+--                      S Y S T E M . F A T _ L F L T                       --
 --                                                                          --
 --                                 S p e c                                  --
 --                                                                          --
@@ -30,11 +30,11 @@
 ------------------------------------------------------------------------------
 
 --  This package contains an instantiation of the floating-point attribute
---  runtime routines for the type Float.
+--  runtime routines for the type Long_Float.
 
 with System.Fat_Gen;
 
-package System.Fat_Flt is
+package System.Fat_LFlt is
    pragma Pure;
 
    --  Note the only entity from this package that is accessed by Rtsfind
@@ -42,6 +42,6 @@ package System.Fat_Flt is
    --  (i.e. the individual floating-point attribute routines) are accessed
    --  by name using selected notation.
 
-   package Attr_Float is new System.Fat_Gen (Float);
+   package Attr_Long_Float is new System.Fat_Gen (Long_Float);
 
-end System.Fat_Flt;
+end System.Fat_LFlt;

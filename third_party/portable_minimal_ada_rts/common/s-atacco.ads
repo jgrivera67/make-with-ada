@@ -6,7 +6,7 @@
 --                                                                          --
 --                                 S p e c                                  --
 --                                                                          --
---          Copyright (C) 1992-2018, Free Software Foundation, Inc.         --
+--          Copyright (C) 1992-2021, Free Software Foundation, Inc.         --
 --                                                                          --
 -- This specification is derived from the Ada Reference Manual for use with --
 -- GNAT. The copyright notice above, and the license provisions that follow --
@@ -36,9 +36,9 @@
 generic
    type Object (<>) is limited private;
 
-package System.Address_To_Access_Conversions with
-   No_Elaboration_Code_All
-is
+package System.Address_To_Access_Conversions is
+   pragma Preelaborate;
+
    pragma Compile_Time_Warning
      (Object'Unconstrained_Array,
       "Object is unconstrained array type" & ASCII.LF &
