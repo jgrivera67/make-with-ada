@@ -6,7 +6,7 @@
 --                                                                          --
 --                                 S p e c                                  --
 --                                                                          --
---          Copyright (C) 1992-2018, Free Software Foundation, Inc.         --
+--          Copyright (C) 1992-2021, Free Software Foundation, Inc.         --
 --                                                                          --
 -- This specification is derived from the Ada Reference Manual for use with --
 -- GNAT. The copyright notice above, and the license provisions that follow --
@@ -53,13 +53,15 @@ package Interfaces.C is
    type int   is new Integer;
    type short is new Short_Integer;
    type long  is new Long_Integer;
+   type long_long is new Long_Long_Integer;
 
    type signed_char is range SCHAR_MIN .. SCHAR_MAX;
    for signed_char'Size use CHAR_BIT;
 
-   type unsigned       is mod 2 ** int'Size;
-   type unsigned_short is mod 2 ** short'Size;
-   type unsigned_long  is mod 2 ** long'Size;
+   type unsigned            is mod 2 ** int'Size;
+   type unsigned_short      is mod 2 ** short'Size;
+   type unsigned_long       is mod 2 ** long'Size;
+   type unsigned_long_long  is mod 2 ** long_long'Size;
 
    type unsigned_char is mod (UCHAR_MAX + 1);
    for unsigned_char'Size use CHAR_BIT;
@@ -71,6 +73,11 @@ package Interfaces.C is
            +(2 ** (Standard'Address_Size - 1) - 1);
 
    type size_t is mod 2 ** Standard'Address_Size;
+
+   --  Boolean type
+
+   type C_bool is new Boolean;
+   pragma Convention (C, C_bool);
 
    --  Floating-Point
 

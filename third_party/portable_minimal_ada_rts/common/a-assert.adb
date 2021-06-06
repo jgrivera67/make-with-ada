@@ -1,12 +1,12 @@
 ------------------------------------------------------------------------------
 --                                                                          --
---                          GNAT RUN-TIME COMPONENTS                        --
+--                         GNAT RUN-TIME COMPONENTS                         --
 --                                                                          --
---                    S Y S T E M . A S S E R T I O N S                     --
+--                           A D A . A S S E R T                            --
 --                                                                          --
---                                 S p e c                                  --
+--                                 B o d y                                  --
 --                                                                          --
---          Copyright (C) 1992-2021, Free Software Foundation, Inc.         --
+--         Copyright (C) 2007-2021, Free Software Foundation, Inc.          --
 --                                                                          --
 -- GNAT is free software;  you can  redistribute it  and/or modify it under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -29,24 +29,25 @@
 --                                                                          --
 ------------------------------------------------------------------------------
 
---  This package provides support for assertions (including pragma Assert,
---  pragma Debug, and Precondition/Postcondition/Predicate/Invariant aspects
---  and their corresponding pragmas).
+package body Ada.Assertions with
+  SPARK_Mode
+is
+   ------------
+   -- Assert --
+   ------------
 
---  This unit may be used directly from an application program by providing
---  an appropriate WITH, and the interface can be expected to remain stable.
+   procedure Assert (Check : Boolean) is
+   begin
+      if Check = False then
+         raise Ada.Assertions.Assertion_Error;
+      end if;
+   end Assert;
 
-pragma Compiler_Unit_Warning;
+   procedure Assert (Check : Boolean; Message : String) is
+   begin
+      if Check = False then
+         raise Ada.Assertions.Assertion_Error with Message;
+      end if;
+   end Assert;
 
-with Ada.Assertions;
-
-package System.Assertions with No_Elaboration_Code_All is
-
-   Assert_Failure : exception renames Ada.Assertions.Assertion_Error;
-   --  Exception raised when assertion fails
-
-   procedure Raise_Assert_Failure (Msg : String);
-   pragma No_Return (Raise_Assert_Failure);
-   --  Called to raise Assert_Failure with given message
-
-end System.Assertions;
+end Ada.Assertions;

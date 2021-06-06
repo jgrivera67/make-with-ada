@@ -7,7 +7,7 @@
 --                                                                          --
 --                                 S p e c                                  --
 --                                                                          --
---          Copyright (C) 1992-2018, Free Software Foundation, Inc.         --
+--          Copyright (C) 1992-2021, Free Software Foundation, Inc.         --
 --                                                                          --
 -- This specification is derived from the Ada Reference Manual for use with --
 -- GNAT. The copyright notice above, and the license provisions that follow --
@@ -39,9 +39,10 @@
 
 with System;
 
-package Ada.Exceptions with
-   No_Elaboration_Code_All
-is
+package Ada.Exceptions with No_Elaboration_Code_All is
+   pragma Preelaborate;
+   --  In accordance with Ada 2005 AI-362
+
    type Exception_Id is private;
    pragma Preelaborable_Initialization (Exception_Id);
 

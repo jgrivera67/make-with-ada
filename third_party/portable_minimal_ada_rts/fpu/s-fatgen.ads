@@ -37,7 +37,7 @@
 generic
     type T is digits <>;
 
-package System.Fat_Gen is
+package System.Fat_Gen with No_Elaboration_Code_All is
    pragma Pure;
 
    subtype UI is Integer;

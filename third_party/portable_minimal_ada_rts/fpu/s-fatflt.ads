@@ -34,7 +34,7 @@
 
 with System.Fat_Gen;
 
-package System.Fat_Flt is
+package System.Fat_Flt with No_Elaboration_Code_All is
    pragma Pure;
 
    --  Note the only entity from this package that is accessed by Rtsfind
