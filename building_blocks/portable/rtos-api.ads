@@ -31,7 +31,8 @@ with Microcontroller.Arch_Specific;
 --
 --  @summary Portable RTOS API
 --
-package RTOS.API with No_Elaboration_Code_All is
+package RTOS.API with No_Elaboration_Code_All
+ is
    use Microcontroller.Arch_Specific;
 
    type Task_Procedure_Ptr_Type is access procedure

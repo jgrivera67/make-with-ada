@@ -33,7 +33,9 @@ private with Microcontroller.Arch_Specific;
 --
 --  @summary HiRTOS-specific declarations
 --
-package RTOS with No_Elaboration_Code_All is
+package RTOS with No_Elaboration_Code --_All
+is
+   use type HiRTOS.Thread_Priority_Type;
 
    type RTOS_Task_Type is limited private;
    type RTOS_Mutex_Type is limited private;
@@ -41,6 +43,8 @@ package RTOS with No_Elaboration_Code_All is
    type RTOS_Timer_Type is limited private;
 
    type RTOS_Time_Ms_Type is new Interfaces.Unsigned_32;
+
+   type RTOS_Tick_Type is new Interfaces.Unsigned_32;
 
    --
    --  For HiRTOS, lower number means higher priority

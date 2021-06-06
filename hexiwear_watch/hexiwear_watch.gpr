@@ -4,7 +4,7 @@ project hexiwear_watch is
 
    Executable_Prefix := "hexiwear_watch";
    Board := "hexiwear";
-   RTOS := "hirtos";
+   RTOS := "freertos"; --"hirtos";
 
    for Languages use ("Ada", "C");
 
@@ -38,7 +38,7 @@ project hexiwear_watch is
       when "freertos" =>
          RTOS_Base_Dir := "../third_party/FreeRTOS";
          case RTS.CPU_Core is
-            when "arm_cortex_m0+" =>
+            when "arm_cortex_m0plus" =>
                RTOS_Port_Subdir := "GCC/ARM_CM0";
             when "arm_cortex_m4" =>
                RTOS_Port_Subdir := "GCC/ARM_CM4F";
@@ -58,7 +58,7 @@ project hexiwear_watch is
        when "hirtos" =>
          RTOS_Base_Dir := "../HiRTOS";
          case RTS.CPU_Core is
-            when "arm_cortex_m0+" =>
+            when "arm_cortex_m0plus" =>
                RTOS_Port_Subdir := "ARM_CM0";
             when "arm_cortex_m4" =>
                RTOS_Port_Subdir := "ARM_CM4F";
@@ -86,6 +86,7 @@ project hexiwear_watch is
                         "../drivers/board_specific/" & Board,
                         "../drivers/mcu_specific/" & MCU,
                         "../third_party",
+                        "../third_party/cmsis",
                         "../third_party/SVD/" & MCU) &
 			RTOS_Src_Dirs;
 
@@ -122,6 +123,8 @@ project hexiwear_watch is
 				      --"-ffreestanding",
 				      "-I../../building_blocks/rtos_specific/" & RTOS,
 				      "-I../../building_blocks/rtos_specific/" & RTOS & "/" & RTS.CPU_Arch,
+				      "-I../../building_blocks/mcu_specific/" & MCU,
+				      "-I../../third-party/cmsis",
                                       "-Wstrict-prototypes",
                                       "-fms-extensions",
                                       "-Wextra",

@@ -32,8 +32,7 @@ with System.Storage_Elements;
 --
 --  @summary Micrcontroller operations
 --
-package Microcontroller with
-   No_Elaboration_Code_All
+package Microcontroller with No_Elaboration_Code_All
 is
    use System;
    use Interfaces;

@@ -27,8 +27,7 @@
 
 with Kinetis_K64F.MPU;
 
-package Microcontroller.MCU_Specific with
-   No_Elaboration_Code_All
+package Microcontroller.MCU_Specific with No_Elaboration_Code_All
 is
    --
    --  NOR Flash base address

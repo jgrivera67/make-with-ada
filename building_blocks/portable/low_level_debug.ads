@@ -30,8 +30,7 @@ with Interfaces;
 --
 --  Minimal low-level debugging services
 --
-package Low_Level_Debug with
-   No_Elaboration_Code_All
+package Low_Level_Debug with No_Elaboration_Code_All
 is
    use Interfaces;
 

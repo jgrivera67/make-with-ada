@@ -26,8 +26,7 @@
 --
 with Interfaces;
 
-package Number_Conversion_Utils with
-   No_Elaboration_Code_All
+package Number_Conversion_Utils with No_Elaboration_Code_All
 is
    pragma Pure;
    use Interfaces;

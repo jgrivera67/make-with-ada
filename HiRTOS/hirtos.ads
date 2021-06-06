@@ -33,6 +33,7 @@ with HiRTOS_Config;
 --  @summary HiRTOS interface
 --
 package HiRTOS with SPARK_Mode => On is
+   use type Interfaces.Unsigned_16;
 
    type Thread_Id_Type is range 0 .. HiRTOS_Config.Max_Num_Threads
       with Size => Interfaces.Unsigned_8'Size;
@@ -71,8 +72,8 @@ package HiRTOS with SPARK_Mode => On is
       with Size => Interfaces.Unsigned_8'Size;
 
    subtype Thread_Stack_Size_Type is Interfaces.Unsigned_16 with
-      Static_Predicate =>
-         Stack_Size_Type >= HiRTOS_Config.Thread_Stack_Min_Size or else Stack_Size_Type = 0;
+      Dynamic_Predicate =>
+         Thread_Stack_Size_Type >= HiRTOS_Config.Thread_Stack_Min_Size or else Thread_Stack_Size_Type = 0;
 
    --
    --  NOTE: Lower value means higher priority
@@ -81,17 +82,6 @@ package HiRTOS with SPARK_Mode => On is
       constant Thread_Priority_Type := Thread_Priority_Type'Last;
    Highest_Thread_Prioritiy :
       constant Thread_Priority_Type := Thread_Priority_Type'First;
-
-   type Interrupt_Priority_Type is
-      range 0 .. Microcontroller.Arch_Specific.Num_Interrupt_Priorities - 1;
-
-   --
-   --  NOTE: Lower value means higher priority
-   --
-   Lowest_Interrupt_Prioritiy :
-      constant Interrupt_Priority_Type := Interrupt_Priority_Type'Last;
-   Highest_Interrupt_Prioritiy :
-      constant Interrupt_Priority_Type := Interrupt_Priority_Type'First;
 
    type Time_Ms_Type is new Interfaces.Unsigned_32;
 

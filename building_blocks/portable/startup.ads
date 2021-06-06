@@ -28,8 +28,7 @@
 --
 --  @summary Startup code
 --
-package Startup with
-   No_Elaboration_Code_All
+package Startup with No_Elaboration_Code_All
 is
 
    procedure Reset_Handler with Export,
@@ -38,6 +37,13 @@ is
                                 No_Return;
    --
    --  Reset exception handler
+   --
+
+   procedure Unexpected_Interrupt_Handler
+      with Export, Convention => C,
+	   External_Name => "unexpected_irq_handler";
+   --
+   --  Default handler of unexpected interrupts
    --
 
 end Startup;

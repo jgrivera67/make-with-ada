@@ -27,7 +27,6 @@
 
 with System;
 with Interfaces;
-private with Microcontroller.Arch_Specific;
 
 --
 --  @summary HiRTOS compile-time configuration parameters

@@ -29,8 +29,7 @@ pragma Restrictions (No_Elaboration_Code);
 with Interfaces;
 with System;
 
-package Reset_Counter with
-   No_Elaboration_Code_All
+package Reset_Counter with No_Elaboration_Code_All
 is
    use Interfaces;
    use System;
