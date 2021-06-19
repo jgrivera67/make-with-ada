@@ -6,18 +6,19 @@
         {
             "label": "build",
             "type": "shell",
-            "command": "gprbuild",
+            //"command": "gprbuild",
+            "command": "make",
             "options": {
                 "cwd": "${workspaceFolder}"
             },
-            "args": [
-                "-p",
-                "-P",
-                "$GPR_FILE",
-                "-XCPU_Core=arm_cortex_m0plus",
-                //"-cargs",
-                "-gnatef"
-            ],
+            //"args": [
+            //    "-p",
+            //    "-P",
+            //    "$GPR_FILE",
+            //    "-XCPU_Core=arm_cortex_m0plus",
+            //    //"-cargs",
+            //    "-gnatef"
+            //],
             "problemMatcher": {
                 "base": "$ada",
                 "fileLocation": [
@@ -94,10 +95,10 @@
                     }
                 }
             ],
-            "group": {
-                "kind": "build",
+            //"group": {
+            //    "kind": "build",
             //    "isDefault": true
-            }
+            //}
         }
     ]
 }

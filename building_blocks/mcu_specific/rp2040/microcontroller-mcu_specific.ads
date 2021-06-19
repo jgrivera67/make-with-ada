@@ -1,5 +1,5 @@
 --
---  Copyright (c) 2016, German Rivera
+--  Copyright (c) 2021, German Rivera
 --  All rights reserved.
 --
 --  Redistribution and use in source and binary forms, with or without
@@ -24,27 +24,51 @@
 --  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 --  POSSIBILITY OF SUCH DAMAGE.
 --
-with Interfaces;
-with System;
 
-package Reset_Counter with No_Elaboration_Code_All
-is
-   use Interfaces;
-   use System;
-
-   procedure Update;
-
-   function Get return Unsigned_32;
+package Microcontroller.MCU_Specific with No_Elaboration_Code_All is
    --
-   --  Retrieves the current value of the CPU reset counter
+   --  NOR Flash base address
    --
-   --  @return current CPU reset count
+   Mcu_Flash_Base_Addr : constant Integer_Address := 16#10000000#;
+
    --
+   --  NOR Flash size in bytes
+   --
+   Mcu_Flash_Size : constant Unsigned_32 := 2 * 1024 * 1024; --  2MiB
 
-private
+   --
+   --   SRAM base address
+   --
+   Mcu_Sram_Base_Addr : constant Integer_Address := 16#20000000#;
 
-   function Mem_Checksum (Start_Addr : Address; Size : Unsigned_32)
-                          return Unsigned_32;
+   --
+   --  SRAM size in byte
+   --
+   Mcu_Sram_Size : constant Unsigned_32 := 264 * 1024;
 
-   function Valid return Boolean;
-end Reset_Counter;
+   --
+   --  Sector size (in bytes) of the MCU's program flash memory
+   --
+   Nor_Flash_Sector_Size : constant := 1024;
+
+   --
+   --  MMIO ranges
+   --
+   Mcu_Peripheral_Bridge_Min_Addr : constant Integer_Address := 16#40000000#;
+   Mcu_Peripheral_Bridge_Max_Addr : constant Integer_Address := 16#5FFFFFFF#;
+
+   -- ** --
+
+   --  procedure System_Reset with No_Return;
+
+   --  function Find_System_Reset_Cause return System_Reset_Causes_Type;
+
+   package Memory_Map is new
+     Generic_Memory_Map (Mcu_Peripheral_Bridge_Min_Addr,
+                         Mcu_Peripheral_Bridge_Max_Addr,
+                         Mcu_Flash_Base_Addr,
+                         Mcu_Flash_Size,
+                         Mcu_Sram_Base_Addr,
+                         Mcu_Sram_Size);
+
+end Microcontroller.MCU_Specific;

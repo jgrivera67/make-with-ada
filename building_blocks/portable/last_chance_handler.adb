@@ -24,27 +24,27 @@
 --  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 --  POSSIBILITY OF SUCH DAMAGE.
 --
-with System; use System;
 with Microcontroller.Arch_Specific;
-with Microcontroller.MCU_Specific;
+--  with Microcontroller.MCU_Specific;
 with Number_Conversion_Utils;
-with Runtime_Logs;
-with Interfaces.Bit_Types;
-with System.Storage_Elements;
-with Stack_Trace_Capture;
-with Memory_Protection;
+--  with Runtime_Logs;
+with Interfaces;
+--  with Interfaces.Bit_Types;
+--  with System.Storage_Elements;
+--  with Stack_Trace_Capture;
+--  with Memory_Protection;
 with Low_Level_Debug;
 
 package body Last_Chance_Handler with
    SPARK_Mode => Off
 is
    use Microcontroller.Arch_Specific;
-   use Interfaces.Bit_Types;
+   --  use Interfaces.Bit_Types;
    use Interfaces;
-   use System.Storage_Elements;
-   use Memory_Protection;
+   --  use System.Storage_Elements;
+   --  use Memory_Protection;
 
-   procedure Print_Stack_Trace (Num_Entries_To_Skip : Natural);
+   --  procedure Print_Stack_Trace (Num_Entries_To_Skip : Natural);
 
    --
    --  Dispositions for the last chance exception handler
@@ -54,7 +54,7 @@ is
                              Dummy_Infinite_Loop);
 
    Disposition : constant Disposition_Type := Dummy_Infinite_Loop;
-                                              --  System_Reset;
+   --  System_Reset;
 
    Last_Chance_Handler_Running : Boolean := False;
 
@@ -64,11 +64,11 @@ is
 
    procedure Last_Chance_Handler (Msg : System.Address; Line : Integer) is
       Msg_Text : String (1 .. 128) with Address => Msg;
-      Caller : constant Address :=
-        Return_Address_To_Call_Address (Get_LR_Register);
+      --  Caller : constant Address :=
+      --    Return_Address_To_Call_Address (Get_LR_Register);
       Msg_Length : Natural := 0;
-      Old_Interrupt_Mask : Word with Unreferenced;
-      Old_Region : MPU_Region_Descriptor_Type;
+      Old_Interrupt_Mask : Unsigned_32 with Unreferenced;
+      --  Old_Region : MPU_Region_Descriptor_Type;
       Dec_Num_Str : String (1 .. 4);
       Dec_Num_Str_Length : Positive;
    begin
@@ -93,13 +93,13 @@ is
          end loop;
       end if;
 
-      Set_Private_Data_Region (Last_Chance_Handler_Running'Address,
-                               Last_Chance_Handler_Running'Size,
-                               Read_Write,
-                               Old_Region);
+      --  Set_Private_Data_Region (Last_Chance_Handler_Running'Address,
+      --                           Last_Chance_Handler_Running'Size,
+      --                           Read_Write,
+      --                           Old_Region);
 
       Last_Chance_Handler_Running := True;
-      Restore_Private_Data_Region (Old_Region);
+      --  Restore_Private_Data_Region (Old_Region);
 
       --
       --  Print exception message to error log and UART0:
@@ -111,32 +111,32 @@ is
          Low_Level_Debug.Print_Number_Decimal (Unsigned_32 (Line),
                                                End_Line => True);
 
-         Print_Stack_Trace (Num_Entries_To_Skip => 0);
+         --  Print_Stack_Trace (Num_Entries_To_Skip => 0);
          Number_Conversion_Utils.Unsigned_To_Decimal_String (
             Unsigned_32 (Line), Dec_Num_Str, Dec_Num_Str_Length);
-         Runtime_Logs.Error_Print ("Exception: '" &
-                                   Msg_Text (1 .. Msg_Length) &
-                                   "' at line " &
-                                   Dec_Num_Str (1 .. Dec_Num_Str_Length),
-                                   Caller);
+         --  Runtime_Logs.Error_Print ("Exception: '" &
+         --                          Msg_Text (1 .. Msg_Length) &
+         --                          "' at line " &
+         --                          Dec_Num_Str (1 .. Dec_Num_Str_Length),
+         --                          Caller);
       else
          Low_Level_Debug.Print_String (
             ASCII.LF &
             "*** Exception: '" & Msg_Text (1 .. Msg_Length) & "'" & ASCII.LF);
-         Print_Stack_Trace (Num_Entries_To_Skip => 0);
+         --  Print_Stack_Trace (Num_Entries_To_Skip => 0);
 
-         Runtime_Logs.Error_Print ("Exception: '" &
-                                    Msg_Text (1 .. Msg_Length) &
-                                   "'", Caller);
+         --  Runtime_Logs.Error_Print ("Exception: '" &
+         --                            Msg_Text (1 .. Msg_Length) &
+         --                            "'", Caller);
       end if;
 
       case Disposition is
          when System_Reset =>
-            Microcontroller.MCU_Specific.System_Reset;
+            null; --  ???Microcontroller.MCU_Specific.System_Reset;
 
          when Break_Point =>
             Microcontroller.Arch_Specific.Break_Point;
-            Microcontroller.MCU_Specific.System_Reset;
+            --  ???Microcontroller.MCU_Specific.System_Reset;
 
          when Dummy_Infinite_Loop =>
             loop
@@ -150,22 +150,23 @@ is
    -- Print_Stack_Trace --
    -----------------------
 
-   procedure Print_Stack_Trace (Num_Entries_To_Skip : Natural) is
-      Max_Stack_Trace_Entries : constant Positive := 8;
-      Stack_Trace :
-         Stack_Trace_Capture.Stack_Trace_Type (1 .. Max_Stack_Trace_Entries);
+   --  procedure Print_Stack_Trace (Num_Entries_To_Skip : Natural) is
+   --     Max_Stack_Trace_Entries : constant Positive := 8;
+   --     Stack_Trace :
+   --        Stack_Trace_Capture.Stack_Trace_Type (1 ..
+   --                                              Max_Stack_Trace_Entries);
 
-      Num_Entries_Captured : Natural;
-   begin
-      Stack_Trace_Capture.Get_Stack_Trace (Stack_Trace,
-                                           Num_Entries_Captured);
-      for Stack_Trace_Entry of
-        Stack_Trace (1 + Num_Entries_To_Skip .. Num_Entries_Captured) loop
-         Low_Level_Debug.Print_String (ASCII.HT & "0x");
-         Low_Level_Debug.Print_Number_Hexadecimal (
-            Unsigned_32 (To_Integer (Stack_Trace_Entry)),
-            End_Line => True);
-      end loop;
-   end Print_Stack_Trace;
+   --      Num_Entries_Captured : Natural;
+   --  begin
+   --     Stack_Trace_Capture.Get_Stack_Trace (Stack_Trace,
+   --                                          Num_Entries_Captured);
+   --     for Stack_Trace_Entry of
+   --       Stack_Trace (1 + Num_Entries_To_Skip .. Num_Entries_Captured) loop
+   --        Low_Level_Debug.Print_String (ASCII.HT & "0x");
+   --        Low_Level_Debug.Print_Number_Hexadecimal (
+   --           Unsigned_32 (To_Integer (Stack_Trace_Entry)),
+   --           End_Line => True);
+   --     end loop;
+   --  end Print_Stack_Trace;
 
 end Last_Chance_Handler;

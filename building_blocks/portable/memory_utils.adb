@@ -83,9 +83,9 @@ package body Memory_Utils is
       Num_Data_Words : constant Integer_Address :=
         To_Integer (Data_Words'Address);
       Data_Section : Words_Array_Type (1 .. Num_Data_Words) with
-	 Address => Data_Start'Address;
+         Address => Data_Start'Address;
       Data_Section_Initializers : Words_Array_Type (1 .. Num_Data_Words) with
-	 Address => Data_Load'Address;
+         Address => Data_Load'Address;
    begin
       Data_Section := Data_Section_Initializers;
    end Copy_Data_Section;

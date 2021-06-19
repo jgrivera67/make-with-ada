@@ -41,7 +41,7 @@ is
 
    procedure Unexpected_Interrupt_Handler
       with Export, Convention => C,
-	   External_Name => "unexpected_irq_handler";
+           External_Name => "unexpected_irq_handler";
    --
    --  Default handler of unexpected interrupts
    --

@@ -25,3 +25,6 @@ to make it more portable across platforms:
 
    Default_Priority : constant Priority := 15;
 
+
+Host FSF gnat RTS sources are at:
+/usr/lib/gcc/arm-linux-gnueabihf/8/adainclude/interfac.ads

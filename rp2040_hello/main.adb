@@ -26,55 +26,23 @@
 --
 
 with Interfaces;
--- ??? with Runtime_Logs;
-with Reset_Counter;
---??? with Microcontroller.MCU_Specific;
---??? with Pin_Mux_Driver;
---??? with Serial_Console;
-with Low_Level_Debug;
---??? with Command_Parser;
-with GNAT.Source_Info;
+--  with Low_Level_Debug;
+--  with GNAT.Source_Info;
 with Last_Chance_Handler;
-with Number_Conversion_Utils;
 with Startup;
---??? with Memory_Protection;
---??? with Nor_Flash_Driver;
---??? with DMA_Driver;
---??? with Watch;
 
-pragma Unreferenced (Startup);
 pragma Unreferenced (Last_Chance_Handler);
+pragma Unreferenced (Startup);
 
 procedure Main is
 
-   procedure Log_Start_Info is
-      Reset_Count : constant Interfaces.Unsigned_32 := Reset_Counter.Get;
-      --Reset_Cause : constant Microcontroller.System_Reset_Causes_Type :=
-      --  Microcontroller.MCU_Specific.Find_System_Reset_Cause;
-      Str_Buf : String (1 .. 8);
-      Actual_Length : Positive;
-   begin
-      Number_Conversion_Utils.Unsigned_To_Decimal_String (Reset_Count, Str_Buf,
-                                                          Actual_Length);
-      --Runtime_Logs.Info_Print (
-      --   "Main task started (reset count:" & Str_Buf (1 .. Actual_Length) &
-      --   ", last reset cause: " &
-      --   Microcontroller.Reset_Cause_Strings (Reset_Cause).all & ")");
-   end Log_Start_Info;
-
-   -- ** --
-
    procedure Print_Console_Greeting is
    begin
-      --Serial_Console.Lock;
-      --Serial_Console.Clear_Screen;
-      --Serial_Console.Print_String (
-      Low_Level_Debug.Print_String (
-        "RP2040 Hello (Written in Ada 2012, built on " &
-        GNAT.Source_Info.Compilation_Date &
-        " at " & GNAT.Source_Info.Compilation_Time & ")" & ASCII.LF);
-
-      --Serial_Console.Unlock;
+      --  Low_Level_Debug.Print_String (
+      --    "RP2040 Hello (Written in Ada 2012, built on " &
+      --    GNAT.Source_Info.Compilation_Date &
+      --    " at " & GNAT.Source_Info.Compilation_Time & ")" & ASCII.LF);
+      null;
    end Print_Console_Greeting;
 
    -- ** --
@@ -93,29 +61,14 @@ procedure Main is
 
    Led_On : Boolean := True;
 
-begin -- Main
-   --??? Memory_Protection.Initialize (MPU_Enabled => False);
-   --???Low_Level_Debug.Set_Rgb_Led (Red_On => True);--???
-   --???Low_Level_Debug.Set_Rgb_Led (Green_On => True);--???
-
-   --??? Runtime_Logs.Initialize;
-   Log_Start_Info;
-
-   --  Initialize devices used:
-   --??? Pin_Mux_Driver.Initialize;
-   --???Serial_Console.Initialize;
-   --??? Nor_Flash_Driver.Initialize;
-   --??? DMA_Driver.Initialize;
-
+begin --  Main
    Print_Console_Greeting;
-   --??? Command_Parser.Initialize;
-   --??? Watch.Initialize;
    loop
       if Led_On then
-         Low_Level_Debug.Set_Rgb_Led (Blue_On => True);
+         --  Low_Level_Debug.Set_Rgb_Led (Blue_On => True);
          Led_On := False;
       else
-         Low_Level_Debug.Set_Rgb_Led; -- Off
+         --  Low_Level_Debug.Set_Rgb_Led; -- Off
          Led_On := True;
       end if;
 

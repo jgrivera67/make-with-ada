@@ -14,7 +14,7 @@ project RTS is
    case CPU_Core is
       when "arm_cortex_m0plus" =>
 	      CPU_Arch := "arm_cortex_m";
-	      for Target use "arm-eabi";
+	      for Target use "arm-none-abi";
 	      for Library_Dir use "arm_cortex_m_adalib";
 	      CPU_Core_Switches := ("-mcpu=cortex-m0plus",
 	 		                      "-mthumb",
@@ -24,7 +24,7 @@ project RTS is
 
       when "arm_cortex_m4" =>
 	      CPU_Arch := "arm_cortex_m";
-	      for Target use "arm-eabi";
+	      for Target use "arm-none-eabi";
 	      for Library_Dir use "arm_cortex_m_adalib";
 	      CPU_Core_Switches := ("-mcpu=cortex-m4",
 	                            "-mthumb",

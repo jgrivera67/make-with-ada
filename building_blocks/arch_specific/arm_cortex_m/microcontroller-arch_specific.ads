@@ -52,6 +52,46 @@ is
 
    -- ** --
 
+   type Cortex_M_Common_Vector_Entry_Type is
+        (Initial_MSP,
+         Reset_Exception,
+         NMI_Exception,
+         HardFault_Exception,
+         MemoryManagement_Exception, -- Not in Cortex-M0+
+         BusFaultException,          -- Not in Cortex-M0+
+         UsageFaultException,        -- Not in Cortex-M0+
+         Reserved1,
+         Reserved2,
+         Reserved3,
+         Reserved4,
+         SVCall_Exception,
+         DebugMonitor_Exception,     -- Not in Cortex-M0+
+         Reserved5,
+         PendSV_Exception,
+         SysTick_Exception);
+
+   pragma Compile_Time_Error
+     (Cortex_M_Common_Vector_Entry_Type'Pos (Initial_MSP) /= 0,
+      "Initial_MSP must be 0");
+
+   pragma Compile_Time_Error
+     (Cortex_M_Common_Vector_Entry_Type'Pos (Reset_Exception) /= 1,
+      "Reset_Exception must be 1");
+
+   pragma Compile_Time_Error
+     (Cortex_M_Common_Vector_Entry_Type'Pos (SVCall_Exception) /= 11,
+      "SVCall_Exception must be 11");
+
+   pragma Compile_Time_Error
+     (Cortex_M_Common_Vector_Entry_Type'Pos (PendSV_Exception) /= 14,
+      "PendSV_Exception must be 14");
+
+   pragma Compile_Time_Error
+     (Cortex_M_Common_Vector_Entry_Type'Pos (SysTick_Exception) /= 15,
+      "SysTick_Exception must be 15");
+
+   -- ** --
+
    --  ARM core CONTROL register
    type CONTROL_Type is record
       nPRIV : Bit;

@@ -16,5 +16,14 @@
 			"path": "../third_party"
 		}
 	],
-	"settings": {}
+	"settings": {
+		"files.exclude": {
+			".*.swp": true,
+			"*.ali": true,
+			"*.o": true
+		},
+		"editor.formatOnType": true,
+		"editor.minimap.enabled": false,
+		"editor.tabSize": 3
+	}
 }

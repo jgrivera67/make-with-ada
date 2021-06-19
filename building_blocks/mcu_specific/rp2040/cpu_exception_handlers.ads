@@ -1,5 +1,5 @@
 --
---  Copyright (c) 2016, German Rivera
+--  Copyright (c) 2021, German Rivera
 --  All rights reserved.
 --
 --  Redistribution and use in source and binary forms, with or without
@@ -24,27 +24,14 @@
 --  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 --  POSSIBILITY OF SUCH DAMAGE.
 --
-with Interfaces;
-with System;
 
-package Reset_Counter with No_Elaboration_Code_All
+--
+--  @summary Cortex-M0+ CPU core exception handlers
+--
+package Cpu_Exception_Handlers
+   with No_Elaboration_Code_All
 is
-   use Interfaces;
-   use System;
+   procedure Hard_Fault_Handler;
+   pragma Export (C, Hard_Fault_Handler, "hard_fault_handler");
 
-   procedure Update;
-
-   function Get return Unsigned_32;
-   --
-   --  Retrieves the current value of the CPU reset counter
-   --
-   --  @return current CPU reset count
-   --
-
-private
-
-   function Mem_Checksum (Start_Addr : Address; Size : Unsigned_32)
-                          return Unsigned_32;
-
-   function Valid return Boolean;
-end Reset_Counter;
+end Cpu_Exception_Handlers;

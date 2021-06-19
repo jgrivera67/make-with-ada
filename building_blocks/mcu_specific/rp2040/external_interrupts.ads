@@ -1,5 +1,5 @@
 --
---  Copyright (c) 2016, German Rivera
+--  Copyright (c) 2021, German Rivera
 --  All rights reserved.
 --
 --  Redistribution and use in source and binary forms, with or without
@@ -24,27 +24,39 @@
 --  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 --  POSSIBILITY OF SUCH DAMAGE.
 --
-with Interfaces;
-with System;
 
-package Reset_Counter with No_Elaboration_Code_All
+package External_Interrupts with
+  No_Elaboration_Code_All
 is
-   use Interfaces;
-   use System;
+   type External_Interrupt_Type is
+     (TIMER_IRQ_0_IRQn,
+      TIMER_IRQ_1_IRQn,
+      TIMER_IRQ_2_IRQn,
+      TIMER_IRQ_3_IRQn,
+      PWM_IRQ_WRAP_IRQn,
+      USBCTRL_IRQ_IRQn,
+      XIP_IRQ_IRQn,
+      PIO0_IRQ_0_IRQn,
+      PIO0_IRQ_1_IRQn,
+      PIO1_IRQ_0_IRQn,
+      PIO1_IRQ_1_IRQn,
+      DMA_IRQ_0_IRQn,
+      DMA_IRQ_1_IRQn,
+      IO_IRQ_BANK0_IRQn,
+      IO_IRQ_QSPI_IRQn,
+      SIO_IRQ_PROC0_IRQn,
+      SIO_IRQ_PROC1_IRQn,
+      CLOCKS_IRQ_IRQn,
+      SPI0_IRQ_IRQn,
+      SPI1_IRQ_IRQn,
+      UART0_IRQ_IRQn,
+      UART1_IRQ_IRQn,
+      ADC_IRQ_FIFO_IRQn,
+      I2C0_IRQ_IRQn,
+      I2C1_IRQ_IRQn,
+      RTC_IRQ_IRQn);
 
-   procedure Update;
-
-   function Get return Unsigned_32;
-   --
-   --  Retrieves the current value of the CPU reset counter
-   --
-   --  @return current CPU reset count
-   --
-
-private
-
-   function Mem_Checksum (Start_Addr : Address; Size : Unsigned_32)
-                          return Unsigned_32;
-
-   function Valid return Boolean;
-end Reset_Counter;
+   pragma Compile_Time_Error
+     (External_Interrupt_Type'Pos (TIMER_IRQ_0_IRQn) /= 0,
+      "First IRQ number must be 0");
+end External_Interrupts;

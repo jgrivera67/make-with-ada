@@ -136,7 +136,8 @@ package body Microcontroller.Arch_Specific is
    function Get_Control_Register return Unsigned_32 is
       Reg_Value : Unsigned_32;
    begin
-      Asm ("mrs %0, control", Outputs => Unsigned_32'Asm_Output ("=r", Reg_Value),
+      Asm ("mrs %0, control",
+           Outputs => Unsigned_32'Asm_Output ("=r", Reg_Value),
            Volatile => True);
       return Reg_Value;
    end Get_Control_Register;
@@ -291,7 +292,8 @@ package body Microcontroller.Arch_Specific is
 
    function Is_32bit_Instruction (Instruction : Thumb_Instruction_Type)
                                   return Boolean is
-      Masked_Opcode : constant Unsigned_8 := (Instruction.Op_Code and 2#11111000#);
+      Masked_Opcode : constant Unsigned_8 := (Instruction.Op_Code and
+                                              2#11111000#);
    begin
       return Masked_Opcode = 2#11101000# or else
         Masked_Opcode = 2#11110000# or else

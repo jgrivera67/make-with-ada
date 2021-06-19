@@ -6,7 +6,7 @@
 --                                                                          --
 --                                 S p e c                                  --
 --                                                                          --
---          Copyright (C) 2002-2021, Free Software Foundation, Inc.         --
+--          Copyright (C) 2002-2018, Free Software Foundation, Inc.         --
 --                                                                          --
 -- This specification is derived from the Ada Reference Manual for use with --
 -- GNAT. The copyright notice above, and the license provisions that follow --
@@ -19,9 +19,9 @@
 -- OUT ANY WARRANTY;  without even the  implied warranty of MERCHANTABILITY --
 -- or FITNESS FOR A PARTICULAR PURPOSE.                                     --
 --                                                                          --
---                                                                          --
---                                                                          --
---                                                                          --
+-- As a special exception under Section 7 of GPL version 3, you are granted --
+-- additional permissions described in the GCC Runtime Library Exception,   --
+-- version 3.1, as published by the Free Software Foundation.               --
 --                                                                          --
 -- You should have received a copy of the GNU General Public License and    --
 -- a copy of the GCC Runtime Library Exception along with this program;     --
@@ -33,7 +33,7 @@
 --                                                                          --
 ------------------------------------------------------------------------------
 
---  This is the runtime version of this unit (not used during GNAT build)
+pragma Compiler_Unit_Warning;
 
 package Interfaces is
    pragma No_Elaboration_Code_All;
@@ -60,12 +60,7 @@ package Interfaces is
    --  such as SPARK or CodePeer. In the normal case Long_Long_Integer is
    --  always 64-bits so we get the desired 64-bit type.
 
-   type Integer_128 is new Long_Long_Long_Integer;
-   --  Note: we use Long_Long_Long_Integer instead of literal bounds to allow
-   --  this unit to be compiled with compilers not supporting 128-bit integers.
-   --  We do not put a confirming size clause of 128 bits for the same reason.
-
-   type Unsigned_8 is mod 2 ** 8;
+   type Unsigned_8  is mod 2 ** 8;
    for Unsigned_8'Size use  8;
 
    type Unsigned_16 is mod 2 ** 16;
@@ -83,133 +78,105 @@ package Interfaces is
    for Unsigned_64'Size use 64;
    --  See comment on Integer_64 above
 
-   type Unsigned_128 is mod 2 ** Long_Long_Long_Integer'Size;
-   --  See comment on Integer_128 above
-
    function Shift_Left
      (Value  : Unsigned_8;
       Amount : Natural) return Unsigned_8
-      with Import, Convention => Intrinsic, Static;
+      with Import, Convention => Intrinsic;
 
    function Shift_Right
      (Value  : Unsigned_8;
       Amount : Natural) return Unsigned_8
-      with Import, Convention => Intrinsic, Static;
+      with Import, Convention => Intrinsic;
 
    function Shift_Right_Arithmetic
      (Value  : Unsigned_8;
       Amount : Natural) return Unsigned_8
-      with Import, Convention => Intrinsic, Static;
+      with Import, Convention => Intrinsic;
 
    function Rotate_Left
      (Value  : Unsigned_8;
       Amount : Natural) return Unsigned_8
-      with Import, Convention => Intrinsic, Static;
+      with Import, Convention => Intrinsic;
 
    function Rotate_Right
      (Value  : Unsigned_8;
       Amount : Natural) return Unsigned_8
-      with Import, Convention => Intrinsic, Static;
+      with Import, Convention => Intrinsic;
 
    function Shift_Left
      (Value  : Unsigned_16;
       Amount : Natural) return Unsigned_16
-      with Import, Convention => Intrinsic, Static;
+      with Import, Convention => Intrinsic;
 
    function Shift_Right
      (Value  : Unsigned_16;
       Amount : Natural) return Unsigned_16
-      with Import, Convention => Intrinsic, Static;
+      with Import, Convention => Intrinsic;
 
    function Shift_Right_Arithmetic
      (Value  : Unsigned_16;
       Amount : Natural) return Unsigned_16
-      with Import, Convention => Intrinsic, Static;
+      with Import, Convention => Intrinsic;
 
    function Rotate_Left
      (Value  : Unsigned_16;
       Amount : Natural) return Unsigned_16
-      with Import, Convention => Intrinsic, Static;
+      with Import, Convention => Intrinsic;
 
    function Rotate_Right
      (Value  : Unsigned_16;
       Amount : Natural) return Unsigned_16
-      with Import, Convention => Intrinsic, Static;
+      with Import, Convention => Intrinsic;
 
    function Shift_Left
      (Value  : Unsigned_32;
       Amount : Natural) return Unsigned_32
-      with Import, Convention => Intrinsic, Static;
+      with Import, Convention => Intrinsic;
 
    function Shift_Right
      (Value  : Unsigned_32;
       Amount : Natural) return Unsigned_32
-      with Import, Convention => Intrinsic, Static;
+      with Import, Convention => Intrinsic;
 
    function Shift_Right_Arithmetic
      (Value  : Unsigned_32;
       Amount : Natural) return Unsigned_32
-      with Import, Convention => Intrinsic, Static;
+      with Import, Convention => Intrinsic;
 
    function Rotate_Left
      (Value  : Unsigned_32;
       Amount : Natural) return Unsigned_32
-      with Import, Convention => Intrinsic, Static;
+      with Import, Convention => Intrinsic;
 
    function Rotate_Right
      (Value  : Unsigned_32;
       Amount : Natural) return Unsigned_32
-      with Import, Convention => Intrinsic, Static;
+      with Import, Convention => Intrinsic;
 
    function Shift_Left
      (Value  : Unsigned_64;
       Amount : Natural) return Unsigned_64
-      with Import, Convention => Intrinsic, Static;
+      with Import, Convention => Intrinsic;
 
    function Shift_Right
      (Value  : Unsigned_64;
       Amount : Natural) return Unsigned_64
-      with Import, Convention => Intrinsic, Static;
+      with Import, Convention => Intrinsic;
 
    function Shift_Right_Arithmetic
      (Value  : Unsigned_64;
       Amount : Natural) return Unsigned_64
-      with Import, Convention => Intrinsic, Static;
+      with Import, Convention => Intrinsic;
 
    function Rotate_Left
      (Value  : Unsigned_64;
       Amount : Natural) return Unsigned_64
-      with Import, Convention => Intrinsic, Static;
+      with Import, Convention => Intrinsic;
 
    function Rotate_Right
      (Value  : Unsigned_64;
       Amount : Natural) return Unsigned_64
-      with Import, Convention => Intrinsic, Static;
-
-   function Shift_Left
-     (Value  : Unsigned_128;
-      Amount : Natural) return Unsigned_128
-      with Import, Convention => Intrinsic, Static;
-
-   function Shift_Right
-     (Value  : Unsigned_128;
-      Amount : Natural) return Unsigned_128
-      with Import, Convention => Intrinsic, Static;
-
-   function Shift_Right_Arithmetic
-     (Value  : Unsigned_128;
-      Amount : Natural) return Unsigned_128
-      with Import, Convention => Intrinsic, Static;
-
-   function Rotate_Left
-     (Value  : Unsigned_128;
-      Amount : Natural) return Unsigned_128
-      with Import, Convention => Intrinsic, Static;
-
-   function Rotate_Right
-     (Value  : Unsigned_128;
-      Amount : Natural) return Unsigned_128
-      with Import, Convention => Intrinsic, Static;
+      with Import, Convention => Intrinsic;
 
    --  IEEE Floating point types
 

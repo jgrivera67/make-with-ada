@@ -316,7 +316,8 @@ package body Number_Conversion_Utils is
          Actual_Length := Actual_Length + 1;
          if Buffer'Length >= Actual_Length then
             Buffer (Buffer'First) := '-';
-            Buffer (Buffer'First + 1 .. Buffer'First + 1 + Actual_Length - 2) :=
+            Buffer (Buffer'First + 1 ..
+                    Buffer'First + 1 + Actual_Length - 2) :=
                Tmp_Buffer (Start_Index .. Tmp_Buffer'Last);
          else
             raise Program_Error

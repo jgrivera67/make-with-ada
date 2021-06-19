@@ -526,7 +526,7 @@ package body System.Fat_Gen is
    --  this by using an intermediate pragma Volatile location.
 
    function Machine (X : T) return T is
-      Temp : T with Volatile, No_Caching;
+      Temp : T; --  with Volatile, No_Caching;
    begin
       Temp := X;
       return Temp;
