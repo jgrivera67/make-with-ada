@@ -27,4 +27,4 @@ to make it more portable across platforms:
 
 
 Host FSF gnat RTS sources are at:
-/usr/lib/gcc/arm-linux-gnueabihf/8/adainclude/interfac.ads
+/usr/lib/gcc/arm-linux-gnueabihf/8/adainclude/

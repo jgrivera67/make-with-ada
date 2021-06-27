@@ -105,6 +105,7 @@ package body Startup is
 
    procedure Reset_Handler is
       procedure Gnat_Generated_Main with
+                 No_Return,
                  Import,
                  Convention => C,
                  External_Name => "main";

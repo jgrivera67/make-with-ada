@@ -17,10 +17,7 @@ generic
    type Object (<>) is limited private;
    type Name is access Object;
 
-procedure Ada.Unchecked_Deallocation (X : in out Name) with
-  Depends => (X    => null,  --  X on exit does not depend on its input value
-              null => X),    --  X's input value has no effect
-  Post => X = null;          --  X's output value is null
+procedure Ada.Unchecked_Deallocation (X : in out Name);
 pragma Preelaborate (Unchecked_Deallocation);
 
 pragma Import (Intrinsic, Ada.Unchecked_Deallocation);

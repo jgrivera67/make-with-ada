@@ -6,38 +6,14 @@
 --                                                                          --
 --                                 S p e c                                  --
 --                                                                          --
---          Copyright (C) 1992-2021, Free Software Foundation, Inc.         --
---                                                                          --
 -- This specification is derived from the Ada Reference Manual for use with --
--- GNAT. The copyright notice above, and the license provisions that follow --
--- apply solely to the  contents of the part following the private keyword. --
---                                                                          --
--- GNAT is free software;  you can  redistribute it  and/or modify it under --
--- terms of the  GNU General Public License as published  by the Free Soft- --
--- ware  Foundation;  either version 3,  or (at your option) any later ver- --
--- sion.  GNAT is distributed in the hope that it will be useful, but WITH- --
--- OUT ANY WARRANTY;  without even the  implied warranty of MERCHANTABILITY --
--- or FITNESS FOR A PARTICULAR PURPOSE.                                     --
---                                                                          --
---                                                                          --
---                                                                          --
---                                                                          --
---                                                                          --
--- You should have received a copy of the GNU General Public License and    --
--- a copy of the GCC Runtime Library Exception along with this program;     --
--- see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see    --
--- <http://www.gnu.org/licenses/>.                                          --
---                                                                          --
--- GNAT was originally developed  by the GNAT team at  New York University. --
--- Extensive contributions were provided by Ada Core Technologies Inc.      --
+-- GNAT.  In accordance with the copyright of that document, you can freely --
+-- copy and modify this specification,  provided that if you redistribute a --
+-- modified version,  any changes that you have made are clearly indicated. --
 --                                                                          --
 ------------------------------------------------------------------------------
 
---  This version contains only the type definitions for standard interfacing
---  with C. All functions have been removed from the original spec.
-
-package Interfaces.C is
-   pragma No_Elaboration_Code_All;
+package Interfaces.C with No_Elaboration_Code_All is
    pragma Pure;
 
    --  Declaration's based on C's <limits.h>
@@ -50,6 +26,10 @@ package Interfaces.C is
    --  Signed and Unsigned Integers. Note that in GNAT, we have ensured that
    --  the standard predefined Ada types correspond to the standard C types
 
+   --  Note: the Integer qualifications used in the declaration of type long
+   --  avoid ambiguities when compiling in the presence of s-auxdec.ads and
+   --  a non-private system.address type.
+
    type int   is new Integer;
    type short is new Short_Integer;
    type long  is new Long_Integer;
@@ -58,26 +38,18 @@ package Interfaces.C is
    type signed_char is range SCHAR_MIN .. SCHAR_MAX;
    for signed_char'Size use CHAR_BIT;
 
-   type unsigned            is mod 2 ** int'Size;
-   type unsigned_short      is mod 2 ** short'Size;
-   type unsigned_long       is mod 2 ** long'Size;
-   type unsigned_long_long  is mod 2 ** long_long'Size;
+   type unsigned       is mod 2 ** int'Size;
+   type unsigned_short is mod 2 ** short'Size;
+   type unsigned_long  is mod 2 ** long'Size;
+   type unsigned_long_long is mod 2 ** long_long'Size;
 
    type unsigned_char is mod (UCHAR_MAX + 1);
    for unsigned_char'Size use CHAR_BIT;
 
-   subtype plain_char is unsigned_char;
+   type bool is new Boolean with Convention => C;
 
-   type ptrdiff_t is
-     range -(2 ** (Standard'Address_Size - 1)) ..
-           +(2 ** (Standard'Address_Size - 1) - 1);
-
-   type size_t is mod 2 ** Standard'Address_Size;
-
-   --  Boolean type
-
-   type C_bool is new Boolean;
-   pragma Convention (C, C_bool);
+   subtype size_t is unsigned_long;
+   subtype uintptr_t is unsigned_long;
 
    --  Floating-Point
 
@@ -95,16 +67,5 @@ package Interfaces.C is
 
    type char_array is array (size_t range <>) of aliased char;
    for char_array'Component_Size use CHAR_BIT;
-
-   ------------------------------------
-   -- Wide Character and Wide String --
-   ------------------------------------
-
-   type wchar_t is new Wide_Character;
-   for wchar_t'Size use Standard'Wchar_T_Size;
-
-   wide_nul : constant wchar_t := wchar_t'First;
-
-   type wchar_array is array (size_t range <>) of aliased wchar_t;
 
 end Interfaces.C;

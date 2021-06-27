@@ -4,7 +4,7 @@
 --                                                                          --
 --                       A D A . A S S E R T I O N S                        --
 --                                                                          --
---            Copyright (C) 2015-2021, Free Software Foundation, Inc.       --
+--            Copyright (C) 2015-2018, Free Software Foundation, Inc.       --
 --                                                                          --
 --                                 S p e c                                  --
 --                                                                          --
@@ -19,9 +19,9 @@
 -- OUT ANY WARRANTY;  without even the  implied warranty of MERCHANTABILITY --
 -- or FITNESS FOR A PARTICULAR PURPOSE.                                     --
 --                                                                          --
---                                                                          --
---                                                                          --
---                                                                          --
+-- As a special exception under Section 7 of GPL version 3, you are granted --
+-- additional permissions described in the GCC Runtime Library Exception,   --
+-- version 3.1, as published by the Free Software Foundation.               --
 --                                                                          --
 -- You should have received a copy of the GNU General Public License and    --
 -- a copy of the GCC Runtime Library Exception along with this program;     --
@@ -39,10 +39,8 @@
 
 pragma Assertion_Policy (Pre => Ignore);
 
-pragma Compiler_Unit_Warning;
-
 package Ada.Assertions with
-  SPARK_Mode, Pure, No_Elaboration_Code_All
+  SPARK_Mode, No_Elaboration_Code_All
 is
    Assertion_Error : exception;
 

@@ -6,7 +6,7 @@
 --                                                                          --
 --                                 S p e c                                  --
 --                                                                          --
---          Copyright (C) 2002-2021, Free Software Foundation, Inc.         --
+--          Copyright (C) 2002-2018, Free Software Foundation, Inc.         --
 --                                                                          --
 -- This specification is derived from the Ada Reference Manual for use with --
 -- GNAT. The copyright notice above, and the license provisions that follow --
@@ -19,9 +19,9 @@
 -- OUT ANY WARRANTY;  without even the  implied warranty of MERCHANTABILITY --
 -- or FITNESS FOR A PARTICULAR PURPOSE.                                     --
 --                                                                          --
---                                                                          --
---                                                                          --
---                                                                          --
+-- As a special exception under Section 7 of GPL version 3, you are granted --
+-- additional permissions described in the GCC Runtime Library Exception,   --
+-- version 3.1, as published by the Free Software Foundation.               --
 --                                                                          --
 -- You should have received a copy of the GNU General Public License and    --
 -- a copy of the GCC Runtime Library Exception along with this program;     --
@@ -39,7 +39,8 @@
 
 pragma Compiler_Unit_Warning;
 
-package System.Storage_Elements with No_Elaboration_Code_All is
+package System.Storage_Elements with No_Elaboration_Code_All
+ is
    pragma Pure;
    --  Note that we take advantage of the implementation permission to make
    --  this unit Pure instead of Preelaborable; see RM 13.7.1(15). In Ada 2005,
@@ -56,7 +57,8 @@ package System.Storage_Elements with No_Elaboration_Code_All is
      +(2 ** (Integer'(Standard'Address_Size) - 1)) - Long_Long_Integer'(1);
    --  Note: the reason for the Long_Long_Integer qualification here is to
    --  avoid a bogus ambiguity when this unit is analyzed in an rtsfind
-   --  context.
+   --  context. It may be possible to remove this in the future, but it is
+   --  certainly harmless in any case ???
 
    subtype Storage_Count is Storage_Offset range 0 .. Storage_Offset'Last;
 

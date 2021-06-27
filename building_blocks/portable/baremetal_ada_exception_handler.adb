@@ -35,7 +35,7 @@ with Interfaces;
 --  with Memory_Protection;
 with Low_Level_Debug;
 
-package body Last_Chance_Handler with
+package body Baremetal_Ada_Exception_Handler with
    SPARK_Mode => Off
 is
    use Microcontroller.Arch_Specific;
@@ -58,15 +58,13 @@ is
 
    Last_Chance_Handler_Running : Boolean := False;
 
-   -------------------------
-   -- Last_Chance_Handler --
-   -------------------------
+   -------------------------------------
+   -- Baremetal_Ada_Exception_Handler --
+   -------------------------------------
 
-   procedure Last_Chance_Handler (Msg : System.Address; Line : Integer) is
-      Msg_Text : String (1 .. 128) with Address => Msg;
+   procedure Baremetal_Ada_Exception_Handler (Msg : String; Line : Integer) is
       --  Caller : constant Address :=
       --    Return_Address_To_Call_Address (Get_LR_Register);
-      Msg_Length : Natural := 0;
       Old_Interrupt_Mask : Unsigned_32 with Unreferenced;
       --  Old_Region : MPU_Region_Descriptor_Type;
       Dec_Num_Str : String (1 .. 4);
@@ -74,18 +72,11 @@ is
    begin
       Old_Interrupt_Mask := Disable_Cpu_Interrupts;
       Low_Level_Debug.Set_Rgb_Led (Red_On => True);
-      --
-      --  Calculate length of the null-terminated 'Msg' string:
-      --
-      for Msg_Char of Msg_Text loop
-         Msg_Length := Msg_Length + 1;
-         exit when Msg_Char = ASCII.NUL;
-      end loop;
 
       if Last_Chance_Handler_Running then
          Low_Level_Debug.Print_String (
-            "*** Recursive call to Last_Chance_Handler: " &
-            Msg_Text (1 .. Msg_Length) & "' at line ");
+            "*** Recursive call to Last_Chance_Handler: " & Msg &
+            "' at line ");
          Low_Level_Debug.Print_Number_Decimal (Unsigned_32 (Line),
                                                End_Line => True);
          loop
@@ -106,7 +97,7 @@ is
       --
       if Line /= 0 then
          Low_Level_Debug.Print_String (
-            ASCII.LF & "*** Exception: '" & Msg_Text (1 .. Msg_Length) &
+            ASCII.LF & "*** Exception: '" & Msg &
             "' at line ");
          Low_Level_Debug.Print_Number_Decimal (Unsigned_32 (Line),
                                                End_Line => True);
@@ -114,20 +105,16 @@ is
          --  Print_Stack_Trace (Num_Entries_To_Skip => 0);
          Number_Conversion_Utils.Unsigned_To_Decimal_String (
             Unsigned_32 (Line), Dec_Num_Str, Dec_Num_Str_Length);
-         --  Runtime_Logs.Error_Print ("Exception: '" &
-         --                          Msg_Text (1 .. Msg_Length) &
-         --                          "' at line " &
+         --  Runtime_Logs.Error_Print ("Exception: '" & Msg & "' at line " &
          --                          Dec_Num_Str (1 .. Dec_Num_Str_Length),
          --                          Caller);
       else
          Low_Level_Debug.Print_String (
             ASCII.LF &
-            "*** Exception: '" & Msg_Text (1 .. Msg_Length) & "'" & ASCII.LF);
+            "*** Exception: '" & Msg & "'" & ASCII.LF);
          --  Print_Stack_Trace (Num_Entries_To_Skip => 0);
 
-         --  Runtime_Logs.Error_Print ("Exception: '" &
-         --                            Msg_Text (1 .. Msg_Length) &
-         --                            "'", Caller);
+         --  Runtime_Logs.Error_Print ("Exception: '" & Msg & "'", Caller);
       end if;
 
       case Disposition is
@@ -144,7 +131,7 @@ is
             end loop;
       end case;
 
-   end Last_Chance_Handler;
+   end Baremetal_Ada_Exception_Handler;
 
    -----------------------
    -- Print_Stack_Trace --
@@ -169,4 +156,23 @@ is
    --     end loop;
    --  end Print_Stack_Trace;
 
-end Last_Chance_Handler;
+   -------------------------
+   -- Last_Chance_Handler --
+   -------------------------
+
+   procedure Last_Chance_Handler (Msg : System.Address; Line : Integer) is
+      Msg_Text : String (1 .. 128) with Address => Msg;
+      Msg_Length : Natural := 0;
+   begin
+      --
+      --  Calculate length of the null-terminated 'Msg' string:
+      --
+      for Msg_Char of Msg_Text loop
+         Msg_Length := Msg_Length + 1;
+         exit when Msg_Char = ASCII.NUL;
+      end loop;
+
+      Baremetal_Ada_Exception_Handler (Msg_Text (1 .. Msg_Length), Line);
+   end Last_Chance_Handler;
+
+end Baremetal_Ada_Exception_Handler;

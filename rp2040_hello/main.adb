@@ -28,10 +28,10 @@
 with Interfaces;
 --  with Low_Level_Debug;
 --  with GNAT.Source_Info;
-with Last_Chance_Handler;
+with Baremetal_Ada_Exception_Handler;
 with Startup;
 
-pragma Unreferenced (Last_Chance_Handler);
+pragma Unreferenced (Baremetal_Ada_Exception_Handler);
 pragma Unreferenced (Startup);
 
 procedure Main is
