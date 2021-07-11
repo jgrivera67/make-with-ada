@@ -25,7 +25,7 @@
 %\linenumbers
 
 \begin{document}
-\title{Design of the McRTOS Multi-core \\
+\title{Design of the HiRTOS Multi-core \\
        Real-Time Operating System}
 \author{Germ\'an Rivera \\
         \texttt jgrivera67@gmail.com}
@@ -39,11 +39,11 @@
 \mainmatter
 \raggedbottom
 \pagestyle{myheadings}
-\markboth{Design of the McRTOS Multi-core Real-Time Operating System}{Design of the McRTOS Real-Time Operating System}
+\markboth{Design of the HiRTOS Multi-core Real-Time Operating System}{Design of the HiRTOS Real-Time Operating System}
 
 \chapter{HiRTOS: A High Integrity RTOS}
 
-This chapter describes the design of \emph{HiRTOS}, a high integrity real-time
+This document describes the design of \emph{HiRTOS}, a high integrity real-time
 operating system kernel. The design is presented using the
 \href{http://en.wikipedia.org/wiki/Z_notation}{Z notation} \cite{Zrm, WayofZ}.
 Z is a software modeling notation based on discrete mathematics structures (such as sets,
@@ -74,6 +74,11 @@ Constants defined here represent compile-time configuration parameters for
 HiRTOS.
 
 \begin{axdef}
+    maxNumCpus: \nat_1 \\
+    numCpuRegisters: \nat_1 \\
+    cpuRegisterWidth: \nat_1 \\
+    minMemoryAddress: \nat \\
+    maxMemoryAddress: \nat_1 \\
     maxNumThreads: \nat_1 \\
     maxNumMutexes: \nat_1 \\
     maxNumCondvars: \nat_1 \\
@@ -85,24 +90,33 @@ HiRTOS.
     lowestInterruptPriority: \nat_1 \\
     highestInterruptPriority: \nat_1 \\
 \where
-    lowestThreadPriority = numThreadPriorities \\
-    highestThreadPriority = 1 \\
-    lowestInterruptPriority = numInterruptPriorities \\
+    minMemoryAddress < maxMemoryAddress \\
     highestInterruptPriority = 1 \\
+    lowestInterruptPriority = numInterruptPriorities \\
+    highestThreadPriority = lowestInterruptPriority + 1 \\
+    lowestThreadPriority = lowestInterruptPriority + numThreadPriorities \\
 \end{axdef}
 
 \section{Primitive Types}
 
 \begin{zed}
+    CpuIdType == 1 \upto maxNumCpus \\
+    CpuRegisterIdType == 1 \upto numCpuRegisters \\
+    CpuRegisterValueType == 0 \upto 2^{cpuRegisterWidth} - 1 \\
+    MemoryAddressType == minMemoryAddress .. maxMemoryAddress \\
     ThreadIdType == 1 \upto maxNumThreads \\
     MutexIdType == 1 \upto maxNumMutexes \\
     CondvarIdType == 1 \upto maxNumCondvars \\
     InterruptIdType == 1 \upto maxNumInterrupts \\
-    ThreadPrioirtyType == 1 \upto numThreadPriorities \\
     InterruptPrioirtyType == 1 \upto numInterruptPriorities \\
+    ThreadPrioirtyType == \\
+    \t1 numInterruptPriorities + 1 \upto numInterruptPriorities + numThreadPriorities \\
+    MutexPriorityType == InterruptPrioirtyType \cup ThreadPrioirtyType \\
     CpuInterruptsStateType ::= cpuInterruptsEnabled | cpuInterruptsDisabled \\
-    CpuPrivilegeModeType ::= cpuPrivilegedMode | cpuUnprivilegedMode \\
+    CpuPrivilegeType ::= cpuPrivileged | cpuUnprivileged \\
+    ExecutionContextType ::= interruptContext | threadContext \\
     ThreadStateType ::= threadNotCreated | threadRunnable | threadRunning | threadBlocked \\
+    SynchronizationScopeType ::= localCpuOnly | interCpu \\
 \end{zed}
 
 For both threads and interrupts, lower priority numbers represent higher priorities. Interrupts
@@ -120,14 +134,12 @@ the highest priority thread.
 
 \section{State Variables}
 
-\begin{schema}{McRTOS}
+\begin{schema}{HiRTOS}
     ExecutionController \\
-    ReliabilityMonitor \\
     mutexes: \finset Mutex \\
     condvars: \finset Condvar \\
     %semaphores: \finset Semaphore \\
     messageChannels: \finset MessageChannel \\
-    objectPools: \finset ObjectPool \\
     zMutexOwner: Mutex \pfun ExecutionContext \\
     zMutexWaiters: Thread \pfun Mutex \\
     zCondvarWaiters: Thread \pfun Condvar \\
@@ -146,7 +158,7 @@ the highest priority thread.
 \also
     \# zMutexWaiters < \# zThreads \land \# zCondvarWaiters < \# zThreads
 \also
-	\forall cpu: CPUID @ \\
+	\forall cpu: CpuIdType @ \\
 \t1		(zCpuIdToCpuController(cpu)).zRunnableThreads ~\cap \\
 \t1		(\dom zMutexWaiters \cup \dom zCondvarWaiters) = \emptyset
 \also
@@ -180,18 +192,18 @@ for which waiting threads call ``wait for interrupt''.
 \subsection{Execution Controller}
 
 \begin{schema}{ExecutionController}
-    zCpuIdToCpuController: CPUID \inj CpuController \\
+    zCpuIdToCpuController: CpuIdType \inj CpuController \\
     cpuControllers: \finset_1 CpuController \\
     zExecutionContexts: \finset_1 ExecutionContext \\
 	zThreads: \finset Thread \\
     zInterrupts: \finset_1 Interrupt \\
-    zExecutionContextToCpu: ExecutionContext \psurj CPUID \\
+    zExecutionContextToCpu: ExecutionContext \psurj CpuIdType \\
     zThreadToExecutionContext: Thread \pinj ExecutionContext \\
     zInterruptToExecutionContext: Interrupt \pinj ExecutionContext
 \where
 	\ran zCpuIdToCpuController = cpuControllers
 \also
-    \forall cpu: CPUID @ (zCpuIdToCpuController(cpu)).cpuId = cpu
+    \forall cpu: CpuIdType @ (zCpuIdToCpuController(cpu)).cpuId = cpu
 \also
 	\bigcap \{ cpuC: cpuControllers @ cpuC.threads \} = \emptyset
 \also
@@ -230,16 +242,12 @@ Invariants:
 \begin{itemize}
 \item Every thread must be assigned to a CPU. This is done at thread creation time
 and the thread cannot be moved to another CPU.
-\item Every interrupt source must be assigned to a CPU and must always be served by that CPU.
+\item Every interrupt source must be assigned to a CPU and must always be serviced by that CPU.
 \item The same thread cannot be assigned to more than one CPU.
 \item The same interrupt source cannot be assigned to more than one CPU.
 \item Every execution context is assigned to a fixed CPU. The same execution context cannot be
 assigned to two different CPUs. Every CPU has at least one execution context (if nothing else,
 its idle thread).
-\item Synchronization between threads and interrupts via codvars is only allowed for
-threads and interrupts running on the same CPU. That is, a thread cannot be signaled
-from an ISR running on a different CPU. In other words, a thread cannot wait for
-an interrupt assigned to a different CPU.
 \end{itemize}
 
 \clearpage
@@ -247,7 +255,7 @@ an interrupt assigned to a different CPU.
 
 \begin{schema}{CpuController}
 	ThreadScheduler \\
-    cpuId: CPUID \\
+    cpuId: CpuIdType \\
     zExecutionContexts: \finset_1 ExecutionContext \\
     preemptedBy: ExecutionContext \pinj ExecutionContext \\
     timers: \finset Timer \\
@@ -282,10 +290,7 @@ an interrupt assigned to a different CPU.
 Invariants:
 \begin{itemize}
 \item There can be more than one interrupt with the same interrupt priority. Interrupt
-    scheduling is done by hardware. For the LPC2478, this is done by the Vectored Interrupt
-    Controller (VIC). For ARMv7-A and ARMv7-R processors, the ARM generic interrupt controller
-    (GIC) \cite{Arm4} is used. For ARMv7-M processors, the Nested Vectored Interrupt controller
-    (NVIC) is used.
+    scheduling is done by hardware, by the interrupt controller.
 \item The same interrupt cannot be nested.
 \end{itemize}
 
@@ -314,11 +319,10 @@ $ThreadScheduler$ represents the state variables of the Per-CPU thread scheduler
 \also
      zUserThreads \cap zSystemThreads = \emptyset
 \also
-     \forall t: zSystemThreads @ t.executionContext.cpuMode = kPrivilegedThreadMode
+     \forall t: zSystemThreads @ t.executionContext.cpuPrivilege = cpuPrivileged
 \also
      \forall t: zUserThreads @ \\
-\t1      t.executionContext.cpuMode \in \\
-\t2           \{ kUnprivilegedThreadMode, kPrivilegedThreadMode \}
+\t1      t.executionContext.contextType = threadContext
 \also
      idleThread \in zSystemThreads
 \also
@@ -357,15 +361,13 @@ that stops the processor until an interrupt happens.
 \subsection{ExecutionContext}
 
 \begin{schema}{ExecutionContext}
-    cpuRegisters: \finset_1 WORD\_LOCATION \\
-    stackPointer: WORD\_LOCATION \\
-    cpuId: CPUID \\
-	cpuMode: CPU\_MODE \\
-    contextType: EXECUTION\_CONTEXT\_TYPE \\
-	executionStack: ADDRESS \pinj WORD\_LOCATION \\
-    exeStackTopEnd: ADDRESS \\
-    exeStackBottomEnd: ADDRESS \\
-    contextName: STRING \\
+    cpuRegisters: CpuRegisterIdType \inj CpuRegisterValueType \\
+    stackPointer: MemoryAddressType \\
+    cpuId: CpuIdType \\
+	cpuPrivilege: CpuPrivilegeType \\
+    contextType: ExecutionContextType \\
+    exeStackTopEnd: MemoryAddressType \\
+    exeStackBottomEnd: MemoryAddressType \\
  \where
     stackPointer \in cpuRegisters
 \also
@@ -399,24 +401,23 @@ that stops the processor until an interrupt happens.
 \also
 	executionContext.contextType = kThreadContext
 \also
-	executionContext.cpuMode \in \{ kUnprivilegedThreadMode, kPrivilegedThreadMode \}
-\also
     \# executionContext.executionStack = kThreadStackSizeInWords
 \end{schema}
 
-User-created threads will run in the ARM user mode and system internal threads will run in the
-ARM system mode. This is to prevent user threads to execute privileged instructions. When
-user threads call the system APIs, API wrappers that execute the ARM system call instruction
-are actually invoked. Then, the SWI exception handler, which gets invoked in supervisor mode,
-changes the CPU mode to system mode and call the corresponding kernel service. When the
-kernel service returns to the SWI exception handler, it switches back to supervisor mode
-and returns form the exception, causing the CPU mode to go back to user mode again.
+User-created threads run in the CPU's unprivileged mode and system internal threads run in the CPU's privileged mode.
+This is to prevent user threads to execute privileged instructions. If a
+user thread needs to execute a provileged instruction, it needs to first switch the CPU to privileged mode.
 
 Invariants:
 \begin{itemize}
 \item The current priority of a thread can never be lower than its base priority. The
-current priority can be higher than the base priority, due to priority inheritance,
-when the thread owns a mutex a higher priority thread is waiting for.
+current priority can be higher than the base priority when it acquires a mutex that has
+higher priority than the thread's base priority.
+\item A thread never gets blocked trying to acquire a mutex that has the same priority
+as the thread. Still, the thread needs to acquire the mutex, since other threads with
+the same prioirity may also try to acquire the same mutex, if the running thread gets
+switched out due running out of its time slice.
+\item A thread should never try to acquire a mutex of lower priority than the thread's priority. Indeed, It does not need to, as it cannot be preemted by lower priority threads.
 \end{itemize}
 
 \subsection{Interrupts}
@@ -428,19 +429,20 @@ when the thread owns a mutex a higher priority thread is waiting for.
 \where
 	executionContext.contextType = kInterruptContext
 \also
-	executionContext.cpuMode = kInterruptMode
+	executionContext.cpuPrivilege = cpuPrivileged
 \also
     \# executionContext.executionStack = kInterruptStackSizeInWords
 \end{schema}
 
-Interrupt execution contexts run in the ARM IRQ mode. To ensure that a higher priority
-interrupt is not delayed by a lower priority interrupt, nested interrupts will be
-supported. After clearing the interrupt source, all interrupt service routines (ISRs),
-re-enable IRQ interrupts in the ARM core, but continue running in IRQ mode. Note that
-the same interrupt cannot be raised again until we finish servicing the current one, as
-the interrupt controller is expected to only raise interrupts with higher priority
-than the current one being served. (The last step in servicing an interrupt is to
-notify the interrupt controller of the completion of servicing the interrupt).
+Interrupt execution contexts run in privileged mode. To ensure that a higher
+priority interrupt is not delayed by a lower priority interrupt, nested
+interrupts are supported. To this end, interrupt service routines (ISRs)
+run with interrupts enabled by default. However, interrupts with the same or
+lower priority cannot interrupt the CPU until we finish servicing the current
+interrupt, as the interrupt controller is expected to only raise interrupts
+with higher priority than the current one being serviced. (The last step in
+servicing an interrupt is to notify the interrupt controller of the
+completion of servicing the interrupt).
 
 \subsection{Timers}
 
@@ -455,23 +457,27 @@ notify the interrupt controller of the completion of servicing the interrupt).
 
 \begin{schema}{Mutex}
 	waitingThreads: ThreadQueue \\
-    synchronizationScope: SYNCHRONIZATION\_SCOPE \\
- \where
-    synchronizationScope \in \{ kLocalCpuThreadOnly, kInterCpuThreadOnly \}
+    synchronizationScope: SynchronizationScopeType \\
+    priority: MutexPriorityType \\
 \end{schema}
+
+HiRTOS mutexes implement the priority ceiling protocol. That is, each mutex has a priority
+associated with it, which is the priority of the highest priority task that accesses the
+resource protected by the mutex, or the lowest interrupt priorirty, in case if an ISR
+accesses the resource protected by the mutex.
+The mutex is supposed be acquired by threads that have lower priority than the mutex's
+priority. If the mutex has prioirty higher or equal to the lowest interrupt priority,
+acquiring the mutex also disables interrupts in the CPU.
 
 When a mutex is released and another thread is waiting to acquire it, the ownership of the mutex
 is transferred to the first waiter, and this waiter is made runnable. This is so that if the
 previous owner has higher priority and tries to acquire it again, it will get blocked. Otherwise,
 the highest priority thread will keep running, acquiring and releasing the mutex without giving
-a chance to the low priority waiting thread to ever get it.
+a chance to the low-priority waiting thread to ever get it.
 
 The queue of waiters on a mutex is strictly FIFO, not priority based. This is to ensure
 fairness for lower priority threads. Otherwise, lower priority threads may starve waiting
 to get the mutex, as higher priority threads keep acquiring it first.
-
-The primitive to acquire a mutex returns with error if the reliability monitor detects a
-deadlock, to prevent the caller from waiting indefinitely.
 
 \subsection{Condition Variables}
 
@@ -481,17 +487,17 @@ deadlock, to prevent the caller from waiting indefinitely.
 %\where
 \end{schema}
 
-Besides the traditional condvar ``wait'' primitive, there is an additional ``Wait for interrupt''
+Besides the traditional condvar ``wait'' primitive, there is a ``wait with interrupts disabled''
 primitive, intended to be used to synchronize a waiting thread with an ISR that is supposed to signal
 the corresponding condvar on which the thread is waiting. The waiting thread must have interrupts
-disabled in the ARM processor, when it calls ``wait for interrupt''.
+disabled in the processor, when it calls the ``wait with interrupts disabled'' primitve.
 
 If more than one thread is waiting on the condvar, the ``signal'' primitive will wake up the
 first thread in the condvar's queue. The ``broadcast'' primitive wakes up all the waiting threads.
 
 There is a variation of the ``wait'' primitive that includes a timeout.
 
-McRTOS will not provide semaphore primitives as part of its user APIs, as semaphores can be
+HiRTOS will not provide semaphore primitives as part of its APIs, as semaphores can be
 easily implemented using condition variables and mutexes, for semaphores used only by threads.
 For semaphores signaled from ISRs, they can be implemented with a combination of condition
 variables and disabling interrupts, since mutexes cannot be used in ISRs. In this case, the thread
@@ -514,62 +520,7 @@ Otherwise, missed ``wake-ups'' could happen due to a race condition between the 
     GenericCircularBuffer[WORD\_LOCATION] \\
 \end{schema}
 
-\subsection{Object Pools}
-
-\begin{schema}{ObjectPool}
-    objects: \finset_1 ADDRESS \\
-    zNumObjects: \nat_1 \\
-    freeObjects: FreeList  \\
-    zNumFreeObjects: \nat \\
-    objectType: OBJECT\_TYPE \\
-\where
-    \# objects = zNumObjects
-\also
-    freeObjects.numEntries = zNumObjects
-\also
-    freeObjects.entriesFilled = zNumFreeObjects
-\end{schema}
-
-\begin{schema}{FreeList}
-    GenericCircularBuffer[ADDRESS] \\
-\end{schema}
-
 \clearpage
-\subsection{Reliability Monitor}
-
-\begin{schema}{ReliabilityMonitor}
-    failureTraceLog: FailureTraceBuffer \\
-%\where
-\end{schema}
-
-\begin{schema}{FailureTraceBuffer}
-    GenericCircularBuffer[Failure] \\
-\end{schema}
-
-\begin{schema}{Failure}
-    location: ADDRESS \\
-    timeStamp: \nat \\
-    stackTrace: \iseq WORD\_LOCATION \\
-%\where
-\end{schema}
-
-Failures to be detected by the Reliability Monitor:
-\begin{itemize}
-\item Interrupts have been disabled for too long (longer than a predefined threshold).
-\item Mutex deadlock (initial implementation may simply use a timer-based detection approach
-to detect if a mutex has been held for too long)
-\item Thread starvation: a runnable thread other than the idle thread has not been able to
-      get the CPU for too long.
-\item A time-critical thread has missed its next deadline to run.
-\item Failure detectors will be placed through the code of McRTOS in the form of
-production-code ``asserts'' (as opposed to debug-only asserts that are compiled-out from
-production code).
-\item Regular error handling in the code will call the Reliability monitor to capture
-failure data associated with the error. The reliability monitor will assign a unique error
-to each error detected by error handling logic. The purpose of these error codes is
-to uniquely identify the point in the source code where the error originated.
-\end{itemize}
-
 \subsection{Generic Data Structures}
 
 \subsubsection{Generic Linked Lists}
@@ -668,61 +619,8 @@ Three behaviors are possible for writers when a circular buffer is full: block u
 room to complete the write, drop the item to be written, overwrite the oldest entry with the
 new item.
 
-\chapter{Code Quality Guidelines}
-
-\section{Compliance with Industry Standards for Code Reliability}
-
-All the C code of McRTOS will follow the MISRA C 2012 standard \cite{MisraC} and
-the CERT C Secure Coding Standard \cite{CertC}.
-
-%\section{Compliance with the CMSIS-RTOS API Specification}
-%The User-level APIS of McRTOS will confrom as much as possible with the CMSIS-RTOS API
-%specification \cite{CMSIS}.
-
-\section{Doxygen Code Documentation}
-
-All functions, types, constants and global variables will have a preceding comment
-block in Doxygen format \cite{Doxygen}, so that API documentation can be generated automatically from
-code comments.
-
-\section{Opaque Objects return by User-level APIs}
-All the ``create'' APIs return opaque pointers (pointer to incomplete structs). They point to
-objects allocated from internal object pools statically allocated (\verb'malloc()' is not used at all).
-Entries in these object pools are cache-line aligned, to avoid cache line trashing when threads running
-on different processors keep modifying neighboring entries.
-The returned pointers are``scrambled'' so that the user cannot dereference them directly. A simple approach to
-scramble a pointer is to rotate its bits left or right 2 or 3 bits, using an inline assembly
-instruction. When an API needs to dereference a pointer, it will ``un-scramble'' it first, by
-doing the opposite rotation.
-
-\section{Design-by-Contract Principles}
-Design-by-Contract principles \cite{DbC} will be followed to systematically identify places
-in the code where to put ``asserts''. Assertion checks will stay in production code, as opposed
-to being compiled out from production builds.
-
-\section{Test-Driven Development}
-
-Test-driven development practices \cite{TDD1} will be used to develop the code of McRTOS. In particular
-the CppUTest \cite{TDD2} unit-testing framework will be used to create automated unit tests.
-
 \clearpage
 \begin{thebibliography}{9}
-
-\bibitem{Arm1}
-Steve Furber, ``ARM System-on-Chip Architecture'', second edition, Addison-Wesley, 2000 \\
-\url{http://www.amazon.com/ARM-System-Chip-Architecture-Edition/dp/0201675196}
-
-\bibitem{Arm2}
-Andrew Sloss et al, ``ARM System Developer's Guide: Designing and Optimizing System Software'', Morgan Kaufmann, 2004 \\
-\url{http://www.amazon.com/ARM-System-Developers-Guide-Architecture/dp/1558608745}
-
-\bibitem{Arm3}
-ARM, ``Cortex-A Series Programmer’s Guide'', version 3.0, ARM, 2012 \\
-\url{http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.den0013-/index.html}
-
-\bibitem{Arm4}
-ARM, ``ARM Generic Interrupt Controller Architecture Specification Architecture'',  version 2.0, ARM, 2011 \\
-\url{http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.ihi0048b/index.html}
 
 \bibitem{Zrm}
 Mike Spivey, ``The Z Reference Manual'', second edition, Prentice-Hall, 1992 \\
@@ -736,36 +634,10 @@ Jonathan Jacky, ``The Way of Z'', Cambridge Press, 1997 \\
 Mike Spivey, ``The Fuzz checker'' \\
 \url{http://spivey.oriel.ox.ac.uk/mike/fuzz}
 
-\bibitem{MisraC}
-MISRA, ``MISRA C:2012'' \\
-\url{http://www.misra.org.uk/LinkClick.aspx?fileticket=SAG1iH3YwNE%3d&tabid=59}
-
-\bibitem{CertC}
-Software Engineering Institute, ``CERT C Secure Coding Standard'' \\
-\url{https://www.securecoding.cert.org/confluence/display/seccode/CERT+C+Secure+Coding+Standard}
-
-\bibitem{Doxygen}
-Dimitri van Heesch, ``Doxygen Documentation Generator'' \\
-\url{http://doxygen.org}
-
 \bibitem{DbC}
 Bertrand Meyer, ``Touch of Class: Learning to Program Well with Objects and Contracts'', Springer, 2009 \\
 \url{http://www.amazon.com/dp/3540921443}
 
-\bibitem{TDD1}
-James W. Grenning, ``Test Driven Development for Embedded C'', Pragmatic Bookshelf, 2011 \\
-\url{http://www.amazon.com/Driven-Development-Embedded-Pragmatic-Programmers/dp/193435662X}
-
-\bibitem{TDD2}
-CppUTest Project, ``CppUTest unit testing and mocking framework for C/C++'' \\
-\url{http://cpputest.org}
-
-%\bibitem{CMSIS}
-%ARM, ``CMSIS - Cortex Microcontroller Software Interface Standard'' \\
-%\url{http://www.arm.com/products/processors/cortex-m/cortex-microcontroller-software-interface-standard.php}
-
 \end{thebibliography}
 
 \end{document}
-
-

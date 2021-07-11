@@ -32,7 +32,7 @@ OBJ_DIR = obj-latex
 # Build tools
 #
 PDFLATEX = pdflatex
-FUZZ = fuzz
+FUZZ = FUZZLIB=/usr/local/lib/fuzzlib fuzz
 
 PDFLATEX_FLAGS = -interaction=nonstopmode \
 		 -halt-on-error \
@@ -66,4 +66,3 @@ clean: clean_obj
 
 clean_obj:
 	$(RM) -r ${OBJ_DIR}
-
