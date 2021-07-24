@@ -11,7 +11,7 @@ pragma Restrictions (No_Elaboration_Code);
 with System;
 
 --  Controls the crystal oscillator
-package RP2040.XOSC is
+package RP2040.XOSC with No_Elaboration_Code_All is
    pragma Preelaborate;
 
    ---------------

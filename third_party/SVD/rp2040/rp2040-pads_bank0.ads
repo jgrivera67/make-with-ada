@@ -10,7 +10,7 @@ pragma Restrictions (No_Elaboration_Code);
 
 with System;
 
-package RP2040.PADS_BANK0 is
+package RP2040.PADS_BANK0 with No_Elaboration_Code_All is
    pragma Preelaborate;
 
    ---------------

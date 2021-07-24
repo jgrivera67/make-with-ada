@@ -10,7 +10,7 @@ pragma Restrictions (No_Elaboration_Code);
 
 with System;
 
-package RP2040.WATCHDOG is
+package RP2040.WATCHDOG with No_Elaboration_Code_All is
    pragma Preelaborate;
 
    ---------------

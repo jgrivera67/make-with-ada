@@ -25,12 +25,15 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
+with Clocks;
 with Cpu_Exception_Handlers;
 with External_Interrupts;
 with Interfaces;
 with Low_Level_Debug;
 with Memory_Utils;
 with Microcontroller.Arch_Specific;
+with RP2040.RESETS;
+with RP2040.PADS_BANK0;
 --  with Microcontroller.Clocks;
 --  with Reset_Counter;
 with System;
@@ -40,6 +43,8 @@ package body Startup is
    use External_Interrupts;
    use Interfaces;
    use Microcontroller.Arch_Specific;
+   use RP2040.RESETS;
+   use RP2040.PADS_BANK0;
 
    --  End address of the main stack (defined in memory_layout.ld)
    Main_Stack_End : constant Unsigned_32;
@@ -103,7 +108,93 @@ package body Startup is
    -- Reset_Handler --
    -------------------
 
-   procedure Reset_Handler is
+   procedure Reset_Handler with SPARK_Mode => Off is
+      procedure Soc_Early_Init is
+         RESET_Reg_Value : RESET_Register;
+         Wanted_RESET_DONE_Reg_Value : RESET_DONE_Register;
+         RESET_DONE_Reg_Value : RESET_DONE_Register;
+      begin
+         --  Reset all peripherals except for the following:
+         --  - QSPI pads and the XIP IO bank, as this is fatal if running from
+         --    flash
+         --  - PLLs, as this is fatal if clock muxing has not been reset on
+         --    this boot
+         --  - and USB, syscfg, as this disturbs USB-to-SWD on core 1
+         --
+         RESETS_Periph.RESET := (
+           io_qspi => 0,
+           pads_qspi => 0,
+           pll_usb => 0,
+           usbctrl => 0,
+           syscfg => 0,
+           pll_sys => 0,
+           others => <>);
+
+         --  Remove reset from peripherals which are clocked only by clk_sys
+         --  and clk_ref. Other peripherals stay in reset until we've
+         --  configured clocks.
+         RESET_Reg_Value := RESETS_Periph.RESET;
+         RESET_Reg_Value.busctrl := 0;
+         RESET_Reg_Value.dma := 0;
+         RESET_Reg_Value.i2c := (As_Array => False, Val => 16#0#);
+         RESET_Reg_Value.io_bank0 := 0;
+         RESET_Reg_Value.jtag := 0;
+         RESET_Reg_Value.pads_bank0 := 0;
+         RESET_Reg_Value.pio := (As_Array => False, Val => 16#0#);
+         RESET_Reg_Value.pwm := 0;
+         RESET_Reg_Value.sysinfo := 0;
+         RESET_Reg_Value.tbman := 0;
+         RESET_Reg_Value.timer := 0;
+         RESETS_Periph.RESET := RESET_Reg_Value;
+
+         Wanted_RESET_DONE_Reg_Value := RESETS_Periph.RESET_DONE;
+         Wanted_RESET_DONE_Reg_Value.busctrl := 1;
+         Wanted_RESET_DONE_Reg_Value.dma := 1;
+         Wanted_RESET_DONE_Reg_Value.i2c := (As_Array => True,
+                                             Arr => (others => 1));
+         Wanted_RESET_DONE_Reg_Value.io_bank0 := 1;
+         Wanted_RESET_DONE_Reg_Value.jtag := 1;
+         Wanted_RESET_DONE_Reg_Value.pads_bank0 := 1;
+         Wanted_RESET_DONE_Reg_Value.pio := (As_Array => True,
+                                             Arr => (others => 1));
+         Wanted_RESET_DONE_Reg_Value.pwm := 1;
+         Wanted_RESET_DONE_Reg_Value.sysinfo := 1;
+         Wanted_RESET_DONE_Reg_Value.tbman := 1;
+         Wanted_RESET_DONE_Reg_Value.timer := 1;
+         loop
+            RESET_DONE_Reg_Value := RESETS_Periph.RESET_DONE;
+            exit when RESET_DONE_Reg_Value = Wanted_RESET_DONE_Reg_Value;
+         end loop;
+
+         Clocks.Initialize_Clocks;
+
+         --  Remove reset from remaining peripherals:
+         RESET_Reg_Value.adc := 0;
+         RESET_Reg_Value.rtc := 0;
+         RESET_Reg_Value.spi := (As_Array => False, Val => 16#0#);
+         RESET_Reg_Value.uart := (As_Array => False, Val => 16#0#);
+         RESET_Reg_Value.usbctrl := 0;
+
+         Wanted_RESET_DONE_Reg_Value := RESETS_Periph.RESET_DONE;
+         Wanted_RESET_DONE_Reg_Value.adc := 1;
+         Wanted_RESET_DONE_Reg_Value.rtc := 1;
+         Wanted_RESET_DONE_Reg_Value.spi := (As_Array => True,
+                                             Arr => (others => 1));
+         Wanted_RESET_DONE_Reg_Value.uart := (As_Array => True,
+                                              Arr => (others => 1));
+         Wanted_RESET_DONE_Reg_Value.usbctrl := 1;
+         loop
+            RESET_DONE_Reg_Value := RESETS_Periph.RESET_DONE;
+            exit when RESET_DONE_Reg_Value = Wanted_RESET_DONE_Reg_Value;
+         end loop;
+
+         --  After resetting BANK0 we should disable IE on 26-29
+         PADS_BANK0_Periph.GPIO26.IE := 0;
+         PADS_BANK0_Periph.GPIO27.IE := 0;
+         PADS_BANK0_Periph.GPIO28.IE := 0;
+         PADS_BANK0_Periph.GPIO29.IE := 0;
+      end Soc_Early_Init;
+
       procedure Gnat_Generated_Main with
                  No_Return,
                  Import,
@@ -117,6 +208,8 @@ package body Startup is
 
       Microcontroller.Arch_Specific.Disable_Cpu_Interrupts;
 
+      Soc_Early_Init;
+
       --
       --  Watchdog timer needs to initialized as soon as possible, to prevent
       --  it from firing, in case it is enabled by default:
@@ -127,7 +220,7 @@ package body Startup is
       Low_Level_Debug.Set_Rgb_Led (Red_On => True);
 
       --  Microcontroller.Clocks.Initialize;
-      Low_Level_Debug.Set_Rgb_Led (Green_On => True);
+      --  ???Low_Level_Debug.Set_Rgb_Led (Green_On => True);
 
       --
       --  In case C code is invoked from Ada, C global variables
@@ -138,7 +231,7 @@ package body Startup is
 
       --  Reset_Counter.Update;
       Low_Level_Debug.Initialize_Uart;
-      Low_Level_Debug.Set_Rgb_Led; --  off
+      --  ???Low_Level_Debug.Set_Rgb_Led; --  off
 
       --  Microcontroller.Arch_Specific.Interrupt_Handling_Init;
       Microcontroller.Arch_Specific.Enable_Cpu_Interrupts;

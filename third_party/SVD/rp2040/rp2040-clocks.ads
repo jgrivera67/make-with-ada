@@ -10,7 +10,7 @@ pragma Restrictions (No_Elaboration_Code);
 
 with System;
 
-package RP2040.CLOCKS is
+package RP2040.CLOCKS with No_Elaboration_Code_All is
    pragma Preelaborate;
 
    ---------------

@@ -29,11 +29,19 @@
 --  with Microcontroller.Clocks;
 with Microcontroller.Arch_Specific;
 with Number_Conversion_Utils;
+with RP2040.SIO;
+with RP2040.PADS_BANK0;
+with RP2040.IO_BANK0;
 
-package body Low_Level_Debug is
+package body Low_Level_Debug with SPARK_Mode => Off is
    --  use Interfaces.Bit_Types;
    --  use Microcontroller.Clocks;
    use Microcontroller.Arch_Specific;
+   use RP2040.SIO;
+   use RP2040.PADS_BANK0;
+   use RP2040.IO_BANK0;
+
+   Led_Pin : constant := 25;
 
    --  Baud_Rate : constant := 115_200;
 
@@ -62,31 +70,22 @@ package body Low_Level_Debug is
    procedure Initialize_Rgb_Led is
       --  SCGC5_Value : SIM.SCGC5_Type;
       --  PDDR_Value : Kinetis_K64F.PORT.Pin_Array_Type;
+      Led_Pin_Mask : constant Interfaces.Unsigned_32 :=
+         Interfaces.Shift_Left (1, Led_Pin);
+      Gpio_Reg_Value : GPIO_Register;
    begin
-      --  Enable the GPIO port clocks for the LED pins:
-      --  SCGC5_Value := SIM.Registers.SCGC5;
-      --  SCGC5_Value.PORTC := 1;
-      --  SCGC5_Value.PORTD := 1;
-      --  SIM.Registers.SCGC5 := SCGC5_Value;
-
-      --  Configure Red LED (PC8):
-      --  PORT.PortC_Registers.PCR (8) := (MUX => 1, IRQC => 0, others => 0);
-      --  PDDR_Value := GPIO.PortC_Registers.PDDR;
-      --  PDDR_Value (8) := 1;
-      --  GPIO.PortC_Registers.PDDR := PDDR_Value;
-
-      --  Configure Green LED (PD0):
-      --  PORT.PortD_Registers.PCR (0) := (MUX => 1, IRQC => 0, others => 0);
-      --  PDDR_Value := GPIO.PortD_Registers.PDDR;
-      --  PDDR_Value (0) := 1;
-      --  GPIO.PortD_Registers.PDDR := PDDR_Value;
-
-      --  Configure Blue LED (PC9):
-      --  PORT.PortC_Registers.PCR (9) := (MUX => 1, IRQC => 0, others => 0);
-      --  PDDR_Value := GPIO.PortC_Registers.PDDR;
-      --  PDDR_Value (9) := 1;
-      --  GPIO.PortC_Registers.PDDR := PDDR_Value;
-      null; --  ???
+      --  Configure LED pin:
+      SIO_Periph.GPIO_OE_CLR.GPIO_OE_CLR :=
+         GPIO_OE_CLR_GPIO_OE_CLR_Field (Led_Pin_Mask);
+      SIO_Periph.GPIO_OUT_CLR.GPIO_OUT_CLR :=
+         GPIO_OUT_CLR_GPIO_OUT_CLR_Field (Led_Pin_Mask);
+      Gpio_Reg_Value := PADS_BANK0_Periph.GPIO25;
+      Gpio_Reg_Value.IE := 1;
+      Gpio_Reg_Value.OD := 0;
+      PADS_BANK0_Periph.GPIO25 := Gpio_Reg_Value;
+      IO_BANK0_Periph.GPIO25_CTRL.FUNCSEL := sio_25;
+      SIO_Periph.GPIO_OE_SET.GPIO_OE_SET :=
+         GPIO_OE_SET_GPIO_OE_SET_Field (Led_Pin_Mask);
    end Initialize_Rgb_Led;
 
    ---------------------
@@ -233,31 +232,18 @@ package body Low_Level_Debug is
 
    procedure Set_Rgb_Led (Red_On, Green_On, Blue_On : Boolean := False)
    is
-      --  Pin_Array_Value : Kinetis_K64F.PORT.Pin_Array_Type;
+      Led_Pin_Mask : constant Interfaces.Unsigned_32 :=
+         Interfaces.Shift_Left (1, Led_Pin);
       Old_Intmask : Unsigned_32;
    begin
-      pragma Unreferenced (Red_On, Green_On, Blue_On);
       Old_Intmask := Disable_Cpu_Interrupts;
-      --  Pin_Array_Value := (8 => 1, others => 0);
-      --  if Red_On then
-      --  GPIO.PortC_Registers.PCOR := Pin_Array_Value;
-      --  else
-      --  GPIO.PortC_Registers.PSOR := Pin_Array_Value;
-      --  end if;
-
-      --  Pin_Array_Value := (7 => 1, others => 0);
-      --  if Green_On then
-      --  GPIO.PortE_Registers.PCOR := Pin_Array_Value;
-      --  else
-      --  GPIO.PortE_Registers.PSOR := Pin_Array_Value;
-      --  end if;
-
-      --  Pin_Array_Value := (9 => 1, others => 0);
-      --  if Blue_On then
-      --  GPIO.PortC_Registers.PCOR := Pin_Array_Value;
-      --  else
-      --  GPIO.PortC_Registers.PSOR := Pin_Array_Value;
-      --  end if;
+      if Red_On or else Green_On or else Blue_On then
+         SIO_Periph.GPIO_OUT_SET.GPIO_OUT_SET :=
+            GPIO_OUT_SET_GPIO_OUT_SET_Field (Led_Pin_Mask);
+      else
+         SIO_Periph.GPIO_OUT_CLR.GPIO_OUT_CLR :=
+            GPIO_OUT_CLR_GPIO_OUT_CLR_Field (Led_Pin_Mask);
+      end if;
 
       Restore_Cpu_Interrupts (Old_Intmask);
    end Set_Rgb_Led;

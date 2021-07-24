@@ -11,7 +11,7 @@ pragma Restrictions (No_Elaboration_Code);
 with Interfaces;
 with System;
 
-package RP2040 is
+package RP2040 with No_Elaboration_Code_All is
    pragma Preelaborate;
 
    ---------------

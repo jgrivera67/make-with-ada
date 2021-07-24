@@ -10,7 +10,7 @@ pragma Restrictions (No_Elaboration_Code);
 
 with System;
 
-package RP2040.RESETS is
+package RP2040.RESETS with No_Elaboration_Code_All is
    pragma Preelaborate;
 
    ---------------
@@ -149,23 +149,27 @@ package RP2040.RESETS is
       adc            : RESET_adc_Field := 16#1#;
       busctrl        : RESET_busctrl_Field := 16#1#;
       dma            : RESET_dma_Field := 16#1#;
-      i2c            : RESET_i2c_Field := (As_Array => False, Val => 16#1#);
+      i2c            : RESET_i2c_Field := (As_Array => True,
+                                           Arr => (others => 16#1#));
       io_bank0       : RESET_io_bank0_Field := 16#1#;
       io_qspi        : RESET_io_qspi_Field := 16#1#;
       jtag           : RESET_jtag_Field := 16#1#;
       pads_bank0     : RESET_pads_bank0_Field := 16#1#;
       pads_qspi      : RESET_pads_qspi_Field := 16#1#;
-      pio            : RESET_pio_Field := (As_Array => False, Val => 16#1#);
+      pio            : RESET_pio_Field := (As_Array => True,
+                                           Arr => (others => 16#1#));
       pll_sys        : RESET_pll_sys_Field := 16#1#;
       pll_usb        : RESET_pll_usb_Field := 16#1#;
       pwm            : RESET_pwm_Field := 16#1#;
       rtc            : RESET_rtc_Field := 16#1#;
-      spi            : RESET_spi_Field := (As_Array => False, Val => 16#1#);
+      spi            : RESET_spi_Field := (As_Array => True,
+                                           Arr => (others => 16#1#));
       syscfg         : RESET_syscfg_Field := 16#1#;
       sysinfo        : RESET_sysinfo_Field := 16#1#;
       tbman          : RESET_tbman_Field := 16#1#;
       timer          : RESET_timer_Field := 16#1#;
-      uart           : RESET_uart_Field := (As_Array => False, Val => 16#1#);
+      uart           : RESET_uart_Field := (As_Array => True,
+                                           Arr => (others => 16#1#));
       usbctrl        : RESET_usbctrl_Field := 16#1#;
       --  unspecified
       Reserved_25_31 : RP2040.UInt7 := 16#0#;

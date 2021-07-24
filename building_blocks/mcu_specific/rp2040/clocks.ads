@@ -1,5 +1,5 @@
 --
---  Copyright (c) 2016, German Rivera
+--  Copyright (c) 2021, German Rivera
 --  All rights reserved.
 --
 --  Redistribution and use in source and binary forms, with or without
@@ -24,54 +24,8 @@
 --  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 --  POSSIBILITY OF SUCH DAMAGE.
 --
-
-with Interfaces;
-with Low_Level_Debug;
---  with GNAT.Source_Info;
-with Baremetal_Ada_Exception_Handler;
-with Startup;
-
-pragma Unreferenced (Baremetal_Ada_Exception_Handler);
-pragma Unreferenced (Startup);
-
-procedure Main is
-
-   procedure Print_Console_Greeting is
-   begin
-      --  Low_Level_Debug.Print_String (
-      --    "RP2040 Hello (Written in Ada 2012, built on " &
-      --    GNAT.Source_Info.Compilation_Date &
-      --    " at " & GNAT.Source_Info.Compilation_Time & ")" & ASCII.LF);
-      null;
-   end Print_Console_Greeting;
-
-   -- ** --
-
-   procedure Naive_Delay (N : Interfaces.Unsigned_32) is
-      use Interfaces;
-      Count : Unsigned_32 := N;
-   begin
-      loop
-         exit when Count = 0;
-         Count := Count - 1;
-      end loop;
-   end Naive_Delay;
-
-   -- ** --
-
-   Led_On : Boolean := True;
-
-begin --  Main
-   Print_Console_Greeting;
-   loop
-      if Led_On then
-         Low_Level_Debug.Set_Rgb_Led (Blue_On => True);
-         Led_On := False;
-      else
-         Low_Level_Debug.Set_Rgb_Led; -- Off
-         Led_On := True;
-      end if;
-
-      Naive_Delay (10_000_000);
-   end loop;
-end Main;
+package Clocks with
+   No_Elaboration_Code_All
+is
+   procedure Initialize_Clocks;
+end Clocks;

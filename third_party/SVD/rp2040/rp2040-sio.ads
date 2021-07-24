@@ -13,7 +13,7 @@ with System;
 --  Single-cycle IO block\n
 --          Provides core-local and inter-core hardware for the two processors,
 --  with single-cycle access.
-package RP2040.SIO is
+package RP2040.SIO with No_Elaboration_Code_All is
    pragma Preelaborate;
 
    ---------------
