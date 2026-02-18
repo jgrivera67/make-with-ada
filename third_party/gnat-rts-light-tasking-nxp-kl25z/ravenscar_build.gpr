@@ -16,7 +16,7 @@ project Ravenscar_Build is
    for Library_Dir use "adalib";
    for Object_Dir use "obj";
 
-   for Source_Dirs use ("gnarl_user", "gnarl");
+   for Source_Dirs use ("gnarl");
 
    package Compiler is
       for Default_Switches ("C") use Target_Options.GNARL_CFLAGS;

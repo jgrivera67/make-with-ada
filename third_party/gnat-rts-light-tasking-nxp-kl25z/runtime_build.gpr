@@ -14,7 +14,7 @@ project Runtime_Build is
   for Library_Dir use "adalib";
   for Object_Dir use "obj";
 
-  for Source_Dirs use ("gnat_user", "gnat", "nxp_kl25z");
+  for Source_Dirs use ("gnat", "nxp_kl25z");
 
   package Naming is
      for Spec_Suffix ("Asm_CPP") use ".inc";
