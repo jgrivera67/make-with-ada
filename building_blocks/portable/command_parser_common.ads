@@ -32,7 +32,8 @@ package Command_Parser_Common is
 
    function Parse_Positive_Decimal_Number (
       Token_String : String;
-      Result : out Positive) return Boolean;
+      Result : out Positive) return Boolean
+      with SPARK_Mode => Off;
 
    procedure Cmd_Print_Stats;
 

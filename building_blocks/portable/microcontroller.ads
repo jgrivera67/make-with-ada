@@ -81,7 +81,7 @@ package Microcontroller is
    Reset_Cause_Strings :
      constant array (Microcontroller.System_Reset_Causes_Type) of
      not null access constant String :=
-       (INVALID_RESET_CAUSE => INVALID_RESET_CAUSE_String'Access,
+       [INVALID_RESET_CAUSE => INVALID_RESET_CAUSE_String'Access,
         POWER_ON_RESET =>  POWER_ON_RESET_String'Access,
         EXTERNAL_PIN_RESET => EXTERNAL_PIN_RESET_String'Access,
         WATCHDOG_RESET => WATCHDOG_RESET_String'Access,
@@ -89,7 +89,7 @@ package Microcontroller is
         LOCKUP_EVENT_RESET => LOCKUP_EVENT_RESET_String'Access,
         EXTERNAL_DEBUGGER_RESET => EXTERNAL_DEBUGGER_RESET_String'Access,
         OTHER_HW_REASON_RESET => OTHER_HW_REASON_RESET_String'Access,
-        STOP_ACK_ERROR_RESET => STOP_ACK_ERROR_RESET_String'Access);
+        STOP_ACK_ERROR_RESET => STOP_ACK_ERROR_RESET_String'Access];
 
    -- ** --
 

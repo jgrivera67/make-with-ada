@@ -36,7 +36,7 @@ procedure FRDM_KL25Z_Gnat_Runtime_Test is
 
    procedure Led_Test is
       PCR_Value : PORT.PCR_Type;
-      Pin_Array_Value : GPIO.Pin_Array;
+      Pin_Array_Value : PORT.Pin_Array_Type;
    begin
       PCR_Value := PORT.PortB_Registers.PCR (18);
       PCR_Value.MUX := 1;
@@ -47,33 +47,33 @@ procedure FRDM_KL25Z_Gnat_Runtime_Test is
       PORT.PortB_Registers.PCR (19) := PCR_Value;
 
       Pin_Array_Value := GPIO.PortB_Registers.PDDR;
-      Pin_Array_Value (18 .. 19) := (1, 1);
+      Pin_Array_Value (18 .. 19) := [1, 1];
       GPIO.PortB_Registers.PDDR := Pin_Array_Value;
-      Pin_Array_Value := (others => 1);
+      Pin_Array_Value := [others => 1];
       GPIO.PortB_Registers.PSOR := Pin_Array_Value;
 
       --  turn on red:
-      Pin_Array_Value := (18 => 1, others => 0);
+      Pin_Array_Value := [18 => 1, others => 0];
       GPIO.PortB_Registers.PCOR := Pin_Array_Value;
       delay until Clock + Milliseconds(500);
 
       -- turn off red:
-      Pin_Array_Value := (18 => 1, others => 0);
+      Pin_Array_Value := [18 => 1, others => 0];
       GPIO.PortB_Registers.PSOR := Pin_Array_Value;
       delay until Clock + Milliseconds(500);
 
       -- turn on yellow:
-      Pin_Array_Value := (18 => 1, 19 => 1, others => 0);
+      Pin_Array_Value := [18 => 1, 19 => 1, others => 0];
       GPIO.PortB_Registers.PCOR := Pin_Array_Value;
       delay until Clock + Milliseconds(500);
 
       -- turn off yellow:
-      Pin_Array_Value := (18 => 1, 19 => 1, others => 0);
+      Pin_Array_Value := [18 => 1, 19 => 1, others => 0];
       GPIO.PortB_Registers.PSOR := Pin_Array_Value;
       delay until Clock + Milliseconds(500);
 
       --  turn on green:
-      Pin_Array_Value := (19 => 1, others => 0);
+      Pin_Array_Value := [19 => 1, others => 0];
       GPIO.PortB_Registers.PCOR := Pin_Array_Value;
 
    end Led_Test;
@@ -81,9 +81,9 @@ procedure FRDM_KL25Z_Gnat_Runtime_Test is
    -- ** --
 
    procedure Toggle_LED_Green (Toggle_State : in out Boolean) is
-      Pin_Array_Value : GPIO.Pin_Array;
+      Pin_Array_Value : PORT.Pin_Array_Type;
    begin
-      Pin_Array_Value := (19 => 1, others => 0);
+      Pin_Array_Value := [19 => 1, others => 0];
       if Toggle_State then
          GPIO.PortB_Registers.PCOR := Pin_Array_Value;
       else

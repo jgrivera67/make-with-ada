@@ -46,14 +46,14 @@ package body Color_Led is
    --  Mapping of LED colors to RGB color component
    --
    Rgb_Colors : constant array (Led_Color_Type) of Rgb_Color_Type :=
-     (Black => (others => False),
+     [Black => (others => False),
       Red => (Red => True, others => False),
       Green => (Green => True, others => False),
       Yellow => (Red => True, Green => True, others => False),
       Blue => (Blue => True, others => False),
       Magenta => (Red => True, Blue => True, others => False),
       Cyan => (Green => True, Blue => True, others => False),
-      White => (others => True));
+      White => (others => True)];
 
    --
    --  RGB LED singleton object

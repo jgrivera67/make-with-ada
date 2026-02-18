@@ -36,9 +36,9 @@ private package PWM_Driver.Board_Specific_Private is
    --
    PWM_Devices_Const :
       constant array (PWM_Device_Id_Type) of PWM_Device_Const_Type :=
-        (PWM0 =>
+        [PWM0 =>
            (Registers_Ptr => PWM.TPM0_Periph'Access,
-            Channels => (0 => (Hooked => True,
+            Channels => [0 => (Hooked => True,
                                Pin => (Pin_Port => PIN_PORT_C,
                                        Pin_Index => 1,
                                        Pin_Function => PIN_FUNCTION_ALT4)),
@@ -55,11 +55,11 @@ private package PWM_Driver.Board_Specific_Private is
                                        Pin_Index => 4,
                                        Pin_Function => PIN_FUNCTION_ALT4)),
                          others => <>
-                        )),
+                        ]),
 
          PWM1 =>
            (Registers_Ptr => PWM.TPM1_Periph'Access,
-            Channels => (0 => (Hooked => True,
+            Channels => [0 => (Hooked => True,
                                Pin => (Pin_Port => PIN_PORT_B,
                                        Pin_Index => 0,
                                        Pin_Function => PIN_FUNCTION_ALT3)),
@@ -68,11 +68,11 @@ private package PWM_Driver.Board_Specific_Private is
                                        Pin_Index => 1,
                                        Pin_Function => PIN_FUNCTION_ALT3)),
                          others => <>
-                        )),
+                        ]),
 
          PWM2 =>
            (Registers_Ptr => PWM.TPM2_Periph'Access,
-            Channels => (others => <>))
-        );
+            Channels => [others => <>])
+        ];
 
 end PWM_Driver.Board_Specific_Private;

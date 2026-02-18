@@ -61,6 +61,7 @@ package App_Configuration is
       Config_Parameters : out Config_Parameters_Type);
 
    function Save_Config_Parameters (
-      Config_Parameters : in out Config_Parameters_Type) return Boolean;
+      Config_Parameters : in out Config_Parameters_Type) return Boolean
+      with SPARK_Mode => Off;
 
 end App_Configuration;

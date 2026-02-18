@@ -49,7 +49,9 @@ package body Command_Line is
 
    -- ** --
 
-   function Get_Next_Token (Token : out Token_Type) return Boolean is
+   function Get_Next_Token (Token : out Token_Type) return Boolean
+      with SPARK_Mode => Off
+   is
       procedure Read_Command_Line (
          Buffer : out String;
          Filled_Length : out Natural) with

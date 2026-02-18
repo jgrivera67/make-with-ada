@@ -29,7 +29,7 @@ separate (Pin_Mux_Driver)
    procedure Set_Pin_Function (Pin_Info : Pin_Info_Type;
                                Drive_Strength_Enable : Boolean := False;
                                Pullup_Resistor : Boolean := False;
-                               Open_Drain_Enable : Boolean := False)
+                               Open_Drain_Enable : Boolean := False with Unreferenced)
    is
       Pins_In_Use_Entry : Boolean renames
         Pins_In_Use_Map (Pin_Info.Pin_Port, Pin_Info.Pin_Index);

@@ -36,7 +36,7 @@ private package Uart_Driver.Board_Specific_Private is
    --
    Uart_Devices :
    constant array (Uart_Device_Id_Type) of Uart_Device_Const_Type :=
-     (UART0 =>
+     [UART0 =>
         (Registers_Ptr => UART.Uart0_Registers'Access,
          Tx_Pin =>
            (Pin_Port => PIN_PORT_A,
@@ -77,6 +77,6 @@ private package Uart_Driver.Board_Specific_Private is
          Rx_Pin_Pullup_Resistor_Enabled => False,
          Source_Clock_Freq_In_Hz => Bus_Clock_Frequency --  see table 5-2
         )
-     );
+     ];
 
 end Uart_Driver.Board_Specific_Private;

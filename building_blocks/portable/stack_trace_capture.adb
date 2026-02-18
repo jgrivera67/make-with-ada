@@ -32,7 +32,9 @@ with Microcontroller.Arm_Cortex_M;
 with Microcontroller.MCU_Specific;
 with Task_Stack_Info;
 
-package body Stack_Trace_Capture is
+package body Stack_Trace_Capture
+   with SPARK_Mode => Off
+is
    use Interfaces;
    use Interfaces.Bit_Types;
    use System.Storage_Elements;

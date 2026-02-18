@@ -1,3 +1,4 @@
+with "../third_party/gnat-rts-light-tasking-nxp-kl25z/ravenscar_build.gpr";
 project frdm_kl25z_gnat_runtime_test is
 
    for Languages use ("ada");
@@ -15,7 +16,8 @@ project frdm_kl25z_gnat_runtime_test is
       for Default_Switches ("ada") use ("-g", "-O0");
    end Builder;
 
-   for Runtime ("Ada") use "ravenscar-sfp-kinetis_kl25z_frdm";
+   --???for Runtime ("Ada") use "ravenscar-sfp-kinetis_kl25z_frdm";
+   for Runtime ("Ada") use Ravenscar_Build'Runtime ("Ada");
    for Target use "arm-eabi";
 
    package Ide is
@@ -24,4 +26,3 @@ project frdm_kl25z_gnat_runtime_test is
    end Ide;
 
 end frdm_kl25z_gnat_runtime_test;
-

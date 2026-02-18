@@ -29,7 +29,6 @@ with Nor_Flash_Driver;
 with Interfaces.Bit_Types;
 
 package body Generic_App_Config is
-   use Nor_Flash_Driver;
    use Interfaces.Bit_Types;
    use Interfaces;
 

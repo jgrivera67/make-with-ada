@@ -25,7 +25,7 @@
 --  POSSIBILITY OF SUCH DAMAGE.
 --
 
-separate(Pin_Mux_Driver)
+separate (Pin_Mux_Driver)
    procedure Initialize is
       SCGC5_Value : SIM.SCGC5_Type;
    begin

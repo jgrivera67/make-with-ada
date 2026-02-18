@@ -36,7 +36,7 @@ package body Pin_Mux_Driver is
    --  null.
    --
    Pins_In_Use_Map : array (Pin_Port_Type, PORT.Pin_Index_Type) of Boolean :=
-     (others => (others => False));
+     [others => [others => False]];
 
    -------------------
    -- Clear_Pin_Irq --
@@ -45,7 +45,7 @@ package body Pin_Mux_Driver is
    procedure Clear_Pin_Irq (Pin_Info : Pin_Info_Type) is
       Port_Registers : access PORT.Registers_Type renames
         Ports (Pin_Info.Pin_Port);
-      ISFR_Value : PORT.Pin_Array_Type := (others => 0);
+      ISFR_Value : PORT.Pin_Array_Type := [others => 0];
    begin
 
       ISFR_Value (Pin_Info.Pin_Index) := 1;

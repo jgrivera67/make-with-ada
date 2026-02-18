@@ -99,9 +99,9 @@ private
    --
    Runtime_Logs : constant array (Log_Type) of not null access
      Runtime_Log_Type :=
-       (Debug_Log => Debug_Log_Var'Access,
+       [Debug_Log => Debug_Log_Var'Access,
         Error_Log => Error_Log_Var'Access,
-        Info_Log => Info_Log_Var'Access);
+        Info_Log => Info_Log_Var'Access];
 
    Runtime_Logs_Initialized : Boolean := False;
 

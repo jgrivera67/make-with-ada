@@ -28,11 +28,11 @@ with Serial_Console;
 
 package body Runtime_Logs.Dump is
 
-   procedure Dump_Log_Fragment (Runtime_Log : in Runtime_Log_Type;
+   procedure Dump_Log_Fragment (Runtime_Log : Runtime_Log_Type;
                                 Dump_Start_Index : Positive;
                                 Dump_End_Index : Positive;
                                 Max_Screen_Lines : Max_Screen_Lines_Type)
-     with Pre => Dump_Start_Index <= Runtime_Log.Buffer'Last and
+     with Pre => Dump_Start_Index <= Runtime_Log.Buffer'Last and then
                  Dump_End_Index <= Runtime_Log.Buffer'Last;
 
    --------------
@@ -70,7 +70,7 @@ package body Runtime_Logs.Dump is
    -- Dump_Log_Fragment --
    -----------------------
 
-   procedure Dump_Log_Fragment (Runtime_Log : in Runtime_Log_Type;
+   procedure Dump_Log_Fragment (Runtime_Log : Runtime_Log_Type;
                                 Dump_Start_Index : Positive;
                                 Dump_End_Index : Positive;
                                 Max_Screen_Lines : Max_Screen_Lines_Type)

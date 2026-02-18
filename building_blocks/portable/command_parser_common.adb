@@ -37,7 +37,9 @@ with Interfaces; use Interfaces;
 --
 --  Command parser common services implementation
 --
-package body Command_Parser_Common is
+package body Command_Parser_Common
+   with SPARK_Mode => Off
+is
 
    --
    --  Maximum number of test lines that are printed on the screen at a time
@@ -98,11 +100,11 @@ package body Command_Parser_Common is
                             Log : out Runtime_Logs.Log_Type) return Boolean is
    begin
       if Log_Name = "debug" or else Log_Name = "d" then
-         Log := Runtime_Logs.DEBUG_LOG;
+         Log := Runtime_Logs.Debug_Log;
       elsif Log_Name = "error" or else Log_Name = "e" then
-         Log := Runtime_Logs.ERROR_LOG;
+         Log := Runtime_Logs.Error_Log;
       elsif Log_Name = "info" or else Log_Name = "i" then
-         Log := Runtime_Logs.INFO_LOG;
+         Log := Runtime_Logs.Info_Log;
       else
          return False;
       end if;
@@ -120,13 +122,13 @@ package body Command_Parser_Common is
    begin
       Token_Found := Command_Line.Get_Next_Token (Token);
       if not Token_Found then
-         goto error;
+         goto Error;
       end if;
 
       Parsing_Ok := Parse_Log_Name (Token.String_Value (1 .. Token.Length), Log);
 
       if not Parsing_Ok then
-         goto error;
+         goto Error;
       end if;
 
       Runtime_Logs.Dump.Dump_Log (Log, Dump_Log_Max_Screen_Lines);
@@ -176,7 +178,7 @@ package body Command_Parser_Common is
                                    ASCII.LF);
    end Cmd_Dump_Log_Tail;
 
-    -- ** --
+   -- ** --
 
    procedure Cmd_Reset is
    begin
@@ -186,7 +188,8 @@ package body Command_Parser_Common is
    -- ** --
 
    function Parse_Color (Color_Name : String;
-                         Color : out Color_Led.Led_Color_Type) return Boolean is
+                         Color : out Color_Led.Led_Color_Type) return Boolean
+   is
    begin
       if Color_Name = "black" then
          Color := Color_Led.Black;

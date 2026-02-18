@@ -58,7 +58,8 @@ package Command_Line is
    --
 
    function Get_Next_Token (Token : out Token_Type) return Boolean
-     with Pre => Initialized;
+     with Pre => Initialized,
+          SPARK_Mode => Off;
    --
    --  Retrieves the next token from the command-line buffer, if any. A token
    --  is any string of printable non-space (blanks or tabs) characters. If

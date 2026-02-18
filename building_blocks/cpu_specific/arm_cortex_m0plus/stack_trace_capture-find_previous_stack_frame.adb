@@ -263,7 +263,8 @@ separate (Stack_Trace_Capture)
          or else
          To_Integer (Prev_Frame_Pointer) <= To_Integer (Stack_Pointer)
          or else
-          To_Integer (Prev_Frame_Pointer) >= To_Integer (Stack_End) then
+          To_Integer (Prev_Frame_Pointer) >= To_Integer (Stack_End)
+      then
          return False;
       end if;
 

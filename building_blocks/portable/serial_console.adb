@@ -228,7 +228,7 @@ package body Serial_Console is
    -- ** --
 
    function Is_Lock_Mine return Boolean is
-       Current_Task_Id : constant Task_Id := Current_Task;
+      Current_Task_Id : constant Task_Id := Current_Task;
    begin
       return Console_Var.Lock_Owner_Task_Id = Current_Task_Id;
    end Is_Lock_Mine;

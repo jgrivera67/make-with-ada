@@ -28,13 +28,11 @@
 with PWM_Driver.Board_Specific_Private;
 with MKL25Z4.TPM;
 with MKL25Z4.SIM;
-with Interfaces;
 
 package body PWM_Driver is
    pragma SPARK_Mode (Off);
    use PWM_Driver.Board_Specific_Private;
    use MKL25Z4.TPM;
-   use Interfaces;
 
    type Pwm_Channels_In_Use_Type is array (PWM_Channel_Id_Type) of Boolean
       with Component_Size => 1, Size => Max_Num_PWM_Channels;
@@ -48,7 +46,7 @@ package body PWM_Driver is
    type PWM_Device_Var_Type is limited record
       Initialized : Boolean := False;
       Pulse_Period_Us : PWM_Pulse_Period_Us_Type;
-      Pwm_Channels_In_Use : Pwm_Channels_In_Use_Type := (others => False);
+      Pwm_Channels_In_Use : Pwm_Channels_In_Use_Type := [others => False];
    end record;
 
    --

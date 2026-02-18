@@ -66,7 +66,7 @@ package Serial_Console is
    type Attributes_Vector_Type is array (Attributes_Type) of Bit
       with Size => Unsigned_32'Size;
 
-   Attributes_Normal : constant Attributes_Vector_Type := (others => 0);
+   Attributes_Normal : constant Attributes_Vector_Type := [others => 0];
 
    type Line_Type is range 1 .. 999;
 

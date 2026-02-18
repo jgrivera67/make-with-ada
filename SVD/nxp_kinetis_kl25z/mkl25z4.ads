@@ -24,7 +24,7 @@
 pragma Restrictions (No_Elaboration_Code);
 pragma Ada_2012;
 
-with Interfaces;  use Interfaces;
+with Interfaces;
 with System;
 
 --  MKL25Z4 Freescale Microcontroller

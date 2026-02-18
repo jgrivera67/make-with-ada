@@ -44,7 +44,7 @@ package body Gpio_Driver is
       Gpio_Registers : access GPIO.Registers_Type renames
         Gpio_Ports (Gpio_Pin.Pin_Info.Pin_Port);
       PDDR_Value : Pin_Array_Type;
-      Pin_Array_Value : Pin_Array_Type := (others => 0);
+      Pin_Array_Value : Pin_Array_Type := [others => 0];
       Pin_Index : Pin_Index_Type renames Gpio_Pin.Pin_Info.Pin_Index;
    begin
       PDDR_Value := Gpio_Registers.PDDR;
@@ -102,7 +102,7 @@ package body Gpio_Driver is
       Gpio_Registers : access GPIO.Registers_Type renames
         Gpio_Ports (Gpio_Pin.Pin_Info.Pin_Port);
       PDDR_Value : Pin_Array_Type;
-      Pin_Array_Value : Pin_Array_Type := (others => 0);
+      Pin_Array_Value : Pin_Array_Type := [others => 0];
       Pin_Index : Pin_Index_Type renames Gpio_Pin.Pin_Info.Pin_Index;
    begin
       PDDR_Value := Gpio_Registers.PDDR;
@@ -159,7 +159,7 @@ package body Gpio_Driver is
       Gpio_Registers : access GPIO.Registers_Type renames
         Gpio_Ports (Gpio_Pin.Pin_Info.Pin_Port);
       PDDR_Value : Pin_Array_Type;
-      Pin_Array_Value : Pin_Array_Type := (others => 0);
+      Pin_Array_Value : Pin_Array_Type := [others => 0];
       Pin_Index : Pin_Index_Type renames Gpio_Pin.Pin_Info.Pin_Index;
    begin
       PDDR_Value := Gpio_Registers.PDDR;

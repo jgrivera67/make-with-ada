@@ -1,10 +1,11 @@
---with "../../embedded-runtimes/ravenscar-kinetis_kl25z_frdm/ravenscar_build.gpr";
-project frdm_kl25z_autonomous_car is
+with "../third_party/gnat-rts-light-tasking-nxp-kl25z/ravenscar_build.gpr";
+with "config/frdm_kl25z_autonomous_car_config.gpr";
+project Frdm_Kl25z_Autonomous_Car is
 
    for Languages use ("ada");
 
    for Main use ("main.adb");
-   for Source_Dirs use (".",
+   for Source_Dirs use ("src",
                         "../building_blocks/portable",
                         "../building_blocks/cpu_specific/arm_cortex_m0plus",
                         "../building_blocks/mcu_specific/nxp_kinetis_kl25z",
@@ -14,11 +15,14 @@ project frdm_kl25z_autonomous_car is
                         "../drivers/board_specific/frdm_kl25z",
                         "../SVD/nxp_kinetis_kl25z");
 
-   for Object_Dir use "obj";
+   for Object_Dir use "obj/" & Frdm_Kl25z_Autonomous_Car_Config.Build_Profile;
+   for Create_Missing_Dirs use "True";
+   for Exec_Dir use "bin";
 
    package Compiler is
-      for Default_Switches ("ada") use (
-             "-g", "-gnatwa", "-gnatQ", "-gnat12",
+      for Default_Switches ("ada") use
+      	    Frdm_Kl25z_Autonomous_Car_Config.Ada_Compiler_Switches &
+             ("-g", "-gnatwa", "-gnatQ", "-gnat12",
              -- "-fstack-check", --  Generate stack checking code (part of Ada)
              "-gnata",        --  Enable assertions            (part of Ada)
              "-gnato13",      --  Overflow checking            (part of Ada)
@@ -27,14 +31,15 @@ project frdm_kl25z_autonomous_car is
              "-gnatwa",                     --  All optional warnings
              "-gnatVa",                     --  All validity checks
              "-gnaty3abcdefhiklmnoOprstux", --  Style checks
-             -- "-gnatwe",                     --  Treat warnings as errors
-             "-gnat2012",                   --  Use Ada 2012
+             -- "-gnatwe",                  --  Treat warnings as errors
+             "-gnat2022",                   --  Use Ada 2022
+             "-gnatyM120", --  Check maximum line length
              "-Wall",                       --  All GCC warnings
-             --"-Wstack-usage=256",           -- check stack usage per subprogram
+             --"-Wstack-usage=256",         -- check stack usage per subprogram
              "-fno-omit-frame-pointer",     -- To be able to unwind the stack
-             -- "-E",                          --  Generate stack trace for exceptions
+             -- "-E",                       --  Generate stack trace for exceptions
              --"-v",
-             "-O2");                        --  Optimise (level 2/3)
+             "-O2");                         --  Optimise (level 2/3)
 
       for Local_Configuration_Pragmas use "../gnat_pragmas.adc";
    end Compiler;
@@ -44,14 +49,8 @@ project frdm_kl25z_autonomous_car is
       for Executable ("main.adb") use "frdm_kl25z_autonomous_car";
    end Builder;
 
-   for Runtime ("Ada") use "ravenscar-sfp-kinetis_kl25z_frdm";
-   --for Runtime ("Ada") use Ravenscar_Build'Runtime ("Ada");
+   --???for Runtime ("Ada") use "ravenscar-sfp-kinetis_kl25z_frdm";
+   for Runtime ("Ada") use Ravenscar_Build'Runtime ("Ada");
    for Target use "arm-eabi";
 
-   package Ide is
-      for Program_Host use "localhost:4242";
-      for Communication_Protocol use "remote";
-   end Ide;
-
-end frdm_kl25z_autonomous_car;
-
+end Frdm_Kl25z_Autonomous_Car;

@@ -87,8 +87,8 @@ package body ADC_Driver is
    --
    ADC_Devices_Const :
      constant array (ADC_Device_Id_Type) of ADC_Device_Const_Type :=
-        (ADC0 =>
-           (Registers_Ptr => ADC.ADC0_Periph'Access));
+        [ADC0 =>
+           (Registers_Ptr => ADC.ADC0_Periph'Access)];
 
    --
    --  Array of ADC device objects

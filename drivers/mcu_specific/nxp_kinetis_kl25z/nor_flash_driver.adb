@@ -100,7 +100,6 @@ package body Nor_Flash_Driver is
    function Erase_Sector (Sector_Address : System.Address) return Boolean
    is
       use NOR;
-      use MKL25Z4;
       FSTAT_Value : FTFA_FSTAT_Register;
       Sector_Addr_Value : constant Unsigned_32 :=
          Unsigned_32 (To_Integer (Sector_Address));
@@ -216,7 +215,7 @@ package body Nor_Flash_Driver is
       pragma Assert (Dest_Addr_Value mod Nor_Flash_Sector_Size = 0);
       pragma Assert (Memory_Map.Valid_RAM_Pointer (Src_Addr, Word_Size));
 
-      pragma Assert (Src_Size /= 0 and
+      pragma Assert (Src_Size /= 0 and then
                      Src_Size mod Unsigned_32'Size / Unsigned_8'Size = 0);
 
       if Dest_Addr_Value <= Highest_Code_Addr_Value then
@@ -265,7 +264,6 @@ package body Nor_Flash_Driver is
                         Word_Value : Unsigned_32) return Boolean
    is
       use NOR;
-      use MKL25Z4;
       FSTAT_Value : FTFA_FSTAT_Register;
       Dest_Addr_Value : constant Unsigned_32 :=
          Unsigned_32 (To_Integer (Dest_Address));

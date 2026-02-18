@@ -30,13 +30,13 @@ private package Pin_Mux_Driver.MCU_Specific_Private is
    pragma SPARK_Mode (Off);
 
    --
-   -- Table of pointers to the PORT registers for each GPIO port
+   --  Table of pointers to the PORT registers for each GPIO port
    --
    Ports : constant array (Pin_Port_Type) of access PORT.Registers_Type :=
-     (PIN_PORT_A => PORT.PortA_Registers'Access,
+     [PIN_PORT_A => PORT.PortA_Registers'Access,
       PIN_PORT_B => PORT.PortB_Registers'Access,
       PIN_PORT_C => PORT.PortC_Registers'Access,
       PIN_PORT_D => PORT.PortD_Registers'Access,
-      PIN_PORT_E => PORT.PortE_Registers'Access);
+      PIN_PORT_E => PORT.PortE_Registers'Access];
 
 end Pin_Mux_Driver.MCU_Specific_Private;

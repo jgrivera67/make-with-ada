@@ -80,8 +80,8 @@ package ADC_Driver is
                                      Mux_Selector : ADC_Mux_Selector_Type;
                                      ADC_Completion_Callback_Ptr :
                                         ADC_Completion_Callback_Access_Type)
-      with Pre => Initialized (ADC_Device_Id) and
-                  ADC_Channel /= ADC_Channel_None and
+      with Pre => Initialized (ADC_Device_Id) and then
+                  ADC_Channel /= ADC_Channel_None and then
                   ADC_Completion_Callback_Ptr /= null;
    --
    --  Starts an asynchronous A/D conversion for a given ADC channel.

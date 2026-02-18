@@ -1,0 +1,108 @@
+with "target_options.gpr";
+
+project Runtime_Build is
+  for Languages use ("Ada", "Asm_Cpp");
+  for Runtime ("Ada") use Project'Project_Dir;
+  for Target use "arm-eabi";
+
+  for Library_Auto_Init use "False";
+  for Library_Name use "gnat";
+  for Library_Kind use Target_Options.Lib;
+  for Library_Options use Target_Options.LOPTIONS;
+  for Library_Version use "libgnat-" & Target_Options.Version & ".so";
+
+  for Library_Dir use "adalib";
+  for Object_Dir use "obj";
+
+  for Source_Dirs use ("gnat_user", "gnat", "nxp_kl25z");
+
+  package Naming is
+     for Spec_Suffix ("Asm_CPP") use ".inc";
+  end Naming;
+
+  package Compiler is
+     for Default_Switches ("C") use Target_Options.ALL_CFLAGS;
+     for Default_Switches ("Ada") use Target_Options.ALL_ADAFLAGS;
+     for Default_Switches ("Asm_Cpp") use Target_Options.ASMFLAGS;
+
+     --  Some runtime files need to be compiled with debug info, so that gdb
+     --  is not blind.
+     for Switches ("s-traceb.adb") use Target_Options.ALL_ADAFLAGS
+       & ("-g")
+       & ("-fno-optimize-sibling-calls", "-fno-inline-functions-called-once");
+     for Switches ("a-except.adb") use Target_Options.ALL_ADAFLAGS
+       & ("-g", "-O1", "-fno-inline", "-fno-toplevel-reorder");
+     for Switches ("s-excdeb.adb") use Target_Options.ALL_ADAFLAGS
+       & ("-g", "-O0");
+     for Switches ("s-assert.adb") use Target_Options.ALL_ADAFLAGS
+       & ("-g");
+     for Switches ("a-tags.adb") use Target_Options.ALL_ADAFLAGS
+       & ("-g");
+     for Switches ("raise-gcc.c") use Target_Options.ALL_CFLAGS
+       & ("-fexceptions");
+     for Switches ("unwind-sjlj-cert.c") use Target_Options.ALL_CFLAGS
+       & ("-fexceptions", "-Wno-error=unused-but-set-variable");
+
+     --  Don't inline System.Machine_Reset otherwise we can loose our common
+     --  exit system.
+
+     for Switches ("s-macres.adb") use Target_Options.ALL_ADAFLAGS
+       & ("-fno-inline");
+
+     --  Generate ada_target_properties to give target-specific information
+     --  to formal verification tools.
+
+     for Switches ("system.ads") use Target_Options.ALL_ADAFLAGS
+       & ("-gnatet=" & Project'Project_Dir & "/ada_target_properties");
+  end Compiler;
+
+  package Prove is
+
+    for Proof_Dir use "proof";
+
+    --  By default, use all available cores and all default provers
+    for Proof_Switches ("Ada") use ("-j0", "--level=2", "--function-sandboxing=off", "--counterexamples=off");
+
+    --  Specialize the command-line for more complex units (-j0 is implied)
+    for Proof_Switches ("a-strmap.adb") use ("--level=3");
+    for Proof_Switches ("a-strfix.adb") use ("--level=4");
+    for Proof_Switches ("a-strsea.adb") use ("--level=4");
+    for Proof_Switches ("a-strsup.adb") use ("--level=4", "--timeout=30");
+    for Proof_Switches ("i-c.adb") use ("--level=4", "--timeout=120");
+    for Proof_Switches ("s-arit32.adb") use ("--level=3", "--prover=all");
+    for Proof_Switches ("s-arit64.adb") use ("--level=4", "--prover=all");
+    for Proof_Switches ("s-expmod.adb") use ("--level=2");
+    for Proof_Switches ("s-imgboo.adb") use ("--level=3");
+    for Proof_Switches ("s-valboo.adb") use ("--level=3");
+    for Proof_Switches ("s-valint.ads") use ("--level=2");
+    for Proof_Switches ("s-vallli.ads") use ("--level=2");
+    for Proof_Switches ("s-valllli.ads") use ("--level=2");
+    for Proof_Switches ("s-valuns.ads") use ("--level=2");
+    for Proof_Switches ("s-valllu.ads") use ("--level=3");
+    for Proof_Switches ("s-vallllu.ads") use ("--level=4");
+    for Proof_Switches ("s-valuti.adb") use ("--level=3");
+    for Proof_Switches ("s-vs_lli.ads") use ("--level=3");
+    for Proof_Switches ("s-vsllli.ads") use ("--level=4");
+
+    --  Bump level for proof of Lemma_Div_Twice which should ideally be
+    --  factored out in the future.
+    for Proof_Switches ("g-io.adb") use ("--level=4");
+    for Proof_Switches ("s-widint.ads") use ("--level=2");
+    for Proof_Switches ("s-widlli.ads") use ("--level=2");
+    for Proof_Switches ("s-widllli.ads") use ("--level=2");
+    for Proof_Switches ("s-widuns.ads") use ("--level=2");
+    for Proof_Switches ("s-widllu.ads") use ("--level=2");
+    for Proof_Switches ("s-widlllu.ads") use ("--level=2");
+    for Proof_Switches ("s-imguns.ads") use ("--level=2");
+    for Proof_Switches ("s-imgllu.ads") use ("--level=2");
+    for Proof_Switches ("s-imglllu.ads") use ("--level=2");
+    for Proof_Switches ("s-imgint.ads") use ("--level=2");
+    for Proof_Switches ("s-imglli.ads") use ("--level=2");
+    for Proof_Switches ("s-imgllli.ads") use ("--level=3");
+  end Prove;
+
+  package CodePeer is
+    for Excluded_Source_Files use ("a-chahan.adb", "a-strbou.adb", "a-strfix.adb", "a-strmap.adb", "a-strsea.adb", "a-strsup.adb", "g-io.adb", "i-c.adb", "s-arit32.adb", "s-arit64.adb", "s-casuti.adb", "s-exnint.adb", "s-exnlli.adb", "s-exnllli.ads", "s-expint.adb", "s-explli.adb", "s-expllli.ads", "s-explllu.ads", "s-expllu.adb", "s-expmod.adb", "s-expuns.adb", "s-gearop.adb", "s-imgboo.adb", "s-imgint.adb", "s-imglli.adb", "s-imgllli.ads", "s-imglllu.ads", "s-imgllu.adb", "s-imguns.adb", "s-valboo.adb", "s-valint.adb", "s-vallli.adb", "s-valllli.ads", "s-vallllu.ads", "s-valllu.adb", "s-valuns.adb", "s-valuti.adb", "s-veboop.adb", "s-widint.ads", "s-widlli.adb", "s-widllli.ads", "s-widlllu.ads", "s-widllu.adb", "s-widuns.ads");
+  end CodePeer;
+
+end Runtime_Build;
